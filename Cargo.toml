@@ -1,0 +1,25 @@
+[workspace]
+resolver = "2"
+members = ["crates/agent-rails-policy", "programs/agent_rails"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/0xcf02/agent-rails"
+
+[workspace.dependencies]
+anchor-lang = "=1.1.2"
+agent-rails-policy = { path = "crates/agent-rails-policy", default-features = false }
+
+# `overflow-checks` is mandatory: the policy crate uses `checked_*` everywhere, but the
+# Anchor layer must also trap rather than wrap on any arithmetic we missed.
+[profile.release]
+overflow-checks = true
+lto = "fat"
+codegen-units = 1
+
+[profile.release.build-override]
+opt-level = 3
+incremental = false
+codegen-units = 1
