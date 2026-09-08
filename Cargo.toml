@@ -10,6 +10,13 @@ repository = "https://github.com/0xcf02/agent-rails"
 
 [workspace.dependencies]
 anchor-lang = "=1.1.2"
+# Pinned to `anchor-lang` exactly: the two crates share the Anchor derive machinery, and a
+# mismatched pair fails to compile in ways that point at the wrong file.
+anchor-spl = { version = "=1.1.2", default-features = false, features = [
+    "token",
+    "token_2022",
+    "associated_token",
+] }
 agent-rails-policy = { path = "crates/agent-rails-policy", default-features = false }
 
 # `overflow-checks` is mandatory: the policy crate uses `checked_*` everywhere, but the

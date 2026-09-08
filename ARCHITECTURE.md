@@ -59,8 +59,8 @@ flowchart LR
     CLI[agent-rails CLI]
   end
 
-  OWN -->|create_treasury, add_mint,<br/>set_ceiling, withdraw| PRG
-  OPR -->|create_policy, allowlist,<br/>create/revoke_session, pause| PRG
+  OWN -->|create_treasury, add_mint,<br/>set_ceiling, withdraw, pause, unpause| PRG
+  OPR -->|create_policy, allowlist,<br/>create/revoke_session| PRG
   GRD -->|pause| PRG
   LLM <-->|tools| MCP
   MCP --> SDK
@@ -97,17 +97,17 @@ The program recognizes four principals per treasury. Each is a plain `Pubkey`, s
 
 | Role | Temperature | Can | Cannot |
 |---|---|---|---|
-| **Owner** | Cold | Withdraw (any mint, any amount, any destination, even while paused); rotate owner/operator; add/remove guardians; add/remove mints (extension gate); set `PolicyCeiling`; unpause; close treasury | Execute agent payments |
-| **Operator** | Warm | Create/update/close policies within the ceiling; manage allowlist entries; create/revoke/close sessions; pause; unpause | Withdraw; raise ceilings; add mints; change roles |
-| **Guardian** (up to 5) | Hot | Pause | Anything else. Guardians can only tighten. |
+| **Owner** | Cold | Withdraw (any mint, any amount, any destination, even while paused); rotate owner/operator; add/remove guardians; add/remove mints (extension gate); set `PolicyCeiling`; pause; unpause; close treasury | Execute agent payments |
+| **Operator** | Warm | Create/update/close policies within the ceiling; manage allowlist entries; create/revoke/close sessions | Withdraw; raise ceilings; add mints; change roles; pause; unpause |
+| **Guardian** (up to 5) | Hot | Pause | Anything else. Guardians can only tighten. They cannot unpause. |
 | **Agent session** | Hot | `execute_payment` within its policy and session window | Any configuration change |
 
 Design invariants:
 
 - **Loosening flows downhill only.** Owner sets ceilings; operator sets policy `≤` ceiling; the agent sets nothing.
-- **Pause is an agent kill switch, not an owner lock.** `paused` blocks `execute_payment` only. Owner withdrawal always works; this is the emergency exit.
+- **Pause is an agent kill switch, not an owner lock.** `paused` blocks `execute_payment` only. Owner withdrawal always works; this is the emergency exit. Pause is owner-or-guardian; unpause is owner-only. The operator cannot pause or unpause: a compromised warm key already has `revoke_session`, and must not be able to freeze the treasury or to undo a guardian's pause.
 - **The agent-facing surface has zero privilege-escalating tools.** `create_session`, `update_policy`, `unpause`, `withdraw`, and allowlist edits do not exist in the MCP server or adapters.
-- **Two independent stops.** Any guardian can pause; the operator can revoke the session. Either alone is sufficient.
+- **Two independent stops.** Any guardian can pause; the operator can revoke the session. Either alone is sufficient. Only the owner can clear a pause.
 
 Reserved for v1.1 ("loosening is slow, tightening is instant"): `Treasury.timelock_seconds` and `Treasury.recovery_destination`. When enabled, loosening actions (raise limits, add allowlist entry, extend session, withdraw to a non-recovery destination) enter a `PendingChange` with a delay and guardian veto; tightening actions remain instant.
 

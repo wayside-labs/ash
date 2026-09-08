@@ -9,7 +9,11 @@ use agent_rails::state::MintCeiling;
 use agent_rails::{AgentRailsError, MintCeilingArgs};
 
 use common::{
-    add_mint_ix, add_native_mint, assert_program_error, create_treasury, permissive_ceiling, Env,
+    add_mint_ix, add_native_mint, add_native_mint_ix, add_spl_mint, add_spl_mint_ix,
+    assert_program_error, create_spl_token_mint, create_token_2022_plain,
+    create_token_2022_with_non_transferable, create_token_2022_with_permanent_delegate,
+    create_token_2022_with_transfer_fee, create_token_2022_with_transfer_hook, create_treasury,
+    permissive_ceiling, token_2022_program_id, token_program_id, vault_ata, Env,
 };
 
 #[test]
@@ -188,11 +192,10 @@ fn add_mint_rejects_a_duplicate_mint() {
     add_native_mint(&mut env, &fixture, permissive_ceiling());
     assert_eq!(env.treasury(&fixture.treasury).mint_count, 1);
 
-    let ix = add_mint_ix(
+    let ix = add_native_mint_ix(
         &env,
         &fixture.treasury,
         &fixture.owner.pubkey(),
-        NATIVE_MINT,
         permissive_ceiling(),
     );
     let owner = fixture.owner.insecure_clone();
@@ -209,11 +212,10 @@ fn add_mint_rejects_an_invalid_ceiling() {
     let mut env = Env::new();
     let fixture = create_treasury(&mut env, false, false);
 
-    let ix = add_mint_ix(
+    let ix = add_native_mint_ix(
         &env,
         &fixture.treasury,
         &fixture.owner.pubkey(),
-        NATIVE_MINT,
         MintCeilingArgs {
             min_short_window_seconds: 30, // below MIN_WINDOW_SECONDS
             ..permissive_ceiling()
@@ -233,11 +235,10 @@ fn add_mint_rejects_a_non_owner_signer() {
     let fixture = create_treasury(&mut env, false, false);
     let impostor = env.keypair();
 
-    let ix = add_mint_ix(
+    let ix = add_native_mint_ix(
         &env,
         &fixture.treasury,
         &impostor.pubkey(),
-        NATIVE_MINT,
         permissive_ceiling(),
     );
     let result = env.execute(ix, &[&impostor]);
@@ -246,10 +247,9 @@ fn add_mint_rejects_a_non_owner_signer() {
     assert_eq!(env.treasury(&fixture.treasury).mint_count, 0);
 }
 
-/// The SPL / Token-2022 branch of `add_mint` is not wired up yet; until it is, a non-native
-/// mint must be refused rather than silently stored with a bogus token program.
+/// A pubkey that is not an SPL / Token-2022 mint must not occupy a slot.
 #[test]
-fn add_mint_rejects_a_non_native_mint_for_now() {
+fn add_mint_rejects_a_non_mint_account() {
     let mut env = Env::new();
     let fixture = create_treasury(&mut env, false, false);
 
@@ -259,10 +259,218 @@ fn add_mint_rejects_a_non_native_mint_for_now() {
         &fixture.owner.pubkey(),
         Pubkey::new_unique(),
         permissive_ceiling(),
+        None,
     );
     let owner = fixture.owner.insecure_clone();
     let result = env.execute(ix, &[&owner]);
 
     assert_program_error(&result, AgentRailsError::TokenProgramMismatch);
     assert_eq!(env.treasury(&fixture.treasury).mint_count, 0);
+}
+
+/// SPL Token mints are stored with the token program id, cached decimals, and a vault ATA
+/// owned by the treasury PDA (spec §5.1, ADR-010).
+#[test]
+fn add_mint_creates_a_vault_ata_for_an_spl_token() {
+    let mut env = Env::new();
+    let fixture = create_treasury(&mut env, false, false);
+    let owner = fixture.owner.insecure_clone();
+    let mint = create_spl_token_mint(&mut env, &owner, 6);
+
+    add_spl_mint(
+        &mut env,
+        &fixture,
+        mint,
+        token_program_id(),
+        permissive_ceiling(),
+    );
+
+    let treasury = env.treasury(&fixture.treasury);
+    assert_eq!(treasury.mint_count, 1);
+    let slot = treasury.mints[0];
+    assert_eq!(slot.mint, mint);
+    assert_eq!(slot.token_program, token_program_id());
+    assert_eq!(slot.decimals, 6);
+    assert_eq!(slot.flags, 0);
+    assert!(!slot.is_native());
+
+    let vault = vault_ata(&fixture.treasury, &mint, &token_program_id());
+    let vault_account = env.ctx.svm.get_account(&vault).expect("vault ATA exists");
+    assert_eq!(vault_account.owner, token_program_id());
+}
+
+/// Creating the vault ATA twice is a no-op: a pre-existing ATA must not block `add_mint`.
+#[test]
+fn add_mint_is_idempotent_when_the_vault_ata_already_exists() {
+    let mut env = Env::new();
+    let fixture = create_treasury(&mut env, false, false);
+    let owner = fixture.owner.insecure_clone();
+    let mint = create_spl_token_mint(&mut env, &owner, 9);
+
+    let create_ata = spl_associated_token_account::instruction::create_associated_token_account(
+        &owner.pubkey(),
+        &fixture.treasury,
+        &mint,
+        &token_program_id(),
+    );
+    env.execute(create_ata, &[&owner]).assert_success();
+
+    add_spl_mint(
+        &mut env,
+        &fixture,
+        mint,
+        token_program_id(),
+        permissive_ceiling(),
+    );
+    assert_eq!(env.treasury(&fixture.treasury).mint_count, 1);
+}
+
+/// Passing the classic Token program with a Token-2022 mint is a program mismatch, not a
+/// silent re-tag (the stored id is what `execute_payment` will CPI into).
+#[test]
+fn add_mint_rejects_a_token_program_that_does_not_own_the_mint() {
+    let mut env = Env::new();
+    let fixture = create_treasury(&mut env, false, false);
+    let owner = fixture.owner.insecure_clone();
+    let mint = create_token_2022_plain(&mut env, &owner, 6);
+
+    let ix = add_spl_mint_ix(
+        &env,
+        &fixture.treasury,
+        &owner.pubkey(),
+        mint,
+        token_program_id(),
+        permissive_ceiling(),
+    );
+    let result = env.execute(ix, &[&owner]);
+
+    assert_program_error(&result, AgentRailsError::TokenProgramMismatch);
+    assert_eq!(env.treasury(&fixture.treasury).mint_count, 0);
+}
+
+#[test]
+fn add_mint_accepts_token_2022_and_records_transfer_fee() {
+    let mut env = Env::new();
+    let fixture = create_treasury(&mut env, false, false);
+    let owner = fixture.owner.insecure_clone();
+    let mint = create_token_2022_with_transfer_fee(&mut env, &owner);
+
+    add_spl_mint(
+        &mut env,
+        &fixture,
+        mint,
+        token_2022_program_id(),
+        permissive_ceiling(),
+    );
+
+    let slot = env.treasury(&fixture.treasury).mints[0];
+    assert_eq!(slot.mint, mint);
+    assert_eq!(slot.token_program, token_2022_program_id());
+    assert_eq!(slot.flags, MintFlags::HAS_TRANSFER_FEE);
+    assert_eq!(slot.decimals, 6);
+
+    let vault = vault_ata(&fixture.treasury, &mint, &token_2022_program_id());
+    let vault_account = env
+        .ctx
+        .svm
+        .get_account(&vault)
+        .expect("Token-2022 vault ATA exists");
+    assert_eq!(vault_account.owner, token_2022_program_id());
+}
+
+#[test]
+fn add_mint_records_a_permanent_delegate_flag() {
+    let mut env = Env::new();
+    let fixture = create_treasury(&mut env, false, false);
+    let owner = fixture.owner.insecure_clone();
+    let mint = create_token_2022_with_permanent_delegate(&mut env, &owner);
+
+    add_spl_mint(
+        &mut env,
+        &fixture,
+        mint,
+        token_2022_program_id(),
+        permissive_ceiling(),
+    );
+
+    assert_eq!(
+        env.treasury(&fixture.treasury).mints[0].flags,
+        MintFlags::HAS_PERMANENT_DELEGATE
+    );
+}
+
+#[test]
+fn add_mint_rejects_transfer_hook() {
+    let mut env = Env::new();
+    let fixture = create_treasury(&mut env, false, false);
+    let owner = fixture.owner.insecure_clone();
+    let mint = create_token_2022_with_transfer_hook(&mut env, &owner);
+
+    let ix = add_spl_mint_ix(
+        &env,
+        &fixture.treasury,
+        &owner.pubkey(),
+        mint,
+        token_2022_program_id(),
+        permissive_ceiling(),
+    );
+    let result = env.execute(ix, &[&owner]);
+
+    assert_program_error(&result, AgentRailsError::UnsupportedMintExtension);
+    assert_eq!(env.treasury(&fixture.treasury).mint_count, 0);
+}
+
+#[test]
+fn add_mint_rejects_non_transferable() {
+    let mut env = Env::new();
+    let fixture = create_treasury(&mut env, false, false);
+    let owner = fixture.owner.insecure_clone();
+    let mint = create_token_2022_with_non_transferable(&mut env, &owner);
+
+    let ix = add_spl_mint_ix(
+        &env,
+        &fixture.treasury,
+        &owner.pubkey(),
+        mint,
+        token_2022_program_id(),
+        permissive_ceiling(),
+    );
+    let result = env.execute(ix, &[&owner]);
+
+    assert_program_error(&result, AgentRailsError::UnsupportedMintExtension);
+    assert_eq!(env.treasury(&fixture.treasury).mint_count, 0);
+}
+
+#[test]
+fn add_mint_fills_every_slot_then_rejects_the_fifth() {
+    let mut env = Env::new();
+    let fixture = create_treasury(&mut env, false, false);
+    let owner = fixture.owner.insecure_clone();
+
+    add_native_mint(&mut env, &fixture, permissive_ceiling());
+    for _ in 0..3 {
+        let mint = create_spl_token_mint(&mut env, &owner, 6);
+        add_spl_mint(
+            &mut env,
+            &fixture,
+            mint,
+            token_program_id(),
+            permissive_ceiling(),
+        );
+    }
+    assert_eq!(env.treasury(&fixture.treasury).mint_count, 4);
+
+    let extra = create_spl_token_mint(&mut env, &owner, 6);
+    let ix = add_spl_mint_ix(
+        &env,
+        &fixture.treasury,
+        &owner.pubkey(),
+        extra,
+        token_program_id(),
+        permissive_ceiling(),
+    );
+    let result = env.execute(ix, &[&owner]);
+
+    assert_program_error(&result, AgentRailsError::MintSlotsFull);
+    assert_eq!(env.treasury(&fixture.treasury).mint_count, 4);
 }

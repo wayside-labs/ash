@@ -12,7 +12,10 @@
 
 use anchor_lang::prelude::*;
 
-use crate::constants::{MintFlags, MAX_GUARDIANS, MAX_MINTS, MAX_NAME_LEN, PROGRAM_VERSION};
+use crate::constants::{
+    MintFlags, ReceiptStatus, INTENT_ID_LEN, MAX_GUARDIANS, MAX_MINTS, MAX_NAME_LEN,
+    PROGRAM_VERSION, RECEIPT_GRACE_SECONDS,
+};
 
 /// Length of the Anchor account discriminator that prefixes every account below.
 pub const DISCRIMINATOR_LEN: usize = 8;
@@ -205,6 +208,77 @@ impl Treasury {
         *key != Pubkey::default() && self.guardians[..self.guardian_count as usize].contains(key)
     }
 
+    /// Owner or any registered guardian. The operator is excluded: pause is the kill
+    /// switch a hot guardian key holds, and a compromised warm operator must not be able
+    /// to freeze the treasury (they already have `revoke_session`) or to un-freeze a
+    /// guardian's pause.
+    pub fn can_pause(&self, key: &Pubkey) -> bool {
+        *key == self.owner || self.is_guardian(key)
+    }
+
+    /// Appends `guardian` to the live prefix. Unused slots stay `Pubkey::default()`.
+    pub fn insert_guardian(&mut self, guardian: Pubkey) -> Result<()> {
+        require!(
+            guardian != Pubkey::default(),
+            crate::error::AgentRailsError::Unauthorized
+        );
+        require!(
+            !self.is_guardian(&guardian),
+            crate::error::AgentRailsError::DuplicateGuardian
+        );
+        require!(
+            (self.guardian_count as usize) < MAX_GUARDIANS,
+            crate::error::AgentRailsError::GuardiansFull
+        );
+        self.guardians[self.guardian_count as usize] = guardian;
+        self.guardian_count = self
+            .guardian_count
+            .checked_add(1)
+            .ok_or(crate::error::AgentRailsError::MathOverflow)?;
+        Ok(())
+    }
+
+    /// Removes `guardian` and compact-fills the hole so the live prefix stays dense.
+    pub fn extract_guardian(&mut self, guardian: Pubkey) -> Result<()> {
+        let count = self.guardian_count as usize;
+        let index = self.guardians[..count]
+            .iter()
+            .position(|slot| *slot == guardian)
+            .ok_or(crate::error::AgentRailsError::GuardianNotFound)?;
+        let last = count.saturating_sub(1);
+        self.guardians[index] = self.guardians[last];
+        self.guardians[last] = Pubkey::default();
+        self.guardian_count = self
+            .guardian_count
+            .checked_sub(1)
+            .ok_or(crate::error::AgentRailsError::MathOverflow)?;
+        Ok(())
+    }
+
+    /// Whether `key` holds any privileged role. `create_session` uses this to keep a hot
+    /// agent key from also being a cold or warm one: a compromised session must never
+    /// double as the authority that could widen its own limits.
+    pub fn is_privileged(&self, key: &Pubkey) -> bool {
+        *key == self.owner || *key == self.operator || self.is_guardian(key)
+    }
+
+    /// The configured mint slots as the policy crate sees them, plus how many are in use.
+    ///
+    /// A fixed array rather than a `Vec` so the ceiling check allocates nothing; the caller
+    /// slices it to `used`, and unused slots must not be passed to `policy_leq_ceiling`.
+    pub fn ceiling_entries(&self) -> ([agent_rails_policy::MintCeilingEntry; MAX_MINTS], usize) {
+        let mut entries = [agent_rails_policy::MintCeilingEntry::default(); MAX_MINTS];
+        let mut used = 0;
+        for config in self.mints.iter().filter(|config| config.is_used()) {
+            entries[used] = agent_rails_policy::MintCeilingEntry {
+                mint: config.mint.to_bytes(),
+                ceiling: config.ceiling.to_policy(),
+            };
+            used = used.saturating_add(1);
+        }
+        (entries, used)
+    }
+
     /// Writes every field of a freshly created treasury.
     ///
     /// Anchor has already zeroed the account, so most of this is redundant — deliberately
@@ -388,6 +462,65 @@ impl Policy {
             .iter()
             .find(|limit| limit.is_used() && limit.mint == *mint)
     }
+
+    /// The tightest per-transaction cap across every configured mint, or `None` for a
+    /// policy with no limits.
+    ///
+    /// An `AllowlistEntry.per_tx_max_override` is bounded by this rather than by any single
+    /// mint's cap, because one entry applies to every mint the policy covers: bounding it
+    /// by the loosest slot would let an override *raise* the cap for the tightest one.
+    pub fn min_per_tx_max(&self) -> Option<u64> {
+        self.mint_limits
+            .iter()
+            .filter(|limit| limit.is_used())
+            .map(|limit| limit.per_tx_max)
+            .min()
+    }
+
+    /// Writes every field of a freshly created policy. Spelled out in full for the same
+    /// reason as [`Treasury::initialize`].
+    pub fn initialize(&mut self, init: PolicyInit) {
+        let PolicyInit {
+            bump,
+            treasury,
+            name,
+            mint_limits,
+            mint_count,
+            destination_mode,
+            require_memo,
+            create_destination_ata,
+            created_at,
+        } = init;
+
+        *self = Self {
+            version: PROGRAM_VERSION,
+            bump,
+            treasury,
+            name,
+            mint_limits,
+            mint_count,
+            destination_mode,
+            require_memo,
+            create_destination_ata,
+            active_sessions: 0,
+            created_at,
+            updated_at: created_at,
+            reserved: [0u8; 64],
+        };
+    }
+}
+
+/// Arguments to [`Policy::initialize`], grouped so the call site names each value.
+pub struct PolicyInit {
+    pub bump: u8,
+    pub treasury: Pubkey,
+    pub name: [u8; MAX_NAME_LEN],
+    pub mint_limits: [MintLimit; MAX_MINTS],
+    pub mint_count: u8,
+    pub destination_mode: u8,
+    pub require_memo: bool,
+    pub create_destination_ata: bool,
+    pub created_at: i64,
 }
 
 const _: () = assert!(Policy::LEN == 546);
@@ -543,6 +676,59 @@ impl AgentSession {
     pub fn is_active(&self, now: i64) -> bool {
         !self.revoked && now < self.expires_at
     }
+
+    /// Writes every field of a freshly created session.
+    ///
+    /// `audit_head` is the genesis hash, not zero: a chain that started at zero could be
+    /// forged by anyone who could write a zeroed account, and starting from
+    /// `sha256(DOMAIN_AUDIT ‖ session)` binds the chain to this session's address.
+    pub fn initialize(&mut self, init: AgentSessionInit) {
+        let AgentSessionInit {
+            bump,
+            treasury,
+            policy,
+            session_key,
+            auth_mode,
+            label,
+            created_at,
+            expires_at,
+            audit_head,
+            spend,
+        } = init;
+
+        *self = Self {
+            version: PROGRAM_VERSION,
+            bump,
+            treasury,
+            policy,
+            session_key,
+            auth_mode,
+            label,
+            created_at,
+            expires_at,
+            revoked: false,
+            revoked_at: 0,
+            seq: 0,
+            audit_head,
+            spend,
+            reserved: [0u8; 64],
+        };
+    }
+}
+
+/// Arguments to [`AgentSession::initialize`], grouped so the call site names each value.
+pub struct AgentSessionInit {
+    pub bump: u8,
+    pub treasury: Pubkey,
+    pub policy: Pubkey,
+    pub session_key: Pubkey,
+    pub auth_mode: u8,
+    pub label: [u8; MAX_NAME_LEN],
+    pub created_at: i64,
+    pub expires_at: i64,
+    pub audit_head: [u8; 32],
+    /// Index-aligned with `Policy.mint_limits` at creation, counters zeroed.
+    pub spend: [SpendCounter; MAX_MINTS],
 }
 
 const _: () = assert!(AgentSession::LEN == 588);
@@ -596,6 +782,181 @@ impl AllowlistEntry {
             self.per_tx_max_override.min(policy_per_tx_max)
         }
     }
+
+    /// Writes every field of a freshly created entry.
+    pub fn initialize(&mut self, init: AllowlistEntryInit) {
+        let AllowlistEntryInit {
+            bump,
+            policy,
+            destination_owner,
+            label,
+            per_tx_max_override,
+            added_at,
+            added_by,
+        } = init;
+
+        *self = Self {
+            version: PROGRAM_VERSION,
+            bump,
+            policy,
+            destination_owner,
+            label,
+            per_tx_max_override,
+            added_at,
+            added_by,
+            reserved: [0u8; 32],
+        };
+    }
+}
+
+/// Arguments to [`AllowlistEntry::initialize`], grouped so the call site names each value.
+pub struct AllowlistEntryInit {
+    pub bump: u8,
+    pub policy: Pubkey,
+    pub destination_owner: Pubkey,
+    pub label: [u8; MAX_NAME_LEN],
+    pub per_tx_max_override: u64,
+    pub added_at: i64,
+    pub added_by: Pubkey,
 }
 
 const _: () = assert!(AllowlistEntry::LEN == 186);
+
+// ---------------------------------------------------------------------------------------
+// IntentReceipt (spec §3.5)
+// ---------------------------------------------------------------------------------------
+
+/// The idempotency record for one payment intent (spec §3.5). 243 bytes.
+///
+/// | Offset | Size | Field |
+/// |---|---|---|
+/// | 0 | 8 | discriminator |
+/// | 8 | 1 | `version` |
+/// | 9 | 1 | `bump` |
+/// | 10 | 32 | `session` |
+/// | 42 | 16 | `intent_id` |
+/// | 58 | 32 | `mint` |
+/// | 90 | 32 | `destination_owner` |
+/// | 122 | 8 | `amount` |
+/// | 130 | 8 | `seq` |
+/// | 138 | 8 | `slot` |
+/// | 146 | 8 | `timestamp` |
+/// | 154 | 8 | `expires_at` |
+/// | 162 | 1 | `status` |
+/// | 163 | 32 | `fee_payer` |
+/// | 195 | 32 | `memo_hash` |
+/// | 227 | 16 | `reserved` |
+///
+/// PDA: `["receipt", session, intent_id]`.
+///
+/// The account *is* the idempotency mechanism (ADR-004): `execute_payment` `init`s it
+/// before it transfers anything, so a retried intent fails at account creation rather than
+/// paying twice. Nothing here is read back by the program on the payment path — the fields
+/// exist so that `get_payment_status` can answer "did it land?" authoritatively, and so
+/// `close_receipt` knows when the record may be reclaimed and by whom.
+#[account]
+#[derive(InitSpace, Debug)]
+pub struct IntentReceipt {
+    pub version: u8,
+    pub bump: u8,
+    pub session: Pubkey,
+    /// Client-generated, UUIDv7 by default; the raw 16 bytes are also a seed component.
+    pub intent_id: [u8; INTENT_ID_LEN],
+    pub mint: Pubkey,
+    pub destination_owner: Pubkey,
+    /// Debited from the vault, before any Token-2022 transfer fee.
+    pub amount: u64,
+    /// The session's `seq` *after* this payment, so the receipt pins one link of the audit
+    /// chain and an indexer can reconstruct the order without the events.
+    pub seq: u64,
+    pub slot: u64,
+    pub timestamp: i64,
+    /// Copied from the intent. Gates `close_receipt`, so a receipt outlives its intent by
+    /// exactly `RECEIPT_GRACE_SECONDS`.
+    pub expires_at: i64,
+    /// `ReceiptStatus`. Only `Executed` exists in v1: a receipt is written after the
+    /// transfer succeeds, and a failed payment leaves no account behind.
+    pub status: u8,
+    /// Rent refund target for `close_receipt`, recorded because whoever closes the receipt
+    /// is not necessarily whoever paid for it.
+    pub fee_payer: Pubkey,
+    /// `sha256(memo)`, or all zeros when the memo is empty. The memo itself is never
+    /// stored: it is unbounded-ish caller data, and a commitment is enough to prove what
+    /// was submitted.
+    pub memo_hash: [u8; 32],
+    pub reserved: [u8; 16],
+}
+
+impl IntentReceipt {
+    pub const LEN: usize = DISCRIMINATOR_LEN + Self::INIT_SPACE;
+
+    /// Writes every field of a freshly created receipt.
+    ///
+    /// Spelled out in full for the same reason as [`Treasury::initialize`]: adding a field
+    /// without deciding what it holds at creation becomes a compile error.
+    pub fn initialize(&mut self, init: IntentReceiptInit) {
+        let IntentReceiptInit {
+            bump,
+            session,
+            intent_id,
+            mint,
+            destination_owner,
+            amount,
+            seq,
+            slot,
+            timestamp,
+            expires_at,
+            fee_payer,
+            memo_hash,
+        } = init;
+
+        *self = Self {
+            version: PROGRAM_VERSION,
+            bump,
+            session,
+            intent_id,
+            mint,
+            destination_owner,
+            amount,
+            seq,
+            slot,
+            timestamp,
+            expires_at,
+            status: ReceiptStatus::EXECUTED,
+            fee_payer,
+            memo_hash,
+            reserved: [0u8; 16],
+        };
+    }
+
+    /// Whether `close_receipt` may reclaim this account (spec §5.4).
+    ///
+    /// The grace period is what makes closing safe: the receipt has to outlive every
+    /// blockhash window in which the original intent could still be resubmitted, or
+    /// closing it would reopen the replay window it exists to shut.
+    pub fn is_closable(&self, now: i64) -> bool {
+        match self.expires_at.checked_add(RECEIPT_GRACE_SECONDS) {
+            Some(closable_at) => now >= closable_at,
+            // Only reachable from a corrupted account; refusing to close is the safe side.
+            None => false,
+        }
+    }
+}
+
+/// Arguments to [`IntentReceipt::initialize`], grouped so the call site names each value.
+pub struct IntentReceiptInit {
+    pub bump: u8,
+    pub session: Pubkey,
+    pub intent_id: [u8; INTENT_ID_LEN],
+    pub mint: Pubkey,
+    pub destination_owner: Pubkey,
+    pub amount: u64,
+    pub seq: u64,
+    pub slot: u64,
+    pub timestamp: i64,
+    pub expires_at: i64,
+    pub fee_payer: Pubkey,
+    pub memo_hash: [u8; 32],
+}
+
+const _: () = assert!(IntentReceipt::LEN == 243);

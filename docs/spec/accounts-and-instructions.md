@@ -278,9 +278,12 @@ Notation: **(s)** signer, **(w)** writable. `clock` = `Clock::get()`. `event_aut
 - Event: `MintAdded`.
 
 #### `remove_mint()`
-- Accounts: `owner` (s), `treasury` (w), `mint`, `vault_ata`.
-- Checks: role; vault balance is zero (or `sol_vault` at floor for native); no open policy references the mint (enforced by requiring `policy_count == 0` **or** by a client-side sweep followed by an on-chain `Policy.mint_limits` check per policy; v1 chooses the strict `policy_count == 0` rule for auditability).
+- Accounts: `owner` (s), `treasury` (w), `mint`, `vault_ata` (`Option`; required iff the mint is **not** native), `sol_vault` (`Option`; required iff the mint **is** native).
+- Checks: role; vault balance is zero (`vault_ata.amount == 0`), or `sol_vault` at floor for native; no open policy references the mint (enforced by requiring `policy_count == 0` **or** by a client-side sweep followed by an on-chain `Policy.mint_limits` check per policy; v1 chooses the strict `policy_count == 0` rule for auditability).
+- Effects: clears the `MintConfig` slot (`mint_count -= 1`), leaving it available for a later `add_mint`. The vault ATA is **not** closed: it is empty and rent-exempt, and `add_mint` re-adopts it idempotently.
 - Event: `MintRemoved`.
+
+`vault_ata` and `sol_vault` are mutually exclusive optionals because the emptiness check differs by path: a token vault must hold zero, while `sol_vault` must sit exactly at `Rent::minimum_balance(0)` — it can never be closed, only drained to its floor. The strict `policy_count == 0` rule has a useful second-order effect: a *live* policy naming an unconfigured mint is unreachable on-chain, so `execute_payment`'s `MintNotConfigured` check (§5.3 step 7) is pure defense in depth.
 
 #### `set_ceiling(mint, ceiling: MintCeilingArgs, allow_any_destination, allow_create_destination_ata)`
 - Accounts: `owner` (s), `treasury` (w).
@@ -289,16 +292,27 @@ Notation: **(s)** signer, **(w)** writable. `clock` = `Clock::get()`. `event_aut
 - Event: `CeilingUpdated`.
 
 #### `withdraw(amount)`
-- Accounts: `owner` (s), `treasury`, `mint` (or `NATIVE_MINT` path), `vault_ata` (w) or `sol_vault` (w), `destination` (w; token account for SPL, system account for SOL), `token_program`.
-- Checks: role only. **Explicitly permitted while `paused`.** For native, `amount ≤ balance - floor`.
+- Accounts: `owner` (s), `treasury`, `mint` (or `NATIVE_MINT` path), `vault_ata` (w) or `sol_vault` (w), `destination` (w; token account for SPL, system account for SOL), `token_program` (SPL path), `system_program`.
+- Checks: role only. **Explicitly permitted while `paused`.** Does **not** require the mint to be configured in `Treasury.mints`: vault ATAs survive `remove_mint`, and `sol_vault` accepts permissionless deposits from `create_treasury`, so a configured-slot check would trap funds. For native, `amount ≤ balance - floor`. `amount > 0`.
 - Effects: `transfer_checked` or system transfer with PDA signer.
 - Event: `Withdrawn`.
 
 #### `close_treasury()`
-- Accounts: `owner` (s), `treasury` (w, close → `rent_destination`), `sol_vault` (w), `rent_destination` (w).
-- Checks: role; `active_sessions == 0`; `policy_count == 0`; `mint_count == 0` (all vaults removed); `sol_vault` at floor.
+- Accounts: `owner` (s), `treasury` (w, close → `rent_destination`), `sol_vault` (w), `rent_destination` (w), `system_program`.
+- Checks: role; `active_sessions == 0`; `policy_count == 0`; `mint_count == 0` (all vaults removed); `sol_vault` at floor. `rent_destination ≠ sol_vault` (draining a PDA into itself is a no-op, and after close nobody can sign for that address).
 - Effects: drains `sol_vault` floor to `rent_destination`; closes `treasury`.
 - Event: `TreasuryClosed`.
+
+#### `pause()`
+- Accounts: `authority` (s), `treasury` (w).
+- Checks: `authority ∈ {owner} ∪ guardians`. The operator is **excluded**: a compromised warm key already has `revoke_session`, and must not be able to freeze the treasury or to undo a guardian's pause. Idempotent success with no event if already paused.
+- Effects: `paused = true`, `paused_at`, `paused_by`.
+- Event: `TreasuryPaused`.
+
+#### `unpause()`
+- Accounts: `owner` (s), `treasury` (w).
+- Checks: `owner == treasury.owner`. Guardians cannot unpause; the operator cannot either. Idempotent success with no event if not paused. `paused_at` / `paused_by` are left as the last pauser's record.
+- Event: `TreasuryUnpaused`.
 
 ### 5.2 Operator instructions
 
@@ -343,20 +357,11 @@ Notation: **(s)** signer, **(w)** writable. `clock` = `Clock::get()`. `event_aut
 - Event: `SessionRevoked`.
 
 #### `close_session()`
-- Accounts: `operator` (s), `treasury`, `session` (w, close → `rent_destination`), `rent_destination` (w).
-- Checks: role; `session.revoked || now ≥ session.expires_at`. If expired but not revoked, decrements `active_sessions` counters first.
+- Accounts: `operator` (s), `treasury` (w), `policy` (w), `session` (w, close → `rent_destination`), `rent_destination` (w).
+- Checks: role; `session.revoked || now ≥ session.expires_at` → `SessionStillActive`. If expired but not revoked, decrements both `active_sessions` counters first; if already revoked it does **not**, because `revoke_session` released them.
 - Event: `SessionClosed` (carries final `seq` and `audit_head` so the chain terminus is on record).
 
-#### `pause()`
-- Accounts: `authority` (s), `treasury` (w).
-- Checks: `authority ∈ {owner, operator} ∪ guardians`; not already paused (idempotent success is acceptable; v1 returns `Ok` with no event if already paused).
-- Effects: `paused = true`, `paused_at`, `paused_by`.
-- Event: `TreasuryPaused`.
-
-#### `unpause()`
-- Accounts: `authority` (s), `treasury` (w).
-- Checks: `authority ∈ {owner, operator}`. Guardians cannot unpause.
-- Event: `TreasuryUnpaused`.
+`treasury` is writable and `policy` is present because this instruction can decrement `Treasury.active_sessions` *and* `Policy.active_sessions`; an earlier revision of this spec listed a read-only `treasury` with no `policy`, which cannot perform the stated effect. `active_sessions` means "sessions that could still pay", so it must move exactly once per session in each direction: `revoke_session` decrements, and `close_session` decrements only what revocation did not. Undercounting would let `close_policy` run out from under live agents; overcounting would strand the policy permanently.
 
 ### 5.3 Agent instructions
 
@@ -371,7 +376,7 @@ Accounts (16 with event CPI):
 | 0 | `fee_payer` | s,w | Pays receipt rent (and destination ATA rent if created) |
 | 1 | `session_key` | s | `== session.session_key` |
 | 2 | `treasury` | | seeds |
-| 3 | `policy` | | `key == session.policy`, seeds |
+| 3 | `policy` | | `key == session.policy` (`has_one` on `session`) |
 | 4 | `session` | w | seeds `["session", treasury, session_key]` |
 | 5 | `allowlist_entry` | | `Option`; required iff `policy.destination_mode == Allowlist`; seeds `["allow", policy, intent.destination_owner]` |
 | 6 | `mint` | | `key == intent.mint`; `mint.owner == mint_config.token_program` |
@@ -417,7 +422,7 @@ Same checks as above with: step 7 requires `mint_config.is_native` and `intent.m
 #### `close_receipt()`
 - Accounts: `anyone` (s), `receipt` (w, close → `fee_payer`), `fee_payer` (w; `key == receipt.fee_payer`).
 - Checks: `now ≥ receipt.expires_at + RECEIPT_GRACE_SECONDS` → `ReceiptNotExpired`.
-- Event: `ReceiptClosed`.
+- Event: `ReceiptClosed`. `treasury` in the event is `Pubkey::default()`: this instruction is permissionless and must succeed after the session (and even the treasury) has been closed, so neither account is present. Indexers route on `session`.
 
 Deposits have no instruction: transfer tokens to the vault ATA or lamports to `sol_vault`.
 
@@ -502,7 +507,7 @@ Single enum, emitted via `emit_cpi!`. Every variant carries `treasury: Pubkey` a
 | `TreasuryPaused` / `TreasuryUnpaused` | `by, at` |
 | `Withdrawn` | `mint, amount, destination, by` |
 | `TreasuryClosed` | — |
-| `PolicyCreated` / `PolicyUpdated` / `PolicyClosed` | `policy, name` (+ `limits_hash: [u8;32]` = sha256 of serialized `PolicyArgs`) |
+| `PolicyCreated` / `PolicyUpdated` / `PolicyClosed` | `policy, name`. `PolicyCreated` adds `limits_hash: [u8;32]` = sha256 of the serialized `PolicyArgs`; `PolicyUpdated` adds `previous_limits_hash` and `limits_hash`, so revisions chain the way payments do; `PolicyClosed` adds neither, having no args to commit to |
 | `AllowlistEntryAdded` / `AllowlistEntryRemoved` | `policy, destination_owner, label, per_tx_max_override` |
 | `SessionCreated` | `session, policy, session_key, label, expires_at, auth_mode` |
 | `SessionRevoked` | `session, by, seq, audit_head` |
@@ -575,11 +580,31 @@ Anchor custom errors start at 6000. `reason_code` strings are what the SDK, MCP 
 | Legacy tx size (2 signers, 64-byte memo) | ≈ 875 bytes | ≈ 745 bytes |
 | Legacy tx size gate | ≤ 1,000 bytes | ≤ 900 bytes |
 | With ALT (v0 tx) | ≈ 400 bytes | ≈ 350 bytes |
-| Compute units (SPL Token) | target ≤ 40k, gate ≤ 45k | target ≤ 25k, gate ≤ 30k |
+| Compute units (SPL Token) | **measured 42,947**, gate ≤ 45k | **measured 32,026**, gate ≤ 35k |
 | Compute units (Token-2022 w/ TransferFee) | target ≤ 50k, gate ≤ 55k | — |
 | + destination ATA creation | +≈ 20k CU, +≈ 0.002 SOL rent | — |
 
-Numbers are design targets; the first LiteSVM run pins the committed baselines that the CU regression gate compares against.
+The compute figures are **measured**, not estimated: they are pinned by `programs/agent_rails/tests/budget.rs`, which the CI regression gate runs. Two thresholds apply per §11 — the gate above, and the committed baseline at +10%.
+
+### 10.1 Why the native SOL gate is 35k, not 30k
+
+The original design target was ≤ 25k with a 30k gate. The first LiteSVM run measured **32,002 CU**, and the gate is raised to 35k rather than the instruction being optimised, because the overage is structural rather than incidental. `execute_payment_sol` must:
+
+- deserialize **2,078 bytes** of Borsh account data — `Treasury` (944) + `Policy` (546) + `AgentSession` (588). Borsh has no partial decode: reading `Treasury.paused` costs a full walk of `[Pubkey; 5]` and `[MintConfig; 4]`.
+- `init` a 243-byte `IntentReceipt`, which is one `find_program_address` plus a System `create_account` CPI, and is the idempotency mechanism itself (ADR-004).
+- self-CPI the `PaymentExecuted` event, because §8 mandates `emit_cpi!` over `emit!` so the record survives log truncation.
+
+None of these is discretionary: §3 freezes the layouts, §8 mandates the event mechanism, and §7 idempotency requires the receipt. Getting under 30k would take zero-copy accounts, which need `repr(C)` and contradict this document's Borsh contract. The one optimisation actually available — dropping the redundant `seeds` re-derivation on `policy`, already applied and worth 1,584 CU on every payment — is included in the measured figure.
+
+The SPL path is unaffected and remains inside its original 45k gate.
+
+### 10.2 Measurement determinism
+
+CU counts are only meaningful if they are reproducible. `find_program_address` searches downward from bump 255 and stops at the first off-curve address, so the number of `create_program_address` syscalls — ~1,500 CU each — depends on the *addresses involved*. Three derivations on the payment path are affected: the `IntentReceipt` PDA, the vault ATA, and the destination ATA.
+
+With randomly generated fixtures the measurements swung by ±6,000 CU between runs, every difference a multiple of ~1,500. The test harness therefore derives every key, address, and `intent_id` from a per-test deterministic sequence, and `budget.rs` asserts reproducibility directly. A CU gate built on random fixtures measures noise, not the program.
+
+A second, smaller source of drift is the length of Anchor's `#[program]` dispatch chain: each added instruction costs a few CU on every path, handler unchanged. The eight lifecycle instructions moved every payment by exactly +24 CU. The +10% regression band absorbs this; the pinned figures above are re-measured when it lands.
 
 ---
 

@@ -10,9 +10,11 @@
 use anchor_lang::prelude::Pubkey;
 use anchor_lang::AnchorSerialize;
 
+use agent_rails::constants::{RECEIPT_GRACE_SECONDS, SEED_RECEIPT};
+
 use agent_rails::state::{
-    AgentSession, AllowlistEntry, MintCeiling, MintConfig, MintLimit, Policy, SpendCounter,
-    Treasury, DISCRIMINATOR_LEN,
+    AgentSession, AllowlistEntry, IntentReceipt, MintCeiling, MintConfig, MintLimit, Policy,
+    SpendCounter, Treasury, DISCRIMINATOR_LEN,
 };
 
 /// A pubkey whose every byte is `tag`, so a misplaced field is obvious in a diff.
@@ -57,6 +59,7 @@ fn account_sizes_match_the_spec() {
     assert_eq!(Policy::LEN, 546);
     assert_eq!(AgentSession::LEN, 588);
     assert_eq!(AllowlistEntry::LEN, 186);
+    assert_eq!(IntentReceipt::LEN, 243);
 
     assert_eq!(MintConfig::LEN, 112);
     assert_eq!(MintCeiling::LEN, 40);
@@ -322,6 +325,110 @@ fn allowlist_entry_field_offsets() {
     assert_eq!(i64_at(&data, 114), 0x1112_1314_1516_1718, "added_at");
     assert_eq!(&data[122..154], key(0x44).as_ref(), "added_by");
     assert_eq!(&data[154..186], &[0u8; 32], "reserved");
+}
+
+#[test]
+fn intent_receipt_field_offsets() {
+    let receipt = IntentReceipt {
+        version: 1,
+        bump: 247,
+        session: key(0x11),
+        intent_id: [0x22; 16],
+        mint: key(0x33),
+        destination_owner: key(0x44),
+        amount: 0x0102_0304_0506_0708,
+        seq: 0x1112_1314_1516_1718,
+        slot: 0x2122_2324_2526_2728,
+        timestamp: 0x3132_3334_3536_3738,
+        expires_at: 0x4142_4344_4546_4748,
+        status: 1,
+        fee_payer: key(0x55),
+        memo_hash: [0x66; 32],
+        reserved: [0u8; 16],
+    };
+
+    let data = encode(&receipt);
+    assert_eq!(data.len(), 243);
+
+    assert_eq!(data[8], 1, "version");
+    assert_eq!(data[9], 247, "bump");
+    assert_eq!(&data[10..42], key(0x11).as_ref(), "session");
+    assert_eq!(&data[42..58], &[0x22u8; 16], "intent_id");
+    assert_eq!(&data[58..90], key(0x33).as_ref(), "mint");
+    assert_eq!(&data[90..122], key(0x44).as_ref(), "destination_owner");
+    assert_eq!(u64_at(&data, 122), 0x0102_0304_0506_0708, "amount");
+    assert_eq!(u64_at(&data, 130), 0x1112_1314_1516_1718, "seq");
+    assert_eq!(u64_at(&data, 138), 0x2122_2324_2526_2728, "slot");
+    assert_eq!(i64_at(&data, 146), 0x3132_3334_3536_3738, "timestamp");
+    assert_eq!(i64_at(&data, 154), 0x4142_4344_4546_4748, "expires_at");
+    assert_eq!(data[162], 1, "status");
+    assert_eq!(&data[163..195], key(0x55).as_ref(), "fee_payer");
+    assert_eq!(&data[195..227], &[0x66u8; 32], "memo_hash");
+    assert_eq!(&data[227..243], &[0u8; 16], "reserved");
+}
+
+/// `intent_id` is a raw 16-byte seed, so the receipt PDA must be sensitive to every byte of
+/// it: two intents differing in one bit have to land on different accounts or idempotency
+/// degrades into collision.
+#[test]
+fn receipt_seeds_separate_adjacent_intent_ids() {
+    let session = key(0x11);
+
+    let pda = |intent_id: &[u8; 16]| {
+        Pubkey::find_program_address(
+            &[SEED_RECEIPT, session.as_ref(), intent_id],
+            &agent_rails::ID,
+        )
+        .0
+    };
+
+    let base = [0u8; 16];
+    let baseline = pda(&base);
+
+    for byte in 0..16 {
+        for bit in 0..8 {
+            let mut flipped = base;
+            flipped[byte] |= 1 << bit;
+            assert_ne!(
+                pda(&flipped),
+                baseline,
+                "flipping bit {bit} of intent_id[{byte}] did not move the receipt PDA"
+            );
+        }
+    }
+}
+
+/// A receipt may only be reclaimed once the whole grace period past its intent's expiry has
+/// elapsed (spec §5.4), because closing it early would reopen the replay window.
+#[test]
+fn receipt_is_closable_only_after_the_grace_period() {
+    let mut receipt = IntentReceipt {
+        version: 1,
+        bump: 0,
+        session: Pubkey::default(),
+        intent_id: [0u8; 16],
+        mint: Pubkey::default(),
+        destination_owner: Pubkey::default(),
+        amount: 0,
+        seq: 0,
+        slot: 0,
+        timestamp: 0,
+        expires_at: 1_000,
+        status: 1,
+        fee_payer: Pubkey::default(),
+        memo_hash: [0u8; 32],
+        reserved: [0u8; 16],
+    };
+
+    let closable_at = 1_000 + RECEIPT_GRACE_SECONDS;
+    assert!(!receipt.is_closable(1_000), "at expiry, grace has not run");
+    assert!(!receipt.is_closable(closable_at - 1));
+    assert!(receipt.is_closable(closable_at), "boundary is inclusive");
+    assert!(receipt.is_closable(closable_at + 1));
+
+    // A corrupted `expires_at` must fail closed rather than wrap into the past.
+    receipt.expires_at = i64::MAX;
+    assert!(!receipt.is_closable(i64::MAX));
 }
 
 /// An allowlist override may only tighten the policy's per-tx cap (spec §5.3 step 10).

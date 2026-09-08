@@ -121,6 +121,9 @@ dependencies = [
  "agent-rails-policy",
  "anchor-lang",
  "anchor-litesvm",
+ "anchor-spl",
+ "sha2 0.10.9",
+ "solana-account",
  "solana-sha256-hasher",
  "spl-associated-token-account",
  "spl-token",
@@ -367,6 +370,18 @@ dependencies = [
  "spl-associated-token-account",
  "spl-token",
  "thiserror 2.0.20",
+]
+
+[[package]]
+name = "anchor-spl"
+version = "1.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2f698a45d424351ff695df413adcb3fa603f2c791a0b4a937ebcd2e93a052c77"
+dependencies = [
+ "anchor-lang",
+ "spl-associated-token-account-interface",
+ "spl-token-2022-interface",
+ "spl-token-interface",
 ]
 
 [[package]]

@@ -20,6 +20,9 @@ pub const MAX_MEMO_LEN: usize = 64;
 /// Maximum length of a policy name or label; UTF-8, zero-padded.
 pub const MAX_NAME_LEN: usize = 32;
 
+/// Length of `PaymentIntent.intent_id`, which is also a raw `IntentReceipt` seed.
+pub const INTENT_ID_LEN: usize = 16;
+
 /// Upper bound on `intent.expires_at - now`.
 pub const MAX_INTENT_TTL_SECONDS: i64 = 3_600;
 

@@ -24,7 +24,7 @@ Option B.
 5. `Policy.create_destination_ata` (default `false`); when true, `create_associated_token_account_idempotent` funded by `fee_payer`.
 6. Deposits are permissionless with no instruction; the SDK offers `deposit()` sugar; the CLI warns about un-added mints.
 7. Withdraw: owner-only, any mint/amount/destination, allowed while paused. `recovery_destination` reserved for v1.1 timelock exemption.
-8. Pause blocks `execute_payment` only; `pause` by owner/operator/guardian; `unpause` by owner/operator.
+8. Pause blocks `execute_payment` only; `pause` by owner or guardian (not operator); `unpause` by owner only.
 9. Close instructions for treasury, policy, session, allowlist entry with dependency checks; receipts close permissionlessly.
 10. Budget: `execute_payment` ≤ ~40k CU, ≤ ~600 bytes with legacy addressing.
 

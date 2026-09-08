@@ -17,9 +17,9 @@ With a native vault (ADR-001) the program must define who can withdraw, configur
 
 Option B in v1, with state prepared for D in v1.1.
 
-- `owner` (cold): withdraw (always, even while paused), rotate roles, manage guardians, add/remove mints, set `PolicyCeiling`, unpause, close treasury.
-- `operator` (warm): create/update/close policies within the ceiling, manage allowlist entries, create/revoke/close sessions, pause, unpause.
-- `guardians` (up to 5, hot): pause only.
+- `owner` (cold): withdraw (always, even while paused), rotate roles, manage guardians, add/remove mints, set `PolicyCeiling`, pause, unpause, close treasury.
+- `operator` (warm): create/update/close policies within the ceiling, manage allowlist entries, create/revoke/close sessions. Cannot pause or unpause: a compromised warm key already has `revoke_session`, and must not be able to freeze the treasury or to undo a guardian's pause.
+- `guardians` (up to 5, hot): pause only. Cannot unpause.
 - Every role is a plain `Pubkey`; any may be a Squads/Realms PDA.
 - Reserved now: `Treasury.timelock_seconds: u64` (0 in v1), `Treasury.recovery_destination: Pubkey`, `paused_at`, `paused_by`.
 
