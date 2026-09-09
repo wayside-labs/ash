@@ -3,6 +3,9 @@ target/
 test-ledger/
 **/*.rs.bk
 node_modules/
+dist/
+.turbo/
+*.tsbuildinfo
 
 # Solana keypairs are raw secret keys; never commit one, wherever it lands.
 **/*keypair*.json

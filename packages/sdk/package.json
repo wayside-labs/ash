@@ -1,0 +1,26 @@
+{
+  "name": "@agent-rails/sdk",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsdown",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@agent-rails/client": "workspace:*",
+    "@agent-rails/contract": "workspace:*",
+    "@solana/kit": "^8.2.0"
+  },
+  "devDependencies": {
+    "tsdown": "^0.15.0",
+    "vitest": "^4.0.0"
+  }
+}

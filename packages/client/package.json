@@ -1,0 +1,33 @@
+{
+  "name": "@agent-rails/client",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/generated/index.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src/generated"
+  ],
+  "scripts": {
+    "codegen": "codama run js",
+    "build": "tsdown",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@solana/kit": "^8.2.0",
+    "@solana/program-client-core": "^6.10.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "codama": "^1.6.2",
+    "@codama/nodes-from-anchor": "^1.5.5",
+    "@codama/renderers-js": "^2.4.0",
+    "tsdown": "^0.15.0",
+    "vitest": "^4.0.0"
+  }
+}
