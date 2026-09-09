@@ -19,6 +19,10 @@
     "./events": {
       "types": "./dist/events.d.ts",
       "import": "./dist/events.js"
+    },
+    "./payment-build": {
+      "types": "./dist/payment-build.d.ts",
+      "import": "./dist/payment-build.js"
     }
   },
   "files": ["dist"],

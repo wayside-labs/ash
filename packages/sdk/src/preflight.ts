@@ -1,11 +1,9 @@
-import type { Address, Rpc, SolanaRpcApi } from "@solana/kit";
+import type { SimulatePaymentInput, SimulatePaymentResult } from "./simulate.js";
+import { simulatePayment } from "./simulate.js";
 
-export type PreflightInput = {
-  rpc: Rpc<SolanaRpcApi>;
-  session: Address;
-};
+export type PreflightInput = SimulatePaymentInput;
 
-/** Placeholder for simulate-before-send checks. Wired in a follow-up PR. */
-export async function preflightPayment(_input: PreflightInput): Promise<void> {
-  return;
+/** Alias for MCP servers that want simulate-before-send semantics. */
+export async function preflightPayment(input: PreflightInput): Promise<SimulatePaymentResult> {
+  return simulatePayment(input);
 }
