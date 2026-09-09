@@ -1,0 +1,46 @@
+# @agent-rails/mcp
+
+stdio MCP server exposing Agent Rails payment tools to AI agents (Cursor, Claude Desktop, etc.).
+
+## Environment
+
+| Variable | Required | Description |
+|---|---|---|
+| `AGENT_RAILS_RPC` | yes | Solana JSON-RPC URL |
+| `AGENT_RAILS_SIGNER` | yes | Path to session keypair JSON (64-byte array) |
+| `AGENT_RAILS_FEE_PAYER` | no | Path to fee-payer keypair JSON (defaults to session key) |
+
+## Run locally
+
+```bash
+pnpm --filter @agent-rails/mcp build
+
+AGENT_RAILS_RPC=https://api.devnet.solana.com \
+AGENT_RAILS_SIGNER=~/.config/agent-rails/session-keypair.json \
+node packages/mcp/dist/cli.js
+```
+
+## Cursor / Claude Desktop config
+
+```json
+{
+  "mcpServers": {
+    "agent-rails": {
+      "command": "node",
+      "args": ["/path/to/agent-rails/packages/mcp/dist/cli.js"],
+      "env": {
+        "AGENT_RAILS_RPC": "https://api.devnet.solana.com",
+        "AGENT_RAILS_SIGNER": "/path/to/session-keypair.json"
+      }
+    }
+  }
+}
+```
+
+## Tools (v1)
+
+| Tool | Description |
+|---|---|
+| `agent_rails_execute_payment` | Build + simulate a guarded payment; returns `path`, `intent_id`, PDAs, and simulation metrics |
+
+Input schema: `mcpExecutePaymentSchema` from `@agent-rails/contract` (JSON-safe variant of `paymentBuildSchema`).

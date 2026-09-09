@@ -1,0 +1,33 @@
+{
+  "name": "@agent-rails/mcp",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "agent-rails-mcp": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsdown",
+    "test": "vitest run",
+    "start": "node dist/cli.js"
+  },
+  "dependencies": {
+    "@agent-rails/contract": "workspace:*",
+    "@agent-rails/sdk": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@solana/kit": "^8.2.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsdown": "^0.15.0",
+    "vitest": "^4.0.0"
+  }
+}

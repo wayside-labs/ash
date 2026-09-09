@@ -7,6 +7,7 @@ export default defineConfig({
     "src/reason-codes.ts",
     "src/events.ts",
     "src/payment-build.ts",
+    "src/mcp-tools.ts",
   ],
   format: ["esm"],
   dts: true,
