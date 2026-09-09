@@ -44,6 +44,6 @@ node packages/mcp/dist/cli.js
 | `agent_rails_get_session` | read | Decode `AgentSession` — seq, expiry, per-mint spend counters |
 | `agent_rails_get_policy` | read | Decode `Policy` — per-mint limits, destination mode, memo requirement |
 | `agent_rails_check_payment` | read | Idempotency lookup — does an `IntentReceipt` exist for `intent_id`? |
-| `agent_rails_execute_payment` | write | Build + simulate a guarded payment; returns PDAs and simulation metrics |
+| `agent_rails_execute_payment` | write | Build, simulate, sign, and broadcast a guarded payment; returns signature + PDAs |
 
 Schemas live in `@agent-rails/contract` (`mcpGetSessionSchema`, `mcpGetPolicySchema`, `mcpCheckPaymentSchema`, `mcpExecutePaymentSchema`).

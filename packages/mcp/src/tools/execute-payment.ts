@@ -16,8 +16,8 @@ export function registerExecutePaymentTool(
     EXECUTE_PAYMENT_TOOL_NAME,
     {
       description:
-        "Build and simulate a guarded agent payment against the on-chain policy. " +
-        "Returns simulation logs and compute units on success, or a stable reason_code on denial.",
+        "Build, simulate, sign, and broadcast a guarded agent payment against the on-chain policy. " +
+        "Returns the transaction signature on success, or a stable reason_code on denial.",
       inputSchema: mcpExecutePaymentSchema,
     },
     async (input) => toolJsonResult(await handleExecutePayment(runtime, signers, input)),

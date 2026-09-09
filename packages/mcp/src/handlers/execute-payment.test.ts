@@ -1,9 +1,17 @@
 import { NATIVE_MINT } from "@agent-rails/contract";
-import { AgentRailsError } from "@agent-rails/sdk";
+import { AgentRailsError, executePayment } from "@agent-rails/sdk";
 import { createNoopSigner } from "@solana/kit";
 import { describe, expect, it, vi } from "vitest";
 import type { McpRuntime } from "../config.js";
 import { handleExecutePayment } from "./execute-payment.js";
+
+vi.mock("@agent-rails/sdk", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@agent-rails/sdk")>();
+  return {
+    ...actual,
+    executePayment: vi.fn(),
+  };
+});
 
 const TREASURY = "11111111111111111111111111111112";
 const POLICY = "11111111111111111111111111111113";
@@ -11,6 +19,7 @@ const SESSION = "11111111111111111111111111111114";
 const DESTINATION = "11111111111111111111111111111115";
 const FEE_PAYER = "11111111111111111111111111111116";
 const SESSION_KEY = "11111111111111111111111111111117";
+const SIGNATURE = "5VERv8NMvzbJMEkVwx+MVySorx2r343eK3fGKB65y/sXiymHuDJp32ztikX4MdAv/IMWzqD/U+4nzB0TNZ4oDDw==";
 
 const signers = {
   feePayer: createNoopSigner(FEE_PAYER),
@@ -27,32 +36,30 @@ const baseInput = {
   session: SESSION,
 };
 
-function mockRuntime(simulateResult: { err: null; logs: string[]; unitsConsumed: bigint }) {
-  return {
-    config: {
-      rpcUrl: "http://localhost:8899",
-      signerKeypairPath: "/tmp/session.json",
-    },
-    rpc: {
-      getLatestBlockhash: () => ({
-        send: async () => ({
-          blockhash: "EkSnNWid2cvwEVnVx9aBxgney8D4R9fKQ89KWkdHUjbv",
-          lastValidBlockHeight: 1_000_000n,
-        }),
+const runtime = {
+  config: {
+    rpcUrl: "http://localhost:8899",
+    signerKeypairPath: "/tmp/session.json",
+  },
+  rpc: {
+    getLatestBlockhash: () => ({
+      send: async () => ({
+        blockhash: "EkSnNWid2cvwEVnVx9aBxgney8D4R9fKQ89KWkdHUjbv",
+        lastValidBlockHeight: 1_000_000n,
       }),
-      simulateTransaction: () => ({
-        send: async () => ({ value: simulateResult }),
-      }),
-    },
-  } as McpRuntime;
-}
+    }),
+  },
+} as McpRuntime;
 
 describe("handleExecutePayment", () => {
-  it("returns simulation result for a valid SOL payment", async () => {
-    const runtime = mockRuntime({
-      err: null,
-      logs: ["Program log: ok"],
-      unitsConsumed: 32_000n,
+  it("returns signature and message after a successful send", async () => {
+    vi.mocked(executePayment).mockResolvedValue({
+      signature: SIGNATURE,
+      simulation: {
+        err: null,
+        logs: ["Program log: ok"],
+        unitsConsumed: 32_000n,
+      },
     });
 
     const result = await handleExecutePayment(runtime, signers, baseInput);
@@ -62,27 +69,47 @@ describe("handleExecutePayment", () => {
       expect(result.path).toBe("sol");
       expect(result.intent_id).toHaveLength(32);
       expect(result.simulation.units_consumed).toBe("32000");
+      expect(result.signature).toBe(SIGNATURE);
+      expect(result.message).toBe(`Payment executed successfully. Signature: ${SIGNATURE}`);
     }
   });
 
   it("returns reason_code when simulation denies the payment", async () => {
-    const runtime = mockRuntime({
-      err: { InstructionError: [0, { Custom: 6000 }] },
-      logs: [],
-      unitsConsumed: 0n,
-    });
+    vi.mocked(executePayment).mockRejectedValue(
+      new AgentRailsError({
+        reasonCode: "TREASURY_PAUSED",
+        message: "Treasury is paused",
+      }),
+    );
 
     const result = await handleExecutePayment(runtime, signers, baseInput);
 
     expect(result).toEqual({
       allowed: false,
       reason_code: "TREASURY_PAUSED",
-      message: expect.stringContaining("paused"),
+      message: "Treasury is paused",
     });
   });
 
-  it("re-throws non-AgentRails errors", async () => {
-    const runtime = {
+  it("returns reason_code when send/confirm fails", async () => {
+    vi.mocked(executePayment).mockRejectedValue(
+      new AgentRailsError({
+        reasonCode: "UNAUTHORIZED",
+        message: "rpc timeout",
+      }),
+    );
+
+    const result = await handleExecutePayment(runtime, signers, baseInput);
+
+    expect(result).toEqual({
+      allowed: false,
+      reason_code: "UNAUTHORIZED",
+      message: "rpc timeout",
+    });
+  });
+
+  it("re-throws non-AgentRails errors from the build phase", async () => {
+    const failingRuntime = {
       config: {
         rpcUrl: "http://localhost:8899",
         signerKeypairPath: "/tmp/session.json",
@@ -94,7 +121,9 @@ describe("handleExecutePayment", () => {
       },
     } as McpRuntime;
 
-    await expect(handleExecutePayment(runtime, signers, baseInput)).rejects.toThrow("rpc down");
+    await expect(handleExecutePayment(failingRuntime, signers, baseInput)).rejects.toThrow(
+      "rpc down",
+    );
   });
 });
 

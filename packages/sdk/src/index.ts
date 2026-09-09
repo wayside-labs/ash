@@ -17,6 +17,13 @@ export {
   toAgentRailsError,
 } from "./error-mapping.js";
 export { simulatePayment, type SimulatePaymentInput, type SimulatePaymentResult } from "./simulate.js";
+export { sendPayment, type SendPaymentInput, type SendPaymentResult } from "./send-payment.js";
+export {
+  executePayment,
+  type ExecutePaymentInput,
+  type ExecutePaymentResult,
+  type ExecutePaymentRpc,
+} from "./execute-payment.js";
 export {
   findAllowlistPda,
   findEntryPda,

@@ -5,8 +5,8 @@ import {
 } from "@agent-rails/contract";
 import {
   buildPaymentIntent,
+  executePayment,
   isAgentRailsError,
-  simulatePayment,
   type PaymentIntentBuildResult,
 } from "@agent-rails/sdk";
 import type { McpRuntime } from "../config.js";
@@ -14,6 +14,8 @@ import type { SessionSigners } from "../session.js";
 
 export type ExecutePaymentResult = {
   allowed: true;
+  message: string;
+  signature: string;
   path: PaymentIntentBuildResult["path"];
   intent_id: string;
   receipt: string;
@@ -51,23 +53,28 @@ export async function handleExecutePayment(
       recentBlockhash: { blockhash, lastValidBlockHeight },
     });
 
-    const simulation = await simulatePayment({
+    const executed = await executePayment({
       rpc: runtime.rpc,
       transactionMessage: payment.transactionMessage,
+      lastValidBlockHeight,
     });
+
+    const intentId = Array.from(payment.intent.intentId, (byte) =>
+      byte.toString(16).padStart(2, "0"),
+    ).join("");
 
     return {
       allowed: true,
+      message: `Payment executed successfully. Signature: ${executed.signature}`,
+      signature: executed.signature,
       path: payment.path,
-      intent_id: Array.from(payment.intent.intentId, (byte) =>
-        byte.toString(16).padStart(2, "0"),
-      ).join(""),
+      intent_id: intentId,
       receipt: payment.pdas.receipt,
       pdas: payment.pdas,
       simulation: {
         err: null,
-        logs: simulation.logs,
-        units_consumed: simulation.unitsConsumed.toString(),
+        logs: executed.simulation.logs,
+        units_consumed: executed.simulation.unitsConsumed.toString(),
       },
     };
   } catch (error) {
