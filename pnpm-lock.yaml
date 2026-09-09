@@ -61,6 +61,9 @@ importers:
 
   packages/mcp:
     dependencies:
+      '@agent-rails/client':
+        specifier: workspace:*
+        version: link:../client
       '@agent-rails/contract':
         specifier: workspace:*
         version: link:../contract

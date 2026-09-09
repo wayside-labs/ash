@@ -19,6 +19,7 @@
     "start": "node dist/cli.js"
   },
   "dependencies": {
+    "@agent-rails/client": "workspace:*",
     "@agent-rails/contract": "workspace:*",
     "@agent-rails/sdk": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.30.0",

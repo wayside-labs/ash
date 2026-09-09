@@ -39,8 +39,11 @@ node packages/mcp/dist/cli.js
 
 ## Tools (v1)
 
-| Tool | Description |
-|---|---|
-| `agent_rails_execute_payment` | Build + simulate a guarded payment; returns `path`, `intent_id`, PDAs, and simulation metrics |
+| Tool | Kind | Description |
+|---|---|---|
+| `agent_rails_get_session` | read | Decode `AgentSession` — seq, expiry, per-mint spend counters |
+| `agent_rails_get_policy` | read | Decode `Policy` — per-mint limits, destination mode, memo requirement |
+| `agent_rails_check_payment` | read | Idempotency lookup — does an `IntentReceipt` exist for `intent_id`? |
+| `agent_rails_execute_payment` | write | Build + simulate a guarded payment; returns PDAs and simulation metrics |
 
-Input schema: `mcpExecutePaymentSchema` from `@agent-rails/contract` (JSON-safe variant of `paymentBuildSchema`).
+Schemas live in `@agent-rails/contract` (`mcpGetSessionSchema`, `mcpGetPolicySchema`, `mcpCheckPaymentSchema`, `mcpExecutePaymentSchema`).

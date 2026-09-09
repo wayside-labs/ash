@@ -25,6 +25,32 @@ export const mcpExecutePaymentSchema = paymentContextSchema.merge(
 
 export type McpExecutePaymentInput = z.infer<typeof mcpExecutePaymentSchema>;
 
+/** MCP tool input for `agent_rails_get_session`. */
+export const mcpGetSessionSchema = z.object({
+  session: addressSchema.describe("AgentSession PDA address"),
+});
+
+export type McpGetSessionInput = z.infer<typeof mcpGetSessionSchema>;
+
+/** MCP tool input for `agent_rails_get_policy`. */
+export const mcpGetPolicySchema = z.object({
+  policy: addressSchema.describe("Policy PDA address"),
+});
+
+export type McpGetPolicyInput = z.infer<typeof mcpGetPolicySchema>;
+
+/** MCP tool input for `agent_rails_check_payment` (idempotency receipt lookup). */
+export const mcpCheckPaymentSchema = z.object({
+  session: addressSchema.describe("AgentSession PDA that executed the payment"),
+  intent_id: intentIdSchema.describe("32-char hex intent id used as the receipt seed"),
+});
+
+export type McpCheckPaymentInput = z.infer<typeof mcpCheckPaymentSchema>;
+
+export function parseIntentIdHex(intentIdHex: string): Uint8Array {
+  return Uint8Array.from(Buffer.from(intentIdHex, "hex"));
+}
+
 function createIntentIdHex(): string {
   return Array.from(randomBytes(16), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
