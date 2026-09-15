@@ -18,6 +18,7 @@ pub mod constants;
 pub mod error;
 pub mod events;
 pub mod instructions;
+pub mod native_allowance;
 pub mod state;
 pub mod validation;
 
@@ -56,6 +57,19 @@ pub mod agent_rails {
     /// Configures a mint slot and its spending ceiling (spec §5.1).
     pub fn add_mint(ctx: Context<AddMint>, ceiling: MintCeilingArgs) -> Result<()> {
         instructions::add_mint::add_mint_handler(ctx, ceiling)
+    }
+
+    /// Switches a configured mint from `IsolatedVault` to `NativeAllowance` funding by
+    /// registering a native Solana Subscriptions & Allowances `FixedDelegation` whose
+    /// `delegatee` is this treasury's PDA (ADR-014). Owner-only, one-time per mint.
+    pub fn enable_native_allowance(
+        ctx: Context<EnableNativeAllowance>,
+        amount_cap: u64,
+        expiry_ts: i64,
+    ) -> Result<()> {
+        instructions::enable_native_allowance::enable_native_allowance_handler(
+            ctx, amount_cap, expiry_ts,
+        )
     }
 
     /// Pays an SPL Token or Token-2022 amount from the vault, subject to the full policy

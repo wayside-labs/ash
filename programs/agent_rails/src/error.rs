@@ -93,6 +93,14 @@ pub enum AgentRailsError {
     MathOverflow, // 6040
     #[msg("A reserved field was non-zero")]
     ReservedFieldNonZero, // 6041
+    #[msg("Mint uses NativeAllowance funding mode but the native allowance accounts were not provided")]
+    NativeAllowanceAccountsMissing, // 6042
+    #[msg("Mint is not configured for NativeAllowance funding mode")]
+    NotNativeAllowanceMode, // 6043
+    #[msg("Account address does not match the expected native program PDA derivation")]
+    InvalidNativeAllowancePda, // 6044
+    #[msg("Native SubscriptionAuthority account data could not be parsed")]
+    InvalidNativeAllowanceAccountData, // 6045
 }
 
 impl From<PolicyError> for AgentRailsError {

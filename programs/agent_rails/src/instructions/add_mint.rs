@@ -99,7 +99,8 @@ pub fn add_mint_handler(ctx: Context<AddMint>, ceiling: MintCeilingArgs) -> Resu
         token_program,
         decimals,
         flags,
-        _pad: [0u8; 6],
+        funding_mode: crate::state::FundingMode::IsolatedVault,
+        _pad: [0u8; 5],
         ceiling,
     };
     treasury.mint_count = treasury

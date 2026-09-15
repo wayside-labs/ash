@@ -65,6 +65,28 @@ impl MintCeiling {
     }
 }
 
+/// Where final settlement for one mint is routed (spec extension, ADR-014).
+///
+/// Owner-controlled, never agent- or operator-controlled: custody model is a strictly
+/// stronger decision than spending policy, so it follows the same "the agent sets
+/// nothing" rule as everything else in [`Treasury`]. Borsh encodes a fieldless enum as a
+/// single `u8` discriminant, which is exactly the one byte this reclaims from
+/// `MintConfig._pad` below — adding this variant does not grow the account.
+#[derive(
+    AnchorSerialize, AnchorDeserialize, InitSpace, Clone, Copy, Debug, Default, PartialEq, Eq,
+)]
+pub enum FundingMode {
+    /// Funds are pre-deposited in the treasury's vault ATA (or `sol_vault` for native
+    /// SOL); the Treasury PDA is the SPL/System authority. The only mode before ADR-014.
+    #[default]
+    IsolatedVault,
+    /// Funds stay in the owner's wallet. The Treasury PDA is registered as `delegatee` on
+    /// a native Solana Subscriptions & Allowances `FixedDelegation`
+    /// (`NATIVE_SUBSCRIPTIONS_PROGRAM`) and pulls funds via CPI at payment time. Enabled
+    /// per mint by `enable_native_allowance`, owner-only.
+    NativeAllowance,
+}
+
 /// One configured mint slot on a `Treasury` (spec §3.1.1). 112 bytes.
 ///
 /// | Offset | Size | Field |
@@ -73,7 +95,8 @@ impl MintCeiling {
 /// | 32 | 32 | `token_program` — SPL Token, Token-2022, or System program for native |
 /// | 64 | 1 | `decimals` |
 /// | 65 | 1 | `flags` — `MintFlags` bitfield |
-/// | 66 | 6 | `_pad` |
+/// | 66 | 1 | `funding_mode` — `FundingMode` (ADR-014); was byte 0 of `_pad[6]` |
+/// | 67 | 5 | `_pad` |
 /// | 72 | 40 | `ceiling` |
 #[derive(
     AnchorSerialize, AnchorDeserialize, InitSpace, Clone, Copy, Debug, Default, PartialEq, Eq,
@@ -83,8 +106,9 @@ pub struct MintConfig {
     pub token_program: Pubkey,
     pub decimals: u8,
     pub flags: u8,
+    pub funding_mode: FundingMode,
     /// Named `_pad` in the spec; must stay zeroed.
-    pub _pad: [u8; 6],
+    pub _pad: [u8; 5],
     pub ceiling: MintCeiling,
 }
 
@@ -100,7 +124,8 @@ impl MintConfig {
         token_program: Pubkey::new_from_array([0u8; 32]),
         decimals: 0,
         flags: 0,
-        _pad: [0u8; 6],
+        funding_mode: FundingMode::IsolatedVault,
+        _pad: [0u8; 5],
         ceiling: MintCeiling {
             max_per_tx: 0,
             max_short_window: 0,

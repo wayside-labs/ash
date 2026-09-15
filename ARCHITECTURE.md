@@ -122,16 +122,23 @@ sequenceDiagram
   participant P as agent_rails program
   participant T as Token program
 
-  A->>M: check_payment(destination, "12.50", "USDC")
-  M->>M: resolve label → owner pubkey, decimals → base units
-  M->>M: run PolicyHooks (soft, off-chain)
+  Note over M: treasury, policy, session and the destination<br/>index are bound at startup, not passed per call
+
+  A->>M: check_payment(destination_ref, "12.50", "USDC", reference)
+  M->>M: label → owner pubkey (exact match against the on-chain allowlist)
+  M->>M: human units → base units via MintConfig.decimals
+  M->>M: intent_id = H(session, owner, mint, amount, reference)
+  M->>P: read IntentReceipt PDA (already settled?)
+  P-->>M: absent
+  M->>M: run PolicyHooks (soft, off-chain; deny on timeout)
   M->>P: simulate execute_payment(PaymentIntent)
   P-->>M: ok / AnchorError(code)
-  M-->>A: { allowed, reasons[], remaining_after, intent_id }
+  M-->>A: { allowed, reason_code, intent_id, receipt }
 
-  A->>M: execute_payment(..., intent_id)
-  M->>M: same checks, sign with Signer (session key)
-  M->>P: execute_payment(PaymentIntent)
+  A->>M: execute_payment(destination_ref, "12.50", "USDC", reference)
+  M->>M: governor: one in flight, within rate budget, not quiesced
+  M->>M: same inputs → same intent_id; re-read pause and revocation
+  M->>P: execute_payment(PaymentIntent), signed by the session key
   P->>P: not paused; session signer, active, unexpired
   P->>P: mint ∈ treasury; limit slot ∈ policy; destination allowed
   P->>P: init IntentReceipt (fails on duplicate intent_id)
@@ -139,8 +146,18 @@ sequenceDiagram
   P->>T: transfer_checked(vault → destination ATA) or system transfer (sol_vault)
   P->>P: update counters, seq += 1, audit_head = H(...)
   P-->>M: emit_cpi PaymentExecuted{seq, audit_head, ...}
-  M-->>A: { signature, receipt, seq, audit_head, remaining }
+
+  alt confirmation observed
+    M-->>A: { outcome: settled, intent_id, receipt, signature }
+  else not observed before the deadline
+    M->>P: poll IntentReceipt PDA (did it land?)
+    P-->>M: absent
+    M->>M: quiesce the session until this intent resolves
+    M-->>A: { outcome: indeterminate, intent_id, receipt, next_step }
+  end
 ```
+
+The second path is the one that matters. Nothing about an unobserved confirmation says the transfer did not happen, so the agent is told exactly that and is refused further payments until `get_payment_status` settles it. A retry would in any case re-derive the same `intent_id` and be refused on-chain at receipt creation.
 
 `execute_payment` is a single-hop transaction: one program instruction and one token CPI. Budget targets: ≤ 40k CU and ≤ 600 bytes with legacy account addressing (see spec §7). Versioned transactions with an address lookup table are an SDK option, not a requirement.
 
@@ -261,12 +278,28 @@ The SDK and MCP server run `PolicyHook`s before signing: pluggable functions (cu
 
 Solana already rejects byte-identical transactions within the blockhash window. The threat is the *agent retry*: a tool call times out, the transaction actually landed, and the agent re-issues the same logical payment with a fresh blockhash.
 
-- `PaymentIntent.intent_id: [u8; 16]` is client-generated (UUIDv7 by default; callers may pass a deterministic id derived from an application request key).
+The receipt only refuses a retry that carries the *same* `intent_id`, so where that id comes from is part of the guarantee rather than a client detail (ADR-012).
+
+- `PaymentIntent.intent_id: [u8; 16]` is **derived, never drawn at random**: `sha256("agent-rails:intent:v1" ‖ session ‖ destination_owner ‖ mint ‖ amount ‖ reference)[0..16]`, every field length-prefixed. The session is in the preimage so a hostile `reference` cannot be aimed at another session's receipts. `reference` is the caller's name for what is being settled (invoice number, document hash, task id); it is required and has no default, because a generated one puts the system back on random ids.
+- A retry of the same payment therefore collides on the same receipt by construction. Changing any payment parameter yields a different id — correct, because that is a different payment, bounded by the window and lifetime limits rather than by idempotency.
 - `execute_payment` `init`s `IntentReceipt` at `["receipt", session, intent_id]`. Duplicate → account-creation failure → no transfer.
-- `PaymentIntent.expires_at` is mandatory and short (SDK default 90 s, program max 1 h), so stale intents cannot be retried later even after a receipt is closed.
-- Receipts answer "did it land?" authoritatively: `get_payment_status(intent_id)` reads the PDA first and falls back to the indexer if closed.
-- `close_receipt` is permissionless after `expires_at + RECEIPT_GRACE_SECONDS`; rent returns to the `fee_payer` recorded in the receipt.
+- `PaymentIntent.expires_at` is mandatory, short, and **server-authored** (90 s default, program max 1 h), so the replay window is not something a caller chooses.
+- Receipts answer "did it land?" authoritatively: `get_payment_status(intent_id)` reads the PDA first and falls back to the indexer if closed. The SDK prechecks the receipt before building, so a retry of a settled payment costs nothing.
+- `close_receipt` is permissionless after `expires_at + RECEIPT_GRACE_SECONDS`; rent returns to the `fee_payer` recorded in the receipt. A derived id is stable indefinitely, so beyond that window a precheck must consult the indexer, not the PDA alone.
 - In v1.1 signed-intent mode, the same `intent_id` doubles as the replay nonce because the Ed25519 signature covers it.
+
+### Outcomes
+
+Idempotency is only reachable if a client can tell "this did not happen" from "I do not know". A payment attempt ends in one of four states (ADR-012):
+
+| Outcome | Meaning | Permitted next step |
+|---|---|---|
+| `settled` | The transfer is on-chain, from this attempt or an earlier one | None |
+| `denied` | A rule refused it; nothing moved | Change something and retry |
+| `indeterminate` | Broadcast, unconfirmed | Resolve the receipt. **Never retry** |
+| `review_required` | Held for a human | None; terminal for the agent |
+
+Classification follows what a failure *proves*, not where it was raised: a preflight failure or an included-and-reverted transaction is `denied`, and anything raised after a successful broadcast is `indeterminate`. Resolution reads the receipt PDA with `searchTransactionHistory: true`, and until it succeeds the session is quiesced — further payments are refused rather than guessed at.
 
 ---
 
@@ -297,18 +330,22 @@ Forward-compatibility decisions already in place:
 
 One server core, two transports: stdio (v1, `npx @agent-rails/mcp`, bound to one session via env) and Streamable HTTP (v1.1, `SessionResolver` maps bearer token → session + signer). Tool schemas are identical across transports and adapters because all import `@agent-rails/contract`.
 
+The server binds one session at startup and derives the treasury, policy, mint table and destination index from the chain. None of those are tool arguments: they are the most privileged fields in the payload, and a tool argument is the part of the payload an injected instruction can reach. Startup fails, before the transport connects, if the session does not exist, the configured signer is not its `session_key`, the session is revoked or expired, or an `Allowlist` policy has no registered destinations.
+
 | Tool | Kind | Notes |
 |---|---|---|
-| `get_session` | read | Status, expiry, per-mint remaining in each window, lifetime remaining |
-| `get_policy` | read | Limits in human units, destination mode, memo requirement |
-| `list_allowed_destinations` | read | Labels + pubkeys (indexer if present, gPA fallback for small sets) |
-| `get_balance(mint)` | read | Vault balance |
-| `get_payment_status(intent_id)` | read | Receipt first, indexer fallback |
-| `list_payments` | read | Indexer-backed; degrades to "unavailable" |
-| `check_payment(destination, amount, mint, memo?)` | dry run | Soft hooks + on-chain simulation; returns `allowed`, `reasons[]`, `remaining_after`, `intent_id`, `amount_sent`, `estimated_amount_received` |
-| `execute_payment(destination, amount, mint, memo?, intent_id?)` | write | Same checks, sign, send, confirm; returns `signature`, `receipt`, `seq`, `audit_head`, `remaining` |
+| `get_session` | read | Status, expiry, sequence, per-mint spend counters. No arguments |
+| `get_policy` | read | Limits, destination mode, memo requirement. No arguments |
+| `list_destinations` | read | Labels this session may pay, with resolved owners |
+| `get_balance(mint)` | read | Vault balance *(not yet implemented)* |
+| `get_payment_status(intent_id)` | read | Receipt first, indexer fallback. Resolves an indeterminate outcome and lifts the quiesce |
+| `list_payments` | read | Indexer-backed; degrades to "unavailable" *(not yet implemented)* |
+| `check_payment(destination_ref, amount, mint_ref, reference, memo?)` | dry run | Same resolution, hooks and simulation as a real payment; sends nothing |
+| `execute_payment(destination_ref, amount, mint_ref, reference, memo?)` | write | Resolve, derive intent, precheck receipt, hooks, simulate, send, resolve; returns `outcome`, `intent_id`, `receipt`, `signature` |
 
-Contract hygiene: amounts are decimal strings in human units; destinations may be labels or pubkeys and responses echo the resolved pair; every response includes `remaining`; every denial includes a `reason_code` mirroring the Anchor error code. Resources `agent-rails://session/{pubkey}` and `agent-rails://policy/{pubkey}` mirror the read tools; one prompt, `payment-guidelines`, teaches the check-then-execute pattern.
+Contract hygiene: amounts are decimal strings in human units, converted against `MintConfig.decimals` in trusted code with integer arithmetic — excess precision denies rather than rounds. Destinations are **labels, not addresses**: resolution is exact match on an NFKC-normalized label against the on-chain allowlist, with no fuzzy matching, and a raw pubkey is refused outright unless the policy is in `Any` mode. `expires_at` and the token program are server-authored. Every response carries `outcome`, `intent_id` and `receipt` — denials included, since without the id the receipt is unreachable — and every denial carries a `reason_code`. Program logs and raw errors never return to the agent; they go to the operator's structured sink, sharing the on-chain event schema. Resources `agent-rails://session/{pubkey}` and `agent-rails://policy/{pubkey}` mirror the read tools; one prompt, `payment-guidelines`, teaches the check-then-execute pattern.
+
+A local governor caps concurrency at one payment in flight — two in flight can each pass a limit check the pair of them violates — and applies a rolling per-minute budget. These are advisory: whoever owns the process owns the governor, and the program remains the guarantee.
 
 Deliberately absent from any agent-facing surface: session creation, policy edits, allowlist edits, unpause, withdraw. v1.1 adds `request_limit_increase(reason)`, which only emits an off-chain event.
 

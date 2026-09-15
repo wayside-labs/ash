@@ -13,8 +13,8 @@ use anchor_lang::AnchorSerialize;
 use agent_rails::constants::{RECEIPT_GRACE_SECONDS, SEED_RECEIPT};
 
 use agent_rails::state::{
-    AgentSession, AllowlistEntry, IntentReceipt, MintCeiling, MintConfig, MintLimit, Policy,
-    SpendCounter, Treasury, DISCRIMINATOR_LEN,
+    AgentSession, AllowlistEntry, FundingMode, IntentReceipt, MintCeiling, MintConfig, MintLimit,
+    Policy, SpendCounter, Treasury, DISCRIMINATOR_LEN,
 };
 
 /// A pubkey whose every byte is `tag`, so a misplaced field is obvious in a diff.
@@ -91,7 +91,8 @@ fn treasury_field_offsets() {
                 token_program: key(0x72),
                 decimals: 9,
                 flags: 0b101,
-                _pad: [0u8; 6],
+                funding_mode: FundingMode::NativeAllowance,
+                _pad: [0u8; 5],
                 ceiling: sample_ceiling(),
             },
             MintConfig::EMPTY,
@@ -134,7 +135,8 @@ fn treasury_field_offsets() {
     );
     assert_eq!(data[415], 9, "mints[0].decimals");
     assert_eq!(data[416], 0b101, "mints[0].flags");
-    assert_eq!(&data[417..423], &[0u8; 6], "mints[0]._pad");
+    assert_eq!(data[417], 1, "mints[0].funding_mode (NativeAllowance)");
+    assert_eq!(&data[418..423], &[0u8; 5], "mints[0]._pad");
     assert_eq!(u64_at(&data, 423), 0x1111_1111_1111_1111, "max_per_tx");
     assert_eq!(
         u64_at(&data, 431),

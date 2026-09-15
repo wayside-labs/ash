@@ -49,6 +49,35 @@ pub const SEED_ALLOWLIST: &[u8] = b"allow";
 pub const SEED_SESSION: &[u8] = b"session";
 pub const SEED_RECEIPT: &[u8] = b"receipt";
 
+/// The Solana Foundation's native Subscriptions & Allowances program
+/// (`github.com/solana-foundation/subscriptions`, IDL v0.5.0, audited by Cantina/Spearbit).
+/// Not an Anchor program: Pinocchio-based, single-byte instruction discriminators, no
+/// Borsh vec-length prefixes. See `native_allowance.rs`.
+pub const NATIVE_SUBSCRIPTIONS_PROGRAM: Pubkey =
+    Pubkey::from_str_const("De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44");
+
+/// Native PDA seed prefix for `SubscriptionAuthority`: `[seed, user, token_mint]`.
+pub const SEED_NATIVE_SUBSCRIPTION_AUTHORITY: &[u8] = b"SubscriptionAuthority";
+/// Native PDA seed prefix for `FixedDelegation`:
+/// `[seed, subscription_authority, delegator, delegatee, nonce_le]`.
+pub const SEED_NATIVE_DELEGATION: &[u8] = b"delegation";
+/// Native PDA seed for the program's self-CPI event authority (no variable seeds).
+pub const SEED_NATIVE_EVENT_AUTHORITY: &[u8] = b"event_authority";
+
+/// Agent Rails only ever maintains one active `FixedDelegation` per (treasury, mint).
+/// The native program's `nonce` seed exists to let one (authority, delegator, delegatee)
+/// tuple hold several concurrent delegations; Agent Rails doesn't need that — rotating a
+/// native allowance means revoke-then-recreate, the same "new PDA, never a mutation"
+/// pattern `AgentSession` already uses for session rotation. Fixing this at 0 means no
+/// extra state to store, and `MintConfig` does not have to grow to hold it.
+pub const NATIVE_ALLOWANCE_NONCE: u64 = 0;
+
+/// Native instruction discriminators (offset 0 of instruction data; verified against the
+/// published Codama IDL, `idl/subscriptions.json`).
+pub const NATIVE_IX_INIT_SUBSCRIPTION_AUTHORITY: u8 = 0;
+pub const NATIVE_IX_CREATE_FIXED_DELEGATION: u8 = 1;
+pub const NATIVE_IX_TRANSFER_FIXED: u8 = 4;
+
 /// Bitfield stored in `MintConfig.flags` (spec §1).
 pub struct MintFlags;
 

@@ -96,7 +96,8 @@ Rent ≈ 0.0075 SOL.
 | 32 | 32 | `token_program` | `Pubkey` | SPL Token, Token-2022, or System program for native |
 | 64 | 1 | `decimals` | `u8` | Cached from the mint (9 for SOL) |
 | 65 | 1 | `flags` | `u8` | `MintFlags` bitfield |
-| 66 | 6 | `_pad` | `[u8; 6]` | Zeroed |
+| 66 | 1 | `funding_mode` | `FundingMode` | `0` = `IsolatedVault`, `1` = `NativeAllowance` (ADR-014) |
+| 67 | 5 | `_pad` | `[u8; 5]` | Zeroed |
 | 72 | 40 | `ceiling` | `MintCeiling` | See below |
 
 `MintCeiling` — 40 bytes: `max_per_tx: u64`, `max_short_window: u64`, `max_long_window: u64`, `max_lifetime: u64`, `min_short_window_seconds: u32`, `min_long_window_seconds: u32`. Amounts in base units.
@@ -285,6 +286,14 @@ Notation: **(s)** signer, **(w)** writable. `clock` = `Clock::get()`. `event_aut
 
 `vault_ata` and `sol_vault` are mutually exclusive optionals because the emptiness check differs by path: a token vault must hold zero, while `sol_vault` must sit exactly at `Rent::minimum_balance(0)` — it can never be closed, only drained to its floor. The strict `policy_count == 0` rule has a useful second-order effect: a *live* policy naming an unconfigured mint is unreachable on-chain, so `execute_payment`'s `MintNotConfigured` check (§5.3 step 7) is pure defense in depth.
 
+#### `enable_native_allowance(amount_cap, expiry_ts)` (ADR-014)
+- Accounts: `owner` (s,w as rent payer), `treasury` (w), `mint`, `owner_ata` (w, the owner's own ATA — **not** `vault_ata`), `subscription_authority` (w, native program PDA), `native_delegation` (w, native program PDA), `token_program`, `system_program`, `native_subscriptions_program` (address-pinned to `NATIVE_SUBSCRIPTIONS_PROGRAM = De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44`).
+- Checks: role; mint configured and currently `FundingMode::IsolatedVault`; `amount_cap > 0`; `subscription_authority` and `native_delegation` match `native_allowance::find_subscription_authority`/`find_fixed_delegation` derivations, the latter seeded with `delegatee = treasury` — never a session key.
+- Effects: CPIs the native program's `initSubscriptionAuthority` (idempotent) then `createFixedDelegation` (`nonce = NATIVE_ALLOWANCE_NONCE = 0`, `delegatee = treasury`), then sets `MintConfig.funding_mode = NativeAllowance` for this mint. One-way in v1: no `disable_native_allowance`; reverting means `remove_mint` + `add_mint`.
+- Event: `NativeAllowanceEnabled`.
+
+Funds under `NativeAllowance` never touch `vault_ata` or the program's custody at all — they stay in the owner's own wallet until `execute_payment` pulls them via the native program's `transferFixed`, which requires `delegatee` (the treasury PDA) to sign. An agent's session key can never satisfy that signature, so it cannot call the native program directly and bypass Agent Rails' policy engine — see `native_allowance.rs`'s module doc for the full argument.
+
 #### `set_ceiling(mint, ceiling: MintCeilingArgs, allow_any_destination, allow_create_destination_ata)`
 - Accounts: `owner` (s), `treasury` (w).
 - Checks: role; mint configured; window minimums valid.
@@ -369,7 +378,8 @@ Two instructions share one code path in the policy crate; they differ only in th
 
 #### `execute_payment(intent: PaymentIntent)` — SPL Token / Token-2022
 
-Accounts (16 with event CPI):
+Accounts (16 with event CPI, plus 5 more `Option`al accounts when the mint's
+`funding_mode == NativeAllowance`; see ADR-014):
 
 | # | Account | Flags | Constraint |
 |---|---|---|---|
@@ -380,15 +390,20 @@ Accounts (16 with event CPI):
 | 4 | `session` | w | seeds `["session", treasury, session_key]` |
 | 5 | `allowlist_entry` | | `Option`; required iff `policy.destination_mode == Allowlist`; seeds `["allow", policy, intent.destination_owner]` |
 | 6 | `mint` | | `key == intent.mint`; `mint.owner == mint_config.token_program` |
-| 7 | `vault_ata` | w | ATA(`treasury`, `mint`, `token_program`) |
+| 7 | `vault_ata` | w | ATA(`treasury`, `mint`, `token_program`). Unused when `funding_mode == NativeAllowance`, but still required in the account list — its address is still derived and validated, just not debited |
 | 8 | `destination_owner` | | `key == intent.destination_owner`; must not be `treasury` or `sol_vault` |
-| 9 | `destination_ata` | w | ATA(`destination_owner`, `mint`, `token_program`); `init_if_needed` only if `policy.create_destination_ata` |
+| 9 | `destination_ata` | w | ATA(`destination_owner`, `mint`, `token_program`); `init_if_needed` only if `policy.create_destination_ata`. Doubles as the native program's `receiverAta` in `NativeAllowance` mode |
 | 10 | `receipt` | w | init, seeds `["receipt", session, intent.intent_id]`, payer `fee_payer` |
 | 11 | `token_program` | | `key == mint_config.token_program` |
 | 12 | `associated_token_program` | | |
 | 13 | `system_program` | | |
-| 14 | `event_authority` | | |
-| 15 | `program` | | |
+| 14 | `event_authority` | | Agent Rails' own self-CPI event authority (`#[event_cpi]`), unrelated to the native program's |
+| 15 | `program` | | Agent Rails itself, for `emit_cpi!` |
+| 16 | `owner_source_ata` | w | `Option`; required iff `NativeAllowance`. The **owner's** ATA — never `vault_ata` |
+| 17 | `native_delegation` | w | `Option`; required iff `NativeAllowance`. Native `FixedDelegation` PDA |
+| 18 | `native_subscription_authority` | | `Option`; required iff `NativeAllowance` |
+| 19 | `native_event_authority` | | `Option`; required iff `NativeAllowance`. The *native program's* event authority, distinct from row 14 |
+| 20 | `native_subscriptions_program` | | `Option`; required iff `NativeAllowance`; address-pinned to `NATIVE_SUBSCRIPTIONS_PROGRAM` |
 
 Ordered checks and effects:
 
@@ -405,11 +420,13 @@ Ordered checks and effects:
 11. `destination_ata` existence: if missing and `!policy.create_destination_ata` → `DestinationAtaCreationDisabled`; else create idempotently (rent from `fee_payer`).
 12. `receipt` init (Anchor). Duplicate `intent_id` fails here with the system program's "account already in use"; the SDK maps it to `DUPLICATE_INTENT`.
 13. Policy crate: `counter = session.spend.find_or_insert(intent.mint)` → `MintNotInSession` if no free slot; `new_counter = policy::evaluate(&limit, &counter, intent.amount, effective_per_tx, now)?` → `ExceedsPerTxMax` / `ExceedsShortWindow` / `ExceedsLongWindow` / `ExceedsLifetime` / `MathOverflow`.
-14. CPI `transfer_checked(vault_ata → destination_ata, amount, mint_config.decimals)` signed by `treasury` seeds.
+14. Transfer, routed by `mint_config.funding_mode` (ADR-014) — the only step that differs by custody model; steps 1–13 are identical either way:
+    - `IsolatedVault`: CPI `transfer_checked(vault_ata → destination_ata, amount, mint_config.decimals)` signed by `treasury` seeds.
+    - `NativeAllowance`: re-derive `native_subscription_authority`, `native_delegation`, `native_event_authority` and check them against `native_allowance::find_*`; CPI the native program's `transferFixed(delegation_pda, subscription_authority, owner_source_ata → destination_ata, mint, token_program, delegatee=treasury, event_authority, self_program; amount, delegator=treasury.owner, mint)`, `invoke_signed` with `treasury` seeds. `treasury` is `delegatee`, never `session_key` — an agent holding only the session key cannot produce that signature, so it cannot call the native program directly and skip steps 1–13.
 15. Commit: `session.spend[i] = new_counter`; `session.seq += 1`; `session.audit_head = policy::next_audit_head(...)` (§6); write `receipt` fields (`amount = intent.amount`, `seq = session.seq`, `slot`, `timestamp`, `expires_at`, `status = Executed`, `fee_payer`, `memo_hash`).
 16. `emit_cpi!(PaymentExecuted { ... })`.
 
-Steps 1–13 perform no external effects; the first side effect is the receipt init in step 12, which is rolled back with the transaction on any later failure.
+Steps 1–13 perform no external effects; the first side effect is the receipt init in step 12, which is rolled back with the transaction on any later failure. Step 14's `NativeAllowance` branch commits nothing itself either — if the native program's CPI fails (delegation expired, exhausted, or revoked), the whole transaction reverts and step 15 never runs, identically to a failed `transfer_checked`.
 
 #### `execute_payment_sol(intent: PaymentIntent)` — native SOL
 
