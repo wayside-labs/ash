@@ -1,4 +1,3 @@
-import { getAddressEncoder, getBytesEncoder, getProgramDerivedAddress } from "@solana/kit";
 import {
   AGENT_RAILS_PROGRAM_ADDRESS,
   findEntryPda,
@@ -9,6 +8,7 @@ import {
 } from "@agent-rails/client";
 import { SEED_RECEIPT } from "@agent-rails/contract";
 import type { Address } from "@solana/kit";
+import { getAddressEncoder, getBytesEncoder, getProgramDerivedAddress } from "@solana/kit";
 
 const addressEncoder = getAddressEncoder();
 const bytesEncoder = getBytesEncoder();
@@ -45,9 +45,7 @@ export async function findReceiptPda(input: ReceiptPdaInput) {
 }
 
 /** Anchor `emit_cpi!` event authority PDA. */
-export async function findEventAuthorityPda(
-  config: { programAddress?: Address } = {},
-) {
+export async function findEventAuthorityPda(config: { programAddress?: Address } = {}) {
   const programAddress = config.programAddress ?? AGENT_RAILS_PROGRAM_ADDRESS;
   return getProgramDerivedAddress({
     programAddress,

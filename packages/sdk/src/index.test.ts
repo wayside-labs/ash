@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { agentRails } from "./plugin.js";
 import { findTreasuryPda } from "./pdas.js";
+import { agentRails } from "./plugin.js";
 
 describe("@agent-rails/sdk", () => {
   it("exposes the kit plugin shape", () => {
