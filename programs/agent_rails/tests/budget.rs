@@ -35,6 +35,10 @@ use agent_rails::constants::NATIVE_MINT;
 
 use common::*;
 
+const NATIVE_MINT_DECIMALS: u8 = 6;
+const NATIVE_OWNER_BALANCE: u64 = 500_000_000;
+const NATIVE_AMOUNT_CAP: u64 = 500_000_000;
+
 const MINT_DECIMALS: u8 = 6;
 const VAULT_AMOUNT: u64 = 500_000_000;
 const SOL_DEPOSIT: u64 = 5_000_000_000;
@@ -238,6 +242,115 @@ fn execute_payment_fits_its_budget_in_any_mode() {
 #[test]
 fn execute_payment_sol_fits_its_budget() {
     assert_within_budget(&SOL, measure_sol_payment());
+}
+
+/// The `NativeAllowance` path (ADR-014), CPI-ing into the real, devnet-dumped native
+/// Subscriptions & Allowances program instead of `transfer_checked`.
+///
+/// No `Budget`/`spec_gate` here yet — unlike the three paths above, no spec section has
+/// ever committed to a number for this one, and this measurement uses
+/// `find_program_address` for the native PDAs rather than caller-supplied bumps (a known,
+/// documented gap in ADR-014's "Consequences" section). Printing the real number now, with
+/// a loose sanity ceiling, is the honest first step; a committed baseline + `spec_gate`
+/// should follow once that gap is closed rather than being invented here.
+fn measure_native_allowance_payment() -> u64 {
+    let mut env = Env::new();
+    load_native_subscriptions_program(&mut env);
+
+    let treasury = create_treasury(&mut env, true, true);
+    let mint_authority = treasury.owner.insecure_clone();
+
+    let mint = create_spl_token_mint(&mut env, &mint_authority, NATIVE_MINT_DECIMALS);
+    add_spl_mint(
+        &mut env,
+        &treasury,
+        mint,
+        token_program_id(),
+        permissive_ceiling(),
+    );
+
+    let owner_ata = create_destination_ata(
+        &mut env,
+        &treasury.owner,
+        &treasury.owner.pubkey(),
+        &mint,
+        token_program_id(),
+    );
+    let mint_to_owner = spl_token_2022_mint_to(
+        &token_program_id(),
+        &mint,
+        &owner_ata,
+        &treasury.owner.pubkey(),
+        NATIVE_OWNER_BALANCE,
+    );
+    env.execute(mint_to_owner, &[&treasury.owner])
+        .assert_success();
+
+    let expiry_ts = env.now() + SESSION_TTL;
+    enable_native_allowance(
+        &mut env,
+        &treasury,
+        mint,
+        owner_ata,
+        token_program_id(),
+        NATIVE_AMOUNT_CAP,
+        expiry_ts,
+    );
+
+    let policy = create_policy(
+        &mut env,
+        &treasury,
+        padded_name("budget-native"),
+        permissive_policy_args(mint),
+    );
+    let session = create_session(&mut env, &treasury, &policy, SESSION_TTL);
+
+    let destination = env.unique_pubkey();
+    let fee_payer = env.keypair();
+    create_destination_ata(
+        &mut env,
+        &fee_payer,
+        &destination,
+        &mint,
+        token_program_id(),
+    );
+
+    let intent = intent(&mut env, mint, destination, PAYMENT);
+    let ix = execute_payment_native_allowance_ix(
+        &env,
+        treasury.treasury,
+        treasury.owner.pubkey(),
+        &session,
+        &fee_payer.pubkey(),
+        token_program_id(),
+        owner_ata,
+        None,
+        &intent,
+    );
+    let result = env.execute(ix, &[&fee_payer, &session.session_key]);
+    result.assert_success();
+    result.compute_units()
+}
+
+#[test]
+fn execute_payment_native_allowance_cu_cost_is_reported_and_sane() {
+    let measured = measure_native_allowance_payment();
+    println!(
+        "execute_payment (NativeAllowance, SPL Token, any destination): {measured} CU \
+         — no committed baseline yet (ADR-014); compare against SPL_ANY's {} CU vault-mode \
+         baseline when deciding one",
+        SPL_ANY.baseline
+    );
+
+    // Solana's per-instruction CU ceiling is 1.4M, but a sane budget for one payment
+    // instruction is far below that — this only guards against a gross regression (an
+    // accidental unbounded loop, a forgotten bump cache), not a tight design gate.
+    const SANITY_CEILING: u64 = 150_000;
+    assert!(
+        measured <= SANITY_CEILING,
+        "execute_payment (NativeAllowance) costs {measured} CU, over the {SANITY_CEILING} CU \
+         sanity ceiling — investigate before treating this as a real number"
+    );
 }
 
 /// The property the gate depends on: the same fixture must cost the same every time.

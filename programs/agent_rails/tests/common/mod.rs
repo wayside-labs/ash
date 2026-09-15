@@ -47,21 +47,24 @@ fn program_bytes() -> Vec<u8> {
         return std::fs::read(&path)
             .unwrap_or_else(|e| panic!("AGENT_RAILS_SO={path} could not be read: {e}"));
     }
+    deploy_so_bytes(
+        "agent_rails.so",
+        "cargo build-sbf --manifest-path programs/agent_rails/Cargo.toml",
+    )
+}
 
-    // The test binary lives at `<target>/<profile>/deps/<name>`, so walking up finds
-    // `<target>/deploy/agent_rails.so` regardless of where the target directory is.
+/// Locates any other workspace program's compiled `.so` under `<target>/deploy/`, walking
+/// up from the running test binary the same way `program_bytes` does for `agent_rails`
+/// itself — so this works regardless of where `CARGO_TARGET_DIR` points.
+fn deploy_so_bytes(file_name: &str, build_hint: &str) -> Vec<u8> {
     let mut dir: PathBuf = std::env::current_exe().expect("current_exe");
     while dir.pop() {
-        let candidate = dir.join("deploy").join("agent_rails.so");
+        let candidate = dir.join("deploy").join(file_name);
         if candidate.is_file() {
-            return std::fs::read(candidate).expect("read agent_rails.so");
+            return std::fs::read(candidate).unwrap_or_else(|e| panic!("read {file_name}: {e}"));
         }
     }
-
-    panic!(
-        "agent_rails.so not found. Build it first:\n  \
-         cargo build-sbf --manifest-path programs/agent_rails/Cargo.toml"
-    );
+    panic!("{file_name} not found. Build it first:\n  {build_hint}");
 }
 
 /// A deployed program plus the accounts a test has created against it.
@@ -278,6 +281,70 @@ pub fn create_treasury(
         treasury_bump,
         sol_vault,
         sol_vault_bump,
+    }
+}
+
+/// `create_treasury`, but `owner` is any pubkey rather than always `payer`'s own, and the
+/// return type reflects that: `owner` here is not a `Keypair` because it may not have one
+/// — a Squads or Realms vault PDA (ADR-002) has no private key at all. `create_treasury`
+/// never requires `owner` to sign itself; only `payer` and `create_key` do.
+pub struct PdaOwnedTreasuryFixture {
+    pub create_key: Keypair,
+    pub payer: Keypair,
+    pub owner: Pubkey,
+    pub operator_key: Keypair,
+    pub operator: Pubkey,
+    pub treasury: Pubkey,
+    pub sol_vault: Pubkey,
+}
+
+pub fn create_treasury_with_owner(
+    env: &mut Env,
+    owner: Pubkey,
+    allow_any_destination: bool,
+    allow_create_destination_ata: bool,
+) -> PdaOwnedTreasuryFixture {
+    let payer = env.keypair();
+    let create_key = env.unfunded_keypair();
+    let operator_key = env.keypair();
+    let operator = operator_key.pubkey();
+    let recovery_destination = env.unique_pubkey();
+
+    let (treasury, _) = Env::treasury_pda(&create_key.pubkey());
+    let (sol_vault, _) = Env::sol_vault_pda(&treasury);
+
+    let ix = env
+        .ctx
+        .program()
+        .accounts(agent_rails::accounts::CreateTreasury {
+            payer: payer.pubkey(),
+            create_key: create_key.pubkey(),
+            treasury,
+            sol_vault,
+            system_program: anchor_lang::system_program::ID,
+            event_authority: Env::event_authority(),
+            program: agent_rails::ID,
+        })
+        .args(agent_rails::instruction::CreateTreasury {
+            owner,
+            operator,
+            recovery_destination,
+            allow_any_destination,
+            allow_create_destination_ata,
+        })
+        .instruction()
+        .expect("build create_treasury instruction");
+
+    env.execute(ix, &[&payer, &create_key]).assert_success();
+
+    PdaOwnedTreasuryFixture {
+        create_key,
+        payer,
+        owner,
+        operator_key,
+        operator,
+        treasury,
+        sol_vault,
     }
 }
 
@@ -954,6 +1021,233 @@ pub fn execute_payment_ix(
         .expect("build execute_payment instruction")
 }
 
+// ---------------------------------------------------------------------------------------
+// NativeAllowance funding mode (ADR-014)
+// ---------------------------------------------------------------------------------------
+
+/// Loads the real, devnet-dumped Subscriptions & Allowances program
+/// (`De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44`) into this `Env`'s LiteSVM instance, so
+/// `NativeAllowance`-mode tests CPI into the actual deployed program rather than a stub.
+///
+/// Not loaded by `Env::new()`: almost no test touches this path, and loading an extra
+/// ~130KB program into every LiteSVM instance would be pure overhead for the rest.
+/// Re-dump with `solana program dump De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44
+/// tests/fixtures/subscriptions_devnet.so --url https://api.devnet.solana.com` if the
+/// native program upgrades.
+pub fn load_native_subscriptions_program(env: &mut Env) {
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/fixtures/subscriptions_devnet.so"
+    );
+    env.ctx
+        .svm
+        .add_program_from_file(agent_rails::constants::NATIVE_SUBSCRIPTIONS_PROGRAM, path)
+        .expect("load native subscriptions program fixture");
+}
+
+/// The native-program PDAs one `NativeAllowance` mint needs, derived exactly the way
+/// `enable_native_allowance` and `execute_payment` re-derive and check them.
+pub struct NativeAllowanceAccounts {
+    pub subscription_authority: Pubkey,
+    pub native_delegation: Pubkey,
+    pub event_authority: Pubkey,
+}
+
+pub fn native_allowance_accounts(
+    owner: &Pubkey,
+    mint: &Pubkey,
+    treasury: &Pubkey,
+) -> NativeAllowanceAccounts {
+    let (subscription_authority, _) =
+        agent_rails::native_allowance::find_subscription_authority(owner, mint);
+    let (native_delegation, _) = agent_rails::native_allowance::find_fixed_delegation(
+        &subscription_authority,
+        owner,
+        treasury,
+    );
+    let (event_authority, _) = agent_rails::native_allowance::find_event_authority();
+    NativeAllowanceAccounts {
+        subscription_authority,
+        native_delegation,
+        event_authority,
+    }
+}
+
+/// Builds `enable_native_allowance`. `owner_ata` must already exist (the real instruction
+/// never creates it — see the instruction's doc comment).
+///
+/// Takes `treasury` and `owner` as plain values rather than a `&TreasuryFixture` — a
+/// `TreasuryFixture.owner` is a `Keypair`, which a program-derived owner (Squads/Realms
+/// vault PDA, `tests/pda_owner.rs`) does not have. The PDAs are derived from the `owner`
+/// argument directly, so a negative test can also pass a stranger's pubkey here (the same
+/// pattern every other `_is_owner_only` test in this suite uses) and hit `has_one = owner`
+/// on-chain rather than a client-side signature-building failure.
+#[allow(clippy::too_many_arguments)]
+pub fn enable_native_allowance_ix(
+    env: &Env,
+    treasury: Pubkey,
+    owner: Pubkey,
+    mint: Pubkey,
+    owner_ata: Pubkey,
+    token_program: Pubkey,
+    amount_cap: u64,
+    expiry_ts: i64,
+) -> Instruction {
+    let native = native_allowance_accounts(&owner, &mint, &treasury);
+    env.ctx
+        .program()
+        .accounts(agent_rails::accounts::EnableNativeAllowance {
+            owner,
+            treasury,
+            mint,
+            owner_ata,
+            subscription_authority: native.subscription_authority,
+            native_delegation: native.native_delegation,
+            token_program,
+            system_program: anchor_lang::system_program::ID,
+            native_subscriptions_program: agent_rails::constants::NATIVE_SUBSCRIPTIONS_PROGRAM,
+            event_authority: Env::event_authority(),
+            program: agent_rails::ID,
+        })
+        .args(agent_rails::instruction::EnableNativeAllowance {
+            amount_cap,
+            expiry_ts,
+        })
+        .instruction()
+        .expect("build enable_native_allowance instruction")
+}
+
+/// Runs `enable_native_allowance` for a wallet-owned treasury, owner-signed. Not usable for
+/// a `PdaOwnedTreasuryFixture` — build and relay the instruction directly instead (see
+/// `tests/pda_owner.rs`).
+pub fn enable_native_allowance(
+    env: &mut Env,
+    fixture: &TreasuryFixture,
+    mint: Pubkey,
+    owner_ata: Pubkey,
+    token_program: Pubkey,
+    amount_cap: u64,
+    expiry_ts: i64,
+) {
+    let ix = enable_native_allowance_ix(
+        env,
+        fixture.treasury,
+        fixture.owner.pubkey(),
+        mint,
+        owner_ata,
+        token_program,
+        amount_cap,
+        expiry_ts,
+    );
+    let owner = fixture.owner.insecure_clone();
+    env.execute(ix, &[&owner]).assert_success();
+}
+
+/// `execute_payment` with the five `NativeAllowance` accounts populated, mirroring
+/// `execute_payment_ix` (vault mode) but pulling from `owner_ata` via the native program
+/// instead of `vault_ata`. Takes `treasury` and `owner` as plain values for the same reason
+/// as `enable_native_allowance_ix`.
+#[allow(clippy::too_many_arguments)]
+pub fn execute_payment_native_allowance_ix(
+    env: &Env,
+    treasury: Pubkey,
+    owner: Pubkey,
+    session: &SessionFixture,
+    fee_payer: &Pubkey,
+    token_program: Pubkey,
+    owner_ata: Pubkey,
+    allowlist_entry: Option<Pubkey>,
+    intent: &PaymentIntent,
+) -> Instruction {
+    let destination_ata = get_associated_token_address_with_program_id(
+        &intent.destination_owner,
+        &intent.mint,
+        &token_program,
+    );
+    let native = native_allowance_accounts(&owner, &intent.mint, &treasury);
+    env.ctx
+        .program()
+        .accounts(agent_rails::accounts::ExecutePayment {
+            fee_payer: *fee_payer,
+            session_key: session.session_key.pubkey(),
+            treasury,
+            policy: session.policy,
+            session: session.session,
+            allowlist_entry,
+            mint: intent.mint,
+            vault_ata: vault_ata(&treasury, &intent.mint, &token_program),
+            destination_owner: intent.destination_owner,
+            destination_ata,
+            receipt: receipt_pda(&session.session, &intent.intent_id).0,
+            token_program,
+            associated_token_program: ASSOCIATED_TOKEN_PROGRAM_ID,
+            system_program: anchor_lang::system_program::ID,
+            event_authority: Env::event_authority(),
+            program: agent_rails::ID,
+            owner_source_ata: Some(owner_ata),
+            native_delegation: Some(native.native_delegation),
+            native_subscription_authority: Some(native.subscription_authority),
+            native_event_authority: Some(native.event_authority),
+            native_subscriptions_program: Some(
+                agent_rails::constants::NATIVE_SUBSCRIPTIONS_PROGRAM,
+            ),
+        })
+        .args(agent_rails::instruction::ExecutePayment {
+            intent: intent.clone(),
+        })
+        .instruction()
+        .expect("build execute_payment (NativeAllowance) instruction")
+}
+
+// ---------------------------------------------------------------------------------------
+// PDA-as-owner verification fixture (ADR-014 "Squads/Realms owner" open item)
+// ---------------------------------------------------------------------------------------
+
+/// Loads `test_pda_relay.so` (see its own module doc) at a fresh deterministic address,
+/// funds its PDA with enough lamports to act as a real owner (it pays rent for whatever it
+/// creates, same as a real wallet owner would), and returns `(relay_program_id, relay_pda,
+/// relay_bump)`.
+pub fn load_pda_relay_program(env: &mut Env) -> (Pubkey, Pubkey, u8) {
+    let program_id = env.unique_pubkey();
+    let bytes = deploy_so_bytes(
+        "test_pda_relay.so",
+        "cargo build-sbf --manifest-path programs/test_pda_relay/Cargo.toml",
+    );
+    env.ctx
+        .svm
+        .add_program(program_id, &bytes)
+        .expect("load test_pda_relay fixture");
+    let (pda, bump) = Pubkey::find_program_address(&[b"owner"], &program_id);
+    env.ctx
+        .svm
+        .airdrop(&pda, DEFAULT_FUNDING_LAMPORTS)
+        .expect("airdrop pda owner");
+    (program_id, pda, bump)
+}
+
+/// Wraps `inner` — any instruction whose account at index 0 is an `owner: Signer` slot,
+/// which is every owner-gated instruction in this program — so it runs via
+/// `test_pda_relay`'s CPI instead of a direct wallet signature. Proves `owner` can be a
+/// program-owned PDA (the Squads/Realms vault-PDA pattern, ADR-002), not just a wallet.
+pub fn relay_owner_ix(relay_program_id: Pubkey, relay_bump: u8, inner: Instruction) -> Instruction {
+    let mut data = Vec::with_capacity(1 + 32 + inner.data.len());
+    data.push(relay_bump);
+    data.extend_from_slice(&inner.program_id.to_bytes());
+    data.extend_from_slice(&inner.data);
+
+    // The outer account list mirrors the inner instruction's exactly, except index 0 (the
+    // owner/PDA slot) cannot claim `is_signer` at the top level — only the relay's own
+    // `invoke_signed` can grant that, once it runs.
+    let mut accounts = inner.accounts;
+    accounts[0].is_signer = false;
+
+    Instruction {
+        program_id: relay_program_id,
+        accounts,
+        data,
+    }
+}
+
 /// Builds `execute_payment_sol`.
 pub fn execute_payment_sol_ix(
     env: &Env,
@@ -1027,7 +1321,7 @@ pub fn create_destination_ata(
 }
 
 /// `mint_to` against whichever token program owns the mint.
-fn spl_token_2022_mint_to(
+pub fn spl_token_2022_mint_to(
     token_program: &Pubkey,
     mint: &Pubkey,
     destination: &Pubkey,
@@ -1336,6 +1630,43 @@ pub fn create_session(
     );
     let owner = fixture.owner.insecure_clone();
     env.execute(ix, &[&owner]).assert_success();
+
+    SessionFixture {
+        session_key,
+        session,
+        policy: *policy,
+        genesis_head: agent_rails_policy::genesis_audit_head(&session.to_bytes()),
+    }
+}
+
+/// `create_session`, signed by an explicit keypair (typically the operator) against a
+/// plain treasury address rather than a `TreasuryFixture` — the escape hatch a
+/// `PdaOwnedTreasuryFixture` needs, since operator-signed instructions never touch the
+/// owner/PDA distinction at all.
+pub fn create_session_as(
+    env: &mut Env,
+    treasury: Pubkey,
+    signer: &Keypair,
+    policy: &Pubkey,
+    ttl_seconds: i64,
+) -> SessionFixture {
+    let session_key = env.unfunded_keypair();
+    let session = session_pda(&treasury, &session_key.pubkey()).0;
+    let expires_at = env.now() + ttl_seconds;
+
+    let ix = create_session_ix(
+        env,
+        &treasury,
+        &signer.pubkey(),
+        policy,
+        SessionSpec {
+            session_key: session_key.pubkey(),
+            label: padded_name("test-agent"),
+            expires_at,
+            auth_mode: agent_rails::constants::AuthMode::DIRECT_SIGNER,
+        },
+    );
+    env.execute(ix, &[signer]).assert_success();
 
     SessionFixture {
         session_key,

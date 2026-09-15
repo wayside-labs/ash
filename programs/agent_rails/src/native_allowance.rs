@@ -97,6 +97,108 @@ pub fn read_subscription_authority_init_id(account: &AccountInfo) -> Result<i64>
 }
 
 // ---------------------------------------------------------------------------------------
+// Pure instruction builders
+// ---------------------------------------------------------------------------------------
+//
+// Split out from the `invoke`/`invoke_signed` wrappers below so the exact byte layout
+// this program sends to the native program is a single, testable unit — `tests/
+// native_allowance.rs` calls `build_transfer_fixed_instruction` directly to assemble the
+// same bytes an attacker would need, then asserts the native program itself rejects a
+// `delegatee` that isn't the Treasury PDA. That test would not be possible against the
+// on-chain `AccountInfo`-taking wrappers, which only run inside a program.
+
+pub fn build_init_subscription_authority_instruction(
+    owner: Pubkey,
+    subscription_authority: Pubkey,
+    token_mint: Pubkey,
+    user_ata: Pubkey,
+    system_program: Pubkey,
+    token_program: Pubkey,
+) -> Instruction {
+    Instruction {
+        program_id: NATIVE_SUBSCRIPTIONS_PROGRAM,
+        accounts: vec![
+            AccountMeta::new(owner, true),
+            AccountMeta::new(subscription_authority, false),
+            AccountMeta::new_readonly(token_mint, false),
+            AccountMeta::new(user_ata, false),
+            AccountMeta::new_readonly(system_program, false),
+            AccountMeta::new_readonly(token_program, false),
+        ],
+        data: vec![NATIVE_IX_INIT_SUBSCRIPTION_AUTHORITY],
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn build_create_fixed_delegation_instruction(
+    owner: Pubkey,
+    subscription_authority: Pubkey,
+    native_delegation: Pubkey,
+    delegatee: Pubkey,
+    system_program: Pubkey,
+    amount_cap: u64,
+    expiry_ts: i64,
+    expected_subscription_authority_init_id: i64,
+) -> Instruction {
+    let mut data = Vec::with_capacity(1 + 8 + 8 + 8 + 8);
+    data.push(NATIVE_IX_CREATE_FIXED_DELEGATION);
+    data.extend_from_slice(&crate::constants::NATIVE_ALLOWANCE_NONCE.to_le_bytes());
+    data.extend_from_slice(&amount_cap.to_le_bytes());
+    data.extend_from_slice(&expiry_ts.to_le_bytes());
+    data.extend_from_slice(&expected_subscription_authority_init_id.to_le_bytes());
+
+    Instruction {
+        program_id: NATIVE_SUBSCRIPTIONS_PROGRAM,
+        accounts: vec![
+            AccountMeta::new(owner, true),
+            AccountMeta::new_readonly(subscription_authority, false),
+            AccountMeta::new(native_delegation, false),
+            AccountMeta::new_readonly(delegatee, false),
+            AccountMeta::new_readonly(system_program, false),
+        ],
+        data,
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn build_transfer_fixed_instruction(
+    native_delegation: Pubkey,
+    subscription_authority: Pubkey,
+    delegator_ata: Pubkey,
+    receiver_ata: Pubkey,
+    token_mint: Pubkey,
+    token_program: Pubkey,
+    delegatee: Pubkey,
+    event_authority: Pubkey,
+    native_program: Pubkey,
+    amount: u64,
+    delegator: Pubkey,
+    mint: Pubkey,
+) -> Instruction {
+    let mut data = Vec::with_capacity(1 + 8 + 32 + 32);
+    data.push(NATIVE_IX_TRANSFER_FIXED);
+    data.extend_from_slice(&amount.to_le_bytes());
+    data.extend_from_slice(&delegator.to_bytes());
+    data.extend_from_slice(&mint.to_bytes());
+
+    Instruction {
+        program_id: NATIVE_SUBSCRIPTIONS_PROGRAM,
+        accounts: vec![
+            AccountMeta::new(native_delegation, false),
+            AccountMeta::new_readonly(subscription_authority, false),
+            AccountMeta::new(delegator_ata, false),
+            AccountMeta::new(receiver_ata, false),
+            AccountMeta::new_readonly(token_mint, false),
+            AccountMeta::new_readonly(token_program, false),
+            AccountMeta::new_readonly(delegatee, true), // signer, not writable
+            AccountMeta::new_readonly(event_authority, false),
+            AccountMeta::new_readonly(native_program, false),
+        ],
+        data,
+    }
+}
+
+// ---------------------------------------------------------------------------------------
 // init_subscription_authority (discriminator 0) — owner-signed, idempotent setup
 // ---------------------------------------------------------------------------------------
 
@@ -116,18 +218,14 @@ pub struct InitSubscriptionAuthorityAccounts<'info> {
 pub fn init_subscription_authority<'info>(
     accounts: InitSubscriptionAuthorityAccounts<'info>,
 ) -> Result<()> {
-    let ix = Instruction {
-        program_id: NATIVE_SUBSCRIPTIONS_PROGRAM,
-        accounts: vec![
-            AccountMeta::new(*accounts.owner.key, true),
-            AccountMeta::new(*accounts.subscription_authority.key, false),
-            AccountMeta::new_readonly(*accounts.token_mint.key, false),
-            AccountMeta::new(*accounts.user_ata.key, false),
-            AccountMeta::new_readonly(*accounts.system_program.key, false),
-            AccountMeta::new_readonly(*accounts.token_program.key, false),
-        ],
-        data: vec![NATIVE_IX_INIT_SUBSCRIPTION_AUTHORITY],
-    };
+    let ix = build_init_subscription_authority_instruction(
+        *accounts.owner.key,
+        *accounts.subscription_authority.key,
+        *accounts.token_mint.key,
+        *accounts.user_ata.key,
+        *accounts.system_program.key,
+        *accounts.token_program.key,
+    );
 
     invoke(
         &ix,
@@ -166,24 +264,16 @@ pub fn create_fixed_delegation<'info>(
     expiry_ts: i64,
     expected_subscription_authority_init_id: i64,
 ) -> Result<()> {
-    let mut data = Vec::with_capacity(1 + 8 + 8 + 8 + 8);
-    data.push(NATIVE_IX_CREATE_FIXED_DELEGATION);
-    data.extend_from_slice(&crate::constants::NATIVE_ALLOWANCE_NONCE.to_le_bytes());
-    data.extend_from_slice(&amount_cap.to_le_bytes());
-    data.extend_from_slice(&expiry_ts.to_le_bytes());
-    data.extend_from_slice(&expected_subscription_authority_init_id.to_le_bytes());
-
-    let ix = Instruction {
-        program_id: NATIVE_SUBSCRIPTIONS_PROGRAM,
-        accounts: vec![
-            AccountMeta::new(*accounts.owner.key, true),
-            AccountMeta::new_readonly(*accounts.subscription_authority.key, false),
-            AccountMeta::new(*accounts.native_delegation.key, false),
-            AccountMeta::new_readonly(*accounts.delegatee.key, false),
-            AccountMeta::new_readonly(*accounts.system_program.key, false),
-        ],
-        data,
-    };
+    let ix = build_create_fixed_delegation_instruction(
+        *accounts.owner.key,
+        *accounts.subscription_authority.key,
+        *accounts.native_delegation.key,
+        *accounts.delegatee.key,
+        *accounts.system_program.key,
+        amount_cap,
+        expiry_ts,
+        expected_subscription_authority_init_id,
+    );
 
     invoke(
         &ix,
@@ -229,27 +319,20 @@ pub fn transfer_fixed<'info>(
     mint: Pubkey,
     treasury_signer_seeds: &[&[u8]],
 ) -> Result<()> {
-    let mut data = Vec::with_capacity(1 + 8 + 32 + 32);
-    data.push(NATIVE_IX_TRANSFER_FIXED);
-    data.extend_from_slice(&amount.to_le_bytes());
-    data.extend_from_slice(&delegator.to_bytes());
-    data.extend_from_slice(&mint.to_bytes());
-
-    let ix = Instruction {
-        program_id: NATIVE_SUBSCRIPTIONS_PROGRAM,
-        accounts: vec![
-            AccountMeta::new(*accounts.native_delegation.key, false),
-            AccountMeta::new_readonly(*accounts.subscription_authority.key, false),
-            AccountMeta::new(*accounts.delegator_ata.key, false),
-            AccountMeta::new(*accounts.receiver_ata.key, false),
-            AccountMeta::new_readonly(*accounts.token_mint.key, false),
-            AccountMeta::new_readonly(*accounts.token_program.key, false),
-            AccountMeta::new_readonly(*accounts.delegatee.key, true), // signer, not writable
-            AccountMeta::new_readonly(*accounts.event_authority.key, false),
-            AccountMeta::new_readonly(*accounts.native_program.key, false),
-        ],
-        data,
-    };
+    let ix = build_transfer_fixed_instruction(
+        *accounts.native_delegation.key,
+        *accounts.subscription_authority.key,
+        *accounts.delegator_ata.key,
+        *accounts.receiver_ata.key,
+        *accounts.token_mint.key,
+        *accounts.token_program.key,
+        *accounts.delegatee.key,
+        *accounts.event_authority.key,
+        *accounts.native_program.key,
+        amount,
+        delegator,
+        mint,
+    );
 
     invoke_signed(
         &ix,

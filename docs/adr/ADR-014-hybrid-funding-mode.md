@@ -90,3 +90,63 @@ disambiguate concurrently and no need to grow `MintConfig` to store one.
   `createFixedDelegation` like any other owner action — but is called out as unverified
   by this ADR and should be confirmed against a LiteSVM test before it is advertised as
   supported.
+- The `NativeAllowance` path derives three native-program PDAs with `find_program_address`
+  rather than caller-supplied bumps, unlike every PDA this program owns itself. Measured
+  cost: **66,987 CU** (`execute_payment_native_allowance_cu_cost_is_reported_and_sane`,
+  `tests/budget.rs`) vs. **40,753 CU** for the equivalent `IsolatedVault` payment — about
+  64% more, still far under both Solana's per-instruction default and the 1.4M CU/tx
+  ceiling, but no committed baseline/spec-gate exists for this path yet. Caching bumps
+  (mirroring how `execute_payment` already handles `sol_vault`) would close most of the
+  gap if it ever needs one.
+
+## Verification status (post-merge)
+
+`tests/native_allowance.rs` CPIs into the **actual deployed native program**
+(`programs/agent_rails/tests/fixtures/subscriptions_devnet.so`, dumped live from devnet —
+see the file's header comment for the redump command), not a rebuild-from-source stub or a
+mock. This closes the byte-packing risk called out in the original CPI design write-up:
+the instruction bytes `native_allowance.rs` builds are exercised against the real binary on
+every `cargo test`, not just checked against the published IDL.
+
+Confirmed empirically, against that real binary:
+- `enable_native_allowance` creates a working `FixedDelegation` and `SubscriptionAuthority`,
+  and is owner-only (`enable_native_allowance_is_owner_only`).
+- `execute_payment` in `NativeAllowance` mode moves funds from the owner's wallet, not the
+  vault, with receipt/audit-chain bookkeeping identical to the vault path
+  (`execute_payment_pulls_from_the_owners_wallet_and_leaves_the_vault_untouched`).
+- A transfer above the native delegation's own cap fails
+  (`a_payment_above_the_native_delegation_cap_is_rejected_by_the_native_program`).
+- **The core security property holds against the real program, not just our own code**:
+  `session_key_cannot_pull_via_the_native_program_directly` builds the exact `transferFixed`
+  instruction bytes with the session key forged into the `delegatee` slot, submits it
+  directly to the native program (never touching `agent_rails::execute_payment`), and the
+  real binary rejects it. This was the single largest unverified risk in the original
+  design and is now closed.
+
+Still open: the "true" live devnet dry-run — an actual signed transaction submitted over
+RPC — which the LiteSVM-against-the-real-binary tests substantially de-risk but do not
+fully replace (LiteSVM's SVM implementation could in principle still diverge from a live
+cluster's).
+
+**Squads/Realms-as-owner: verified, with a scope caveat.** `tests/pda_owner.rs` proves the
+mechanism, not Squads' or Realms' actual business logic. A ~60-line, test-only program
+(`programs/test_pda_relay`, never deployed anywhere but LiteSVM) does nothing but
+`invoke_signed` on behalf of its own PDA — exactly what a Squads vault-execute or a Realms
+governance-execute instruction does when signing on a multisig's/DAO's behalf — and forward
+an arbitrary inner instruction unmodified. Through that relay, a program-derived `owner`
+(no keypair, ever) successfully:
+- calls `add_mint` (owner-gated, unrelated to `NativeAllowance` — proves the pattern holds
+  for the *general* owner-gated surface, not just this feature)
+- calls `enable_native_allowance` and gets a real `FixedDelegation` created against the
+  real native program
+- then participates in a normal operator-signed policy/session and a real
+  `NativeAllowance` payment, exercising no owner/PDA-specific code path at all once setup
+  is done
+
+What this does *not* verify: Squads' or Realms' own multisig/proposal/voting correctness,
+their specific vault-PDA seed scheme, or any interaction between their program and Agent
+Rails beyond "a program can sign on a PDA's behalf via CPI." Those would require deploying
+the real Squads V4 or Realms program and are a reasonable follow-up before advertising
+either as supported, but are lower priority than they might appear: the mechanism this ADR
+actually depends on — Anchor's `Signer<'info>` and `has_one = owner` accepting a
+CPI-forwarded PDA signature — is now confirmed, not assumed.
