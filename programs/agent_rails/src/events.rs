@@ -165,6 +165,21 @@ pub struct CeilingUpdated {
     pub allow_create_destination_ata: bool,
 }
 
+/// A mint's settlement switched from `IsolatedVault` to `NativeAllowance` (ADR-014).
+/// Owner-only, one-way in v1: there is no `disable_native_allowance` — reverting means
+/// removing and re-adding the mint. `native_delegation` and `subscription_authority` are
+/// the native program's own PDAs, included so an indexer can join against its events too.
+#[event]
+pub struct NativeAllowanceEnabled {
+    pub treasury: Pubkey,
+    pub schema_version: u8,
+    pub mint: Pubkey,
+    pub subscription_authority: Pubkey,
+    pub native_delegation: Pubkey,
+    pub amount_cap: u64,
+    pub expiry_ts: i64,
+}
+
 #[event]
 pub struct MintRemoved {
     pub treasury: Pubkey,

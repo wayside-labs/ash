@@ -115,7 +115,11 @@ fn add_mint_stores_the_ceiling_in_the_treasury_slot() {
     assert_eq!(slot.decimals, 9);
     assert_eq!(slot.flags, MintFlags::IS_NATIVE);
     assert!(slot.is_native());
-    assert_eq!(slot._pad, [0u8; 6]);
+    assert_eq!(
+        slot.funding_mode,
+        agent_rails::state::FundingMode::IsolatedVault
+    );
+    assert_eq!(slot._pad, [0u8; 5]);
 
     assert_eq!(
         slot.ceiling,

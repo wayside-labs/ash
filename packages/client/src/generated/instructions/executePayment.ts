@@ -78,6 +78,13 @@ export type ExecutePaymentInstruction<
     "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
   TAccountSystemProgram extends string | AccountMeta<string> =
     "11111111111111111111111111111111",
+  TAccountOwnerSourceAta extends string | AccountMeta<string> = string,
+  TAccountNativeDelegation extends string | AccountMeta<string> = string,
+  TAccountNativeSubscriptionAuthority extends string | AccountMeta<string> =
+    string,
+  TAccountNativeEventAuthority extends string | AccountMeta<string> = string,
+  TAccountNativeSubscriptionsProgram extends string | AccountMeta<string> =
+    string,
   TAccountEventAuthority extends string | AccountMeta<string> = string,
   TAccountProgram extends string | AccountMeta<string> = string,
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
@@ -129,6 +136,21 @@ export type ExecutePaymentInstruction<
       TAccountSystemProgram extends string
         ? ReadonlyAccount<TAccountSystemProgram>
         : TAccountSystemProgram,
+      TAccountOwnerSourceAta extends string
+        ? WritableAccount<TAccountOwnerSourceAta>
+        : TAccountOwnerSourceAta,
+      TAccountNativeDelegation extends string
+        ? WritableAccount<TAccountNativeDelegation>
+        : TAccountNativeDelegation,
+      TAccountNativeSubscriptionAuthority extends string
+        ? ReadonlyAccount<TAccountNativeSubscriptionAuthority>
+        : TAccountNativeSubscriptionAuthority,
+      TAccountNativeEventAuthority extends string
+        ? ReadonlyAccount<TAccountNativeEventAuthority>
+        : TAccountNativeEventAuthority,
+      TAccountNativeSubscriptionsProgram extends string
+        ? ReadonlyAccount<TAccountNativeSubscriptionsProgram>
+        : TAccountNativeSubscriptionsProgram,
       TAccountEventAuthority extends string
         ? ReadonlyAccount<TAccountEventAuthority>
         : TAccountEventAuthority,
@@ -188,6 +210,11 @@ export type ExecutePaymentAsyncInput<
   TAccountTokenProgram extends string = string,
   TAccountAssociatedTokenProgram extends string = string,
   TAccountSystemProgram extends string = string,
+  TAccountOwnerSourceAta extends string = string,
+  TAccountNativeDelegation extends string = string,
+  TAccountNativeSubscriptionAuthority extends string = string,
+  TAccountNativeEventAuthority extends string = string,
+  TAccountNativeSubscriptionsProgram extends string = string,
   TAccountEventAuthority extends string = string,
   TAccountProgram extends string = string,
 > = {
@@ -237,6 +264,14 @@ export type ExecutePaymentAsyncInput<
   tokenProgram?: Address<TAccountTokenProgram>;
   associatedTokenProgram?: Address<TAccountAssociatedTokenProgram>;
   systemProgram?: Address<TAccountSystemProgram>;
+  ownerSourceAta?: Address<TAccountOwnerSourceAta>;
+  /** `native_allowance::find_fixed_delegation`. */
+  nativeDelegation?: Address<TAccountNativeDelegation>;
+  /** `native_allowance::find_subscription_authority`. */
+  nativeSubscriptionAuthority?: Address<TAccountNativeSubscriptionAuthority>;
+  /** `native_allowance::find_event_authority`. */
+  nativeEventAuthority?: Address<TAccountNativeEventAuthority>;
+  nativeSubscriptionsProgram?: Address<TAccountNativeSubscriptionsProgram>;
   eventAuthority: Address<TAccountEventAuthority>;
   program: Address<TAccountProgram>;
   intent: ExecutePaymentInstructionDataArgs["intent"];
@@ -257,6 +292,11 @@ export async function getExecutePaymentInstructionAsync<
   TAccountTokenProgram extends string,
   TAccountAssociatedTokenProgram extends string,
   TAccountSystemProgram extends string,
+  TAccountOwnerSourceAta extends string,
+  TAccountNativeDelegation extends string,
+  TAccountNativeSubscriptionAuthority extends string,
+  TAccountNativeEventAuthority extends string,
+  TAccountNativeSubscriptionsProgram extends string,
   TAccountEventAuthority extends string,
   TAccountProgram extends string,
   TProgramAddress extends Address = typeof AGENT_RAILS_PROGRAM_ADDRESS,
@@ -276,6 +316,11 @@ export async function getExecutePaymentInstructionAsync<
     TAccountTokenProgram,
     TAccountAssociatedTokenProgram,
     TAccountSystemProgram,
+    TAccountOwnerSourceAta,
+    TAccountNativeDelegation,
+    TAccountNativeSubscriptionAuthority,
+    TAccountNativeEventAuthority,
+    TAccountNativeSubscriptionsProgram,
     TAccountEventAuthority,
     TAccountProgram
   >,
@@ -297,6 +342,11 @@ export async function getExecutePaymentInstructionAsync<
     TAccountTokenProgram,
     TAccountAssociatedTokenProgram,
     TAccountSystemProgram,
+    TAccountOwnerSourceAta,
+    TAccountNativeDelegation,
+    TAccountNativeSubscriptionAuthority,
+    TAccountNativeEventAuthority,
+    TAccountNativeSubscriptionsProgram,
     TAccountEventAuthority,
     TAccountProgram
   >
@@ -326,6 +376,23 @@ export async function getExecutePaymentInstructionAsync<
       isWritable: false,
     },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
+    ownerSourceAta: { value: input.ownerSourceAta ?? null, isWritable: true },
+    nativeDelegation: {
+      value: input.nativeDelegation ?? null,
+      isWritable: true,
+    },
+    nativeSubscriptionAuthority: {
+      value: input.nativeSubscriptionAuthority ?? null,
+      isWritable: false,
+    },
+    nativeEventAuthority: {
+      value: input.nativeEventAuthority ?? null,
+      isWritable: false,
+    },
+    nativeSubscriptionsProgram: {
+      value: input.nativeSubscriptionsProgram ?? null,
+      isWritable: false,
+    },
     eventAuthority: { value: input.eventAuthority ?? null, isWritable: false },
     program: { value: input.program ?? null, isWritable: false },
   };
@@ -406,6 +473,17 @@ export async function getExecutePaymentInstructionAsync<
       getAccountMeta("tokenProgram", accounts.tokenProgram),
       getAccountMeta("associatedTokenProgram", accounts.associatedTokenProgram),
       getAccountMeta("systemProgram", accounts.systemProgram),
+      getAccountMeta("ownerSourceAta", accounts.ownerSourceAta),
+      getAccountMeta("nativeDelegation", accounts.nativeDelegation),
+      getAccountMeta(
+        "nativeSubscriptionAuthority",
+        accounts.nativeSubscriptionAuthority,
+      ),
+      getAccountMeta("nativeEventAuthority", accounts.nativeEventAuthority),
+      getAccountMeta(
+        "nativeSubscriptionsProgram",
+        accounts.nativeSubscriptionsProgram,
+      ),
       getAccountMeta("eventAuthority", accounts.eventAuthority),
       getAccountMeta("program", accounts.program),
     ],
@@ -429,6 +507,11 @@ export async function getExecutePaymentInstructionAsync<
     TAccountTokenProgram,
     TAccountAssociatedTokenProgram,
     TAccountSystemProgram,
+    TAccountOwnerSourceAta,
+    TAccountNativeDelegation,
+    TAccountNativeSubscriptionAuthority,
+    TAccountNativeEventAuthority,
+    TAccountNativeSubscriptionsProgram,
     TAccountEventAuthority,
     TAccountProgram
   >);
@@ -449,6 +532,11 @@ export type ExecutePaymentInput<
   TAccountTokenProgram extends string = string,
   TAccountAssociatedTokenProgram extends string = string,
   TAccountSystemProgram extends string = string,
+  TAccountOwnerSourceAta extends string = string,
+  TAccountNativeDelegation extends string = string,
+  TAccountNativeSubscriptionAuthority extends string = string,
+  TAccountNativeEventAuthority extends string = string,
+  TAccountNativeSubscriptionsProgram extends string = string,
   TAccountEventAuthority extends string = string,
   TAccountProgram extends string = string,
 > = {
@@ -498,6 +586,14 @@ export type ExecutePaymentInput<
   tokenProgram?: Address<TAccountTokenProgram>;
   associatedTokenProgram?: Address<TAccountAssociatedTokenProgram>;
   systemProgram?: Address<TAccountSystemProgram>;
+  ownerSourceAta?: Address<TAccountOwnerSourceAta>;
+  /** `native_allowance::find_fixed_delegation`. */
+  nativeDelegation?: Address<TAccountNativeDelegation>;
+  /** `native_allowance::find_subscription_authority`. */
+  nativeSubscriptionAuthority?: Address<TAccountNativeSubscriptionAuthority>;
+  /** `native_allowance::find_event_authority`. */
+  nativeEventAuthority?: Address<TAccountNativeEventAuthority>;
+  nativeSubscriptionsProgram?: Address<TAccountNativeSubscriptionsProgram>;
   eventAuthority: Address<TAccountEventAuthority>;
   program: Address<TAccountProgram>;
   intent: ExecutePaymentInstructionDataArgs["intent"];
@@ -518,6 +614,11 @@ export function getExecutePaymentInstruction<
   TAccountTokenProgram extends string,
   TAccountAssociatedTokenProgram extends string,
   TAccountSystemProgram extends string,
+  TAccountOwnerSourceAta extends string,
+  TAccountNativeDelegation extends string,
+  TAccountNativeSubscriptionAuthority extends string,
+  TAccountNativeEventAuthority extends string,
+  TAccountNativeSubscriptionsProgram extends string,
   TAccountEventAuthority extends string,
   TAccountProgram extends string,
   TProgramAddress extends Address = typeof AGENT_RAILS_PROGRAM_ADDRESS,
@@ -537,6 +638,11 @@ export function getExecutePaymentInstruction<
     TAccountTokenProgram,
     TAccountAssociatedTokenProgram,
     TAccountSystemProgram,
+    TAccountOwnerSourceAta,
+    TAccountNativeDelegation,
+    TAccountNativeSubscriptionAuthority,
+    TAccountNativeEventAuthority,
+    TAccountNativeSubscriptionsProgram,
     TAccountEventAuthority,
     TAccountProgram
   >,
@@ -557,6 +663,11 @@ export function getExecutePaymentInstruction<
   TAccountTokenProgram,
   TAccountAssociatedTokenProgram,
   TAccountSystemProgram,
+  TAccountOwnerSourceAta,
+  TAccountNativeDelegation,
+  TAccountNativeSubscriptionAuthority,
+  TAccountNativeEventAuthority,
+  TAccountNativeSubscriptionsProgram,
   TAccountEventAuthority,
   TAccountProgram
 > {
@@ -585,6 +696,23 @@ export function getExecutePaymentInstruction<
       isWritable: false,
     },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
+    ownerSourceAta: { value: input.ownerSourceAta ?? null, isWritable: true },
+    nativeDelegation: {
+      value: input.nativeDelegation ?? null,
+      isWritable: true,
+    },
+    nativeSubscriptionAuthority: {
+      value: input.nativeSubscriptionAuthority ?? null,
+      isWritable: false,
+    },
+    nativeEventAuthority: {
+      value: input.nativeEventAuthority ?? null,
+      isWritable: false,
+    },
+    nativeSubscriptionsProgram: {
+      value: input.nativeSubscriptionsProgram ?? null,
+      isWritable: false,
+    },
     eventAuthority: { value: input.eventAuthority ?? null, isWritable: false },
     program: { value: input.program ?? null, isWritable: false },
   };
@@ -627,6 +755,17 @@ export function getExecutePaymentInstruction<
       getAccountMeta("tokenProgram", accounts.tokenProgram),
       getAccountMeta("associatedTokenProgram", accounts.associatedTokenProgram),
       getAccountMeta("systemProgram", accounts.systemProgram),
+      getAccountMeta("ownerSourceAta", accounts.ownerSourceAta),
+      getAccountMeta("nativeDelegation", accounts.nativeDelegation),
+      getAccountMeta(
+        "nativeSubscriptionAuthority",
+        accounts.nativeSubscriptionAuthority,
+      ),
+      getAccountMeta("nativeEventAuthority", accounts.nativeEventAuthority),
+      getAccountMeta(
+        "nativeSubscriptionsProgram",
+        accounts.nativeSubscriptionsProgram,
+      ),
       getAccountMeta("eventAuthority", accounts.eventAuthority),
       getAccountMeta("program", accounts.program),
     ],
@@ -650,6 +789,11 @@ export function getExecutePaymentInstruction<
     TAccountTokenProgram,
     TAccountAssociatedTokenProgram,
     TAccountSystemProgram,
+    TAccountOwnerSourceAta,
+    TAccountNativeDelegation,
+    TAccountNativeSubscriptionAuthority,
+    TAccountNativeEventAuthority,
+    TAccountNativeSubscriptionsProgram,
     TAccountEventAuthority,
     TAccountProgram
   >);
@@ -707,8 +851,16 @@ export type ParsedExecutePaymentInstruction<
     tokenProgram: TAccountMetas[11];
     associatedTokenProgram: TAccountMetas[12];
     systemProgram: TAccountMetas[13];
-    eventAuthority: TAccountMetas[14];
-    program: TAccountMetas[15];
+    ownerSourceAta?: TAccountMetas[14] | undefined;
+    /** `native_allowance::find_fixed_delegation`. */
+    nativeDelegation?: TAccountMetas[15] | undefined;
+    /** `native_allowance::find_subscription_authority`. */
+    nativeSubscriptionAuthority?: TAccountMetas[16] | undefined;
+    /** `native_allowance::find_event_authority`. */
+    nativeEventAuthority?: TAccountMetas[17] | undefined;
+    nativeSubscriptionsProgram?: TAccountMetas[18] | undefined;
+    eventAuthority: TAccountMetas[19];
+    program: TAccountMetas[20];
   };
   data: ExecutePaymentInstructionData;
 };
@@ -721,12 +873,12 @@ export function parseExecutePaymentInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedExecutePaymentInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 16) {
+  if (instruction.accounts.length < 21) {
     throw new SolanaError(
       SOLANA_ERROR__PROGRAM_CLIENTS__INSUFFICIENT_ACCOUNT_METAS,
       {
         actualAccountMetas: instruction.accounts.length,
-        expectedAccountMetas: 16,
+        expectedAccountMetas: 21,
       },
     );
   }
@@ -759,6 +911,11 @@ export function parseExecutePaymentInstruction<
       tokenProgram: getNextAccount(),
       associatedTokenProgram: getNextAccount(),
       systemProgram: getNextAccount(),
+      ownerSourceAta: getNextOptionalAccount(),
+      nativeDelegation: getNextOptionalAccount(),
+      nativeSubscriptionAuthority: getNextOptionalAccount(),
+      nativeEventAuthority: getNextOptionalAccount(),
+      nativeSubscriptionsProgram: getNextOptionalAccount(),
       eventAuthority: getNextAccount(),
       program: getNextAccount(),
     },

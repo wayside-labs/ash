@@ -6,6 +6,7 @@
  * @see https://github.com/codama-idl/codama
  */
 
+export * from "./fundingMode";
 export * from "./mintCeiling";
 export * from "./mintCeilingArgs";
 export * from "./mintConfig";

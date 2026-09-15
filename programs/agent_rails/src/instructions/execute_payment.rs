@@ -13,11 +13,14 @@ use anchor_spl::associated_token::{
 use anchor_spl::token_interface::{self, Mint, TokenAccount, TokenInterface, TransferChecked};
 
 use crate::args::PaymentIntent;
-use crate::constants::{SEED_RECEIPT, SEED_SESSION, SEED_SOL_VAULT, SEED_TREASURY};
+use crate::constants::{
+    NATIVE_SUBSCRIPTIONS_PROGRAM, SEED_RECEIPT, SEED_SESSION, SEED_SOL_VAULT, SEED_TREASURY,
+};
 use crate::error::AgentRailsError;
 use crate::events::{PaymentExecuted, EVENT_SCHEMA_VERSION};
 use crate::instructions::payment::{self, CommitInputs, PaymentInputs};
-use crate::state::{AgentSession, AllowlistEntry, IntentReceipt, Policy, Treasury};
+use crate::native_allowance::{self, TransferFixedAccounts};
+use crate::state::{AgentSession, AllowlistEntry, FundingMode, IntentReceipt, Policy, Treasury};
 
 #[event_cpi]
 #[derive(Accounts)]
@@ -99,6 +102,27 @@ pub struct ExecutePayment<'info> {
     pub token_program: Interface<'info, TokenInterface>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
+
+    // --- NativeAllowance funding mode (ADR-014) ---------------------------------------
+    // All five `Option`al: an `IsolatedVault` mint pays none of the tx-size or CU cost of
+    // these accounts, preserving the ≤40k CU / ≤600 byte budget the vault path is tuned
+    // for. The handler requires all five together, or none, based on
+    // `mint_config.funding_mode` — see `execute_payment_handler`.
+    /// CHECK: the owner's own ATA, source of funds when `funding_mode == NativeAllowance`.
+    #[account(mut)]
+    pub owner_source_ata: Option<UncheckedAccount<'info>>,
+    /// CHECK: address re-derived and checked in the handler against
+    /// `native_allowance::find_fixed_delegation`.
+    #[account(mut)]
+    pub native_delegation: Option<UncheckedAccount<'info>>,
+    /// CHECK: address re-derived and checked in the handler against
+    /// `native_allowance::find_subscription_authority`.
+    pub native_subscription_authority: Option<UncheckedAccount<'info>>,
+    /// CHECK: address re-derived and checked in the handler against
+    /// `native_allowance::find_event_authority`.
+    pub native_event_authority: Option<UncheckedAccount<'info>>,
+    /// CHECK: address-pinned to `NATIVE_SUBSCRIPTIONS_PROGRAM` in the handler.
+    pub native_subscriptions_program: Option<UncheckedAccount<'info>>,
 }
 
 pub fn execute_payment_handler(ctx: Context<ExecutePayment>, intent: PaymentIntent) -> Result<()> {
@@ -178,24 +202,119 @@ pub fn execute_payment_handler(ctx: Context<ExecutePayment>, intent: PaymentInte
         ))?;
     }
 
-    // 14. The transfer, signed by the Treasury PDA itself.
+    // 14. The transfer. Every check above ran identically regardless of custody model;
+    //     this is the only place that differs, and it decides transport, not amount —
+    //     `intent.amount` is the same value `payment::prepare`'s `evaluate()` already
+    //     approved, never recomputed here.
     let create_key = ctx.accounts.treasury.create_key;
     let treasury_bump = ctx.accounts.treasury.bump;
     let treasury_seeds: &[&[u8]] = &[SEED_TREASURY, create_key.as_ref(), &[treasury_bump]];
-    token_interface::transfer_checked(
-        CpiContext::new_with_signer(
-            ctx.accounts.token_program.key(),
-            TransferChecked {
-                from: ctx.accounts.vault_ata.to_account_info(),
-                mint: ctx.accounts.mint.to_account_info(),
-                to: ctx.accounts.destination_ata.to_account_info(),
-                authority: ctx.accounts.treasury.to_account_info(),
-            },
-            &[treasury_seeds],
-        ),
-        intent.amount,
-        plan.decimals,
-    )?;
+
+    let mint_config = ctx
+        .accounts
+        .treasury
+        .find_mint(&intent.mint)
+        .ok_or(AgentRailsError::MintNotConfigured)?;
+
+    match mint_config.funding_mode {
+        FundingMode::IsolatedVault => {
+            token_interface::transfer_checked(
+                CpiContext::new_with_signer(
+                    ctx.accounts.token_program.key(),
+                    TransferChecked {
+                        from: ctx.accounts.vault_ata.to_account_info(),
+                        mint: ctx.accounts.mint.to_account_info(),
+                        to: ctx.accounts.destination_ata.to_account_info(),
+                        authority: ctx.accounts.treasury.to_account_info(),
+                    },
+                    &[treasury_seeds],
+                ),
+                intent.amount,
+                plan.decimals,
+            )?;
+        }
+        FundingMode::NativeAllowance => {
+            let owner_source_ata = ctx
+                .accounts
+                .owner_source_ata
+                .as_ref()
+                .ok_or(AgentRailsError::NativeAllowanceAccountsMissing)?;
+            let native_delegation = ctx
+                .accounts
+                .native_delegation
+                .as_ref()
+                .ok_or(AgentRailsError::NativeAllowanceAccountsMissing)?;
+            let native_subscription_authority = ctx
+                .accounts
+                .native_subscription_authority
+                .as_ref()
+                .ok_or(AgentRailsError::NativeAllowanceAccountsMissing)?;
+            let native_event_authority = ctx
+                .accounts
+                .native_event_authority
+                .as_ref()
+                .ok_or(AgentRailsError::NativeAllowanceAccountsMissing)?;
+            let native_subscriptions_program =
+                ctx.accounts
+                    .native_subscriptions_program
+                    .as_ref()
+                    .ok_or(AgentRailsError::NativeAllowanceAccountsMissing)?;
+
+            require_keys_eq!(
+                native_subscriptions_program.key(),
+                NATIVE_SUBSCRIPTIONS_PROGRAM,
+                AgentRailsError::Unauthorized
+            );
+
+            // Re-derive every native PDA rather than trusting the caller-supplied
+            // addresses — the same pattern already used above for `allowlist_entry`.
+            let owner = ctx.accounts.treasury.owner;
+            let (expected_sa, _) =
+                native_allowance::find_subscription_authority(&owner, &intent.mint);
+            require_keys_eq!(
+                native_subscription_authority.key(),
+                expected_sa,
+                AgentRailsError::InvalidNativeAllowancePda
+            );
+
+            let (expected_delegation, _) =
+                native_allowance::find_fixed_delegation(&expected_sa, &owner, &treasury_key);
+            require_keys_eq!(
+                native_delegation.key(),
+                expected_delegation,
+                AgentRailsError::InvalidNativeAllowancePda
+            );
+
+            let (expected_event_authority, _) = native_allowance::find_event_authority();
+            require_keys_eq!(
+                native_event_authority.key(),
+                expected_event_authority,
+                AgentRailsError::InvalidNativeAllowancePda
+            );
+
+            native_allowance::transfer_fixed(
+                TransferFixedAccounts {
+                    native_delegation: native_delegation.to_account_info(),
+                    subscription_authority: native_subscription_authority.to_account_info(),
+                    delegator_ata: owner_source_ata.to_account_info(),
+                    receiver_ata: ctx.accounts.destination_ata.to_account_info(),
+                    token_mint: ctx.accounts.mint.to_account_info(),
+                    token_program: ctx.accounts.token_program.to_account_info(),
+                    // The Treasury PDA signs as delegatee — never `session_key`. An agent
+                    // holding only a session key cannot produce this signature, so it
+                    // cannot call the native program's `transferFixed` directly and skip
+                    // every check `payment::prepare` just ran.
+                    delegatee: ctx.accounts.treasury.to_account_info(),
+                    event_authority: native_event_authority.to_account_info(),
+                    native_program: native_subscriptions_program.to_account_info(),
+                },
+                intent.amount,
+                owner,
+                intent.mint,
+                treasury_seeds,
+            )?;
+        }
+    }
 
     // 15.
     let (seq, audit_head) = payment::commit(

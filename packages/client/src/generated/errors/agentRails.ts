@@ -98,6 +98,14 @@ export const AGENT_RAILS_ERROR__ALREADY_REVOKED = 0x1797; // 6039
 export const AGENT_RAILS_ERROR__MATH_OVERFLOW = 0x1798; // 6040
 /** ReservedFieldNonZero: A reserved field was non-zero */
 export const AGENT_RAILS_ERROR__RESERVED_FIELD_NON_ZERO = 0x1799; // 6041
+/** NativeAllowanceAccountsMissing: Mint uses NativeAllowance funding mode but the native allowance accounts were not provided */
+export const AGENT_RAILS_ERROR__NATIVE_ALLOWANCE_ACCOUNTS_MISSING = 0x179a; // 6042
+/** NotNativeAllowanceMode: Mint is not configured for NativeAllowance funding mode */
+export const AGENT_RAILS_ERROR__NOT_NATIVE_ALLOWANCE_MODE = 0x179b; // 6043
+/** InvalidNativeAllowancePda: Account address does not match the expected native program PDA derivation */
+export const AGENT_RAILS_ERROR__INVALID_NATIVE_ALLOWANCE_PDA = 0x179c; // 6044
+/** InvalidNativeAllowanceAccountData: Native SubscriptionAuthority account data could not be parsed */
+export const AGENT_RAILS_ERROR__INVALID_NATIVE_ALLOWANCE_ACCOUNT_DATA = 0x179d; // 6045
 
 export type AgentRailsError =
   | typeof AGENT_RAILS_ERROR__ALREADY_REVOKED
@@ -119,6 +127,8 @@ export type AgentRailsError =
   | typeof AGENT_RAILS_ERROR__INVALID_EXPIRY
   | typeof AGENT_RAILS_ERROR__INVALID_LIMIT
   | typeof AGENT_RAILS_ERROR__INVALID_NAME
+  | typeof AGENT_RAILS_ERROR__INVALID_NATIVE_ALLOWANCE_ACCOUNT_DATA
+  | typeof AGENT_RAILS_ERROR__INVALID_NATIVE_ALLOWANCE_PDA
   | typeof AGENT_RAILS_ERROR__INVALID_WINDOW
   | typeof AGENT_RAILS_ERROR__MATH_OVERFLOW
   | typeof AGENT_RAILS_ERROR__MEMO_REQUIRED
@@ -127,6 +137,8 @@ export type AgentRailsError =
   | typeof AGENT_RAILS_ERROR__MINT_NOT_IN_POLICY
   | typeof AGENT_RAILS_ERROR__MINT_NOT_IN_SESSION
   | typeof AGENT_RAILS_ERROR__MINT_SLOTS_FULL
+  | typeof AGENT_RAILS_ERROR__NATIVE_ALLOWANCE_ACCOUNTS_MISSING
+  | typeof AGENT_RAILS_ERROR__NOT_NATIVE_ALLOWANCE_MODE
   | typeof AGENT_RAILS_ERROR__PAUSED
   | typeof AGENT_RAILS_ERROR__POLICY_EXCEEDS_CEILING
   | typeof AGENT_RAILS_ERROR__POLICY_IN_USE
@@ -165,6 +177,8 @@ if (process.env["NODE_ENV"] !== "production") {
     [AGENT_RAILS_ERROR__INVALID_EXPIRY]: `Session expiry is out of range`,
     [AGENT_RAILS_ERROR__INVALID_LIMIT]: `Limit is invalid`,
     [AGENT_RAILS_ERROR__INVALID_NAME]: `Name or label is invalid`,
+    [AGENT_RAILS_ERROR__INVALID_NATIVE_ALLOWANCE_ACCOUNT_DATA]: `Native SubscriptionAuthority account data could not be parsed`,
+    [AGENT_RAILS_ERROR__INVALID_NATIVE_ALLOWANCE_PDA]: `Account address does not match the expected native program PDA derivation`,
     [AGENT_RAILS_ERROR__INVALID_WINDOW]: `Window duration is invalid`,
     [AGENT_RAILS_ERROR__MATH_OVERFLOW]: `Arithmetic overflow`,
     [AGENT_RAILS_ERROR__MEMO_REQUIRED]: `Policy requires a non-empty memo`,
@@ -173,6 +187,8 @@ if (process.env["NODE_ENV"] !== "production") {
     [AGENT_RAILS_ERROR__MINT_NOT_IN_POLICY]: `Mint is not present in the policy`,
     [AGENT_RAILS_ERROR__MINT_NOT_IN_SESSION]: `Session has no spend counter slot for this mint`,
     [AGENT_RAILS_ERROR__MINT_SLOTS_FULL]: `No free mint slot`,
+    [AGENT_RAILS_ERROR__NATIVE_ALLOWANCE_ACCOUNTS_MISSING]: `Mint uses NativeAllowance funding mode but the native allowance accounts were not provided`,
+    [AGENT_RAILS_ERROR__NOT_NATIVE_ALLOWANCE_MODE]: `Mint is not configured for NativeAllowance funding mode`,
     [AGENT_RAILS_ERROR__PAUSED]: `Treasury is paused`,
     [AGENT_RAILS_ERROR__POLICY_EXCEEDS_CEILING]: `Policy exceeds the treasury ceiling`,
     [AGENT_RAILS_ERROR__POLICY_IN_USE]: `Policy still has active sessions`,

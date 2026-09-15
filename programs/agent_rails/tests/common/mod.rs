@@ -939,6 +939,13 @@ pub fn execute_payment_ix(
             system_program: anchor_lang::system_program::ID,
             event_authority: Env::event_authority(),
             program: agent_rails::ID,
+            // NativeAllowance funding mode (ADR-014); unused by every fixture, which is
+            // always IsolatedVault.
+            owner_source_ata: None,
+            native_delegation: None,
+            native_subscription_authority: None,
+            native_event_authority: None,
+            native_subscriptions_program: None,
         })
         .args(agent_rails::instruction::ExecutePayment {
             intent: intent.clone(),

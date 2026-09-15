@@ -13,6 +13,7 @@ export * from "./guardianAdded";
 export * from "./guardianRemoved";
 export * from "./mintAdded";
 export * from "./mintRemoved";
+export * from "./nativeAllowanceEnabled";
 export * from "./paymentExecuted";
 export * from "./policyClosed";
 export * from "./policyCreated";

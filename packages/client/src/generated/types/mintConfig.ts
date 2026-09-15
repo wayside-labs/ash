@@ -25,8 +25,12 @@ import {
   type ReadonlyUint8Array,
 } from "@solana/kit";
 import {
+  getFundingModeDecoder,
+  getFundingModeEncoder,
   getMintCeilingDecoder,
   getMintCeilingEncoder,
+  type FundingMode,
+  type FundingModeArgs,
   type MintCeiling,
   type MintCeilingArgs,
 } from ".";
@@ -40,7 +44,8 @@ import {
  * | 32 | 32 | `token_program` — SPL Token, Token-2022, or System program for native |
  * | 64 | 1 | `decimals` |
  * | 65 | 1 | `flags` — `MintFlags` bitfield |
- * | 66 | 6 | `_pad` |
+ * | 66 | 1 | `funding_mode` — `FundingMode` (ADR-014); was byte 0 of `_pad[6]` |
+ * | 67 | 5 | `_pad` |
  * | 72 | 40 | `ceiling` |
  */
 export type MintConfig = {
@@ -48,6 +53,7 @@ export type MintConfig = {
   tokenProgram: Address;
   decimals: number;
   flags: number;
+  fundingMode: FundingMode;
   /** Named `_pad` in the spec; must stay zeroed. */
   pad: ReadonlyUint8Array;
   ceiling: MintCeiling;
@@ -58,6 +64,7 @@ export type MintConfigArgs = {
   tokenProgram: Address;
   decimals: number;
   flags: number;
+  fundingMode: FundingModeArgs;
   /** Named `_pad` in the spec; must stay zeroed. */
   pad: ReadonlyUint8Array;
   ceiling: MintCeilingArgs;
@@ -69,7 +76,8 @@ export function getMintConfigEncoder(): FixedSizeEncoder<MintConfigArgs> {
     ["tokenProgram", getAddressEncoder()],
     ["decimals", getU8Encoder()],
     ["flags", getU8Encoder()],
-    ["pad", fixEncoderSize(getBytesEncoder(), 6)],
+    ["fundingMode", getFundingModeEncoder()],
+    ["pad", fixEncoderSize(getBytesEncoder(), 5)],
     ["ceiling", getMintCeilingEncoder()],
   ]);
 }
@@ -80,7 +88,8 @@ export function getMintConfigDecoder(): FixedSizeDecoder<MintConfig> {
     ["tokenProgram", getAddressDecoder()],
     ["decimals", getU8Decoder()],
     ["flags", getU8Decoder()],
-    ["pad", fixDecoderSize(getBytesDecoder(), 6)],
+    ["fundingMode", getFundingModeDecoder()],
+    ["pad", fixDecoderSize(getBytesDecoder(), 5)],
     ["ceiling", getMintCeilingDecoder()],
   ]);
 }

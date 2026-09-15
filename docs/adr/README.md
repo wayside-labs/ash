@@ -17,5 +17,6 @@ Each ADR captures one decision from the v1 design session: the context, the opti
 | [011](ADR-011-governance-and-release.md) | Staged trust: multisig upgrades → frozen program; Apache-2.0; independent versioning | Accepted |
 | [012](ADR-012-intent-derivation-and-outcomes.md) | Derived intent ids and a four-valued payment outcome | Accepted |
 | [013](ADR-013-progressive-security-posture.md) | Progressive security posture with a fixed set of configurable guard-rails | Accepted |
+| [014](ADR-014-hybrid-funding-mode.md) | Hybrid `FundingMode`: isolated vault or native Solana allowance, owner-selected per mint | Accepted |
 
 Template for new ADRs: `ADR-NNN-short-title.md` with sections **Context**, **Options considered**, **Decision**, **Consequences**.

@@ -16,6 +16,7 @@ export * from "./closeTreasury";
 export * from "./createPolicy";
 export * from "./createSession";
 export * from "./createTreasury";
+export * from "./enableNativeAllowance";
 export * from "./executePayment";
 export * from "./executePaymentSol";
 export * from "./pause";

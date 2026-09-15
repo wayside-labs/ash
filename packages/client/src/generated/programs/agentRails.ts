@@ -62,6 +62,7 @@ import {
   getCreatePolicyInstructionAsync,
   getCreateSessionInstructionAsync,
   getCreateTreasuryInstructionAsync,
+  getEnableNativeAllowanceInstruction,
   getExecutePaymentInstructionAsync,
   getExecutePaymentSolInstructionAsync,
   getPauseInstruction,
@@ -84,6 +85,7 @@ import {
   parseCreatePolicyInstruction,
   parseCreateSessionInstruction,
   parseCreateTreasuryInstruction,
+  parseEnableNativeAllowanceInstruction,
   parseExecutePaymentInstruction,
   parseExecutePaymentSolInstruction,
   parsePauseInstruction,
@@ -106,6 +108,7 @@ import {
   type CreatePolicyAsyncInput,
   type CreateSessionAsyncInput,
   type CreateTreasuryAsyncInput,
+  type EnableNativeAllowanceInput,
   type ExecutePaymentAsyncInput,
   type ExecutePaymentSolAsyncInput,
   type ParsedAddAllowlistEntryInstruction,
@@ -118,6 +121,7 @@ import {
   type ParsedCreatePolicyInstruction,
   type ParsedCreateSessionInstruction,
   type ParsedCreateTreasuryInstruction,
+  type ParsedEnableNativeAllowanceInstruction,
   type ParsedExecutePaymentInstruction,
   type ParsedExecutePaymentSolInstruction,
   type ParsedPauseInstruction,
@@ -233,6 +237,7 @@ export enum AgentRailsEvent {
   GuardianRemoved,
   MintAdded,
   MintRemoved,
+  NativeAllowanceEnabled,
   PaymentExecuted,
   PolicyClosed,
   PolicyCreated,
@@ -329,6 +334,17 @@ export function identifyAgentRailsEvent(
     )
   ) {
     return AgentRailsEvent.MintRemoved;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([203, 81, 193, 75, 80, 87, 101, 61]),
+      ),
+      0,
+    )
+  ) {
+    return AgentRailsEvent.NativeAllowanceEnabled;
   }
   if (
     containsBytes(
@@ -500,6 +516,7 @@ export enum AgentRailsInstruction {
   CreatePolicy,
   CreateSession,
   CreateTreasury,
+  EnableNativeAllowance,
   ExecutePayment,
   ExecutePaymentSol,
   Pause,
@@ -627,6 +644,17 @@ export function identifyAgentRailsInstruction(
     )
   ) {
     return AgentRailsInstruction.CreateTreasury;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([13, 218, 35, 33, 174, 242, 93, 121]),
+      ),
+      0,
+    )
+  ) {
+    return AgentRailsInstruction.EnableNativeAllowance;
   }
   if (
     containsBytes(
@@ -800,6 +828,9 @@ export type ParsedAgentRailsInstruction<
       instructionType: AgentRailsInstruction.CreateTreasury;
     } & ParsedCreateTreasuryInstruction<TProgram>)
   | ({
+      instructionType: AgentRailsInstruction.EnableNativeAllowance;
+    } & ParsedEnableNativeAllowanceInstruction<TProgram>)
+  | ({
       instructionType: AgentRailsInstruction.ExecutePayment;
     } & ParsedExecutePaymentInstruction<TProgram>)
   | ({
@@ -909,6 +940,13 @@ export function parseAgentRailsInstruction<TProgram extends string>(
       return {
         instructionType: AgentRailsInstruction.CreateTreasury,
         ...parseCreateTreasuryInstruction(instruction),
+      };
+    }
+    case AgentRailsInstruction.EnableNativeAllowance: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: AgentRailsInstruction.EnableNativeAllowance,
+        ...parseEnableNativeAllowanceInstruction(instruction),
       };
     }
     case AgentRailsInstruction.ExecutePayment: {
@@ -1064,6 +1102,10 @@ export type AgentRailsPluginInstructions = {
     input: MakeOptional<CreateTreasuryAsyncInput, "payer">,
   ) => ReturnType<typeof getCreateTreasuryInstructionAsync> &
     SelfPlanAndSendFunctions;
+  enableNativeAllowance: (
+    input: EnableNativeAllowanceInput,
+  ) => ReturnType<typeof getEnableNativeAllowanceInstruction> &
+    SelfPlanAndSendFunctions;
   executePayment: (
     input: MakeOptional<ExecutePaymentAsyncInput, "feePayer">,
   ) => ReturnType<typeof getExecutePaymentInstructionAsync> &
@@ -1193,6 +1235,11 @@ export function agentRailsProgram() {
                 ...input,
                 payer: input.payer ?? client.payer,
               }),
+            ),
+          enableNativeAllowance: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getEnableNativeAllowanceInstruction(input),
             ),
           executePayment: (input) =>
             addSelfPlanAndSendFunctions(

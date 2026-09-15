@@ -1037,6 +1037,119 @@
       ]
     },
     {
+      "name": "enable_native_allowance",
+      "docs": [
+        "Switches a configured mint from `IsolatedVault` to `NativeAllowance` funding by",
+        "registering a native Solana Subscriptions & Allowances `FixedDelegation` whose",
+        "`delegatee` is this treasury's PDA (ADR-014). Owner-only, one-time per mint."
+      ],
+      "discriminator": [
+        13,
+        218,
+        35,
+        33,
+        174,
+        242,
+        93,
+        121
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "docs": [
+            "Pays rent for the native program's `SubscriptionAuthority` and `FixedDelegation`",
+            "accounts. Always the owner in v1 — see `native_allowance::init_subscription_authority`",
+            "for why `payer` is omitted from the native CPI rather than threaded through."
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "treasury"
+          ]
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "treasury.create_key",
+                "account": "Treasury"
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "owner_ata",
+          "docs": [
+            "The owner's own associated token account for `mint`. The source of funds once",
+            "`NativeAllowance` is active; must already exist — Agent Rails does not create or",
+            "otherwise manage the owner's wallet.",
+            "",
+            "token account backing `subscription_authority`'s delegation."
+          ],
+          "writable": true
+        },
+        {
+          "name": "subscription_authority",
+          "docs": [
+            "`native_allowance::find_subscription_authority(owner, mint)`."
+          ],
+          "writable": true
+        },
+        {
+          "name": "native_delegation",
+          "docs": [
+            "`native_allowance::find_fixed_delegation(subscription_authority, owner, treasury)`."
+          ],
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "native_subscriptions_program"
+        },
+        {
+          "name": "event_authority"
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount_cap",
+          "type": "u64"
+        },
+        {
+          "name": "expiry_ts",
+          "type": "i64"
+        }
+      ]
+    },
+    {
       "name": "execute_payment",
       "docs": [
         "Pays an SPL Token or Token-2022 amount from the vault, subject to the full policy",
@@ -1272,6 +1385,37 @@
         {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "owner_source_ata",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "native_delegation",
+          "docs": [
+            "`native_allowance::find_fixed_delegation`."
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "native_subscription_authority",
+          "docs": [
+            "`native_allowance::find_subscription_authority`."
+          ],
+          "optional": true
+        },
+        {
+          "name": "native_event_authority",
+          "docs": [
+            "`native_allowance::find_event_authority`."
+          ],
+          "optional": true
+        },
+        {
+          "name": "native_subscriptions_program",
+          "optional": true
         },
         {
           "name": "event_authority"
@@ -2519,6 +2663,19 @@
       ]
     },
     {
+      "name": "NativeAllowanceEnabled",
+      "discriminator": [
+        203,
+        81,
+        193,
+        75,
+        80,
+        87,
+        101,
+        61
+      ]
+    },
+    {
       "name": "PaymentExecuted",
       "discriminator": [
         153,
@@ -2911,6 +3068,26 @@
       "code": 6041,
       "name": "ReservedFieldNonZero",
       "msg": "A reserved field was non-zero"
+    },
+    {
+      "code": 6042,
+      "name": "NativeAllowanceAccountsMissing",
+      "msg": "Mint uses NativeAllowance funding mode but the native allowance accounts were not provided"
+    },
+    {
+      "code": 6043,
+      "name": "NotNativeAllowanceMode",
+      "msg": "Mint is not configured for NativeAllowance funding mode"
+    },
+    {
+      "code": 6044,
+      "name": "InvalidNativeAllowancePda",
+      "msg": "Account address does not match the expected native program PDA derivation"
+    },
+    {
+      "code": 6045,
+      "name": "InvalidNativeAllowanceAccountData",
+      "msg": "Native SubscriptionAuthority account data could not be parsed"
     }
   ],
   "types": [
@@ -3249,6 +3426,29 @@
       }
     },
     {
+      "name": "FundingMode",
+      "docs": [
+        "Where final settlement for one mint is routed (spec extension, ADR-014).",
+        "",
+        "Owner-controlled, never agent- or operator-controlled: custody model is a strictly",
+        "stronger decision than spending policy, so it follows the same \"the agent sets",
+        "nothing\" rule as everything else in [`Treasury`]. Borsh encodes a fieldless enum as a",
+        "single `u8` discriminant, which is exactly the one byte this reclaims from",
+        "`MintConfig._pad` below — adding this variant does not grow the account."
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "IsolatedVault"
+          },
+          {
+            "name": "NativeAllowance"
+          }
+        ]
+      }
+    },
+    {
       "name": "GuardianAdded",
       "type": {
         "kind": "struct",
@@ -3555,7 +3755,8 @@
         "| 32 | 32 | `token_program` — SPL Token, Token-2022, or System program for native |",
         "| 64 | 1 | `decimals` |",
         "| 65 | 1 | `flags` — `MintFlags` bitfield |",
-        "| 66 | 6 | `_pad` |",
+        "| 66 | 1 | `funding_mode` — `FundingMode` (ADR-014); was byte 0 of `_pad[6]` |",
+        "| 67 | 5 | `_pad` |",
         "| 72 | 40 | `ceiling` |"
       ],
       "type": {
@@ -3578,6 +3779,14 @@
             "type": "u8"
           },
           {
+            "name": "funding_mode",
+            "type": {
+              "defined": {
+                "name": "FundingMode"
+              }
+            }
+          },
+          {
             "name": "_pad",
             "docs": [
               "Named `_pad` in the spec; must stay zeroed."
@@ -3585,7 +3794,7 @@
             "type": {
               "array": [
                 "u8",
-                6
+                5
               ]
             }
           },
@@ -3745,6 +3954,48 @@
           {
             "name": "flags",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "NativeAllowanceEnabled",
+      "docs": [
+        "A mint's settlement switched from `IsolatedVault` to `NativeAllowance` (ADR-014).",
+        "Owner-only, one-way in v1: there is no `disable_native_allowance` — reverting means",
+        "removing and re-adding the mint. `native_delegation` and `subscription_authority` are",
+        "the native program's own PDAs, included so an indexer can join against its events too."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "schema_version",
+            "type": "u8"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "subscription_authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "native_delegation",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount_cap",
+            "type": "u64"
+          },
+          {
+            "name": "expiry_ts",
+            "type": "i64"
           }
         ]
       }
