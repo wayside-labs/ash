@@ -1,6 +1,10 @@
 [workspace]
 resolver = "2"
-members = ["crates/agent-rails-policy", "programs/agent_rails"]
+members = [
+    "crates/agent-rails-policy",
+    "programs/agent_rails",
+    "programs/test_pda_relay",
+]
 
 [workspace.package]
 version = "0.1.0"
