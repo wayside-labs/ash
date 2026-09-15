@@ -8,6 +8,7 @@ import {
   TEST_VENDOR,
   testBoundContext,
   testConfig,
+  testSecurity,
   testServerContext,
 } from "../testing.js";
 import { handleExecutePayment } from "./execute-payment.js";
@@ -121,8 +122,28 @@ describe("handleExecutePayment", () => {
     expect(broadcasts).toHaveLength(0);
   });
 
-  it("refuses an unregistered label without naming a near miss", async () => {
+  it("treats a near-miss label as impersonation, not a typo", async () => {
     const context = await testServerContext(runtime);
+
+    const result = await handleExecutePayment(context, {
+      ...validRequest,
+      destination_ref: "acme-hostlng",
+    });
+
+    // One transposition from a registered label. Under a posture with a near-miss
+    // distance this is reported as impersonation rather than a plain miss.
+    expect(result.outcome).toBe("denied");
+    expect(result.reason_code).toBe("AMBIGUOUS_DESTINATION");
+    // Either way, suggesting the real label would hand it to whoever guessed.
+    expect(result.message).not.toContain("acme-hosting");
+  });
+
+  it("reports a plain miss when near-miss detection is off", async () => {
+    const context = await testServerContext(runtime, {
+      security: testSecurity({
+        posture: { destinations: { policy: "labels-only", nearMissDistance: 0 } },
+      }),
+    });
 
     const result = await handleExecutePayment(context, {
       ...validRequest,
@@ -131,8 +152,6 @@ describe("handleExecutePayment", () => {
 
     expect(result.outcome).toBe("denied");
     expect(result.reason_code).toBe("UNKNOWN_DESTINATION");
-    // Suggesting the real label would hand it to whoever guessed.
-    expect(result.message).not.toContain("acme-hosting");
   });
 
   it("refuses precision the mint cannot represent, rather than rounding", async () => {
@@ -173,15 +192,17 @@ describe("handleExecutePayment", () => {
 
   it("carries a denial's reason code and intent id back to the caller", async () => {
     const context = await testServerContext(runtime, {
-      hooks: [
-        {
-          name: "open-invoice",
-          evaluate: () => ({
-            allow: false as const,
-            message: "No open invoice matches this reference.",
-          }),
-        },
-      ],
+      security: testSecurity({
+        hooks: [
+          {
+            name: "open-invoice",
+            evaluate: () => ({
+              allow: false as const,
+              message: "No open invoice matches this reference.",
+            }),
+          },
+        ],
+      }),
     });
 
     const result = await handleExecutePayment(context, validRequest);
@@ -193,13 +214,15 @@ describe("handleExecutePayment", () => {
 
   it("denies when a policy hook cannot be evaluated", async () => {
     const context = await testServerContext(runtime, {
-      hooks: [
-        {
-          name: "erp-lookup",
-          timeoutMs: 5,
-          evaluate: () => new Promise<never>(() => {}),
-        },
-      ],
+      security: testSecurity({
+        hooks: [
+          {
+            name: "erp-lookup",
+            timeoutMs: 5,
+            evaluate: () => new Promise<never>(() => {}),
+          },
+        ],
+      }),
     });
 
     // A control that evaporates under load is not a control.
@@ -212,14 +235,16 @@ describe("handleExecutePayment", () => {
 
   it("permits a payment when an advisory hook fails open", async () => {
     const context = await testServerContext(runtime, {
-      hooks: [
-        {
-          name: "nice-to-have",
-          timeoutMs: 5,
-          failOpen: true,
-          evaluate: () => new Promise<never>(() => {}),
-        },
-      ],
+      security: testSecurity({
+        hooks: [
+          {
+            name: "nice-to-have",
+            timeoutMs: 5,
+            failOpen: true,
+            evaluate: () => new Promise<never>(() => {}),
+          },
+        ],
+      }),
     });
 
     const result = await handleExecutePayment(context, validRequest);

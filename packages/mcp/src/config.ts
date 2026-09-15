@@ -21,11 +21,14 @@ export type McpServerConfig = {
   /** Seconds added to `now` for `PaymentIntent.expires_at`. The program allows 5 to 3600. */
   intentTtlSeconds: number;
   confirmTimeoutMs: number;
-  /** Polls of the receipt PDA before an unknown outcome is reported as still unknown. */
-  resolveAttempts: number;
-  resolveIntervalMs: number;
-  /** Local velocity cap, independent of the on-chain window limits (blueprint III-C). */
-  maxPaymentsPerMinute: number;
+  /**
+   * Off-chain guard-rail posture.
+   *
+   * A preset plus whatever the environment overrode. The on-chain program is unaffected by
+   * every field here; this only decides how much the client refuses on its own.
+   */
+  securityPreset: SecurityPresetName;
+  securityOverrides: Partial<SecurityPosture>;
   /** Symbol to mint address, for mints configured on the treasury. */
   mintAliases: Record<string, string>;
   /** JSONL path for the operator's payment record. Absent disables the sink. */
@@ -39,9 +42,6 @@ export type McpRuntime = {
 
 const DEFAULT_INTENT_TTL_SECONDS = 90;
 const DEFAULT_CONFIRM_TIMEOUT_MS = 60_000;
-const DEFAULT_MAX_PAYMENTS_PER_MINUTE = 6;
-const DEFAULT_RESOLVE_ATTEMPTS = 8;
-const DEFAULT_RESOLVE_INTERVAL_MS = 750;
 
 /** The native SOL sentinel is always addressable, whatever the operator configured. */
 const BUILTIN_MINT_ALIASES: Record<string, string> = {
@@ -129,21 +129,8 @@ export function loadConfigFromEnv(env: NodeJS.ProcessEnv = process.env): McpServ
       DEFAULT_CONFIRM_TIMEOUT_MS,
       "AGENT_RAILS_CONFIRM_TIMEOUT_MS",
     ),
-    maxPaymentsPerMinute: parsePositiveInt(
-      env.AGENT_RAILS_MAX_PAYMENTS_PER_MINUTE,
-      DEFAULT_MAX_PAYMENTS_PER_MINUTE,
-      "AGENT_RAILS_MAX_PAYMENTS_PER_MINUTE",
-    ),
-    resolveAttempts: parsePositiveInt(
-      env.AGENT_RAILS_RESOLVE_ATTEMPTS,
-      DEFAULT_RESOLVE_ATTEMPTS,
-      "AGENT_RAILS_RESOLVE_ATTEMPTS",
-    ),
-    resolveIntervalMs: parsePositiveInt(
-      env.AGENT_RAILS_RESOLVE_INTERVAL_MS,
-      DEFAULT_RESOLVE_INTERVAL_MS,
-      "AGENT_RAILS_RESOLVE_INTERVAL_MS",
-    ),
+    securityPreset: parsePreset(env.AGENT_RAILS_SECURITY),
+    securityOverrides: parseSecurityOverrides(env),
     mintAliases: parseAliases(env.AGENT_RAILS_MINT_ALIASES),
   };
   if (remoteSignerUrl && remoteSignerAddress) {
@@ -162,6 +149,66 @@ export function loadConfigFromEnv(env: NodeJS.ProcessEnv = process.env): McpServ
     config.sinkPath = env.AGENT_RAILS_SINK;
   }
   return config;
+}
+
+function parsePreset(raw: string | undefined): SecurityPresetName {
+  if (raw === undefined) return "balanced";
+  const candidate = raw.trim().toLowerCase() as SecurityPresetName;
+  if (!SECURITY_PRESET_NAMES.includes(candidate)) {
+    throw new Error(
+      `AGENT_RAILS_SECURITY must be one of: ${SECURITY_PRESET_NAMES.join(", ")}; got ` +
+        JSON.stringify(raw),
+    );
+  }
+  return candidate;
+}
+
+/**
+ * Individual knobs from the environment, layered onto the preset.
+ *
+ * Deployments that cannot pass a config object still need to reach the important dials, and
+ * these are the ones that come up: throughput, and how hard to poll an unknown outcome.
+ * Anything richer — value bands, hooks — is a config object, because it does not survive
+ * being flattened into strings.
+ */
+function parseSecurityOverrides(env: NodeJS.ProcessEnv): Partial<SecurityPosture> {
+  const overrides: Partial<SecurityPosture> = {};
+
+  const perMinute = env.AGENT_RAILS_MAX_PAYMENTS_PER_MINUTE;
+  const concurrent = env.AGENT_RAILS_MAX_CONCURRENT;
+  if (perMinute !== undefined || concurrent !== undefined) {
+    overrides.velocity = {
+      ...(perMinute !== undefined
+        ? {
+            maxPaymentsPerMinute: parsePositiveInt(
+              perMinute,
+              0,
+              "AGENT_RAILS_MAX_PAYMENTS_PER_MINUTE",
+            ),
+          }
+        : {}),
+      ...(concurrent !== undefined
+        ? { maxConcurrent: parsePositiveInt(concurrent, 0, "AGENT_RAILS_MAX_CONCURRENT") }
+        : {}),
+    } as SecurityPosture["velocity"];
+  }
+
+  const attempts = env.AGENT_RAILS_RESOLVE_ATTEMPTS;
+  const interval = env.AGENT_RAILS_RESOLVE_INTERVAL_MS;
+  if (attempts !== undefined || interval !== undefined) {
+    overrides.outcomes = {
+      ...(attempts !== undefined
+        ? { resolveAttempts: parsePositiveInt(attempts, 0, "AGENT_RAILS_RESOLVE_ATTEMPTS") }
+        : {}),
+      ...(interval !== undefined
+        ? {
+            resolveIntervalMs: parsePositiveInt(interval, 0, "AGENT_RAILS_RESOLVE_INTERVAL_MS"),
+          }
+        : {}),
+    } as SecurityPosture["outcomes"];
+  }
+
+  return overrides;
 }
 
 export function createRuntime(config: McpServerConfig): McpRuntime {

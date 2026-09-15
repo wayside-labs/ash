@@ -84,7 +84,7 @@ export async function handleCheckPayment(
       };
     }
 
-    await runPolicyHooks(context.hooks, {
+    await runPolicyHooks(context.security.hooks, {
       session: context.bound.session,
       policy: context.bound.policy,
       intentId: prepared.intentIdHex,
@@ -124,6 +124,10 @@ export async function handleCheckPayment(
       rpc: context.runtime.rpc,
       transactionMessage: payment.transactionMessage,
     });
+
+    // Recorded only on a clean dry run: a proposal that was refused has not shown that this
+    // payment is sound, so it must not satisfy `dry-run-first`.
+    context.dryRuns.record(prepared.intentIdHex);
 
     return {
       allowed: true,

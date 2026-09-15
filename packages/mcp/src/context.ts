@@ -1,6 +1,7 @@
-import type { PolicyHook } from "@agent-rails/sdk";
+import type { ResolvedSecurity } from "@agent-rails/sdk";
 import type { BoundContext } from "./bound-context.js";
 import type { McpRuntime } from "./config.js";
+import type { DryRunLedger } from "./dry-runs.js";
 import type { PaymentGovernor } from "./governor.js";
 import type { SessionSigners } from "./session.js";
 import type { PaymentSink } from "./sink.js";
@@ -12,6 +13,8 @@ export type ServerContext = {
   bound: BoundContext;
   governor: PaymentGovernor;
   sink: PaymentSink;
-  /** Soft policy hooks, run before signing (ADR-005 section 6). */
-  hooks?: PolicyHook[];
+  /** The off-chain guard-rail posture, resolved from a preset plus overrides. */
+  security: ResolvedSecurity;
+  /** Which intents have been dry-run, for the `dry-run-first` requirement. */
+  dryRuns: DryRunLedger;
 };

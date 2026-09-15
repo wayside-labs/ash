@@ -24,7 +24,9 @@ on-chain state before anything is signed.
 | `AGENT_RAILS_CONFIRM_TIMEOUT_MS` | no | Confirmation wait before an outcome is treated as unknown (default 60000) |
 | `AGENT_RAILS_RESOLVE_ATTEMPTS` | no | Receipt polls when resolving an unknown outcome (default 8) |
 | `AGENT_RAILS_RESOLVE_INTERVAL_MS` | no | Delay between those polls (default 750) |
-| `AGENT_RAILS_MAX_PAYMENTS_PER_MINUTE` | no | Local velocity cap (default 6) |
+| `AGENT_RAILS_SECURITY` | no | Guard-rail preset: `sandbox`, `balanced` (default), `strict` |
+| `AGENT_RAILS_MAX_PAYMENTS_PER_MINUTE` | no | Overrides the preset's velocity cap |
+| `AGENT_RAILS_MAX_CONCURRENT` | no | Overrides payments in flight at once |
 | `AGENT_RAILS_SINK` | no | JSONL path for the operator's payment record |
 
 \* Either a local keypair or a remote signer. With a remote signer the private key never
@@ -110,5 +112,71 @@ Every response carries `outcome`, `intent_id` and `receipt` — denials included
 After an indeterminate outcome the session is quiesced: further payments are refused with
 `SESSION_QUIESCED` until the receipt is observed. This is deliberate. A slow RPC node is
 otherwise enough to make an agent pay twice.
+
+## Guard-rails
+
+The program is the floor: pause, session liveness, the ceiling, the allowlist, the limits,
+and the receipt. Nothing below can move it. What is configurable is how much this server
+refuses *before* the chain is asked — so a relaxed preset does not grant permission, it
+moves a refusal from here to the validator, or gives it up in favour of the floor underneath.
+
+```
+AGENT_RAILS_SECURITY=sandbox    # prototyping: raw addresses, no bands, logs returned
+AGENT_RAILS_SECURITY=balanced   # default: labels only, hooks fail closed, memo over 100
+AGENT_RAILS_SECURITY=strict     # every band escalates; over 1000 waits for a person
+```
+
+Anything richer than a preset is a config object, because hooks and value bands do not
+survive being flattened into environment strings:
+
+```ts
+import { createMcpServer } from "@agent-rails/mcp";
+
+createMcpServer({
+  runtime,
+  signers,
+  bound,
+  security: {
+    preset: "strict",
+    posture: {
+      value: {
+        bands: [
+          { above: "100", require: ["memo", "dry-run-first"] },
+          { mint: "USDC", above: "5000", require: ["human-review"] },
+        ],
+      },
+    },
+    hooks: [
+      {
+        name: "open-invoice",
+        timeoutMs: 1_500,
+        evaluate: async ({ reference }) =>
+          (await invoices.isOpen(reference))
+            ? { allow: true }
+            : { allow: false, message: `No open invoice for ${reference}.` },
+      },
+    ],
+  },
+});
+```
+
+| Knob | Effect | If it fails | What still catches the mistake |
+|---|---|---|---|
+| `destinations.policy` | `labels-only` refuses raw addresses here; `open` leaves them to the chain | Denies | The program refuses an unregistered payee under an `Allowlist` policy |
+| `destinations.nearMissDistance` | A label this close to a registered one is refused as impersonation | Denies | Nothing: an exact miss is already a denial, this only changes the reason code |
+| `value.bands` | `memo`, `dry-run-first`, `hooks`, `human-review` above an amount | Denies, or `review_required` | `per_tx_max` and the window limits |
+| `hooks.onUnavailable` | `deny` (default) or `allow` on hook timeout | As configured | Hooks are additive restrictions; losing one falls back to the on-chain limits |
+| `velocity.*` | Rate and concurrency | Denies | The program evaluates each payment against committed counters |
+| `outcomes.quiesceOnIndeterminate` | Stop paying after an unresolved outcome | Denies | The derived `intent_id`: a retry hits the same receipt and is refused on-chain |
+| `disclosure.includeSimulationLogs` | Return program logs to the caller | n/a | Nothing — leave it off outside local development |
+
+The server prints its posture and any incoherence with the chain to stderr at startup, so
+`destinations.policy: "open"` against an allowlisted policy says so once instead of
+producing denials nobody can explain.
+
+Six properties are not configurable at all, because nothing underneath would catch the
+mistake — derived intent ids, strict tool arguments, startup binding, integer amount
+conversion, server-authored expiry, and never reporting an unknown outcome as a denial.
+They are listed in `IMMUTABLE_GUARANTEES` in `@agent-rails/contract`.
 
 Schemas live in `@agent-rails/contract`.

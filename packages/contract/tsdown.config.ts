@@ -7,6 +7,7 @@ export default defineConfig({
     "src/outcome.ts",
     "src/units.ts",
     "src/intent-id.ts",
+    "src/security.ts",
     "src/reason-codes.ts",
     "src/events.ts",
     "src/payment-build.ts",

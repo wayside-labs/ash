@@ -22,6 +22,13 @@ export type QuiesceState = {
 
 export type GovernorOptions = {
   maxPaymentsPerMinute: number;
+  /**
+   * Payments in flight at once. One by default.
+   *
+   * Raising it is a throughput choice, not a safety one: the program evaluates each payment
+   * against committed counters, so a burst cannot slip past a window limit.
+   */
+  maxConcurrent?: number;
   /** Injectable for tests. */
   now?: () => number;
 };
@@ -30,13 +37,15 @@ export type GovernorRelease = () => void;
 
 export class PaymentGovernor {
   private readonly maxPaymentsPerMinute: number;
+  private readonly maxConcurrent: number;
   private readonly now: () => number;
-  private inFlight = false;
+  private inFlight = 0;
   private timestamps: number[] = [];
   private quiesceState: QuiesceState | undefined;
 
   constructor(options: GovernorOptions) {
     this.maxPaymentsPerMinute = options.maxPaymentsPerMinute;
+    this.maxConcurrent = options.maxConcurrent ?? 1;
     this.now = options.now ?? (() => Date.now());
   }
 
@@ -47,9 +56,9 @@ export class PaymentGovernor {
   /**
    * Take the payment slot, or explain why not.
    *
-   * Concurrency is capped at one rather than at some larger number because the on-chain
-   * window counters are only consistent between transactions: two payments in flight can
-   * each pass a limit check that the pair of them violates.
+   * Concurrency defaults to one for predictability rather than for safety: the program
+   * evaluates every payment against committed counters, so a burst cannot exceed a window
+   * limit. What one-at-a-time buys is a session whose spending is legible in order.
    */
   acquire(): GovernorRelease {
     if (this.quiesceState) {
@@ -66,10 +75,12 @@ export class PaymentGovernor {
       });
     }
 
-    if (this.inFlight) {
+    if (this.inFlight >= this.maxConcurrent) {
       throw new AgentRailsError({
         reasonCode: "SESSION_BUSY",
-        message: "A payment is already in flight for this session. Wait for it to finish.",
+        message:
+          `${this.inFlight} payment(s) already in flight and this session allows ` +
+          `${this.maxConcurrent}. Wait for one to finish.`,
         outcome: "denied",
         source: "governor",
       });
@@ -89,13 +100,13 @@ export class PaymentGovernor {
     }
 
     this.timestamps.push(this.now());
-    this.inFlight = true;
+    this.inFlight += 1;
 
     let released = false;
     return () => {
       if (!released) {
         released = true;
-        this.inFlight = false;
+        this.inFlight -= 1;
       }
     };
   }

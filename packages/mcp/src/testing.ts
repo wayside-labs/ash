@@ -1,7 +1,9 @@
+import { type AgentRailsSecurityConfig, resolveSecurity } from "@agent-rails/sdk";
 import { type Address, generateKeyPairSigner } from "@solana/kit";
 import type { BoundContext } from "./bound-context.js";
 import type { McpRuntime, McpServerConfig } from "./config.js";
 import type { ServerContext } from "./context.js";
+import { createDryRunLedger } from "./dry-runs.js";
 import { PaymentGovernor } from "./governor.js";
 import { createPaymentSink } from "./sink.js";
 
@@ -26,9 +28,18 @@ export function testConfig(overrides: Partial<McpServerConfig> = {}): McpServerC
     signerKeypairPath: "/dev/null",
     intentTtlSeconds: 90,
     confirmTimeoutMs: 1_000,
-    resolveAttempts: 2,
-    resolveIntervalMs: 1,
-    maxPaymentsPerMinute: 60,
+    securityPreset: "balanced",
+    // Fast resolution and no value bands: unit tests are about the payment path, and a
+    // suite that waits out the production poll schedule is a suite nobody runs.
+    securityOverrides: {
+      value: { bands: [] },
+      velocity: { maxPaymentsPerMinute: 60, maxConcurrent: 1 },
+      outcomes: {
+        quiesceOnIndeterminate: true,
+        resolveAttempts: 2,
+        resolveIntervalMs: 1,
+      },
+    },
     mintAliases: { SOL: NATIVE_MINT_ADDRESS },
     ...overrides,
   };
@@ -96,6 +107,18 @@ export type FakeRpcOptions = {
   simulationError?: unknown;
 };
 
+export function testSecurity(config: AgentRailsSecurityConfig = {}) {
+  return resolveSecurity({
+    preset: "balanced",
+    ...config,
+    posture: {
+      value: { bands: [] },
+      outcomes: { quiesceOnIndeterminate: true, resolveAttempts: 2, resolveIntervalMs: 1 },
+      ...config.posture,
+    },
+  });
+}
+
 export async function testServerContext(
   runtime: McpRuntime,
   overrides: Partial<ServerContext> = {},
@@ -109,6 +132,8 @@ export async function testServerContext(
     bound: testBoundContext(),
     governor: new PaymentGovernor({ maxPaymentsPerMinute: 60 }),
     sink: createPaymentSink(undefined),
+    security: testSecurity(),
+    dryRuns: createDryRunLedger(),
     ...overrides,
   };
 }

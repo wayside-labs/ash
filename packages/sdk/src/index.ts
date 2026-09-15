@@ -78,6 +78,15 @@ export {
   type ResolveRpc,
   resolvePaymentOutcome,
 } from "./resolve.js";
+export {
+  type AgentRailsSecurityConfig,
+  type ChainFacts,
+  type MintView,
+  type ResolvedSecurity,
+  requirementsFor,
+  resolveSecurity,
+  securityCoherenceWarnings,
+} from "./security.js";
 export { type SendPaymentInput, type SendPaymentResult, sendPayment } from "./send-payment.js";
 export {
   type SimulatePaymentInput,

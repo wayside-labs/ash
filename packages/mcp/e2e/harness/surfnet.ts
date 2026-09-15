@@ -146,14 +146,28 @@ export async function startSurfnet(options: StartSurfnetOptions): Promise<Surfne
         /* already gone, or not a group leader */
       }
     }
-    // Wait for the port to actually close: a surviving validator holding it would make the
-    // next run either hang or, worse, quietly reuse this one's state.
-    const deadline = Date.now() + 10_000;
-    while (Date.now() < deadline && (await surfnetIsRunning(rpcUrl))) {
-      await new Promise((resolve) => setTimeout(resolve, 200));
+
+    // A validator that outlives its run is not a tidiness problem: the next run finds the
+    // machine busy and hangs, or picks a different port and competes for resources with a
+    // process nobody is watching. So the kill is verified, and escalated if it did not take.
+    if (!(await portClosed(rpcUrl, 5_000))) {
+      await killListener(port);
+      await portClosed(rpcUrl, 5_000);
     }
+
     await rm(workDir, { recursive: true, force: true });
   };
+
+  // Vitest can tear a worker down before `afterAll` finishes, and a crash skips it
+  // entirely. Either way the validator should not be left behind.
+  const onExit = () => {
+    try {
+      if (child.pid) process.kill(-child.pid, "SIGKILL");
+    } catch {
+      /* already gone */
+    }
+  };
+  process.once("exit", onExit);
 
   try {
     await waitForRpc(rpcUrl, options.readyTimeoutMs ?? 30_000);
@@ -190,6 +204,38 @@ export async function startSurfnet(options: StartSurfnetOptions): Promise<Surfne
   } catch (error) {
     await stop();
     throw error;
+  }
+}
+
+async function portClosed(rpcUrl: string, timeoutMs: number): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (!(await surfnetIsRunning(rpcUrl))) return true;
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+  return false;
+}
+
+/**
+ * Kill whatever still holds the port.
+ *
+ * Best effort and Linux/macOS only: if `lsof` is missing the run simply reports the leak
+ * rather than failing, because a cleanup that throws would mask the test result behind it.
+ */
+async function killListener(port: number): Promise<void> {
+  try {
+    const { stdout } = await execFileAsync("lsof", ["-ti", `tcp:${port}`]);
+    for (const pid of stdout.split("\n").map((line) => Number(line.trim()))) {
+      if (Number.isInteger(pid) && pid > 0) {
+        try {
+          process.kill(pid, "SIGKILL");
+        } catch {
+          /* raced with its own exit */
+        }
+      }
+    }
+  } catch {
+    /* lsof missing, or nothing listening */
   }
 }
 

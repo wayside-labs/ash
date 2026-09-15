@@ -4,12 +4,14 @@ import {
   executePayment,
   findReceiptPda,
   isAgentRailsError,
+  resolveSecurity,
 } from "@agent-rails/sdk";
 import { createSolanaRpc } from "@solana/kit";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { bindSession } from "../src/bound-context.js";
 import type { McpRuntime, McpServerConfig } from "../src/config.js";
 import type { ServerContext } from "../src/context.js";
+import { createDryRunLedger } from "../src/dry-runs.js";
 import { PaymentGovernor } from "../src/governor.js";
 import { handleExecutePayment } from "../src/handlers/execute-payment.js";
 import { handleGetPaymentStatus } from "../src/handlers/get-payment-status.js";
@@ -49,6 +51,17 @@ const LAMPORTS_PER_SOL = 1_000_000_000n;
 const PAYMENT_SOL = "0.25";
 const PAYMENT_LAMPORTS = 250_000_000n;
 
+/**
+ * The balanced posture with no value bands and a fast resolution schedule.
+ *
+ * Bands are covered by unit tests; this suite is about what happens when the network stops
+ * answering, and a review gate in the middle of that narrative would only be noise.
+ */
+const E2E_SECURITY_OVERRIDES = {
+  value: { bands: [] },
+  outcomes: { quiesceOnIndeterminate: true, resolveAttempts: 3, resolveIntervalMs: 250 },
+} as const;
+
 let surfnet: Surfnet | undefined;
 let fixture: Fixture;
 let proxy: BlindingProxy;
@@ -63,9 +76,8 @@ function createContext(overrides: Partial<McpServerConfig> = {}): ServerContext 
     // Short, so a blinded confirmation reaches the indeterminate branch in seconds
     // rather than the production minute.
     confirmTimeoutMs: 4_000,
-    resolveAttempts: 3,
-    resolveIntervalMs: 250,
-    maxPaymentsPerMinute: 60,
+    securityPreset: "balanced",
+    securityOverrides: E2E_SECURITY_OVERRIDES,
     mintAliases: { SOL: "So11111111111111111111111111111111111111112" },
     ...overrides,
   };
@@ -78,6 +90,8 @@ function createContext(overrides: Partial<McpServerConfig> = {}): ServerContext 
     bound: boundContext,
     governor: new PaymentGovernor({ maxPaymentsPerMinute: 60 }),
     sink: createPaymentSink(undefined),
+    security: resolveSecurity({ preset: "balanced", posture: E2E_SECURITY_OVERRIDES }),
+    dryRuns: createDryRunLedger(),
   };
 }
 
@@ -120,9 +134,8 @@ function createContextConfigStub(): McpServerConfig {
     signerKeypairPath: "",
     intentTtlSeconds: 90,
     confirmTimeoutMs: 4_000,
-    resolveAttempts: 3,
-    resolveIntervalMs: 250,
-    maxPaymentsPerMinute: 60,
+    securityPreset: "balanced",
+    securityOverrides: E2E_SECURITY_OVERRIDES,
     mintAliases: { SOL: "So11111111111111111111111111111111111111112" },
   };
 }

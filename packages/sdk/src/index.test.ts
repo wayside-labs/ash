@@ -12,7 +12,34 @@ describe("@agent-rails/sdk", () => {
       },
     });
     expect(plugin.session).toBe("11111111111111111111111111111111");
-    expect(plugin.hooks).toEqual({});
+    // A posture is always resolved, so no caller has to check whether one exists.
+    expect(plugin.security.preset).toBe("balanced");
+    expect(plugin.security.posture.destinations.policy).toBe("labels-only");
+  });
+
+  it("resolves the requested posture at construction", () => {
+    const plugin = agentRails({
+      session: "11111111111111111111111111111111",
+      signer: {
+        address: "11111111111111111111111111111111" as never,
+        signTransactions: async () => [],
+      },
+      security: { preset: "sandbox" },
+    });
+    expect(plugin.security.posture.destinations.policy).toBe("open");
+  });
+
+  it("rejects a malformed posture when the client is built, not when it pays", () => {
+    expect(() =>
+      agentRails({
+        session: "11111111111111111111111111111111",
+        signer: {
+          address: "11111111111111111111111111111111" as never,
+          signTransactions: async () => [],
+        },
+        security: { posture: { velocity: { maxConcurrent: 0 } } },
+      }),
+    ).toThrow();
   });
 
   it("derives treasury PDA seeds", async () => {

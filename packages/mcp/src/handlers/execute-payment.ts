@@ -42,6 +42,8 @@ export type ExecutePaymentResponse = {
   reference?: string;
   /** True when this call changed nothing because the payment had already settled. */
   already_settled?: boolean;
+  /** Only present when `disclosure.includeSimulationLogs` is on. Development only. */
+  simulation_logs?: string[];
 };
 
 const UNKNOWN_INTENT = "0".repeat(32);
@@ -110,7 +112,43 @@ export async function handleExecutePayment(
       };
     }
 
-    await runPolicyHooks(context.hooks, {
+    // `dry-run-first`: satisfied only by a dry run of *this* payment, since the intent id
+    // is derived from the payment itself.
+    if (prepared.requirements.has("dry-run-first") && !context.dryRuns.has(prepared.intentIdHex)) {
+      return {
+        outcome: "denied",
+        intent_id: prepared.intentIdHex,
+        receipt: prepared.receipt,
+        reason_code: "DRY_RUN_REQUIRED",
+        message:
+          "Payments of this size must be checked before they are sent. " +
+          "Call agent_rails_check_payment with the same arguments first.",
+        next_step: "agent_rails_check_payment",
+        ...describe(prepared),
+      };
+    }
+
+    if (prepared.requirements.has("human-review")) {
+      recordPayment(context, prepared, "review_required");
+      return {
+        outcome: "review_required",
+        intent_id: prepared.intentIdHex,
+        receipt: prepared.receipt,
+        reason_code: "REVIEW_REQUIRED",
+        message:
+          "This payment exceeds the value a person has to approve. It has been recorded " +
+          "for review and was not sent.",
+        ...describe(prepared),
+      };
+    }
+
+    // A `hooks` requirement overrides a fail-open posture for this payment: above the
+    // threshold, an unavailable hook denies whatever the global setting says.
+    const hooks = prepared.requirements.has("hooks")
+      ? context.security.hooks.map((hook) => ({ ...hook, failOpen: false }))
+      : context.security.hooks;
+
+    await runPolicyHooks(hooks, {
       session: context.bound.session,
       policy: context.bound.policy,
       intentId: prepared.intentIdHex,
@@ -153,8 +191,8 @@ export async function handleExecutePayment(
       session: context.bound.session,
       intentId: prepared.intentId,
       confirmTimeoutMs: context.runtime.config.confirmTimeoutMs,
-      resolveAttempts: context.runtime.config.resolveAttempts,
-      resolveIntervalMs: context.runtime.config.resolveIntervalMs,
+      resolveAttempts: context.security.posture.outcomes.resolveAttempts,
+      resolveIntervalMs: context.security.posture.outcomes.resolveIntervalMs,
     });
 
     recordPayment(context, prepared, "settled", {
@@ -169,6 +207,11 @@ export async function handleExecutePayment(
       receipt: prepared.receipt,
       signature: executed.signature,
       message: `Payment settled. Signature ${executed.signature}.`,
+      // Logs are attacker-influenceable text on the way back into a model's context, so
+      // they travel only when a developer has explicitly asked for them locally.
+      ...(context.security.posture.disclosure.includeSimulationLogs
+        ? { simulation_logs: [...executed.simulation.logs] }
+        : {}),
       ...describe(prepared),
     };
   } catch (error) {
@@ -180,9 +223,10 @@ export async function handleExecutePayment(
     const receipt = error.receipt ?? "";
 
     if (error.outcome === "indeterminate") {
-      // The transfer may exist. Stop this session until somebody establishes whether it
-      // does: another attempt now is the double payment this whole path exists to prevent.
-      if (error.receipt) {
+      // The transfer may exist. Stopping the session is the belt to the receipt's braces:
+      // a retry of the same payment is refused on-chain anyway, because the intent id is
+      // derived, which is exactly why a posture is allowed to turn this off.
+      if (error.receipt && context.security.posture.outcomes.quiesceOnIndeterminate) {
         context.governor.quiesce({
           intentId,
           receipt: error.receipt,

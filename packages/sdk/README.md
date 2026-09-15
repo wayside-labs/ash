@@ -85,6 +85,23 @@ unconfirmed send as a denial is how a slow RPC node becomes a duplicate payment.
 maps a label to a wallet owner by exact match after normalization. There is deliberately no
 fuzzy matching: the value of an allowlist is that a close-enough name does not get paid.
 
+## Guard-rails
+
+```ts
+const client = createSolanaRpc(url).use(
+  agentRails({
+    session,
+    signer,
+    security: { preset: "strict", hooks: [openInvoiceCheck] },
+  }),
+);
+```
+
+`resolveSecurity` validates the posture when the client is built, so a malformed override is
+a startup error rather than a surprise on the first payment. `securityCoherenceWarnings`
+compares a posture against the chain it points at and explains relaxations the program will
+refuse anyway. See the MCP README for the knob-by-knob table.
+
 ## Signing
 
 The `Signer` type is Kit's `TransactionPartialSigner`. `createRemoteSigner` keeps the session

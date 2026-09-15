@@ -35,6 +35,10 @@
     "./intent-id": {
       "types": "./dist/intent-id.d.ts",
       "import": "./dist/intent-id.js"
+    },
+    "./security": {
+      "types": "./dist/security.d.ts",
+      "import": "./dist/security.js"
     }
   },
   "files": [
