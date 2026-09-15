@@ -31,9 +31,14 @@ function createHappyRpc(broadcasts: string[] = []) {
   return {
     getAccountInfo: () => ({ send: async () => ({ value: null }) }),
     getLatestBlockhash: () => ({
+      // The RPC envelope, as a node actually answers it. A fake that returns the bare
+      // value hides a destructuring bug that only a live validator will find.
       send: async () => ({
-        blockhash: TEST_BLOCKHASH,
-        lastValidBlockHeight: TEST_LAST_VALID_BLOCK_HEIGHT,
+        context: { slot: 1n },
+        value: {
+          blockhash: TEST_BLOCKHASH,
+          lastValidBlockHeight: TEST_LAST_VALID_BLOCK_HEIGHT,
+        },
       }),
     }),
     simulateTransaction: () => ({

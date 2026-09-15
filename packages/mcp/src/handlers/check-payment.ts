@@ -96,9 +96,12 @@ export async function handleCheckPayment(
       ...(prepared.memo ? { memo: prepared.memo } : {}),
     });
 
-    const { blockhash, lastValidBlockHeight } = await context.runtime.rpc
-      .getLatestBlockhash()
-      .send();
+    // `getLatestBlockhash` answers with an RPC envelope, not the value. Destructuring the
+    // envelope yields `undefined` for both fields and the transaction is built against no
+    // blockhash at all, which simulation rejects as `BlockhashNotFound`.
+    const {
+      value: { blockhash, lastValidBlockHeight },
+    } = await context.runtime.rpc.getLatestBlockhash().send();
 
     const payment = await buildPaymentIntent({
       intent_id: prepared.intentIdHex,

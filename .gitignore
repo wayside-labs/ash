@@ -9,3 +9,6 @@ dist/
 
 # Solana keypairs are raw secret keys; never commit one, wherever it lands.
 **/*keypair*.json
+
+# Surfpool simnet logs from the E2E harness
+.surfpool/

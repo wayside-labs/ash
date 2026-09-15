@@ -18,7 +18,8 @@
   "scripts": {
     "build": "tsdown",
     "test": "vitest run",
-    "start": "node dist/cli.js"
+    "start": "node dist/cli.js",
+    "test:e2e": "vitest run --config vitest.e2e.config.ts"
   },
   "dependencies": {
     "@agent-rails/client": "workspace:*",
