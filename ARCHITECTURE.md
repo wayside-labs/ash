@@ -122,16 +122,23 @@ sequenceDiagram
   participant P as agent_rails program
   participant T as Token program
 
-  A->>M: check_payment(destination, "12.50", "USDC")
-  M->>M: resolve label → owner pubkey, decimals → base units
-  M->>M: run PolicyHooks (soft, off-chain)
+  Note over M: treasury, policy, session and the destination<br/>index are bound at startup, not passed per call
+
+  A->>M: check_payment(destination_ref, "12.50", "USDC", reference)
+  M->>M: label → owner pubkey (exact match against the on-chain allowlist)
+  M->>M: human units → base units via MintConfig.decimals
+  M->>M: intent_id = H(session, owner, mint, amount, reference)
+  M->>P: read IntentReceipt PDA (already settled?)
+  P-->>M: absent
+  M->>M: run PolicyHooks (soft, off-chain; deny on timeout)
   M->>P: simulate execute_payment(PaymentIntent)
   P-->>M: ok / AnchorError(code)
-  M-->>A: { allowed, reasons[], remaining_after, intent_id }
+  M-->>A: { allowed, reason_code, intent_id, receipt }
 
-  A->>M: execute_payment(..., intent_id)
-  M->>M: same checks, sign with Signer (session key)
-  M->>P: execute_payment(PaymentIntent)
+  A->>M: execute_payment(destination_ref, "12.50", "USDC", reference)
+  M->>M: governor: one in flight, within rate budget, not quiesced
+  M->>M: same inputs → same intent_id; re-read pause and revocation
+  M->>P: execute_payment(PaymentIntent), signed by the session key
   P->>P: not paused; session signer, active, unexpired
   P->>P: mint ∈ treasury; limit slot ∈ policy; destination allowed
   P->>P: init IntentReceipt (fails on duplicate intent_id)
@@ -139,8 +146,18 @@ sequenceDiagram
   P->>T: transfer_checked(vault → destination ATA) or system transfer (sol_vault)
   P->>P: update counters, seq += 1, audit_head = H(...)
   P-->>M: emit_cpi PaymentExecuted{seq, audit_head, ...}
-  M-->>A: { signature, receipt, seq, audit_head, remaining }
+
+  alt confirmation observed
+    M-->>A: { outcome: settled, intent_id, receipt, signature }
+  else not observed before the deadline
+    M->>P: poll IntentReceipt PDA (did it land?)
+    P-->>M: absent
+    M->>M: quiesce the session until this intent resolves
+    M-->>A: { outcome: indeterminate, intent_id, receipt, next_step }
+  end
 ```
+
+The second path is the one that matters. Nothing about an unobserved confirmation says the transfer did not happen, so the agent is told exactly that and is refused further payments until `get_payment_status` settles it. A retry would in any case re-derive the same `intent_id` and be refused on-chain at receipt creation.
 
 `execute_payment` is a single-hop transaction: one program instruction and one token CPI. Budget targets: ≤ 40k CU and ≤ 600 bytes with legacy account addressing (see spec §7). Versioned transactions with an address lookup table are an SDK option, not a requirement.
 
