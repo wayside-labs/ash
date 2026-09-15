@@ -1,6 +1,7 @@
 import { fetchMaybePolicy } from "@agent-rails/client";
 import { describe, expect, it, vi } from "vitest";
-import type { McpRuntime } from "../config.js";
+import type { ServerContext } from "../context.js";
+import { testBoundContext, testConfig } from "../testing.js";
 import { handleGetPolicy } from "./get-policy.js";
 
 vi.mock("@agent-rails/client", async (importOriginal) => {
@@ -15,10 +16,11 @@ const POLICY = "11111111111111111111111111111113";
 const TREASURY = "11111111111111111111111111111112";
 const USDC = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 
-const runtime = {
-  config: { rpcUrl: "http://localhost:8899", signerKeypairPath: "/tmp/session.json" },
-  rpc: {},
-} as McpRuntime;
+// The policy address comes from the binding, never from a tool argument.
+const context = {
+  runtime: { config: testConfig(), rpc: {} },
+  bound: testBoundContext(),
+} as unknown as ServerContext;
 
 function paddedName(text: string): Uint8Array {
   const bytes = new Uint8Array(32);
@@ -80,7 +82,7 @@ describe("handleGetPolicy", () => {
       },
     });
 
-    const result = await handleGetPolicy(runtime, { policy: POLICY });
+    const result = await handleGetPolicy(context);
 
     expect(result).toEqual({
       found: true,
@@ -118,7 +120,7 @@ describe("handleGetPolicy", () => {
       address: POLICY,
     });
 
-    const result = await handleGetPolicy(runtime, { policy: POLICY });
+    const result = await handleGetPolicy(context);
 
     expect(result).toEqual({ found: false, address: POLICY });
   });

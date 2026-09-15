@@ -1,90 +1,260 @@
 import {
-  mcpExecutePaymentSchema,
-  toPaymentBuildInput,
   type McpExecutePaymentInput,
+  mcpExecutePaymentSchema,
+  type PaymentOutcome,
 } from "@agent-rails/contract";
 import {
+  type AgentRailsError,
   buildPaymentIntent,
   executePayment,
   isAgentRailsError,
-  type PaymentIntentBuildResult,
+  precheckReceipt,
+  runPolicyHooks,
 } from "@agent-rails/sdk";
-import type { McpRuntime } from "../config.js";
-import type { SessionSigners } from "../session.js";
+import type { ServerContext } from "../context.js";
+import { type PreparedPayment, preparePayment } from "./prepare.js";
 
-export type ExecutePaymentResult = {
-  allowed: true;
-  message: string;
-  signature: string;
-  path: PaymentIntentBuildResult["path"];
+/**
+ * The agent-facing result of a payment attempt.
+ *
+ * Every field here is one a developer named in advance. In particular there are no program
+ * logs: they used to be returned verbatim, which put text an attacker can influence back
+ * into a model's context on every success (blueprint I-5). They go to the operator's sink
+ * instead.
+ *
+ * `intent_id` and `receipt` are present on every outcome including denials, because the
+ * moment they are missing from a failure the caller has no way to find out what happened.
+ */
+export type ExecutePaymentResponse = {
+  outcome: PaymentOutcome;
   intent_id: string;
   receipt: string;
-  pdas: PaymentIntentBuildResult["pdas"];
-  simulation: {
-    err: null;
-    logs: readonly string[];
-    units_consumed: string;
-  };
-};
-
-export type ExecutePaymentDenied = {
-  allowed: false;
-  reason_code: string;
   message: string;
+  /** What the caller should do next. Absent when there is nothing to do. */
+  next_step?: string;
+  reason_code?: string;
+  signature?: string;
+  destination?: string;
+  destination_label?: string;
+  mint?: string;
+  amount?: string;
+  amount_base_units?: string;
+  reference?: string;
+  /** True when this call changed nothing because the payment had already settled. */
+  already_settled?: boolean;
 };
 
-export type ExecutePaymentResponse = ExecutePaymentResult | ExecutePaymentDenied;
+const UNKNOWN_INTENT = "0".repeat(32);
+
+function describe(prepared: PreparedPayment) {
+  return {
+    destination: String(prepared.destination.owner),
+    ...(prepared.destination.label ? { destination_label: prepared.destination.label } : {}),
+    mint: String(prepared.mint.mint),
+    amount: prepared.amountHuman,
+    amount_base_units: prepared.amount.toString(),
+    reference: prepared.reference,
+  };
+}
 
 export async function handleExecutePayment(
-  runtime: McpRuntime,
-  signers: SessionSigners,
-  rawInput: McpExecutePaymentInput,
+  context: ServerContext,
+  rawInput: unknown,
 ): Promise<ExecutePaymentResponse> {
-  const input = mcpExecutePaymentSchema.parse(rawInput);
-  const buildInput = toPaymentBuildInput(input);
+  const parsed = mcpExecutePaymentSchema.safeParse(rawInput);
+  if (!parsed.success) {
+    // Unknown keys land here too. A caller trying to pass `treasury` or `session` is not
+    // making a typo; those stopped being parameters for a reason.
+    return {
+      outcome: "denied",
+      intent_id: UNKNOWN_INTENT,
+      receipt: "",
+      reason_code: "INVALID_REQUEST",
+      message: `Invalid payment request: ${parsed.error.issues
+        .map((issue) => `${issue.path.join(".") || "(root)"}: ${issue.message}`)
+        .join("; ")}`,
+    };
+  }
+
+  const input: McpExecutePaymentInput = parsed.data;
+
+  let release: (() => void) | undefined;
+  try {
+    release = context.governor.acquire();
+  } catch (error) {
+    return denialResponse(error, UNKNOWN_INTENT, "");
+  }
 
   try {
-    const { blockhash, lastValidBlockHeight } = await runtime.rpc.getLatestBlockhash().send();
+    const prepared = await preparePayment(context, input);
+
+    // Cheaper than letting the program refuse the duplicate, and it returns the original
+    // receipt instead of a failed transaction and a spent fee.
+    const precheck = await precheckReceipt({
+      rpc: context.runtime.rpc,
+      session: context.bound.session,
+      intentId: prepared.intentId,
+    });
+    if (precheck.settled) {
+      context.governor.clearQuiesce(prepared.intentIdHex);
+      recordPayment(context, prepared, "settled", { already_settled: true });
+      return {
+        outcome: "settled",
+        intent_id: prepared.intentIdHex,
+        receipt: precheck.receipt,
+        already_settled: true,
+        message:
+          `This payment already settled (sequence ${precheck.receiptData.seq}). ` +
+          "Nothing was sent.",
+        ...describe(prepared),
+      };
+    }
+
+    await runPolicyHooks(context.hooks, {
+      session: context.bound.session,
+      policy: context.bound.policy,
+      intentId: prepared.intentIdHex,
+      destination: prepared.destination.owner,
+      ...(prepared.destination.label ? { destinationLabel: prepared.destination.label } : {}),
+      mint: prepared.mint.mint,
+      amount: prepared.amount,
+      reference: prepared.reference,
+      ...(prepared.memo ? { memo: prepared.memo } : {}),
+    });
+
+    const { blockhash, lastValidBlockHeight } = await context.runtime.rpc
+      .getLatestBlockhash()
+      .send();
 
     const payment = await buildPaymentIntent({
-      ...buildInput,
-      feePayer: signers.feePayer,
-      sessionKey: signers.sessionKey,
+      intent_id: prepared.intentIdHex,
+      mint: prepared.mint.mint,
+      destination: prepared.destination.owner,
+      amount: prepared.amount,
+      expires_at: prepared.expiresAt,
+      ...(prepared.memo ? { memo: prepared.memo } : {}),
+      treasury: context.bound.treasury,
+      policy: context.bound.policy,
+      session: context.bound.session,
+      ...(prepared.destination.entry ? { allowlistEntry: prepared.destination.entry } : {}),
+      ...(prepared.mint.isNative ? {} : { tokenProgram: prepared.mint.tokenProgram }),
+      feePayer: context.signers.feePayer,
+      sessionKey: context.signers.sessionKey,
       recentBlockhash: { blockhash, lastValidBlockHeight },
     });
 
     const executed = await executePayment({
-      rpc: runtime.rpc,
+      rpc: context.runtime.rpc,
       transactionMessage: payment.transactionMessage,
       lastValidBlockHeight,
+      session: context.bound.session,
+      intentId: prepared.intentId,
+      confirmTimeoutMs: context.runtime.config.confirmTimeoutMs,
+      resolveAttempts: context.runtime.config.resolveAttempts,
+      resolveIntervalMs: context.runtime.config.resolveIntervalMs,
     });
 
-    const intentId = Array.from(payment.intent.intentId, (byte) =>
-      byte.toString(16).padStart(2, "0"),
-    ).join("");
+    recordPayment(context, prepared, "settled", {
+      signature: executed.signature,
+      logs: [...executed.simulation.logs],
+      units_consumed: executed.simulation.unitsConsumed.toString(),
+    });
 
     return {
-      allowed: true,
-      message: `Payment executed successfully. Signature: ${executed.signature}`,
+      outcome: "settled",
+      intent_id: prepared.intentIdHex,
+      receipt: prepared.receipt,
       signature: executed.signature,
-      path: payment.path,
-      intent_id: intentId,
-      receipt: payment.pdas.receipt,
-      pdas: payment.pdas,
-      simulation: {
-        err: null,
-        logs: executed.simulation.logs,
-        units_consumed: executed.simulation.unitsConsumed.toString(),
-      },
+      message: `Payment settled. Signature ${executed.signature}.`,
+      ...describe(prepared),
     };
   } catch (error) {
-    if (isAgentRailsError(error)) {
+    if (!isAgentRailsError(error)) {
+      throw error;
+    }
+
+    const intentId = error.intentId ?? UNKNOWN_INTENT;
+    const receipt = error.receipt ?? "";
+
+    if (error.outcome === "indeterminate") {
+      // The transfer may exist. Stop this session until somebody establishes whether it
+      // does: another attempt now is the double payment this whole path exists to prevent.
+      if (error.receipt) {
+        context.governor.quiesce({
+          intentId,
+          receipt: error.receipt,
+          reason: error.message,
+        });
+      }
+      recordUnresolved(context, error);
       return {
-        allowed: false,
+        outcome: "indeterminate",
+        intent_id: intentId,
+        receipt,
         reason_code: error.reasonCode,
-        message: error.message,
+        ...(error.signature ? { signature: error.signature } : {}),
+        message: `The outcome of this payment is not known. ${error.message}`,
+        next_step:
+          `Call agent_rails_get_payment_status with intent_id ${intentId}. ` +
+          "Do not retry the payment: if the receipt exists, the money has already moved.",
       };
     }
+
+    return denialResponse(error, intentId, receipt);
+  } finally {
+    release?.();
+  }
+}
+
+function denialResponse(error: unknown, intentId: string, receipt: string): ExecutePaymentResponse {
+  if (!isAgentRailsError(error)) {
     throw error;
   }
+  return {
+    outcome: error.outcome,
+    intent_id: error.intentId ?? intentId,
+    receipt: error.receipt ?? receipt,
+    reason_code: error.reasonCode,
+    message: error.message,
+    ...(error.signature ? { signature: error.signature } : {}),
+  };
+}
+
+function recordPayment(
+  context: ServerContext,
+  prepared: PreparedPayment,
+  outcome: PaymentOutcome,
+  extra: Record<string, unknown> = {},
+): void {
+  context.sink.record({
+    ts: new Date().toISOString(),
+    treasury: context.bound.treasury,
+    session: context.bound.session,
+    policy: context.bound.policy,
+    intent: prepared.intentIdHex,
+    outcome,
+    destination: prepared.destination.owner,
+    ...(prepared.destination.label ? { destination_label: prepared.destination.label } : {}),
+    mint: prepared.mint.mint,
+    amount: prepared.amount.toString(),
+    reference: prepared.reference,
+    receipt: prepared.receipt,
+    ...extra,
+  } as never);
+}
+
+function recordUnresolved(context: ServerContext, error: AgentRailsError): void {
+  context.sink.record({
+    ts: new Date().toISOString(),
+    treasury: context.bound.treasury,
+    session: context.bound.session,
+    policy: context.bound.policy,
+    intent: error.intentId ?? UNKNOWN_INTENT,
+    outcome: "indeterminate",
+    reason_code: error.reasonCode,
+    source: error.source ?? "program",
+    ...(error.signature ? { signature: error.signature } : {}),
+    ...(error.receipt ? { receipt: error.receipt } : {}),
+    detail: error.message,
+  } as never);
 }

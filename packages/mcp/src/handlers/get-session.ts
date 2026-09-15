@@ -1,28 +1,18 @@
-import {
-  mcpGetSessionSchema,
-  type McpGetSessionInput,
-} from "@agent-rails/contract";
 import { fetchMaybeAgentSession } from "@agent-rails/client";
-import type { McpRuntime } from "../config.js";
+import type { ServerContext } from "../context.js";
 import { serializeAgentSession } from "./serialize.js";
 
 export type GetSessionResponse =
   | ReturnType<typeof serializeAgentSession>
-  | {
-      found: false;
-      address: string;
-    };
+  | { found: false; address: string };
 
-export async function handleGetSession(
-  runtime: McpRuntime,
-  rawInput: McpGetSessionInput,
-): Promise<GetSessionResponse> {
-  const input = mcpGetSessionSchema.parse(rawInput);
-  const account = await fetchMaybeAgentSession(runtime.rpc, input.session);
+/** Read the bound session. The address is not a parameter (blueprint I-1). */
+export async function handleGetSession(context: ServerContext): Promise<GetSessionResponse> {
+  const address = context.bound.session;
+  const account = await fetchMaybeAgentSession(context.runtime.rpc, address);
 
   if (!account.exists) {
-    return { found: false, address: input.session };
+    return { found: false, address };
   }
-
-  return serializeAgentSession(input.session, account.data);
+  return serializeAgentSession(address, account.data);
 }

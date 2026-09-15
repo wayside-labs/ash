@@ -17,7 +17,7 @@ const recentBlockhash = {
 };
 
 function baseParams(mint: string) {
-  const intentId = createIntentId();
+  const intentId = createIntentId(new Uint8Array(16).fill(7));
   return {
     intent_id: Array.from(intentId, (byte) => byte.toString(16).padStart(2, "0")).join(""),
     mint,
@@ -42,9 +42,7 @@ describe("buildPaymentIntent", () => {
     expect(result.pdas.eventAuthority).toMatch(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/);
     expect(result.pdas.solVault).toMatch(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/);
     expect(result.pdas.vaultAta).toBeUndefined();
-    expect(result.instruction.programAddress).toBe(
-      "4qjD6vSgYa3oBKde3KVzsH8oCcP9BKsirX1xtD5SS6BS",
-    );
+    expect(result.instruction.programAddress).toBe("4qjD6vSgYa3oBKde3KVzsH8oCcP9BKsirX1xtD5SS6BS");
     expect(result.transactionMessage.instructions).toHaveLength(1);
   });
 
@@ -55,9 +53,7 @@ describe("buildPaymentIntent", () => {
     expect(result.pdas.vaultAta).toMatch(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/);
     expect(result.pdas.destinationAta).toMatch(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/);
     expect(result.pdas.solVault).toBeUndefined();
-    expect(result.instruction.programAddress).toBe(
-      "4qjD6vSgYa3oBKde3KVzsH8oCcP9BKsirX1xtD5SS6BS",
-    );
+    expect(result.instruction.programAddress).toBe("4qjD6vSgYa3oBKde3KVzsH8oCcP9BKsirX1xtD5SS6BS");
   });
 
   it("includes allowlist entry when provided", async () => {

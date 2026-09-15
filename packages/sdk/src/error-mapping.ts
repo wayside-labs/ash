@@ -43,11 +43,7 @@ import {
   AGENT_RAILS_ERROR__WRONG_PAYMENT_PATH,
   getAgentRailsErrorMessage,
 } from "@agent-rails/client";
-import {
-  type AnyReasonCode,
-  reasonCodeFromAnchor,
-  SDK_REASON_CODES,
-} from "@agent-rails/contract";
+import { type AnyReasonCode, reasonCodeFromAnchor, SDK_REASON_CODES } from "@agent-rails/contract";
 import { isSolanaError, SOLANA_ERROR__INSTRUCTION_ERROR__CUSTOM } from "@solana/kit";
 import { AgentRailsError } from "./errors.js";
 
@@ -96,17 +92,37 @@ const PROGRAM_ERROR_TO_REASON = new Map<number, AnyReasonCode>([
   [AGENT_RAILS_ERROR__RESERVED_FIELD_NON_ZERO, "RESERVED_FIELD_NON_ZERO"],
 ]);
 
+/**
+ * A program error means the transaction executed and reverted: nothing moved, nothing was
+ * written, and the answer will not change for these parameters. That is a denial, and it is
+ * the only class of failure a caller may safely respond to by changing something and trying
+ * again.
+ */
 export function agentRailsErrorFromCode(code: number, cause?: unknown): AgentRailsError {
   const reasonCode = reasonCodeFromProgramError(code);
   const message = getAgentRailsErrorMessage(code as never) ?? reasonCode;
-  return new AgentRailsError({ reasonCode, message, cause });
+  return new AgentRailsError({
+    reasonCode,
+    message,
+    outcome: "denied",
+    source: "program",
+    cause,
+  });
 }
 
+/**
+ * Unknown codes map to `UNKNOWN_PROGRAM_ERROR`, never to `DUPLICATE_INTENT`.
+ *
+ * The old fallback was harmless while reason codes were only labels. It is not harmless now
+ * that `DUPLICATE_INTENT` means "a receipt exists, the payment settled": an error this
+ * client happens not to recognize — a newer program version, a code added after this client
+ * shipped — would be reported as a completed payment.
+ */
 export function reasonCodeFromProgramError(code: number): AnyReasonCode {
   return (
     PROGRAM_ERROR_TO_REASON.get(code) ??
     reasonCodeFromAnchor(code) ??
-    SDK_REASON_CODES.DUPLICATE_INTENT
+    SDK_REASON_CODES.UNKNOWN_PROGRAM_ERROR
   );
 }
 
@@ -128,22 +144,27 @@ export function toAgentRailsError(error: unknown): AgentRailsError {
 
   const programCode = extractCustomProgramErrorCode(error);
   if (programCode !== undefined) {
-    const reasonCode = reasonCodeFromProgramError(programCode);
-    const message = getAgentRailsErrorMessage(programCode as never) ?? reasonCode;
-    return new AgentRailsError({ reasonCode, message, cause: error });
+    return agentRailsErrorFromCode(programCode, error);
   }
 
+  // Not a program decision, so it carries no information about whether funds moved. This
+  // path is only reached from simulation and from build-time failures, neither of which has
+  // broadcast anything; a caller that has already sent must classify the failure itself.
   if (error instanceof Error) {
     return new AgentRailsError({
-      reasonCode: "UNAUTHORIZED",
+      reasonCode: "UNKNOWN_PROGRAM_ERROR",
       message: error.message,
+      outcome: "denied",
+      source: "simulation",
       cause: error,
     });
   }
 
   return new AgentRailsError({
-    reasonCode: "UNAUTHORIZED",
+    reasonCode: "UNKNOWN_PROGRAM_ERROR",
     message: "Payment simulation failed",
+    outcome: "denied",
+    source: "simulation",
     cause: error,
   });
 }

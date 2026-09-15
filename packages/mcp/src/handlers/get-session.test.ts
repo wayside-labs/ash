@@ -1,6 +1,7 @@
 import { fetchMaybeAgentSession } from "@agent-rails/client";
 import { describe, expect, it, vi } from "vitest";
-import type { McpRuntime } from "../config.js";
+import type { ServerContext } from "../context.js";
+import { testBoundContext, testConfig } from "../testing.js";
 import { handleGetSession } from "./get-session.js";
 
 vi.mock("@agent-rails/client", async (importOriginal) => {
@@ -16,10 +17,11 @@ const TREASURY = "11111111111111111111111111111112";
 const POLICY = "11111111111111111111111111111113";
 const SESSION_KEY = "11111111111111111111111111111117";
 
-const runtime = {
-  config: { rpcUrl: "http://localhost:8899", signerKeypairPath: "/tmp/session.json" },
-  rpc: {},
-} as McpRuntime;
+// The session address comes from the binding, never from a tool argument.
+const context = {
+  runtime: { config: testConfig(), rpc: {} },
+  bound: testBoundContext(),
+} as unknown as ServerContext;
 
 function paddedLabel(text: string): Uint8Array {
   const bytes = new Uint8Array(32);
@@ -62,7 +64,7 @@ describe("handleGetSession", () => {
       },
     });
 
-    const result = await handleGetSession(runtime, { session: SESSION });
+    const result = await handleGetSession(context);
 
     expect(result).toEqual({
       found: true,
@@ -99,7 +101,7 @@ describe("handleGetSession", () => {
       address: SESSION,
     });
 
-    const result = await handleGetSession(runtime, { session: SESSION });
+    const result = await handleGetSession(context);
 
     expect(result).toEqual({ found: false, address: SESSION });
   });

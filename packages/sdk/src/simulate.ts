@@ -1,11 +1,11 @@
 import {
+  type Commitment,
   getBase64EncodedWireTransaction,
   isSolanaError,
   partiallySignTransactionMessageWithSigners,
-  SOLANA_ERROR__JSON_RPC__SERVER_ERROR_SEND_TRANSACTION_PREFLIGHT_FAILURE,
-  type Commitment,
   type Rpc,
   type SimulateTransactionApi,
+  SOLANA_ERROR__JSON_RPC__SERVER_ERROR_SEND_TRANSACTION_PREFLIGHT_FAILURE,
   type SolanaRpcApi,
   type TransactionMessage,
 } from "@solana/kit";
@@ -52,9 +52,7 @@ function extractCustomCodeFromSimulationValue(
  * Dry-run a payment transaction against an RPC node and map program failures to
  * `AgentRailsError` with stable `reason_code` strings for MCP surfaces.
  */
-export async function simulatePayment(
-  input: SimulatePaymentInput,
-): Promise<SimulatePaymentResult> {
+export async function simulatePayment(input: SimulatePaymentInput): Promise<SimulatePaymentResult> {
   try {
     const signedTransaction = await partiallySignTransactionMessageWithSigners(
       input.transactionMessage,
@@ -76,8 +74,10 @@ export async function simulatePayment(
         throw agentRailsErrorFromCode(customCode, simulation.err);
       }
       throw new AgentRailsError({
-        reasonCode: "UNAUTHORIZED",
+        reasonCode: "UNKNOWN_PROGRAM_ERROR",
         message: `Simulation failed: ${JSON.stringify(simulation.err)}`,
+        outcome: "denied",
+        source: "simulation",
       });
     }
 
@@ -87,7 +87,9 @@ export async function simulatePayment(
       unitsConsumed: simulation.unitsConsumed ?? 0n,
     };
   } catch (error) {
-    if (isSolanaError(error, SOLANA_ERROR__JSON_RPC__SERVER_ERROR_SEND_TRANSACTION_PREFLIGHT_FAILURE)) {
+    if (
+      isSolanaError(error, SOLANA_ERROR__JSON_RPC__SERVER_ERROR_SEND_TRANSACTION_PREFLIGHT_FAILURE)
+    ) {
       throw toAgentRailsError(error);
     }
     throw toAgentRailsError(error);

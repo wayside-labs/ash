@@ -47,9 +47,48 @@ export const REASON_CODES = {
 export type AnchorErrorCode = keyof typeof REASON_CODES;
 export type ReasonCode = (typeof REASON_CODES)[AnchorErrorCode];
 
-/** SDK-mapped pseudo-codes not emitted as Anchor custom errors. */
+/**
+ * Codes the off-chain layers raise themselves. They are not Anchor custom errors, so they
+ * never collide with the 6000 range above, and the MCP surface treats both alike: one
+ * stable string per reason, whatever decided it.
+ */
 export const SDK_REASON_CODES = {
+  /** A receipt already exists for this intent. The payment settled, possibly earlier. */
   DUPLICATE_INTENT: "DUPLICATE_INTENT",
+  /** Broadcast, unconfirmed, and resolution did not complete. Never a denial. */
+  UNRESOLVED_OUTCOME: "UNRESOLVED_OUTCOME",
+  /** Chain state could not be read, so liveness could not be established. */
+  STATE_UNAVAILABLE: "STATE_UNAVAILABLE",
+  /** Tool arguments failed the schema, including unknown keys. */
+  INVALID_REQUEST: "INVALID_REQUEST",
+  /** No `AllowlistEntry` carries this label under the bound policy. */
+  UNKNOWN_DESTINATION: "UNKNOWN_DESTINATION",
+  /** Two allowlist entries normalize to the same label: possible impersonation. */
+  AMBIGUOUS_DESTINATION: "AMBIGUOUS_DESTINATION",
+  /** A raw address was supplied where only a registered label is accepted. */
+  LITERAL_NOT_PERMITTED: "LITERAL_NOT_PERMITTED",
+  /** The mint symbol or address is not configured on the treasury. */
+  UNKNOWN_MINT: "UNKNOWN_MINT",
+  /** More decimal places than the mint can represent. Never rounded. */
+  PRECISION_EXCEEDS_MINT: "PRECISION_EXCEEDS_MINT",
+  /** Malformed decimal amount. */
+  MALFORMED_AMOUNT: "MALFORMED_AMOUNT",
+  /** A payment is already in flight for this session. */
+  SESSION_BUSY: "SESSION_BUSY",
+  /** Call rate exceeded the local governor budget. */
+  RATE_LIMITED: "RATE_LIMITED",
+  /** An unresolved payment is outstanding; the session pays nothing until it is settled. */
+  SESSION_QUIESCED: "SESSION_QUIESCED",
+  /** A soft policy hook refused the payment. */
+  HOOK_DENIED: "HOOK_DENIED",
+  /** A soft policy hook timed out or threw. Denies by default (ADR-005 section 6). */
+  HOOK_UNAVAILABLE: "HOOK_UNAVAILABLE",
+  /**
+   * A program error this client does not recognize. These previously fell through to
+   * `DUPLICATE_INTENT`, which now means "already settled" - the most dangerous possible
+   * default for an error nobody understands.
+   */
+  UNKNOWN_PROGRAM_ERROR: "UNKNOWN_PROGRAM_ERROR",
 } as const;
 
 export type SdkReasonCode = (typeof SDK_REASON_CODES)[keyof typeof SDK_REASON_CODES];

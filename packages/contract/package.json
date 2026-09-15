@@ -23,9 +23,23 @@
     "./payment-build": {
       "types": "./dist/payment-build.d.ts",
       "import": "./dist/payment-build.js"
+    },
+    "./outcome": {
+      "types": "./dist/outcome.d.ts",
+      "import": "./dist/outcome.js"
+    },
+    "./units": {
+      "types": "./dist/units.d.ts",
+      "import": "./dist/units.js"
+    },
+    "./intent-id": {
+      "types": "./dist/intent-id.d.ts",
+      "import": "./dist/intent-id.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsdown",
     "test": "vitest run"

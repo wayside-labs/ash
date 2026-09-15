@@ -1,10 +1,37 @@
-export { agentRails, type AgentRailsPlugin, type AgentRailsPluginConfig, type AgentRailsSigner } from "./plugin.js";
-export { AgentRailsError, isAgentRailsError, type AgentRailsErrorOptions } from "./errors.js";
+// Re-export the generated client for convenience.
+export * from "@agent-rails/client";
 export {
-  buildPaymentIntent,
-  createIntentId,
+  type DestinationEntry,
+  type DestinationIndex,
+  editDistance,
+  loadDestinationIndex,
+  nearMisses,
+  normalizeLabel,
+  type ResolvedDestination,
+  resolveDestination,
+} from "./destinations.js";
+export {
+  agentRailsErrorFromCode,
+  reasonCodeFromProgramError,
+  toAgentRailsError,
+} from "./error-mapping.js";
+export {
+  AgentRailsError,
+  type AgentRailsErrorOptions,
+  isAgentRailsError,
+  isIndeterminate,
+} from "./errors.js";
+export {
+  type ExecutePaymentInput,
+  type ExecutePaymentResult,
+  type ExecutePaymentRpc,
+  executePayment,
+} from "./execute-payment.js";
+export {
   type BlockhashLifetime,
   type BuildPaymentIntentParams,
+  buildPaymentIntent,
+  createIntentId,
   type PaymentIntent,
   type PaymentIntentBuildResult,
   type PaymentIntentInput,
@@ -12,35 +39,48 @@ export {
   type PaymentPdas,
 } from "./payment-intent.js";
 export {
-  agentRailsErrorFromCode,
-  reasonCodeFromProgramError,
-  toAgentRailsError,
-} from "./error-mapping.js";
-export { simulatePayment, type SimulatePaymentInput, type SimulatePaymentResult } from "./simulate.js";
-export { sendPayment, type SendPaymentInput, type SendPaymentResult } from "./send-payment.js";
-export {
-  executePayment,
-  type ExecutePaymentInput,
-  type ExecutePaymentResult,
-  type ExecutePaymentRpc,
-} from "./execute-payment.js";
-export {
+  ASSOCIATED_TOKEN_PROGRAM_ADDRESS,
   findAllowlistPda,
+  findAssociatedTokenAddress,
   findEntryPda,
+  findEventAuthorityPda,
   findPolicyPda,
   findReceiptPda,
   findSessionPda,
   findSolVaultPda,
   findTreasuryPda,
-} from "./pdas.js";
-export { preflightPayment, type PreflightInput } from "./preflight.js";
-export {
-  findAssociatedTokenAddress,
-  findEventAuthorityPda,
-  ASSOCIATED_TOKEN_PROGRAM_ADDRESS,
   TOKEN_PROGRAM_ADDRESS,
 } from "./pdas.js";
-export { runPolicyHooks, type PolicyHook, type PolicyHooks } from "./policy-hooks.js";
-
-// Re-export the generated client for convenience.
-export * from "@agent-rails/client";
+export {
+  type AgentRailsPlugin,
+  type AgentRailsPluginConfig,
+  type AgentRailsSigner,
+  agentRails,
+} from "./plugin.js";
+export {
+  type HookVerdict,
+  type PolicyHook,
+  type PolicyHookRequest,
+  type PolicyHooks,
+  runPolicyHooks,
+} from "./policy-hooks.js";
+export { type PreflightInput, preflightPayment } from "./preflight.js";
+export {
+  createRemoteSigner,
+  type RemoteSignerConfig,
+  RemoteSignerError,
+} from "./remote-signer.js";
+export {
+  type PaymentResolution,
+  precheckReceipt,
+  type ReceiptPrecheck,
+  type ResolvePaymentInput,
+  type ResolveRpc,
+  resolvePaymentOutcome,
+} from "./resolve.js";
+export { type SendPaymentInput, type SendPaymentResult, sendPayment } from "./send-payment.js";
+export {
+  type SimulatePaymentInput,
+  type SimulatePaymentResult,
+  simulatePayment,
+} from "./simulate.js";

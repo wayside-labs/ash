@@ -8,22 +8,21 @@ import {
 import {
   INTENT_ID_LEN,
   NATIVE_MINT,
-  paymentBuildSchema,
   type PaymentBuildInput,
+  paymentBuildSchema,
 } from "@agent-rails/contract";
 import {
+  type Address,
   appendTransactionMessageInstruction,
+  type Blockhash,
   createTransactionMessage,
+  type Instruction,
   pipe,
   setTransactionMessageFeePayerSigner,
   setTransactionMessageLifetimeUsingBlockhash,
-  type Address,
-  type Blockhash,
-  type Instruction,
   type TransactionMessage,
   type TransactionSigner,
 } from "@solana/kit";
-import { randomBytes } from "node:crypto";
 import {
   findAssociatedTokenAddress,
   findEventAuthorityPda,
@@ -80,20 +79,23 @@ export type PaymentIntentBuildResult = {
   pdas: PaymentPdas;
 };
 
-export function createIntentId(bytes?: Uint8Array): Uint8Array {
-  if (bytes) {
-    if (bytes.byteLength !== INTENT_ID_LEN) {
-      throw new RangeError(`intentId must be ${INTENT_ID_LEN} bytes`);
-    }
-    return bytes;
+/**
+ * Validate an intent id. There is deliberately no generating branch.
+ *
+ * This used to fall back to 16 random bytes when a caller passed nothing, which quietly
+ * disabled idempotency: a retry drew a new id, addressed a different receipt PDA, and paid
+ * again. Ids come from `deriveIntentId` in `@agent-rails/contract`, which derives them from
+ * the payment being settled so a retry collides by construction (blueprint III-A).
+ */
+export function createIntentId(bytes: Uint8Array): Uint8Array {
+  if (bytes.byteLength !== INTENT_ID_LEN) {
+    throw new RangeError(`intentId must be ${INTENT_ID_LEN} bytes`);
   }
-  return randomBytes(INTENT_ID_LEN);
+  return bytes;
 }
 
 function parseIntentFields(params: BuildPaymentIntentParams): PaymentIntent {
-  const intentId = createIntentId(
-    params.intent_id ? Uint8Array.from(Buffer.from(params.intent_id, "hex")) : undefined,
-  );
+  const intentId = createIntentId(Uint8Array.from(Buffer.from(params.intent_id, "hex")));
 
   paymentBuildSchema.parse({
     intent_id: Array.from(intentId, (byte) => byte.toString(16).padStart(2, "0")).join(""),

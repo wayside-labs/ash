@@ -4,6 +4,9 @@ export default defineConfig({
   entry: [
     "src/index.ts",
     "src/constants.ts",
+    "src/outcome.ts",
+    "src/units.ts",
+    "src/intent-id.ts",
     "src/reason-codes.ts",
     "src/events.ts",
     "src/payment-build.ts",

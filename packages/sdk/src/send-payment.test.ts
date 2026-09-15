@@ -7,7 +7,6 @@ import {
   setTransactionMessageLifetimeUsingBlockhash,
 } from "@solana/kit";
 import { describe, expect, it, vi } from "vitest";
-import { AgentRailsError } from "./errors.js";
 import { sendPayment } from "./send-payment.js";
 
 async function mockTransactionMessage() {
@@ -58,7 +57,7 @@ describe("sendPayment", () => {
     expect(send).toHaveBeenCalledOnce();
   });
 
-  it("throws AgentRailsError when confirmation times out", async () => {
+  it("reports a confirmation timeout as indeterminate, not as a denial", async () => {
     const rpc = {
       sendTransaction: () => ({ send: vi.fn().mockResolvedValue(undefined) }),
       getBlockHeight: () => ({ send: async () => 999_999n }),
@@ -67,6 +66,7 @@ describe("sendPayment", () => {
       }),
     };
 
+    // The transaction is on the wire. "Denied" would invite a retry that pays twice.
     await expect(
       sendPayment({
         rpc: rpc as never,
@@ -74,10 +74,14 @@ describe("sendPayment", () => {
         lastValidBlockHeight: 1_000_000n,
         confirmTimeoutMs: 10,
       }),
-    ).rejects.toBeInstanceOf(AgentRailsError);
+    ).rejects.toMatchObject({
+      outcome: "indeterminate",
+      reasonCode: "UNRESOLVED_OUTCOME",
+      signature: expect.stringMatching(/^[1-9A-HJ-NP-Za-km-z]{87,88}$/),
+    });
   });
 
-  it("throws AgentRailsError when the blockhash expires during confirmation", async () => {
+  it("reports an expired blockhash as indeterminate", async () => {
     const rpc = {
       sendTransaction: () => ({ send: vi.fn().mockResolvedValue(undefined) }),
       getBlockHeight: () => ({ send: async () => 1_000_001n }),
@@ -86,14 +90,37 @@ describe("sendPayment", () => {
       }),
     };
 
+    // Probably dropped, but "probably" is not a basis for paying someone again.
     await expect(
       sendPayment({
         rpc: rpc as never,
         transactionMessage: await mockTransactionMessage(),
         lastValidBlockHeight: 1_000_000n,
       }),
-    ).rejects.toMatchObject({
-      message: expect.stringContaining("blockhash expired"),
-    });
+    ).rejects.toMatchObject({ outcome: "indeterminate" });
+  });
+
+  it("reports an on-chain failure as a denial", async () => {
+    const rpc = {
+      sendTransaction: () => ({ send: vi.fn().mockResolvedValue(undefined) }),
+      getBlockHeight: () => ({ send: async () => 999_999n }),
+      getSignatureStatuses: () => ({
+        send: async () => ({
+          value: [
+            { err: { InstructionError: [0, { Custom: 6000 }] }, confirmationStatus: "confirmed" },
+          ],
+        }),
+      }),
+    };
+
+    // The transaction was included and reverted: nothing moved, no receipt, safe to change
+    // something and try again.
+    await expect(
+      sendPayment({
+        rpc: rpc as never,
+        transactionMessage: await mockTransactionMessage(),
+        lastValidBlockHeight: 1_000_000n,
+      }),
+    ).rejects.toMatchObject({ outcome: "denied" });
   });
 });
