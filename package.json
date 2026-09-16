@@ -17,7 +17,8 @@
     "idl:build": "CARGO_TARGET_DIR=\"${CARGO_TARGET_DIR:-$PWD/target}\" NO_DNA=1 anchor idl build -p agent_rails -o idl/agent_rails.json -- --lib --features idl-build",
     "codegen": "pnpm --filter @agent-rails/client run codegen",
     "idl:sync": "pnpm idl:build && pnpm codegen && pnpm build",
-    "codegen:check": "pnpm codegen && git diff --exit-code packages/client/src/generated"
+    "codegen:check": "pnpm codegen && git diff --exit-code packages/client/src/generated",
+    "coverage": "turbo run coverage"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.0.0",

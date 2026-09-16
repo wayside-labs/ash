@@ -14,6 +14,28 @@
 #   overflow-checks   -> the grep step in .github/workflows/ci.yml
 #   account layouts   -> programs/agent_rails/tests/layout.rs
 # Treat a deny here as a typo-catcher, not a control.
+#
+# `ask` and `deny` are not two strengths of the same thing. An `ask` hands the call
+# back to the normal permission flow, and a session running in an auto-accepting mode
+# approves it without showing anyone — verified on 2026-09-16, when an ADR edit here
+# raised no prompt at all. So `ask` is feedback for an interactive session and nothing
+# whatsoever for an automated one. Only `deny` holds in both.
+#
+# Which rules earn a `deny` follows from that: the ones where nothing downstream would
+# catch the mistake.
+#   layout.rs    -> that file *is* the check. Editing the snapshot to match a moved
+#                   layout makes CI green on a breaking change — the one failure the
+#                   test cannot catch on its own behalf.
+#   deploy /     -> ADR-011 puts upgrades behind the multisig and a public notice
+#   authority       window. No CI step sits between this command and a live program
+#                   holding custody, and it does not come back.
+#
+# The rest stay `ask` on purpose: CI re-checks them (codegen:check) or the server does
+# (force-push protection on main), so an approval that never appears costs a round
+# trip rather than an invariant.
+#
+# A deny binds the agent, not the owner: this hook only ever sees Claude's tool calls.
+# Anything refused here is still one `!` away in the owner's own terminal.
 
 set -uo pipefail
 
@@ -57,7 +79,7 @@ Write | Edit)
 
   case "$file" in
   */programs/agent_rails/tests/layout.rs)
-    decide ask "layout.rs snapshots account byte layouts. Layout stability is what lets v1.1 land without migrations — update this deliberately, never to silence a failure."
+    decide deny "layout.rs snapshots account byte layouts, and is itself the check that a layout moved — editing it to match a new layout makes CI green on a breaking change for every Codama client and indexer downstream. Layout stability is what lets v1.1 land without migrations. If the layout change is the intent, the owner edits this file and docs/spec §3 in the same commit."
     ;;
   */docs/adr/ADR-*.md)
     # Only an existing one. Writing a *new* ADR is the supported way to supersede a
@@ -75,7 +97,7 @@ Bash)
   fi
   if grep -qE '(^|[[:space:]])anchor[[:space:]]+deploy' <<<"$command" ||
     grep -qE '(^|[[:space:]])solana[[:space:]]+program[[:space:]]+(deploy|write-buffer|set-upgrade-authority|close)' <<<"$command"; then
-    decide ask "This deploys or changes authority on a live program. ADR-011 puts upgrades behind the multisig and a public notice window."
+    decide deny "This deploys or changes authority on a live program. ADR-011 puts upgrades behind the multisig and a public notice window, and no CI step sits between this command and a program holding custody. The owner runs it."
   fi
   # Not exhaustive by construction — see the header. Catches the obvious redirect.
   if grep -qE 'packages/client/src/generated' <<<"$command" &&

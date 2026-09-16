@@ -53,6 +53,14 @@ jobs:
       - run: cargo build-sbf --manifest-path programs/agent_rails/Cargo.toml
       - run: cargo build-sbf --manifest-path programs/test_pda_relay/Cargo.toml
 
+      # Fetches a prebuilt cargo-llvm-cov rather than compiling it, which is the whole
+      # reason this action is worth a dependency: `cargo install` costs minutes per run.
+      # verify.sh skips the coverage gate when the binary is absent, so without this step
+      # the job would pass having measured nothing.
+      - uses: taiki-e/install-action@26e9283f268b880168bdbd2c545dfcd60ec2c6ab # v2.87.13
+        with:
+          tool: cargo-llvm-cov
+
       # fmt, clippy -D warnings, the overflow-checks assertion, and cargo test —
       # ADR-008 layers 1 and 2. Delegated to the script so `scripts/verify.sh rust`
       # locally and this job cannot drift apart; it runs every check before

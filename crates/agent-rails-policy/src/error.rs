@@ -2,7 +2,10 @@
 //!
 //! The numbers live here rather than only in the program so that off-chain simulation and
 //! the on-chain runtime cannot drift apart: `programs/agent_rails/src/error.rs` maps every
-//! variant back to the matching `AgentRailsError`, and a test asserts the codes agree.
+//! variant back to the matching `AgentRailsError`, and
+//! `programs/agent_rails/tests/error_codes.rs` asserts the codes agree. They are two
+//! independent facts — a literal here, a declaration position there — so nothing but that
+//! test holds them together.
 
 /// A policy rule that a candidate payment or configuration violates.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
