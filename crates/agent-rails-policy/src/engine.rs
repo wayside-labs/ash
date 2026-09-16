@@ -117,15 +117,20 @@ fn roll_window(start: i64, spent: u64, window_seconds: u32, now: i64) -> (i64, u
     if now < end {
         return (start, spent);
     }
-    let Some(elapsed) = now.checked_sub(start) else {
-        return (start, spent);
-    };
-    let Some(buckets) = elapsed.checked_div(window) else {
-        return (start, spent);
-    };
-    let Some(new_start) = buckets
-        .checked_mul(window)
-        .and_then(|offset| start.checked_add(offset))
+    // `start + (elapsed / window) * window`, written as `now - (elapsed % window)`. The two
+    // are equal by the definition of truncating division, and this form needs neither the
+    // multiply nor the second add.
+    //
+    // One fallible chain rather than three `let`-`else` blocks, because only the first link
+    // can actually fail: `now - start` overflows for a `start` near `i64::MIN`, which a
+    // corrupted account can carry. Once `window >= 1` and `now >= start + window` hold, the
+    // remainder cannot divide by zero and `now - offset` cannot underflow — `offset` is in
+    // `[0, window)`, so the result stays above `start`. Folding them in costs nothing and
+    // stops the function claiming to handle cases it cannot reach.
+    let Some(new_start) = now
+        .checked_sub(start)
+        .and_then(|elapsed| elapsed.checked_rem(window))
+        .and_then(|offset| now.checked_sub(offset))
     else {
         return (start, spent);
     };

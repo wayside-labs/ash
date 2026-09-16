@@ -28,11 +28,18 @@ Anchor codes the program actually emits needs both crates, so it lives in
 `programs/agent_rails/tests/error_codes.rs`.
 
 The crate is gated at ≥95% line coverage (`cargo llvm-cov --fail-under-lines 95`, in
-`scripts/verify.sh rust`) and currently measures 99.2%. The two uncovered lines are the
-`checked_div` and `checked_mul` guards in `roll_window`, which the guards above them make
-unreachable: `window >= 1` after the zero check, and `buckets * window <= elapsed` by
-integer truncation. They are dead rather than untested — worth knowing before anyone
-spends effort trying to reach them.
+`scripts/verify.sh rust`) and measures 100%. The threshold stays at the ADR-008 number
+rather than following the measurement up: a threshold pinned to today only ratchets, and
+the headroom is what lets an honest `unwrap_or` land without a fight.
+
+Four *regions* remain uncovered, which is a different thing from a line. They are the
+`None` arms inside `roll_window`'s `and_then` chain, and they cannot fire once
+`window >= 1` and `now >= start + window` hold. Expressing them as links in one chain
+rather than as their own `let`-`else` blocks is deliberate: `deny(arithmetic_side_effects)`
+forces a `checked_*` for every operation, so provably-safe arithmetic would otherwise
+produce dead statements that read as handled cases. Do not "fix" the remaining regions by
+reaching for `saturating_*` — that trades an unreachable branch for a silent wrong answer,
+which is the trade this crate exists to refuse.
 
 ADR-008 also calls for `cargo-fuzz` and Kani proofs on this crate. Neither exists yet —
 see ADR-015 for what is deferred. Do not read their absence as a decision that they are
