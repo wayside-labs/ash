@@ -34,8 +34,34 @@ jobs:
       # so it is asserted rather than remembered.
       - name: overflow-checks is still on for release builds
         run: grep -qE '^overflow-checks = true$' Cargo.toml
-      # Layers 1 and 2 of the ADR-008 pyramid; anchor-litesvm needs no validator, so
-      # this covers the policy proptests and every instruction's integration tests.
+      # anchor-litesvm needs no validator, but it does need the compiled programs, and
+      # those need the Solana toolchain. Read out of idl.yml rather than redeclared here:
+      # that workflow is where the version is pinned, and two copies drift apart.
+      - id: versions
+        run: |
+          agave=$(sed -n 's/^  AGAVE_VERSION: \(.*\)$/\1/p' .github/workflows/idl.yml)
+          test -n "$agave" || { echo "AGAVE_VERSION missing from .github/workflows/idl.yml"; exit 1; }
+          echo "agave=$agave" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: solana-cache
+        with:
+          path: ~/.local/share/solana
+          key: solana-${{ steps.versions.outputs.agave }}
+
+      - if: steps.solana-cache.outputs.cache-hit != 'true'
+        run: sh -c "$(curl -sSfL https://release.anza.xyz/v${{ steps.versions.outputs.agave }}/install)"
+
+      - run: echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
+
+      # Both programs, because tests/common/mod.rs loads test_pda_relay.so next to
+      # agent_rails.so. A missing .so fails at test runtime, not at build time, which is
+      # why this gap survived until the tests ran on a runner with an empty target/.
+      - run: cargo build-sbf --manifest-path programs/agent_rails/Cargo.toml
+      - run: cargo build-sbf --manifest-path programs/test_pda_relay/Cargo.toml
+
+      # Layers 1 and 2 of the ADR-008 pyramid; this covers the policy proptests and
+      # every instruction's integration tests.
       - run: cargo test --workspace
 
   typescript:
