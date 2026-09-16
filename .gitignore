@@ -15,3 +15,9 @@ dist/
 
 # Personal Claude Code overrides; .claude/settings.json is the shared one.
 .claude/settings.local.json
+
+# Solana RPC URLs routinely carry an API key in the query string, and the MCP server
+# is configured entirely from the environment. An agent must never be able to stage one.
+.env
+.env.*
+!.env.example
