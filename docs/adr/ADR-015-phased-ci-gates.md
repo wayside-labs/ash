@@ -62,11 +62,17 @@ Option D.
 | cargo-deny — advisories, licenses, bans, sources | `supply-chain` job |
 | secret scanning over history | `secrets` job (gitleaks CLI) |
 | SAST | `sast` job (semgrep `p/typescript`, `p/rust`) |
+| Kani proofs: no overflow, monotone rollover, the `≤` partial order, audit preimage injective in `seq` | `crates/agent-rails-policy/src/proofs.rs`, run by `scripts/verify.sh kani` |
 | SHA-pinned Actions, `permissions: contents: read` | throughout |
 
 `.github/workflows/idl.yml`, path-filtered to the program and its dependencies: rebuilds
 the IDL from the program and fails if the committed one differs. ADR-008 asked for an "IDL
 diff comment"; a failing gate was chosen over a comment, because a comment is advisory.
+
+`.github/workflows/kani.yml`, path-filtered to the policy crate, plus nightly and manual
+triggers. Thirteen harnesses, ~85s of solver time. It is not a required status check —
+ADR-008 scoped Kani as non-blocking, and idl.yml already records why a path-filtered job
+must never be required.
 
 Two gates are enforced that ADR-008 did not list — `pnpm audit` and the `overflow-checks`
 assertion — because the invariants they protect had no mechanism otherwise.
@@ -76,7 +82,6 @@ assertion — because the invariants they protect had no mechanism otherwise.
 | Gate | Why not yet | What lands it |
 |---|---|---|
 | **Trident stateful fuzzing** | No harness and no corpus exist. Writing them is a project, not a CI step. | A harness under `programs/agent_rails/`, a committed corpus, then a short run per PR and a long one nightly. |
-| **Kani bounded model checking** | Same: no proofs written. ADR-008 already scoped it as nightly and non-blocking. | Proofs for no-overflow, monotone rollover, the `≤` partial order, and hash injectivity in `seq`. |
 | **`cargo-mutants`** | Nightly in ADR-008; needs a runtime budget decided against metered minutes. | A nightly workflow once the suite above is in place. |
 | **Verifiable build hash** | Belongs with the release process (ADR-011), which has not run yet. | A release workflow producing and publishing the hash. |
 | **Surfpool E2E, devnet smoke** | Nightly and release-tag scoped in ADR-008; needs a funded devnet keypair held as a secret. | A nightly workflow plus the secret. |
@@ -103,6 +108,18 @@ are routine mid-migration in this tree. They are still worth seeing — a duplic
 `@solana/program-client-core` on the TypeScript side is what made the generated client
 untypeable until it was found.
 
+Kani runs per pull request when the policy crate changes, not only nightly. ADR-008 put it
+nightly on the assumption that model checking is slow; measured, the thirteen harnesses take
+~85s, which is less than the `rust` job already spends. Nightly is kept as well, because a
+Kani release can change what its solver discharges without the crate changing — but a proof
+that only ever fails at 05:00 names the wrong commit.
+
+One harness is bounded more tightly than the rest, and `proofs.rs` says so at the point it
+happens: proving `(new_start - start) % window == 0` over a *symbolic* window does not
+terminate — measured past 10 minutes against ~3 seconds for the property stated as the
+overflow guards' contract instead. Both catch the same regression. The comment records the
+trade so the next reader does not spend the ten minutes rediscovering it.
+
 ## Consequences
 
 - ADR-008 remains the statement of intent for the test pyramid. This ADR is the statement of
@@ -113,8 +130,14 @@ untypeable until it was found.
   rather than be maintained as prose alongside a diverging reality. When it empties, a
   further ADR can record that ADR-008 is fully met.
 - Three files already cite this ADR for the gaps they describe:
-  `crates/agent-rails-policy/CLAUDE.md` (fuzz and Kani),
+  `crates/agent-rails-policy/CLAUDE.md` (fuzz, and Kani until it landed),
   `programs/agent_rails/tests/CLAUDE.md` (CU baseline), and the
   `policy-invariants` skill.
+- Writing the Kani proofs found that three of them pass a `limit_leq_ceiling` whose window
+  comparison is reversed — `<=` for `>=` is still a partial order, just the wrong one, so
+  reflexivity, antisymmetry and transitivity all survive it. ADR-008's four properties are
+  necessary and not sufficient: the direction of the order is only visible in what the
+  windows do, which is why `proofs.rs` carries two harnesses ADR-008 did not name. A gate
+  accepted on the strength of its passing would have shipped that hole.
 - The choice to name gaps rather than approximate them costs a reader one more document and
   buys the property that a green build means what it says.
