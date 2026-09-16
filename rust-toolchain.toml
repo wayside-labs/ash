@@ -4,5 +4,7 @@
 # first cargo invocation.
 [toolchain]
 channel = "1.97.1"
-components = ["rustfmt", "clippy"]
+# `llvm-tools` is here for cargo-llvm-cov, which instruments with the toolchain's own
+# LLVM: a mismatched profdata format from a system llvm-profdata fails to merge.
+components = ["rustfmt", "clippy", "llvm-tools"]
 profile = "minimal"

@@ -1,4 +1,7 @@
 target/
+# vitest/llvm-cov reports. biome reads this file (useIgnoreFile), so listing it here is
+# also what keeps the generated lcov-report HTML out of `pnpm lint`.
+coverage/
 .anchor/
 test-ledger/
 **/*.rs.bk
