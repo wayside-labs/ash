@@ -105,8 +105,8 @@ pub struct ExecutePayment<'info> {
 
     // --- NativeAllowance funding mode (ADR-014) ---------------------------------------
     // All five `Option`al: an `IsolatedVault` mint pays none of the tx-size or CU cost of
-    // these accounts, preserving the ≤40k CU / ≤600 byte budget the vault path is tuned
-    // for. The handler requires all five together, or none, based on
+    // these accounts, preserving the budget the vault path is tuned for (spec §10: ≤45k CU,
+    // ≤1,000 bytes legacy; the measured baseline is in tests/cu-baselines.txt). The handler requires all five together, or none, based on
     // `mint_config.funding_mode` — see `execute_payment_handler`.
     /// CHECK: the owner's own ATA, source of funds when `funding_mode == NativeAllowance`.
     #[account(mut)]
