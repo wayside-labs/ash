@@ -1,0 +1,90 @@
+name: IDL
+
+# Separate from CI because it is the only job that needs the Solana toolchain, and
+# installing that costs minutes this repo pays for. Path-filtered so it runs when the
+# program can actually have changed.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "programs/**"
+      - "crates/**"
+      - "idl/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "Anchor.toml"
+      - "rust-toolchain.toml"
+      - ".github/workflows/idl.yml"
+  pull_request:
+    paths:
+      - "programs/**"
+      - "crates/**"
+      - "idl/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "Anchor.toml"
+      - "rust-toolchain.toml"
+      - ".github/workflows/idl.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  # Resolved by anchor from the `solana-program` dependency in
+  # programs/test_pda_relay/Cargo.toml. Bump both together.
+  AGAVE_VERSION: 3.1.14
+
+jobs:
+  drift:
+    name: idl matches the program
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Read rather than duplicated: Anchor.toml is the one place the version is declared.
+      - id: versions
+        run: |
+          anchor_version=$(sed -n 's/^anchor_version = "\(.*\)"/\1/p' Anchor.toml)
+          test -n "$anchor_version" || { echo "anchor_version missing from Anchor.toml"; exit 1; }
+          echo "anchor=$anchor_version" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: toolchain-cache
+        with:
+          path: |
+            ~/.local/share/solana
+            ~/.avm
+            ~/.cargo/bin/anchor
+            ~/.cargo/bin/avm
+          key: solana-${{ env.AGAVE_VERSION }}-anchor-${{ steps.versions.outputs.anchor }}
+
+      - if: steps.toolchain-cache.outputs.cache-hit != 'true'
+        run: sh -c "$(curl -sSfL https://release.anza.xyz/v${AGAVE_VERSION}/install)"
+
+      - if: steps.toolchain-cache.outputs.cache-hit != 'true'
+        run: |
+          cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
+          avm install ${{ steps.versions.outputs.anchor }}
+          avm use ${{ steps.versions.outputs.anchor }}
+
+      - run: echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
+
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      # `pnpm codegen:check` in CI proves the client matches the committed IDL. This
+      # proves the committed IDL matches the program — the half that goes stale when
+      # someone changes an instruction and skips the regeneration step.
+      - run: pnpm idl:build
+      - run: git diff --exit-code -- idl/agent_rails.json
+      - run: pnpm codegen:check
