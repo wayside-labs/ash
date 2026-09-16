@@ -70,7 +70,8 @@ the IDL from the program and fails if the committed one differs. ADR-008 asked f
 diff comment"; a failing gate was chosen over a comment, because a comment is advisory.
 
 `.github/workflows/kani.yml`, path-filtered to the policy crate, plus nightly and manual
-triggers. Thirteen harnesses, ~85s of solver time. It is not a required status check —
+triggers. Thirteen harnesses; 1m14s per run on the runner, 38s of it solver. It is not a
+required status check —
 ADR-008 scoped Kani as non-blocking, and idl.yml already records why a path-filtered job
 must never be required.
 
@@ -109,8 +110,8 @@ are routine mid-migration in this tree. They are still worth seeing — a duplic
 untypeable until it was found.
 
 Kani runs per pull request when the policy crate changes, not only nightly. ADR-008 put it
-nightly on the assumption that model checking is slow; measured, the thirteen harnesses take
-~85s, which is less than the `rust` job already spends. Nightly is kept as well, because a
+nightly on the assumption that model checking is slow; measured, a whole run is 1m14s, which
+is less than the `rust` job already spends. Nightly is kept as well, because a
 Kani release can change what its solver discharges without the crate changing — but a proof
 that only ever fails at 05:00 names the wrong commit.
 

@@ -8,11 +8,11 @@ name: Kani
 # green. Path-filtered and advisory is the combination that is safe to run this way.
 #
 # The filter is the whole reason this is affordable per pull request rather than only
-# nightly as ADR-008 assumed. A run is ~2.5 minutes — 10s to install the plugin, 54s for
-# Kani's own toolchain, 85s of solver — and the policy crate changes rarely, so most pull
-# requests skip this entirely. The ones that do not are exactly the ones where a red run is
-# worth reading, because a broken proof points at the arithmetic the change just touched
-# instead of at a nightly nobody opens.
+# nightly as ADR-008 assumed. Measured on the runner: 1m14s end to end, 31s of it installing
+# Kani and 38s of solver for thirteen harnesses. The policy crate changes rarely, so most
+# pull requests skip this entirely — and the ones that do not are exactly the ones where a
+# red run is worth reading, because a broken proof points at the arithmetic the change just
+# touched instead of at a nightly nobody opens.
 on:
   push:
     branches: [main]
@@ -60,13 +60,12 @@ jobs:
           echo "kani=$kani" >> "$GITHUB_OUTPUT"
 
       # Deliberately uncached, which is the opposite of what the rest of this repository
-      # does and needs the reason on the record. Kani is three installs: the cargo plugin
-      # (10s), the release bundle carrying CBMC (485 MB), and the nightly rustc that bundle
-      # is built against (1.5 GB). Caching the two big ones saves ~54s and costs 2 GB of a
-      # 10 GB repository-wide Actions cache budget — enough to evict the rust-cache entries
-      # the `rust` job in ci.yml depends on, making the critical path slower to make this
-      # job faster. A minute on a job that runs on policy-crate changes and nightly is the
-      # cheaper side of that trade.
+      # does and needs the reason on the record. Kani is three installs: the cargo plugin,
+      # the release bundle carrying CBMC (485 MB), and the nightly rustc that bundle is
+      # built against (1.5 GB). All three together take 31s here. Caching the two big ones
+      # would spend 2 GB of a 10 GB repository-wide Actions cache budget to save that 31s —
+      # enough to evict the rust-cache entries the `rust` job in ci.yml depends on, making
+      # the critical path slower in order to make this job faster.
       - run: |
           cargo install --locked kani-verifier --version "${{ steps.versions.outputs.kani }}"
           cargo-kani setup
