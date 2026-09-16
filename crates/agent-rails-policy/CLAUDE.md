@@ -16,6 +16,24 @@ self-consistent, a vector proves it still produces the same bytes as yesterday. 
 is what an auditor replays, so a silent change to it is a break even when every property
 still passes.
 
+`tests/rejections.rs` covers the refusals — a zero limit, an impossible window ordering, a
+discriminant this version does not know, and window state a corrupted account could carry.
+Proptest generates inputs that are valid by construction, which is what makes it strong on
+the arithmetic and blind to every guard in front of it; a new refusal belongs there rather
+than in `proptests.rs`.
+
+`tests/error_codes.rs` pins the properties of the code tables — distinct codes, distinct
+reason strings, `Display` agreeing with `reason_code()`. Whether those numbers match the
+Anchor codes the program actually emits needs both crates, so it lives in
+`programs/agent_rails/tests/`.
+
+The crate is gated at ≥95% line coverage (`cargo llvm-cov --fail-under-lines 95`, in
+`scripts/verify.sh rust`) and currently measures 99.2%. The two uncovered lines are the
+`checked_div` and `checked_mul` guards in `roll_window`, which the guards above them make
+unreachable: `window >= 1` after the zero check, and `buckets * window <= elapsed` by
+integer truncation. They are dead rather than untested — worth knowing before anyone
+spends effort trying to reach them.
+
 ADR-008 also calls for `cargo-fuzz` and Kani proofs on this crate. Neither exists yet —
 see ADR-015 for what is deferred. Do not read their absence as a decision that they are
 unnecessary.
