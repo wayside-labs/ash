@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+#
+# PreToolUse gate. Reads the tool call as JSON on stdin and answers with a
+# permissionDecision, or says nothing and lets the normal permission flow run.
+#
+# What this is: fast feedback against an accidental edit, delivered before the
+# write instead of after a CI run.
+#
+# What this is NOT: a security boundary. A path-based deny on Write|Edit does not
+# stop `cat > file` through Bash, and chasing every shell spelling of "write a
+# file" is a game the regex loses. The real enforcement for each rule below lives
+# in CI, which is deterministic and cannot be talked out of it:
+#   generated client  -> pnpm codegen:check
+#   overflow-checks   -> the grep step in .github/workflows/ci.yml
+#   account layouts   -> programs/agent_rails/tests/layout.rs
+# Treat a deny here as a typo-catcher, not a control.
+
+set -uo pipefail
+
+payload=$(cat)
+tool=$(jq -r '.tool_name // ""' <<<"$payload")
+file=$(jq -r '.tool_input.file_path // ""' <<<"$payload")
+command=$(jq -r '.tool_input.command // ""' <<<"$payload")
+old_string=$(jq -r '.tool_input.old_string // ""' <<<"$payload")
+new_string=$(jq -r '.tool_input.new_string // ""' <<<"$payload")
+content=$(jq -r '.tool_input.content // ""' <<<"$payload")
+
+decide() {
+  jq -cn --arg d "$1" --arg r "$2" '{
+    hookSpecificOutput: {
+      hookEventName: "PreToolUse",
+      permissionDecision: $d,
+      permissionDecisionReason: $r
+    }
+  }'
+  exit 0
+}
+
+case "$tool" in
+Write | Edit)
+  case "$file" in
+  */packages/client/src/generated/*)
+    decide deny "packages/client/src/generated is Codama output. Change the program or packages/client/codama.json and run 'pnpm codegen' — CI's codegen:check regenerates from the committed IDL and fails on any hand edit."
+    ;;
+  esac
+
+  # `overflow-checks` makes the Anchor layer trap rather than wrap on arithmetic the
+  # policy crate's checked_* does not cover. Removing it is silent until it is not.
+  if [[ "$file" == */Cargo.toml ]]; then
+    if [[ -n "$old_string" && "$old_string" == *overflow-checks* && "$new_string" != *overflow-checks* ]]; then
+      decide deny "overflow-checks = true in [profile.release] is mandatory (Cargo.toml, CLAUDE.md). Removing it makes release builds wrap instead of trap."
+    fi
+    if [[ -n "$content" && "$content" != *overflow-checks* ]] && grep -q "overflow-checks" "$file" 2>/dev/null; then
+      decide deny "This rewrite of $file drops overflow-checks = true, which is mandatory in [profile.release]."
+    fi
+  fi
+
+  case "$file" in
+  */programs/agent_rails/tests/layout.rs)
+    decide ask "layout.rs snapshots account byte layouts. Layout stability is what lets v1.1 land without migrations — update this deliberately, never to silence a failure."
+    ;;
+  */docs/adr/ADR-*.md)
+    decide ask "ADRs are immutable (docs/adr/README.md). Revisiting a settled decision means adding a new ADR that supersedes this one."
+    ;;
+  esac
+  ;;
+
+Bash)
+  if grep -qE '(^|[[:space:]])git[[:space:]]+push([[:space:]]|$).*--force' <<<"$command"; then
+    decide ask "git push --force rewrites published history."
+  fi
+  if grep -qE '(^|[[:space:]])anchor[[:space:]]+deploy' <<<"$command" ||
+    grep -qE '(^|[[:space:]])solana[[:space:]]+program[[:space:]]+(deploy|write-buffer|set-upgrade-authority|close)' <<<"$command"; then
+    decide ask "This deploys or changes authority on a live program. ADR-011 puts upgrades behind the multisig and a public notice window."
+  fi
+  # Not exhaustive by construction — see the header. Catches the obvious redirect.
+  if grep -qE 'packages/client/src/generated' <<<"$command" &&
+    grep -qE '>|tee|sed -i|truncate|rm ' <<<"$command"; then
+    decide ask "This looks like it writes into packages/client/src/generated, which is Codama output. 'pnpm codegen' is the supported way to change it."
+  fi
+  ;;
+esac
+
+# No opinion: fall through to the normal permission flow.
+exit 0

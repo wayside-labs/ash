@@ -29,6 +29,11 @@ jobs:
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       - run: cargo fmt --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
+      # The policy crate uses checked_* everywhere, but the Anchor layer relies on this
+      # to trap rather than wrap on the arithmetic it does not cover. Silent if removed,
+      # so it is asserted rather than remembered.
+      - name: overflow-checks is still on for release builds
+        run: grep -qE '^overflow-checks = true$' Cargo.toml
       # Layers 1 and 2 of the ADR-008 pyramid; anchor-litesvm needs no validator, so
       # this covers the policy proptests and every instruction's integration tests.
       - run: cargo test --workspace

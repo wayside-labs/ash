@@ -12,3 +12,6 @@ dist/
 
 # Surfpool simnet logs from the E2E harness
 .surfpool/
+
+# Personal Claude Code overrides; .claude/settings.json is the shared one.
+.claude/settings.local.json
