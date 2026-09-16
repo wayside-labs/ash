@@ -68,7 +68,9 @@ ADR-008 also calls for `cargo-fuzz` and Kani proofs on this crate. Neither exist
   `docs/spec/accounts-and-instructions.md` §3 change in the same commit, and it is a
   breaking change for every Codama client downstream.
 - Did the instruction surface move? Run `pnpm idl:sync`.
-- Did CU cost move? `programs/agent_rails/tests/budget.rs` measures it; `execute_payment`
-  targets ≤40k CU. No CI gate catches a regression yet (ADR-015), so read the number.
+- Did CU cost move? `programs/agent_rails/tests/budget.rs` measures it against the
+  baselines in `tests/cu-baselines.txt`, and CI fails at >10% over them. The spec §10 design
+  gate is ≤45k CU for `execute_payment`. If the move is intended, refresh the baseline with
+  `scripts/cu-baseline.sh --write` in the same commit that justifies it.
 
 Finish with `scripts/verify.sh`.
