@@ -6,9 +6,9 @@ import type {
   Rpc,
   SendTransactionApi,
   SolanaRpcApi,
-  TransactionMessage,
 } from "@solana/kit";
 import { AgentRailsError, isAgentRailsError } from "./errors.js";
+import type { PaymentTransactionMessage } from "./payment-intent.js";
 import { findReceiptPda } from "./pdas.js";
 import { resolvePaymentOutcome } from "./resolve.js";
 import { type SendPaymentResult, sendPayment } from "./send-payment.js";
@@ -20,7 +20,7 @@ export type ExecutePaymentRpc = Rpc<
 
 export type ExecutePaymentInput = {
   rpc: ExecutePaymentRpc;
-  transactionMessage: TransactionMessage;
+  transactionMessage: PaymentTransactionMessage;
   lastValidBlockHeight: bigint;
   /** Needed to derive the receipt PDA when an outcome has to be resolved. */
   session: Address;
@@ -52,7 +52,7 @@ export async function executePayment(input: ExecutePaymentInput): Promise<Execut
   const simulation = await simulatePayment({
     rpc: input.rpc,
     transactionMessage: input.transactionMessage,
-    commitment: input.commitment,
+    ...(input.commitment !== undefined ? { commitment: input.commitment } : {}),
   });
 
   try {
@@ -60,8 +60,8 @@ export async function executePayment(input: ExecutePaymentInput): Promise<Execut
       rpc: input.rpc,
       transactionMessage: input.transactionMessage,
       lastValidBlockHeight: input.lastValidBlockHeight,
-      commitment: input.commitment,
-      confirmTimeoutMs: input.confirmTimeoutMs,
+      ...(input.commitment !== undefined ? { commitment: input.commitment } : {}),
+      ...(input.confirmTimeoutMs !== undefined ? { confirmTimeoutMs: input.confirmTimeoutMs } : {}),
       skipPreflight: true,
     });
 

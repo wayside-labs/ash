@@ -6,8 +6,8 @@
  * @see https://github.com/codama-idl/codama
  */
 
-export * from "./entry";
-export * from "./policy";
-export * from "./session";
-export * from "./solVault";
-export * from "./treasury";
+export * from "./entry.js";
+export * from "./policy.js";
+export * from "./session.js";
+export * from "./solVault.js";
+export * from "./treasury.js";

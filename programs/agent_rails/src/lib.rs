@@ -55,7 +55,7 @@ pub mod agent_rails {
     }
 
     /// Configures a mint slot and its spending ceiling (spec §5.1).
-    pub fn add_mint(ctx: Context<AddMint>, ceiling: MintCeilingArgs) -> Result<()> {
+    pub fn add_mint(ctx: Context<AddMint>, ceiling: MintCeilingInput) -> Result<()> {
         instructions::add_mint::add_mint_handler(ctx, ceiling)
     }
 
@@ -90,7 +90,7 @@ pub mod agent_rails {
     pub fn create_policy(
         ctx: Context<CreatePolicy>,
         name: [u8; MAX_NAME_LEN],
-        args: PolicyArgs,
+        args: PolicyInput,
     ) -> Result<()> {
         instructions::create_policy::create_policy_handler(ctx, name, args)
     }
@@ -148,7 +148,7 @@ pub mod agent_rails {
     }
 
     /// Rewrites a live policy's rules, still bounded by the ceiling (spec §5.2).
-    pub fn update_policy(ctx: Context<UpdatePolicy>, args: PolicyArgs) -> Result<()> {
+    pub fn update_policy(ctx: Context<UpdatePolicy>, args: PolicyInput) -> Result<()> {
         instructions::update_policy::update_policy_handler(ctx, args)
     }
 
@@ -156,7 +156,7 @@ pub mod agent_rails {
     pub fn set_ceiling(
         ctx: Context<SetCeiling>,
         mint: Pubkey,
-        ceiling: MintCeilingArgs,
+        ceiling: MintCeilingInput,
         allow_any_destination: bool,
         allow_create_destination_ata: bool,
     ) -> Result<()> {

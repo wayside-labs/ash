@@ -51,7 +51,7 @@ import {
   getMintConfigEncoder,
   type MintConfig,
   type MintConfigArgs,
-} from "../types";
+} from "../types/index.js";
 
 export const TREASURY_DISCRIMINATOR: ReadonlyUint8Array = new Uint8Array([
   238, 239, 123, 238, 89, 1, 168, 253,

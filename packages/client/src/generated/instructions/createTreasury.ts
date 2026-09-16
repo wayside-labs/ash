@@ -42,8 +42,8 @@ import {
   getAddressFromResolvedInstructionAccount,
   type ResolvedInstructionAccount,
 } from "@solana/program-client-core";
-import { findSolVaultPda, findTreasuryPda } from "../pdas";
-import { AGENT_RAILS_PROGRAM_ADDRESS } from "../programs";
+import { findSolVaultPda, findTreasuryPda } from "../pdas/index.js";
+import { AGENT_RAILS_PROGRAM_ADDRESS } from "../programs/index.js";
 
 export const CREATE_TREASURY_DISCRIMINATOR: ReadonlyUint8Array = new Uint8Array(
   [254, 98, 217, 51, 25, 88, 140, 45],

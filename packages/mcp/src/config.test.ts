@@ -1,3 +1,4 @@
+import { SECURITY_PRESET_NAMES } from "@agent-rails/contract";
 import { describe, expect, it } from "vitest";
 import { loadConfigFromEnv } from "./config.js";
 
@@ -81,5 +82,20 @@ describe("loadConfigFromEnv", () => {
     expect(() =>
       loadConfigFromEnv({ ...baseEnv, AGENT_RAILS_MAX_PAYMENTS_PER_MINUTE: "lots" }),
     ).toThrow(/positive integer/);
+  });
+
+  // Every ADR-013 posture must be reachable. `config.ts` once used SECURITY_PRESET_NAMES
+  // without importing it, so naming a preset threw ReferenceError at startup and only the
+  // default was usable — invisible to tests that never named one.
+  it.each(SECURITY_PRESET_NAMES)("accepts the %s security preset", (preset) => {
+    expect(loadConfigFromEnv({ ...baseEnv, AGENT_RAILS_SECURITY: preset }).securityPreset).toBe(
+      preset,
+    );
+  });
+
+  it("rejects an unknown security preset by name", () => {
+    expect(() => loadConfigFromEnv({ ...baseEnv, AGENT_RAILS_SECURITY: "bogus" })).toThrow(
+      /AGENT_RAILS_SECURITY must be one of/,
+    );
   });
 });

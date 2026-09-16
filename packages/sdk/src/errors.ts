@@ -60,9 +60,15 @@ export class AgentRailsError extends Error {
       outcome: this.outcome,
       ...(this.source !== undefined ? { source: this.source } : {}),
       ...(this.remaining !== undefined ? { remaining: this.remaining } : {}),
-      intentId: context.intentId ?? this.intentId,
-      receipt: context.receipt ?? this.receipt,
-      signature: context.signature ?? this.signature,
+      ...((context.intentId ?? this.intentId) !== undefined
+        ? { intentId: (context.intentId ?? this.intentId) as string }
+        : {}),
+      ...((context.receipt ?? this.receipt) !== undefined
+        ? { receipt: (context.receipt ?? this.receipt) as Address }
+        : {}),
+      ...((context.signature ?? this.signature) !== undefined
+        ? { signature: (context.signature ?? this.signature) as string }
+        : {}),
       cause: this.cause,
     });
   }

@@ -1,0 +1,134 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A superseded run tells you nothing, and on a private repo it also burns metered minutes.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Every action is pinned to a commit SHA, not a tag: a tag is mutable, and these run
+# with access to a repository that custodies program upgrade authority (ADR-011).
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  rust:
+    name: rust
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # No toolchain action: rust-toolchain.toml pins the channel and names rustfmt and
+      # clippy as components, so rustup installs them on the first cargo invocation.
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - run: cargo fmt --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      # The policy crate uses checked_* everywhere, but the Anchor layer relies on this
+      # to trap rather than wrap on the arithmetic it does not cover. Silent if removed,
+      # so it is asserted rather than remembered.
+      - name: overflow-checks is still on for release builds
+        run: grep -qE '^overflow-checks = true$' Cargo.toml
+      # anchor-litesvm needs no validator, but it does need the compiled programs, and
+      # those need the Solana toolchain. Read out of idl.yml rather than redeclared here:
+      # that workflow is where the version is pinned, and two copies drift apart.
+      - id: versions
+        run: |
+          agave=$(sed -n 's/^  AGAVE_VERSION: \(.*\)$/\1/p' .github/workflows/idl.yml)
+          test -n "$agave" || { echo "AGAVE_VERSION missing from .github/workflows/idl.yml"; exit 1; }
+          echo "agave=$agave" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: solana-cache
+        with:
+          path: ~/.local/share/solana
+          key: solana-${{ steps.versions.outputs.agave }}
+
+      - if: steps.solana-cache.outputs.cache-hit != 'true'
+        run: sh -c "$(curl -sSfL https://release.anza.xyz/v${{ steps.versions.outputs.agave }}/install)"
+
+      - run: echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
+
+      # Both programs, because tests/common/mod.rs loads test_pda_relay.so next to
+      # agent_rails.so. A missing .so fails at test runtime, not at build time, which is
+      # why this gap survived until the tests ran on a runner with an empty target/.
+      - run: cargo build-sbf --manifest-path programs/agent_rails/Cargo.toml
+      - run: cargo build-sbf --manifest-path programs/test_pda_relay/Cargo.toml
+
+      # Layers 1 and 2 of the ADR-008 pyramid; this covers the policy proptests and
+      # every instruction's integration tests.
+      - run: cargo test --workspace
+
+  typescript:
+    name: typescript
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      # Regenerates the client from the committed IDL and fails on any difference.
+      # This is the enforcement behind "never hand-edit packages/client/src/generated":
+      # deterministic, and not something a local hook can be talked out of.
+      - run: pnpm codegen:check
+      - run: pnpm audit --prod --audit-level high
+
+  supply-chain:
+    name: supply-chain
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # RustSec advisories, license policy, and source registry, per deny.toml.
+      - uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2.1.1
+        with:
+          command: check
+
+  secrets:
+    name: secrets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # gitleaks scans history, not just the tip.
+          fetch-depth: 0
+      # The CLI, not gitleaks-action: the action refuses to run against an
+      # organization-owned repository without a paid licence key, while the scanner it
+      # wraps is MIT. Pinned by version and checksum for the same reason every action
+      # here is pinned by SHA.
+      - name: install gitleaks
+        env:
+          GITLEAKS_VERSION: 8.30.1
+          GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+        run: |
+          tarball="$RUNNER_TEMP/gitleaks.tar.gz"
+          curl -sSfL -o "$tarball" \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  $tarball" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/bin"
+          tar -xzf "$tarball" -C "$RUNNER_TEMP/bin" gitleaks
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      # .gitignore already refuses `**/*keypair*.json`; this is the check for a secret
+      # that reached a commit under some other name.
+      - run: gitleaks git --no-banner --redact .
+
+  sast:
+    name: sast
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep:1.176.1@sha256:34ab619bf1391a24bfda3f05debd0d8a6ce3093c2d5f9d39cfc00f83c1397823
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Rule sets are named explicitly rather than `--config auto`: a scan whose
+      # findings change when the registry changes is one nobody trusts.
+      - run: semgrep scan --config p/typescript --config p/rust --error --metrics=off

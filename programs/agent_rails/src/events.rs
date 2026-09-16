@@ -57,7 +57,7 @@ pub struct PaymentExecuted {
 
 /// A new named rule set under a treasury (spec §8).
 ///
-/// `limits_hash` commits to the exact `PolicyArgs` the operator submitted, so an auditor
+/// `limits_hash` commits to the exact `PolicyInput` the operator submitted, so an auditor
 /// can prove which rules were in force at a point in time without the indexer having to
 /// store every limit — and without trusting that a later `update_policy` did not rewrite
 /// history.
@@ -70,7 +70,7 @@ pub struct PolicyCreated {
     pub limits_hash: [u8; 32],
 }
 
-/// A policy account reclaimed. Carries no `limits_hash`: there are no `PolicyArgs` to
+/// A policy account reclaimed. Carries no `limits_hash`: there are no `PolicyInput` to
 /// commit to, and the rules that were in force are already on record from `PolicyCreated`.
 #[event]
 pub struct PolicyClosed {

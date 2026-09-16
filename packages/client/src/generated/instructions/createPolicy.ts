@@ -38,14 +38,14 @@ import {
   getNonNullResolvedInstructionInput,
   type ResolvedInstructionAccount,
 } from "@solana/program-client-core";
-import { findPolicyPda } from "../pdas";
-import { AGENT_RAILS_PROGRAM_ADDRESS } from "../programs";
+import { findPolicyPda } from "../pdas/index.js";
+import { AGENT_RAILS_PROGRAM_ADDRESS } from "../programs/index.js";
 import {
-  getPolicyArgsDecoder,
-  getPolicyArgsEncoder,
-  type PolicyArgs,
-  type PolicyArgsArgs,
-} from "../types";
+  getPolicyInputDecoder,
+  getPolicyInputEncoder,
+  type PolicyInput,
+  type PolicyInputArgs,
+} from "../types/index.js";
 
 export const CREATE_POLICY_DISCRIMINATOR: ReadonlyUint8Array = new Uint8Array([
   27, 81, 33, 27, 196, 103, 246, 53,
@@ -97,12 +97,12 @@ export type CreatePolicyInstruction<
 export type CreatePolicyInstructionData = {
   discriminator: ReadonlyUint8Array;
   name: ReadonlyUint8Array;
-  args: PolicyArgs;
+  args: PolicyInput;
 };
 
 export type CreatePolicyInstructionDataArgs = {
   name: ReadonlyUint8Array;
-  args: PolicyArgsArgs;
+  args: PolicyInputArgs;
 };
 
 export function getCreatePolicyInstructionDataEncoder(): Encoder<CreatePolicyInstructionDataArgs> {
@@ -110,7 +110,7 @@ export function getCreatePolicyInstructionDataEncoder(): Encoder<CreatePolicyIns
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
       ["name", fixEncoderSize(getBytesEncoder(), 32)],
-      ["args", getPolicyArgsEncoder()],
+      ["args", getPolicyInputEncoder()],
     ]),
     (value) => ({ ...value, discriminator: CREATE_POLICY_DISCRIMINATOR }),
   );
@@ -120,7 +120,7 @@ export function getCreatePolicyInstructionDataDecoder(): Decoder<CreatePolicyIns
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
     ["name", fixDecoderSize(getBytesDecoder(), 32)],
-    ["args", getPolicyArgsDecoder()],
+    ["args", getPolicyInputDecoder()],
   ]);
 }
 

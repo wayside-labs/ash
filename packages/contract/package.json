@@ -46,12 +46,14 @@
   ],
   "scripts": {
     "build": "tsdown",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
     "zod": "^4.0.0"
   },
   "devDependencies": {
+    "@types/node": "^22.0.0",
     "tsdown": "^0.15.0",
     "vitest": "^4.0.0"
   }

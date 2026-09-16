@@ -18,7 +18,7 @@ use anchor_litesvm::{
 
 use agent_rails::constants::{NATIVE_MINT, SEED_SOL_VAULT, SEED_TREASURY};
 use agent_rails::state::Treasury;
-use agent_rails::{AgentRailsError, MintCeilingArgs};
+use agent_rails::{AgentRailsError, MintCeilingInput};
 
 use anchor_spl::associated_token::{
     get_associated_token_address_with_program_id, ID as ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -357,7 +357,7 @@ pub fn add_mint_ix(
     treasury: &Pubkey,
     owner: &Pubkey,
     mint: Pubkey,
-    ceiling: MintCeilingArgs,
+    ceiling: MintCeilingInput,
     spl: Option<(Pubkey, Pubkey)>,
 ) -> Instruction {
     let (vault_ata, token_program, associated_token_program) = match spl {
@@ -391,7 +391,7 @@ pub fn add_native_mint_ix(
     env: &Env,
     treasury: &Pubkey,
     owner: &Pubkey,
-    ceiling: MintCeilingArgs,
+    ceiling: MintCeilingInput,
 ) -> Instruction {
     add_mint_ix(env, treasury, owner, NATIVE_MINT, ceiling, None)
 }
@@ -403,7 +403,7 @@ pub fn add_spl_mint_ix(
     owner: &Pubkey,
     mint: Pubkey,
     token_program: Pubkey,
-    ceiling: MintCeilingArgs,
+    ceiling: MintCeilingInput,
 ) -> Instruction {
     let vault_ata = vault_ata(treasury, &mint, &token_program);
     add_mint_ix(
@@ -421,7 +421,7 @@ pub fn vault_ata(treasury: &Pubkey, mint: &Pubkey, token_program: &Pubkey) -> Pu
 }
 
 /// Runs `add_mint` for the native SOL sentinel with the given ceiling.
-pub fn add_native_mint(env: &mut Env, fixture: &TreasuryFixture, ceiling: MintCeilingArgs) {
+pub fn add_native_mint(env: &mut Env, fixture: &TreasuryFixture, ceiling: MintCeilingInput) {
     let ix = add_native_mint_ix(env, &fixture.treasury, &fixture.owner.pubkey(), ceiling);
     let owner = fixture.owner.insecure_clone();
     env.execute(ix, &[&owner]).assert_success();
@@ -433,7 +433,7 @@ pub fn add_spl_mint(
     fixture: &TreasuryFixture,
     mint: Pubkey,
     token_program: Pubkey,
-    ceiling: MintCeilingArgs,
+    ceiling: MintCeilingInput,
 ) {
     let ix = add_spl_mint_ix(
         env,
@@ -664,8 +664,8 @@ pub fn assert_program_error(result: &TransactionResult, expected: AgentRailsErro
 
 /// A ceiling that is permissive but still valid, for tests whose subject is not the ceiling
 /// itself.
-pub fn permissive_ceiling() -> MintCeilingArgs {
-    MintCeilingArgs {
+pub fn permissive_ceiling() -> MintCeilingInput {
+    MintCeilingInput {
         max_per_tx: 10_000_000_000,
         max_short_window: 50_000_000_000,
         max_long_window: 200_000_000_000,
@@ -1404,13 +1404,13 @@ pub fn sha256(bytes: &[u8]) -> [u8; 32] {
 // Operator instructions (spec §5.2)
 // ---------------------------------------------------------------------------------------
 
-use agent_rails::args::{MintLimitArgs, PolicyArgs};
+use agent_rails::args::{MintLimitInput, PolicyInput};
 
-/// `MintLimitArgs` matching [`permissive_limit`], so a test can build a policy through the
+/// `MintLimitInput` matching [`permissive_limit`], so a test can build a policy through the
 /// real instruction and still get limits that fit inside [`permissive_ceiling`].
-pub fn permissive_limit_args(mint: Pubkey) -> MintLimitArgs {
+pub fn permissive_limit_args(mint: Pubkey) -> MintLimitInput {
     let limit = permissive_limit(mint);
-    MintLimitArgs {
+    MintLimitInput {
         mint,
         per_tx_max: limit.per_tx_max,
         short_window_max: limit.short_window_max,
@@ -1421,9 +1421,9 @@ pub fn permissive_limit_args(mint: Pubkey) -> MintLimitArgs {
     }
 }
 
-/// `PolicyArgs` with one permissive limit and `DestinationMode::Any`.
-pub fn permissive_policy_args(mint: Pubkey) -> PolicyArgs {
-    PolicyArgs {
+/// `PolicyInput` with one permissive limit and `DestinationMode::Any`.
+pub fn permissive_policy_args(mint: Pubkey) -> PolicyInput {
+    PolicyInput {
         mint_limits: vec![permissive_limit_args(mint)],
         destination_mode: 0,
         require_memo: false,
@@ -1436,7 +1436,7 @@ pub fn create_policy_ix(
     treasury: &Pubkey,
     operator: &Pubkey,
     name: [u8; MAX_NAME_LEN],
-    args: PolicyArgs,
+    args: PolicyInput,
 ) -> Instruction {
     env.ctx
         .program()
@@ -1458,7 +1458,7 @@ pub fn create_policy(
     env: &mut Env,
     fixture: &TreasuryFixture,
     name: [u8; MAX_NAME_LEN],
-    args: PolicyArgs,
+    args: PolicyInput,
 ) -> Pubkey {
     let ix = create_policy_ix(env, &fixture.treasury, &fixture.owner.pubkey(), name, args);
     let owner = fixture.owner.insecure_clone();
@@ -1746,7 +1746,7 @@ pub fn update_policy_ix(
     treasury: &Pubkey,
     operator: &Pubkey,
     policy: &Pubkey,
-    args: PolicyArgs,
+    args: PolicyInput,
 ) -> Instruction {
     env.ctx
         .program()
@@ -1767,7 +1767,7 @@ pub fn set_ceiling_ix(
     treasury: &Pubkey,
     owner: &Pubkey,
     mint: Pubkey,
-    ceiling: MintCeilingArgs,
+    ceiling: MintCeilingInput,
     allow_any_destination: bool,
     allow_create_destination_ata: bool,
 ) -> Instruction {
@@ -1794,7 +1794,7 @@ pub fn set_ceiling(
     env: &mut Env,
     fixture: &TreasuryFixture,
     mint: Pubkey,
-    ceiling: MintCeilingArgs,
+    ceiling: MintCeilingInput,
 ) {
     let ix = set_ceiling_ix(
         env,

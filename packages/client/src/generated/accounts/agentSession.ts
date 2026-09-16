@@ -49,7 +49,7 @@ import {
   getSpendCounterEncoder,
   type SpendCounter,
   type SpendCounterArgs,
-} from "../types";
+} from "../types/index.js";
 
 export const AGENT_SESSION_DISCRIMINATOR: ReadonlyUint8Array = new Uint8Array([
   25, 98, 70, 4, 139, 110, 56, 102,

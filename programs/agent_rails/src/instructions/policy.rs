@@ -8,9 +8,9 @@
 
 use anchor_lang::prelude::*;
 
-use agent_rails_policy::{PolicyArgsView, TreasuryView};
+use agent_rails_policy::{PolicyInputView, TreasuryView};
 
-use crate::args::{MintLimitArgs, PolicyArgs};
+use crate::args::{MintLimitInput, PolicyInput};
 use crate::constants::MAX_MINTS;
 use crate::error::{AgentRailsError, IntoAnchorResult};
 use crate::state::{MintLimit, Policy, Treasury};
@@ -22,7 +22,7 @@ use crate::state::{MintLimit, Policy, Treasury};
 /// (spec §7.2). That function is the same one `execute_payment` re-runs per payment, which
 /// is what keeps configuration-time and runtime agreeing.
 pub fn validated_limits(
-    args: &PolicyArgs,
+    args: &PolicyInput,
     treasury: &Treasury,
 ) -> Result<([MintLimit; MAX_MINTS], u8)> {
     // Bounds first: `to_policy_limits` truncates at `MAX_MINTS`, so an oversized `Vec` has
@@ -36,7 +36,7 @@ pub fn validated_limits(
     let (limits, used) = args.to_policy_limits();
     let (entries, configured) = treasury.ceiling_entries();
     agent_rails_policy::policy_leq_ceiling(
-        &PolicyArgsView {
+        &PolicyInputView {
             mint_limits: &limits[..used],
             destination_mode: args.destination_mode,
             require_memo: args.require_memo,
@@ -57,30 +57,30 @@ pub fn validated_limits(
     Ok((mint_limits, used as u8))
 }
 
-/// `sha256(borsh(PolicyArgs))` (spec §8).
+/// `sha256(borsh(PolicyInput))` (spec §8).
 ///
 /// Hashed from the *arguments* rather than the stored account so the digest covers exactly
 /// what the operator signed for, with no reserved bytes or defaults folded in.
-pub fn limits_hash(args: &PolicyArgs) -> [u8; 32] {
+pub fn limits_hash(args: &PolicyInput) -> [u8; 32] {
     let mut bytes = Vec::with_capacity(256);
     args.serialize(&mut bytes)
-        .expect("PolicyArgs serialization cannot fail into a Vec");
+        .expect("PolicyInput serialization cannot fail into a Vec");
     solana_sha256_hasher::hash(&bytes).to_bytes()
 }
 
-/// Reconstructs the `PolicyArgs` a live policy corresponds to.
+/// Reconstructs the `PolicyInput` a live policy corresponds to.
 ///
 /// `update_policy` needs this to emit the *previous* limits digest alongside the new one
 /// (spec §5.2), so an auditor can chain policy revisions the same way payments chain. The
-/// round-trip is exact because [`MintLimitArgs::to_state`] only ever adds the reserved and
+/// round-trip is exact because [`MintLimitInput::to_state`] only ever adds the reserved and
 /// v1.1 fields, which are zero by construction and are not part of the digest.
-pub fn args_from_policy(policy: &Policy) -> PolicyArgs {
-    PolicyArgs {
+pub fn args_from_policy(policy: &Policy) -> PolicyInput {
+    PolicyInput {
         mint_limits: policy
             .mint_limits
             .iter()
             .filter(|limit| limit.is_used())
-            .map(|limit| MintLimitArgs {
+            .map(|limit| MintLimitInput {
                 mint: limit.mint,
                 per_tx_max: limit.per_tx_max,
                 short_window_max: limit.short_window_max,

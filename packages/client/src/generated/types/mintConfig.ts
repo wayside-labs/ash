@@ -33,7 +33,7 @@ import {
   type FundingModeArgs,
   type MintCeiling,
   type MintCeilingArgs,
-} from ".";
+} from "./index.js";
 
 /**
  * One configured mint slot on a `Treasury` (spec §3.1.1). 112 bytes.

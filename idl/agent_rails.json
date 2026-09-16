@@ -306,7 +306,7 @@
           "name": "ceiling",
           "type": {
             "defined": {
-              "name": "MintCeilingArgs"
+              "name": "MintCeilingInput"
             }
           }
         }
@@ -769,7 +769,7 @@
           "name": "args",
           "type": {
             "defined": {
-              "name": "PolicyArgs"
+              "name": "PolicyInput"
             }
           }
         }
@@ -2128,7 +2128,7 @@
           "name": "ceiling",
           "type": {
             "defined": {
-              "name": "MintCeilingArgs"
+              "name": "MintCeilingInput"
             }
           }
         },
@@ -2367,7 +2367,7 @@
           "name": "args",
           "type": {
             "defined": {
-              "name": "PolicyArgs"
+              "name": "PolicyInput"
             }
           }
         }
@@ -3710,9 +3710,9 @@
       }
     },
     {
-      "name": "MintCeilingArgs",
+      "name": "MintCeilingInput",
       "docs": [
-        "`MintCeilingArgs` (spec §4.2). Amounts are in base units."
+        "`MintCeilingInput` (spec §4.2). Amounts are in base units."
       ],
       "type": {
         "kind": "struct",
@@ -3888,9 +3888,9 @@
       }
     },
     {
-      "name": "MintLimitArgs",
+      "name": "MintLimitInput",
       "docs": [
-        "`MintLimitArgs` (spec §4.2).",
+        "`MintLimitInput` (spec §4.2).",
         "",
         "The v1.1 `approval_threshold` and `cooldown_seconds` fields are deliberately absent: the",
         "program writes them as zero, so there is no way for a client to set a byte that a future",
@@ -4270,56 +4270,9 @@
       }
     },
     {
-      "name": "PolicyArgs",
-      "docs": [
-        "`PolicyArgs` (spec §4.2) — the full rule set an operator writes in one instruction.",
-        "",
-        "Passed whole rather than field by field so that `policy_leq_ceiling` can judge it as a",
-        "unit: whether a policy is legal depends on every limit *and* both destination flags",
-        "together, and a per-field setter would let an operator step through an illegal",
-        "intermediate state."
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "mint_limits",
-            "docs": [
-              "1..=`MAX_MINTS` entries, each for a mint configured on the treasury."
-            ],
-            "type": {
-              "vec": {
-                "defined": {
-                  "name": "MintLimitArgs"
-                }
-              }
-            }
-          },
-          {
-            "name": "destination_mode",
-            "docs": [
-              "`DestinationMode`."
-            ],
-            "type": "u8"
-          },
-          {
-            "name": "require_memo",
-            "type": "bool"
-          },
-          {
-            "name": "create_destination_ata",
-            "docs": [
-              "Requires `Treasury.allow_create_destination_ata`."
-            ],
-            "type": "bool"
-          }
-        ]
-      }
-    },
-    {
       "name": "PolicyClosed",
       "docs": [
-        "A policy account reclaimed. Carries no `limits_hash`: there are no `PolicyArgs` to",
+        "A policy account reclaimed. Carries no `limits_hash`: there are no `PolicyInput` to",
         "commit to, and the rules that were in force are already on record from `PolicyCreated`."
       ],
       "type": {
@@ -4354,7 +4307,7 @@
       "docs": [
         "A new named rule set under a treasury (spec §8).",
         "",
-        "`limits_hash` commits to the exact `PolicyArgs` the operator submitted, so an auditor",
+        "`limits_hash` commits to the exact `PolicyInput` the operator submitted, so an auditor",
         "can prove which rules were in force at a point in time without the indexer having to",
         "store every limit — and without trusting that a later `update_policy` did not rewrite",
         "history."
@@ -4391,6 +4344,53 @@
                 32
               ]
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "PolicyInput",
+      "docs": [
+        "`PolicyInput` (spec §4.2) — the full rule set an operator writes in one instruction.",
+        "",
+        "Passed whole rather than field by field so that `policy_leq_ceiling` can judge it as a",
+        "unit: whether a policy is legal depends on every limit *and* both destination flags",
+        "together, and a per-field setter would let an operator step through an illegal",
+        "intermediate state."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint_limits",
+            "docs": [
+              "1..=`MAX_MINTS` entries, each for a mint configured on the treasury."
+            ],
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "MintLimitInput"
+                }
+              }
+            }
+          },
+          {
+            "name": "destination_mode",
+            "docs": [
+              "`DestinationMode`."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "require_memo",
+            "type": "bool"
+          },
+          {
+            "name": "create_destination_ata",
+            "docs": [
+              "Requires `Treasury.allow_create_destination_ata`."
+            ],
+            "type": "bool"
           }
         ]
       }

@@ -6,7 +6,7 @@
 
 use agent_rails_policy::{
     evaluate, limit_leq_ceiling, policy_leq_ceiling, remaining, rollover, validate_ceiling,
-    validate_limit, MintCeiling, MintCeilingEntry, MintLimit, PolicyArgsView, PolicyError,
+    validate_limit, MintCeiling, MintCeilingEntry, MintLimit, PolicyError, PolicyInputView,
     SpendCounter, TreasuryView, MIN_WINDOW_SECONDS,
 };
 use proptest::prelude::*;
@@ -211,7 +211,7 @@ proptest! {
             allow_create_destination_ata: true,
         };
         let limits = [l];
-        let args = PolicyArgsView {
+        let args = PolicyInputView {
             mint_limits: &limits,
             destination_mode: 0,
             require_memo: false,
@@ -315,7 +315,7 @@ fn rejects_duplicate_and_unconfigured_mints() {
     };
 
     let duplicated = [limit, limit];
-    let args = PolicyArgsView {
+    let args = PolicyInputView {
         mint_limits: &duplicated,
         destination_mode: 0,
         require_memo: false,
@@ -330,7 +330,7 @@ fn rejects_duplicate_and_unconfigured_mints() {
         mint: MINT_B,
         ..limit
     }];
-    let args = PolicyArgsView {
+    let args = PolicyInputView {
         mint_limits: &unconfigured,
         destination_mode: 0,
         require_memo: false,
@@ -372,7 +372,7 @@ fn ceiling_flags_gate_policy_options() {
         allow_create_destination_ata: false,
     };
 
-    let any_destination = PolicyArgsView {
+    let any_destination = PolicyInputView {
         mint_limits: &limits,
         destination_mode: 0,
         require_memo: false,
@@ -383,7 +383,7 @@ fn ceiling_flags_gate_policy_options() {
         Err(PolicyError::PolicyExceedsCeiling)
     );
 
-    let creates_ata = PolicyArgsView {
+    let creates_ata = PolicyInputView {
         mint_limits: &limits,
         destination_mode: 1,
         require_memo: false,
@@ -394,7 +394,7 @@ fn ceiling_flags_gate_policy_options() {
         Err(PolicyError::PolicyExceedsCeiling)
     );
 
-    let allowlist_only = PolicyArgsView {
+    let allowlist_only = PolicyInputView {
         mint_limits: &limits,
         destination_mode: 1,
         require_memo: true,

@@ -37,8 +37,8 @@ import {
   getAddressFromResolvedInstructionAccount,
   type ResolvedInstructionAccount,
 } from "@solana/program-client-core";
-import { findSolVaultPda } from "../pdas";
-import { AGENT_RAILS_PROGRAM_ADDRESS } from "../programs";
+import { findSolVaultPda } from "../pdas/index.js";
+import { AGENT_RAILS_PROGRAM_ADDRESS } from "../programs/index.js";
 
 export const REMOVE_MINT_DISCRIMINATOR: ReadonlyUint8Array = new Uint8Array([
   113, 35, 250, 141, 254, 115, 233, 5,

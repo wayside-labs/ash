@@ -12,17 +12,17 @@ import {
   type SolanaRpcApi,
   sendTransactionWithoutConfirmingFactory,
   signTransactionMessageWithSigners,
-  type TransactionMessage,
 } from "@solana/kit";
 import { toAgentRailsError } from "./error-mapping.js";
 import { AgentRailsError } from "./errors.js";
+import type { PaymentTransactionMessage } from "./payment-intent.js";
 
 const DEFAULT_CONFIRM_TIMEOUT_MS = 60_000;
 const CONFIRM_POLL_INTERVAL_MS = 500;
 
 export type SendPaymentInput = {
   rpc: Rpc<SolanaRpcApi & SendTransactionApi & GetSignatureStatusesApi & GetBlockHeightApi>;
-  transactionMessage: TransactionMessage;
+  transactionMessage: PaymentTransactionMessage;
   lastValidBlockHeight: bigint;
   commitment?: Commitment;
   confirmTimeoutMs?: number;

@@ -40,7 +40,7 @@ import {
   getAccountMetaFactory,
   type ResolvedInstructionAccount,
 } from "@solana/program-client-core";
-import { AGENT_RAILS_PROGRAM_ADDRESS } from "../programs";
+import { AGENT_RAILS_PROGRAM_ADDRESS } from "../programs/index.js";
 
 export const ENABLE_NATIVE_ALLOWANCE_DISCRIMINATOR: ReadonlyUint8Array =
   new Uint8Array([13, 218, 35, 33, 174, 242, 93, 121]);

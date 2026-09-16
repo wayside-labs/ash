@@ -14,7 +14,8 @@ export function bytesToHex(bytes: ReadonlyUint8Array): string {
 export function decodePaddedUtf8(bytes: ReadonlyUint8Array): string {
   const end = bytes.indexOf(0);
   const slice = end === -1 ? bytes : bytes.subarray(0, end);
-  return new TextDecoder().decode(slice);
+  // TextDecoder wants a mutable view; these are 32-byte name fields, so the copy is free.
+  return new TextDecoder().decode(Uint8Array.from(slice));
 }
 
 function bigintField(value: bigint): string {

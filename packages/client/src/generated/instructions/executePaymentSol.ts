@@ -38,14 +38,14 @@ import {
   getAddressFromResolvedInstructionAccount,
   type ResolvedInstructionAccount,
 } from "@solana/program-client-core";
-import { findSessionPda, findSolVaultPda } from "../pdas";
-import { AGENT_RAILS_PROGRAM_ADDRESS } from "../programs";
+import { findSessionPda, findSolVaultPda } from "../pdas/index.js";
+import { AGENT_RAILS_PROGRAM_ADDRESS } from "../programs/index.js";
 import {
   getPaymentIntentDecoder,
   getPaymentIntentEncoder,
   type PaymentIntent,
   type PaymentIntentArgs,
-} from "../types";
+} from "../types/index.js";
 
 export const EXECUTE_PAYMENT_SOL_DISCRIMINATOR: ReadonlyUint8Array =
   new Uint8Array([237, 200, 30, 159, 29, 255, 1, 242]);

@@ -3,7 +3,12 @@
   "scripts": {
     "js": {
       "from": "@codama/renderers-js",
-      "args": ["."]
+      "args": [
+        ".",
+        {
+          "importExtension": "js"
+        }
+      ]
     }
   }
 }

@@ -1,4 +1,9 @@
 import { readFile } from "node:fs/promises";
+import {
+  SECURITY_PRESET_NAMES,
+  type SecurityPosture,
+  type SecurityPresetName,
+} from "@agent-rails/contract";
 import { type Address, createSolanaRpc, type Rpc, type SolanaRpcApi } from "@solana/kit";
 
 /**

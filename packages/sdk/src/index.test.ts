@@ -1,3 +1,4 @@
+import { address } from "@solana/kit";
 import { describe, expect, it } from "vitest";
 import { findTreasuryPda } from "./pdas.js";
 import { agentRails } from "./plugin.js";
@@ -5,9 +6,9 @@ import { agentRails } from "./plugin.js";
 describe("@agent-rails/sdk", () => {
   it("exposes the kit plugin shape", () => {
     const plugin = agentRails({
-      session: "11111111111111111111111111111111",
+      session: address("11111111111111111111111111111111"),
       signer: {
-        address: "11111111111111111111111111111111" as never,
+        address: address("11111111111111111111111111111111"),
         signTransactions: async () => [],
       },
     });
@@ -19,9 +20,9 @@ describe("@agent-rails/sdk", () => {
 
   it("resolves the requested posture at construction", () => {
     const plugin = agentRails({
-      session: "11111111111111111111111111111111",
+      session: address("11111111111111111111111111111111"),
       signer: {
-        address: "11111111111111111111111111111111" as never,
+        address: address("11111111111111111111111111111111"),
         signTransactions: async () => [],
       },
       security: { preset: "sandbox" },
@@ -32,9 +33,9 @@ describe("@agent-rails/sdk", () => {
   it("rejects a malformed posture when the client is built, not when it pays", () => {
     expect(() =>
       agentRails({
-        session: "11111111111111111111111111111111",
+        session: address("11111111111111111111111111111111"),
         signer: {
-          address: "11111111111111111111111111111111" as never,
+          address: address("11111111111111111111111111111111"),
           signTransactions: async () => [],
         },
         security: { posture: { velocity: { maxConcurrent: 0 } } },
@@ -43,9 +44,9 @@ describe("@agent-rails/sdk", () => {
   });
 
   it("derives treasury PDA seeds", async () => {
-    const [address] = await findTreasuryPda({
-      createKey: "11111111111111111111111111111111",
+    const [treasury] = await findTreasuryPda({
+      createKey: address("11111111111111111111111111111111"),
     });
-    expect(address).toMatch(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/);
+    expect(treasury).toMatch(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/);
   });
 });

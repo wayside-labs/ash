@@ -42,8 +42,8 @@ import {
   getNonNullResolvedInstructionInput,
   type ResolvedInstructionAccount,
 } from "@solana/program-client-core";
-import { findEntryPda } from "../pdas";
-import { AGENT_RAILS_PROGRAM_ADDRESS } from "../programs";
+import { findEntryPda } from "../pdas/index.js";
+import { AGENT_RAILS_PROGRAM_ADDRESS } from "../programs/index.js";
 
 export const ADD_ALLOWLIST_ENTRY_DISCRIMINATOR: ReadonlyUint8Array =
   new Uint8Array([59, 108, 25, 164, 197, 177, 166, 249]);

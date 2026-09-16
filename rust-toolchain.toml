@@ -1,0 +1,8 @@
+# Pinned exactly, not to a channel: ADR-011 commits to a verifiable build hash, and a
+# floating toolchain makes the program bytes depend on when CI happened to run.
+# `components` is what lets CI skip a toolchain action — rustup installs them on the
+# first cargo invocation.
+[toolchain]
+channel = "1.97.1"
+components = ["rustfmt", "clippy"]
+profile = "minimal"

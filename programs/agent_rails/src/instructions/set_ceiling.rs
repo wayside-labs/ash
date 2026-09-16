@@ -15,7 +15,7 @@
 
 use anchor_lang::prelude::*;
 
-use crate::args::MintCeilingArgs;
+use crate::args::MintCeilingInput;
 use crate::constants::SEED_TREASURY;
 use crate::error::{AgentRailsError, IntoAnchorResult};
 use crate::events::{CeilingUpdated, EVENT_SCHEMA_VERSION};
@@ -38,7 +38,7 @@ pub struct SetCeiling<'info> {
 pub fn set_ceiling_handler(
     ctx: Context<SetCeiling>,
     mint: Pubkey,
-    ceiling: MintCeilingArgs,
+    ceiling: MintCeilingInput,
     allow_any_destination: bool,
     allow_create_destination_ata: bool,
 ) -> Result<()> {

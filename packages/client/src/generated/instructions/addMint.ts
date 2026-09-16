@@ -36,13 +36,13 @@ import {
   getAccountMetaFactory,
   type ResolvedInstructionAccount,
 } from "@solana/program-client-core";
-import { AGENT_RAILS_PROGRAM_ADDRESS } from "../programs";
+import { AGENT_RAILS_PROGRAM_ADDRESS } from "../programs/index.js";
 import {
-  getMintCeilingArgsDecoder,
-  getMintCeilingArgsEncoder,
-  type MintCeilingArgs,
-  type MintCeilingArgsArgs,
-} from "../types";
+  getMintCeilingInputDecoder,
+  getMintCeilingInputEncoder,
+  type MintCeilingInput,
+  type MintCeilingInputArgs,
+} from "../types/index.js";
 
 export const ADD_MINT_DISCRIMINATOR: ReadonlyUint8Array = new Uint8Array([
   171, 222, 111, 37, 60, 166, 208, 108,
@@ -104,16 +104,16 @@ export type AddMintInstruction<
 
 export type AddMintInstructionData = {
   discriminator: ReadonlyUint8Array;
-  ceiling: MintCeilingArgs;
+  ceiling: MintCeilingInput;
 };
 
-export type AddMintInstructionDataArgs = { ceiling: MintCeilingArgsArgs };
+export type AddMintInstructionDataArgs = { ceiling: MintCeilingInputArgs };
 
 export function getAddMintInstructionDataEncoder(): FixedSizeEncoder<AddMintInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
-      ["ceiling", getMintCeilingArgsEncoder()],
+      ["ceiling", getMintCeilingInputEncoder()],
     ]),
     (value) => ({ ...value, discriminator: ADD_MINT_DISCRIMINATOR }),
   );
@@ -122,7 +122,7 @@ export function getAddMintInstructionDataEncoder(): FixedSizeEncoder<AddMintInst
 export function getAddMintInstructionDataDecoder(): FixedSizeDecoder<AddMintInstructionData> {
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
-    ["ceiling", getMintCeilingArgsDecoder()],
+    ["ceiling", getMintCeilingInputDecoder()],
   ]);
 }
 

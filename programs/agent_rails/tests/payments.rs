@@ -15,7 +15,7 @@ mod common;
 
 use anchor_litesvm::{Keypair, Pubkey, Signer};
 
-use agent_rails::args::{MintLimitArgs, PolicyArgs};
+use agent_rails::args::{MintLimitInput, PolicyInput};
 use agent_rails::constants::{MAX_MEMO_LEN, NATIVE_MINT};
 use agent_rails::events::PaymentExecuted;
 use agent_rails::state::MintLimit;
@@ -45,7 +45,7 @@ struct SplConfig {
     precreate_destination_ata: bool,
     vault_amount: u64,
     /// A limit built through `create_policy`, so it must fit under the ceiling.
-    limit: Option<MintLimitArgs>,
+    limit: Option<MintLimitInput>,
     token_program: Pubkey,
 }
 
@@ -1060,7 +1060,7 @@ fn the_native_mint_cannot_be_paid_through_the_token_path() {
 
     // Give the policy and session a native slot so the failure is the path check in step 7
     // and not a missing limit.
-    let args = PolicyArgs {
+    let args = PolicyInput {
         mint_limits: vec![
             permissive_limit_args(f.mint),
             permissive_limit_args(NATIVE_MINT),

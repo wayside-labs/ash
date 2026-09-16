@@ -36,13 +36,13 @@ import {
   getAccountMetaFactory,
   type ResolvedInstructionAccount,
 } from "@solana/program-client-core";
-import { AGENT_RAILS_PROGRAM_ADDRESS } from "../programs";
+import { AGENT_RAILS_PROGRAM_ADDRESS } from "../programs/index.js";
 import {
-  getPolicyArgsDecoder,
-  getPolicyArgsEncoder,
-  type PolicyArgs,
-  type PolicyArgsArgs,
-} from "../types";
+  getPolicyInputDecoder,
+  getPolicyInputEncoder,
+  type PolicyInput,
+  type PolicyInputArgs,
+} from "../types/index.js";
 
 export const UPDATE_POLICY_DISCRIMINATOR: ReadonlyUint8Array = new Uint8Array([
   212, 245, 246, 7, 163, 151, 18, 57,
@@ -88,16 +88,16 @@ export type UpdatePolicyInstruction<
 
 export type UpdatePolicyInstructionData = {
   discriminator: ReadonlyUint8Array;
-  args: PolicyArgs;
+  args: PolicyInput;
 };
 
-export type UpdatePolicyInstructionDataArgs = { args: PolicyArgsArgs };
+export type UpdatePolicyInstructionDataArgs = { args: PolicyInputArgs };
 
 export function getUpdatePolicyInstructionDataEncoder(): Encoder<UpdatePolicyInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
-      ["args", getPolicyArgsEncoder()],
+      ["args", getPolicyInputEncoder()],
     ]),
     (value) => ({ ...value, discriminator: UPDATE_POLICY_DISCRIMINATOR }),
   );
@@ -106,7 +106,7 @@ export function getUpdatePolicyInstructionDataEncoder(): Encoder<UpdatePolicyIns
 export function getUpdatePolicyInstructionDataDecoder(): Decoder<UpdatePolicyInstructionData> {
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
-    ["args", getPolicyArgsDecoder()],
+    ["args", getPolicyInputDecoder()],
   ]);
 }
 

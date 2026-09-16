@@ -238,14 +238,14 @@ pub struct PaymentIntent {
 
 Serialized size: `100 + 4 + len(memo)` bytes (≤ 168). In v1.1 signed-intent mode the signed message is `DOMAIN_INTENT ‖ program_id ‖ treasury ‖ session ‖ borsh(PaymentIntent)`; this is documented now so v1 SDKs can already produce it.
 
-### 4.2 `MintLimitArgs`, `MintCeilingArgs`, `PolicyArgs`
+### 4.2 `MintLimitInput`, `MintCeilingInput`, `PolicyInput`
 
 Mirror the on-chain structs without reserved fields:
 
 ```rust
-pub struct MintLimitArgs  { mint, per_tx_max, short_window_max, short_window_seconds, long_window_max, long_window_seconds, lifetime_max }
-pub struct MintCeilingArgs{ max_per_tx, max_short_window, max_long_window, max_lifetime, min_short_window_seconds, min_long_window_seconds }
-pub struct PolicyArgs     { mint_limits: Vec<MintLimitArgs> /* ≤ 4 */, destination_mode: u8, require_memo: bool, create_destination_ata: bool }
+pub struct MintLimitInput  { mint, per_tx_max, short_window_max, short_window_seconds, long_window_max, long_window_seconds, lifetime_max }
+pub struct MintCeilingInput{ max_per_tx, max_short_window, max_long_window, max_lifetime, min_short_window_seconds, min_long_window_seconds }
+pub struct PolicyInput     { mint_limits: Vec<MintLimitInput> /* ≤ 4 */, destination_mode: u8, require_memo: bool, create_destination_ata: bool }
 ```
 
 ---
@@ -272,7 +272,7 @@ Notation: **(s)** signer, **(w)** writable. `clock` = `Clock::get()`. `event_aut
 - Checks: role; `guardian_count < MAX_GUARDIANS` / guardian present; no duplicates.
 - Events: `GuardianAdded` / `GuardianRemoved`.
 
-#### `add_mint(ceiling: MintCeilingArgs)`
+#### `add_mint(ceiling: MintCeilingInput)`
 - Accounts: `owner` (s,w as rent payer), `treasury` (w), `mint`, `vault_ata` (w, init_if_needed via ATA program; omitted for native), `token_program`, `associated_token_program`, `system_program`.
 - Checks: role; `mint_count < MAX_MINTS`; not already configured; `mint.owner ∈ {spl_token, spl_token_2022}` or `mint == NATIVE_MINT`; for Token-2022, enumerate extensions and reject `TransferHook`, `ConfidentialTransferMint`, `NonTransferable` (`UnsupportedMintExtension`); set `HasTransferFee` / `HasPermanentDelegate` flags; `min_short_window_seconds ≥ MIN_WINDOW_SECONDS`, `min_short ≤ min_long`.
 - Effects: writes `MintConfig` (mint, token program, decimals, flags, ceiling).
@@ -294,7 +294,7 @@ Notation: **(s)** signer, **(w)** writable. `clock` = `Clock::get()`. `event_aut
 
 Funds under `NativeAllowance` never touch `vault_ata` or the program's custody at all — they stay in the owner's own wallet until `execute_payment` pulls them via the native program's `transferFixed`, which requires `delegatee` (the treasury PDA) to sign. An agent's session key can never satisfy that signature, so it cannot call the native program directly and bypass Agent Rails' policy engine — see `native_allowance.rs`'s module doc for the full argument.
 
-#### `set_ceiling(mint, ceiling: MintCeilingArgs, allow_any_destination, allow_create_destination_ata)`
+#### `set_ceiling(mint, ceiling: MintCeilingInput, allow_any_destination, allow_create_destination_ata)`
 - Accounts: `owner` (s), `treasury` (w).
 - Checks: role; mint configured; window minimums valid.
 - Effects: overwrites the slot's ceiling and the two treasury flags. Existing policies that now exceed the ceiling are **not** mutated; they fail closed at `execute_payment` via the runtime re-check (§5.3 step 9) and must be brought into compliance with `update_policy`.
@@ -325,13 +325,13 @@ Funds under `NativeAllowance` never touch `vault_ata` or the program's custody a
 
 ### 5.2 Operator instructions
 
-#### `create_policy(name: [u8; 32], args: PolicyArgs)`
+#### `create_policy(name: [u8; 32], args: PolicyInput)`
 - Accounts: `operator` (s,w rent payer), `treasury` (w), `policy` (w, init).
 - Checks: `operator ∈ {treasury.operator, treasury.owner}`; `name` non-empty UTF-8; `1 ≤ len(mint_limits) ≤ 4`; each `mint` configured in treasury; each limit passes `validate_limit` (windows `≥ MIN`, `short ≤ long`, non-zero maxima); `policy_leq_ceiling(args, treasury)` (§7.2); `approval_threshold`/`cooldown_seconds` written as `0`.
 - Effects: `treasury.policy_count += 1`.
 - Event: `PolicyCreated`.
 
-#### `update_policy(args: PolicyArgs)`
+#### `update_policy(args: PolicyInput)`
 - Accounts: `operator` (s), `treasury`, `policy` (w).
 - Checks: role; same validation and ceiling check as create; `policy.treasury == treasury.key()`.
 - Effects: overwrites limits/flags, `updated_at = now`. Sessions keep their counters (looked up by mint).
@@ -475,7 +475,7 @@ pub fn validate_ceiling(c: &MintCeiling) -> Result<(), PolicyError>;
 
 /// Partial order: every amount ≤ ceiling, every window duration ≥ ceiling minimum.
 pub fn limit_leq_ceiling(l: &MintLimit, c: &MintCeiling) -> bool;
-pub fn policy_leq_ceiling(p: &PolicyArgs, t: &TreasuryView) -> Result<(), PolicyError>;
+pub fn policy_leq_ceiling(p: &PolicyInputView, t: &TreasuryView) -> Result<(), PolicyError>;
 
 /// Advances bucket starts to the current bucket; resets spent on rollover. Pure.
 pub fn rollover(counter: &SpendCounter, l: &MintLimit, now: i64) -> SpendCounter;
@@ -524,7 +524,7 @@ Single enum, emitted via `emit_cpi!`. Every variant carries `treasury: Pubkey` a
 | `TreasuryPaused` / `TreasuryUnpaused` | `by, at` |
 | `Withdrawn` | `mint, amount, destination, by` |
 | `TreasuryClosed` | — |
-| `PolicyCreated` / `PolicyUpdated` / `PolicyClosed` | `policy, name`. `PolicyCreated` adds `limits_hash: [u8;32]` = sha256 of the serialized `PolicyArgs`; `PolicyUpdated` adds `previous_limits_hash` and `limits_hash`, so revisions chain the way payments do; `PolicyClosed` adds neither, having no args to commit to |
+| `PolicyCreated` / `PolicyUpdated` / `PolicyClosed` | `policy, name`. `PolicyCreated` adds `limits_hash: [u8;32]` = sha256 of the serialized `PolicyInput`; `PolicyUpdated` adds `previous_limits_hash` and `limits_hash`, so revisions chain the way payments do; `PolicyClosed` adds neither, having no args to commit to |
 | `AllowlistEntryAdded` / `AllowlistEntryRemoved` | `policy, destination_owner, label, per_tx_max_override` |
 | `SessionCreated` | `session, policy, session_key, label, expires_at, auth_mode` |
 | `SessionRevoked` | `session, by, seq, audit_head` |

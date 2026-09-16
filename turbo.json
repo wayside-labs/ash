@@ -12,6 +12,10 @@
     "codegen": {
       "cache": false,
       "outputs": ["src/generated/**"]
+    },
+    "typecheck": {
+      "dependsOn": ["^build"],
+      "outputs": []
     }
   }
 }

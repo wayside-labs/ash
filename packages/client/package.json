@@ -16,11 +16,12 @@
   "scripts": {
     "codegen": "codama run js",
     "build": "tsdown",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
     "@solana/kit": "^8.2.0",
-    "@solana/program-client-core": "^6.10.0"
+    "@solana/program-client-core": "^8.2.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
