@@ -27,13 +27,6 @@ jobs:
       # No toolchain action: rust-toolchain.toml pins the channel and names rustfmt and
       # clippy as components, so rustup installs them on the first cargo invocation.
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
-      - run: cargo fmt --check
-      - run: cargo clippy --workspace --all-targets -- -D warnings
-      # The policy crate uses checked_* everywhere, but the Anchor layer relies on this
-      # to trap rather than wrap on the arithmetic it does not cover. Silent if removed,
-      # so it is asserted rather than remembered.
-      - name: overflow-checks is still on for release builds
-        run: grep -qE '^overflow-checks = true$' Cargo.toml
       # anchor-litesvm needs no validator, but it does need the compiled programs, and
       # those need the Solana toolchain. Read out of idl.yml rather than redeclared here:
       # that workflow is where the version is pinned, and two copies drift apart.
@@ -60,9 +53,12 @@ jobs:
       - run: cargo build-sbf --manifest-path programs/agent_rails/Cargo.toml
       - run: cargo build-sbf --manifest-path programs/test_pda_relay/Cargo.toml
 
-      # Layers 1 and 2 of the ADR-008 pyramid; this covers the policy proptests and
-      # every instruction's integration tests.
-      - run: cargo test --workspace
+      # fmt, clippy -D warnings, the overflow-checks assertion, and cargo test —
+      # ADR-008 layers 1 and 2. Delegated to the script so `scripts/verify.sh rust`
+      # locally and this job cannot drift apart; it runs every check before
+      # reporting, so one push surfaces all the failures rather than the first.
+      # Placed after build-sbf because the integration tests load those .so files.
+      - run: scripts/verify.sh rust
 
   typescript:
     name: typescript
@@ -75,14 +71,11 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
-      - run: pnpm typecheck
-      - run: pnpm test
-      # Regenerates the client from the committed IDL and fails on any difference.
-      # This is the enforcement behind "never hand-edit packages/client/src/generated":
-      # deterministic, and not something a local hook can be talked out of.
-      - run: pnpm codegen:check
-      - run: pnpm audit --prod --audit-level high
+      # lint, typecheck, test, codegen:check and pnpm audit. codegen:check is the
+      # enforcement behind "never hand-edit packages/client/src/generated": it
+      # regenerates from the committed IDL and fails on any difference, which no
+      # local hook can be talked out of.
+      - run: scripts/verify.sh ts
 
   supply-chain:
     name: supply-chain

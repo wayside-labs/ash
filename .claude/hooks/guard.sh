@@ -60,7 +60,11 @@ Write | Edit)
     decide ask "layout.rs snapshots account byte layouts. Layout stability is what lets v1.1 land without migrations — update this deliberately, never to silence a failure."
     ;;
   */docs/adr/ADR-*.md)
-    decide ask "ADRs are immutable (docs/adr/README.md). Revisiting a settled decision means adding a new ADR that supersedes this one."
+    # Only an existing one. Writing a *new* ADR is the supported way to supersede a
+    # settled decision, so asking about it would gate the recommended path.
+    if [[ -f "$file" ]]; then
+      decide ask "ADRs are immutable (docs/adr/README.md). Revisiting a settled decision means adding a new ADR that supersedes this one."
+    fi
     ;;
   esac
   ;;
