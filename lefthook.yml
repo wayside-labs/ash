@@ -1,0 +1,41 @@
+# Fast checks before a commit exists, the slow ones before they reach the remote.
+# CI is the gate; this is the feedback loop that keeps CI from being the first
+# place you learn something is wrong.
+#
+# Installed by `pnpm install` via the `prepare` script. Skip a run with
+# `LEFTHOOK=0 git commit`.
+#
+# Commands call ./node_modules/.bin directly where they can: git hooks launched from
+# a GUI client or an IDE often run with a minimal PATH, and a hook that fails with
+# `pnpm: command not found` is a hook people turn off. The typecheck job is the
+# exception — turbo shells out to the package manager to run each package's script,
+# so it needs pnpm on PATH no matter how turbo itself is invoked.
+
+pre-commit:
+  parallel: true
+  jobs:
+    - name: biome
+      glob: "*.{ts,tsx,js,json,jsonc}"
+      # `src/generated` is Codama output and excluded in biome.json; listing it here
+      # too keeps a staged regeneration from being reformatted out of sync.
+      exclude:
+        - "packages/client/src/generated/**"
+      run: ./node_modules/.bin/biome check --write --no-errors-on-unmatched {staged_files}
+      stage_fixed: true
+
+    - name: rustfmt
+      glob: "*.rs"
+      run: rustfmt --edition 2021 {staged_files}
+      stage_fixed: true
+
+pre-push:
+  parallel: true
+  jobs:
+    - name: clippy
+      run: cargo clippy --workspace --all-targets -- -D warnings
+
+    - name: typecheck
+      run: pnpm typecheck
+
+    - name: lint
+      run: ./node_modules/.bin/biome check .
