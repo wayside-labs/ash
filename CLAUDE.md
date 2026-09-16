@@ -84,7 +84,7 @@ Layered, Rust-first, documented in full in `ARCHITECTURE.md` §11 and `docs/adr/
 4. `litesvm` (npm) for SDK/MCP; MCP contract tests via in-memory transport; tool-schema snapshots.
 5. Surfpool E2E nightly (mainnet-forked USDC), devnet smoke on release tags.
 
-Coverage thresholds enforced in CI: policy crate ≥95%, SDK core ≥85%. CU regression >10% over the committed budget fails CI (`execute_payment` budget target: ≤40k CU, ≤600 bytes with legacy addressing).
+Coverage thresholds enforced in CI: policy crate ≥95%, SDK core ≥85%. CU regression >10% over the committed baseline fails CI; baselines are in `programs/agent_rails/tests/cu-baselines.txt`, refreshed with `scripts/cu-baseline.sh`, and the spec §10 design gates are ≤45k CU for `execute_payment` and ≤35k for `execute_payment_sol`. (ADR-010's ≤40k / ≤600 bytes are the original design estimates; spec §10.1 amends them with measured figures and says why.)
 
 ## Key invariants to preserve when editing
 
