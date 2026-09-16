@@ -597,11 +597,11 @@ Anchor custom errors start at 6000. `reason_code` strings are what the SDK, MCP 
 | Legacy tx size (2 signers, 64-byte memo) | ≈ 875 bytes | ≈ 745 bytes |
 | Legacy tx size gate | ≤ 1,000 bytes | ≤ 900 bytes |
 | With ALT (v0 tx) | ≈ 400 bytes | ≈ 350 bytes |
-| Compute units (SPL Token) | **measured 42,947**, gate ≤ 45k | **measured 32,026**, gate ≤ 35k |
+| Compute units (SPL Token) | gate ≤ 45k | gate ≤ 35k |
 | Compute units (Token-2022 w/ TransferFee) | target ≤ 50k, gate ≤ 55k | — |
 | + destination ATA creation | +≈ 20k CU, +≈ 0.002 SOL rent | — |
 
-The compute figures are **measured**, not estimated: they are pinned by `programs/agent_rails/tests/budget.rs`, which the CI regression gate runs. Two thresholds apply per §11 — the gate above, and the committed baseline at +10%.
+The gates above are design ceilings. The **measured** figures are deliberately not restated here: they live in `programs/agent_rails/tests/cu-baselines.txt`, which `budget.rs` reads and the CI regression gate enforces. Two thresholds apply per §11 — the gate above, and the committed baseline at +10%. This document carried its own copy of the measured numbers until both it and the test fell ~820 CU behind the build without a failure; one file now holds them, and `scripts/cu-baseline.sh` refreshes it.
 
 ### 10.1 Why the native SOL gate is 35k, not 30k
 
@@ -621,7 +621,7 @@ CU counts are only meaningful if they are reproducible. `find_program_address` s
 
 With randomly generated fixtures the measurements swung by ±6,000 CU between runs, every difference a multiple of ~1,500. The test harness therefore derives every key, address, and `intent_id` from a per-test deterministic sequence, and `budget.rs` asserts reproducibility directly. A CU gate built on random fixtures measures noise, not the program.
 
-A second, smaller source of drift is the length of Anchor's `#[program]` dispatch chain: each added instruction costs a few CU on every path, handler unchanged. The eight lifecycle instructions moved every payment by exactly +24 CU. The +10% regression band absorbs this; the pinned figures above are re-measured when it lands.
+A second, smaller source of drift is the length of Anchor's `#[program]` dispatch chain: each added instruction costs a few CU on every path, handler unchanged. The eight lifecycle instructions moved every payment by exactly +24 CU. The +10% regression band absorbs this, which is precisely why the baseline must still be re-measured when it lands — absorbed drift is invisible drift, and it spends the band that is there to catch a real regression. `scripts/cu-baseline.sh` is the re-measurement.
 
 ---
 

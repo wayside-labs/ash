@@ -19,13 +19,20 @@
 //! which catches a *change* long before it reaches the design ceiling. Raising a baseline is
 //! a deliberate act with a diff to justify it.
 //!
+//! **Both numbers live in `cu-baselines.txt`, not in this file.** They used to be consts
+//! here with a second copy in the spec §10 table, and both fell ~820 CU behind the build
+//! without anything failing — the +10% band absorbed the drift in silence, which is the one
+//! thing a baseline exists to prevent. One file now holds them, embedded with
+//! `include_str!` so a change to it rebuilds this test, and `scripts/cu-baseline.sh`
+//! re-measures and rewrites it rather than anyone retyping a figure.
+//!
 //! **The native SOL gate is 35k, amended from an original 30k design estimate.** The
 //! reasoning is recorded in spec §10.1: the instruction deserializes 2,078 bytes of Borsh
 //! account data (`Treasury` 944 + `Policy` 546 + `AgentSession` 588), creates a 243-byte
 //! `IntentReceipt`, and self-CPIs the event `emit_cpi!` requires — none of which is
 //! discretionary, since §3 freezes the layouts and §8 mandates the event mechanism. Every
-//! path now fits its gate, so `meets_spec_gate` is `true` throughout; the field stays
-//! because flipping one to `false` should require an obvious diff.
+//! path that has a gate fits it today; an exemption is spelled `over:<n>` in the baselines
+//! file and asserted in reverse, so it cannot outlive the condition that justified it.
 
 mod common;
 
@@ -45,87 +52,128 @@ const SOL_DEPOSIT: u64 = 5_000_000_000;
 const PAYMENT: u64 = 1_500_000;
 const SESSION_TTL: i64 = 86_400;
 
-/// One path's budget. Every field is a deliberate, reviewable number.
-///
-/// Baselines are sensitive to more than the payment handlers: adding an instruction to
-/// `#[program]` lengthens Anchor's discriminator dispatch chain. Three instructions
-/// moved every figure here by +9 CU; the eight in this revision moved them by +24.
-/// That is exactly the kind of drift the +10% band is meant to absorb without churn,
-/// and the kind a bare "under the gate" assertion would never surface.
-struct Budget {
-    label: &'static str,
-    /// What this build actually costs. §11 fails the build at +10% over it.
-    baseline: u64,
-    /// The spec §10 design gate.
-    spec_gate: u64,
-    /// Whether this path currently fits `spec_gate`.
-    ///
-    /// Every path does today. Flipping a `true` to `false` is a design regression and must
-    /// never be done to make a red test green — it needs a spec amendment with the
-    /// arithmetic to justify it, the way §10.1 documents the native SOL gate.
-    meets_spec_gate: bool,
-}
-
-const SPL_ALLOWLIST: Budget = Budget {
-    label: "execute_payment (SPL Token, allowlist, no ATA creation)",
-    baseline: 42_947,
-    spec_gate: 45_000,
-    meets_spec_gate: true,
-};
-
-const SPL_ANY: Budget = Budget {
-    label: "execute_payment (SPL Token, any destination, no ATA creation)",
-    baseline: 40_753,
-    spec_gate: 45_000,
-    meets_spec_gate: true,
-};
-
-const SOL: Budget = Budget {
-    label: "execute_payment_sol",
-    baseline: 32_026,
-    // Spec §10.1: amended from the original 30k design estimate, which the frozen Borsh
-    // account layouts make unreachable.
-    spec_gate: 35_000,
-    meets_spec_gate: true,
-};
+/// The committed baselines. Embedded rather than read from disk at runtime: the test binary
+/// then carries them, and `include_str!` makes cargo rebuild this test when the file moves.
+const BASELINES: &str = include_str!("cu-baselines.txt");
 
 /// §11: "CU regression (>10% over committed budget fails)".
 const REGRESSION_TOLERANCE_PERCENT: u64 = 10;
 
+/// The spec §10 design ceiling for one path, in the three spellings `cu-baselines.txt`
+/// documents.
+#[derive(Clone, Copy)]
+enum SpecGate {
+    /// The path fits this gate and must keep fitting it.
+    Fits(u64),
+    /// The path is over this gate — a recorded exemption, asserted in reverse.
+    Over(u64),
+    /// No spec section has ever committed a number for this path.
+    Ungated,
+}
+
+/// One path's budget, as parsed from `cu-baselines.txt`.
+struct Budget {
+    label: String,
+    baseline: u64,
+    spec_gate: SpecGate,
+}
+
+/// Looks one path up by key.
+///
+/// Panics rather than defaulting if the key is absent: a typo must not read as "this path
+/// has no budget to check", which is how a gate stops gating without anyone noticing.
+fn budget(key: &str) -> Budget {
+    let mut known = Vec::new();
+
+    for line in BASELINES.lines() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+
+        let mut fields = line.split_whitespace();
+        let (Some(row_key), Some(baseline), Some(gate)) =
+            (fields.next(), fields.next(), fields.next())
+        else {
+            panic!("cu-baselines.txt: malformed row, want `key baseline spec_gate label`: {line}");
+        };
+
+        if row_key != key {
+            known.push(row_key.to_string());
+            continue;
+        }
+
+        let baseline = baseline
+            .parse()
+            .unwrap_or_else(|_| panic!("cu-baselines.txt: {key} has a non-numeric baseline"));
+
+        let spec_gate = if gate == "none" {
+            SpecGate::Ungated
+        } else {
+            let (ctor, number): (fn(u64) -> SpecGate, &str) = match gate.strip_prefix("over:") {
+                Some(n) => (SpecGate::Over, n),
+                None => (SpecGate::Fits, gate),
+            };
+            ctor(number.parse().unwrap_or_else(|_| {
+                panic!("cu-baselines.txt: {key} has an unparseable spec_gate: {gate}")
+            }))
+        };
+
+        return Budget {
+            label: fields.collect::<Vec<_>>().join(" "),
+            baseline,
+            spec_gate,
+        };
+    }
+
+    panic!("cu-baselines.txt has no row for {key}; it has {known:?}");
+}
+
 /// Asserts one measurement against both thresholds and prints it, so a CI log records the
 /// number even on a passing run.
-fn assert_within_budget(budget: &Budget, measured: u64) {
+///
+/// The machine-readable `cu-baseline` line is printed *before* the assertions on purpose:
+/// `scripts/cu-baseline.sh` reads it out of the test output, and a run that fails its gate
+/// is exactly the run whose new number someone needs to see.
+fn assert_within_budget(key: &str, measured: u64) {
     let Budget {
         label,
         baseline,
         spec_gate,
-        meets_spec_gate,
-    } = *budget;
+    } = budget(key);
     let ceiling = baseline + baseline * REGRESSION_TOLERANCE_PERCENT / 100;
-    println!("{label}: {measured} CU (baseline {baseline}, spec §10 gate {spec_gate})");
 
-    // The regression gate applies to every path, met or not: it is what catches a change.
+    println!("cu-baseline\t{key}\t{measured}");
+    println!(
+        "{label}: {measured} CU (baseline {baseline}, {})",
+        match spec_gate {
+            SpecGate::Fits(gate) | SpecGate::Over(gate) => format!("spec §10 gate {gate}"),
+            SpecGate::Ungated => "no spec §10 gate".to_string(),
+        }
+    );
+
+    // The regression gate applies to every path, gated or not: it is what catches a change.
     assert!(
         measured <= ceiling,
         "{label} costs {measured} CU, more than {REGRESSION_TOLERANCE_PERCENT}% over the \
          committed baseline of {baseline}. Either this is a regression, or the baseline \
-         needs updating in the same commit that justifies it."
+         needs updating in the same commit that justifies it — see scripts/cu-baseline.sh."
     );
 
-    if meets_spec_gate {
-        assert!(
-            measured <= spec_gate,
-            "{label} costs {measured} CU, over the spec §10 gate of {spec_gate}. This path \
-             fits the gate today, so this is a design regression — do not relax the gate."
-        );
-    } else {
+    match spec_gate {
+        SpecGate::Fits(gate) => assert!(
+            measured <= gate,
+            "{label} costs {measured} CU, over the spec §10 gate of {gate}. This path fits \
+             the gate today, so this is a design regression — do not relax the gate."
+        ),
         // Guard the claim in the other direction: if this path ever *does* fit, the
         // exemption is stale and should be removed rather than left to rot.
-        assert!(
-            measured > spec_gate,
-            "{label} now fits the spec §10 gate of {spec_gate} at {measured} CU. \
-             Set `meets_spec_gate: true` and delete this exemption."
-        );
+        SpecGate::Over(gate) => assert!(
+            measured > gate,
+            "{label} now fits the spec §10 gate of {gate} at {measured} CU. Drop the \
+             `over:` prefix in cu-baselines.txt and delete this exemption."
+        ),
+        SpecGate::Ungated => {}
     }
 }
 
@@ -231,28 +279,30 @@ fn measure_sol_payment() -> u64 {
 
 #[test]
 fn execute_payment_fits_its_budget_in_allowlist_mode() {
-    assert_within_budget(&SPL_ALLOWLIST, measure_spl_payment(1));
+    assert_within_budget("execute_payment_spl_allowlist", measure_spl_payment(1));
 }
 
 #[test]
 fn execute_payment_fits_its_budget_in_any_mode() {
-    assert_within_budget(&SPL_ANY, measure_spl_payment(0));
+    assert_within_budget("execute_payment_spl_any", measure_spl_payment(0));
 }
 
 #[test]
 fn execute_payment_sol_fits_its_budget() {
-    assert_within_budget(&SOL, measure_sol_payment());
+    assert_within_budget("execute_payment_sol", measure_sol_payment());
 }
 
 /// The `NativeAllowance` path (ADR-014), CPI-ing into the real, devnet-dumped native
 /// Subscriptions & Allowances program instead of `transfer_checked`.
 ///
-/// No `Budget`/`spec_gate` here yet — unlike the three paths above, no spec section has
-/// ever committed to a number for this one, and this measurement uses
-/// `find_program_address` for the native PDAs rather than caller-supplied bumps (a known,
-/// documented gap in ADR-014's "Consequences" section). Printing the real number now, with
-/// a loose sanity ceiling, is the honest first step; a committed baseline + `spec_gate`
-/// should follow once that gap is closed rather than being invented here.
+/// This path carries a baseline but no `spec_gate`, and the two are not the same claim. No
+/// spec section has ever committed a design number for it, and this measurement still
+/// derives the native PDAs with `find_program_address` rather than caller-supplied bumps —
+/// the gap ADR-014's "Consequences" section names — so a design ceiling would be invented
+/// rather than measured. A *baseline* needs neither: it only has to be reproducible, which
+/// `compute_unit_measurements_are_reproducible` asserts directly. It replaces the 150k
+/// sanity ceiling this path used to sit under, which at 2.2x the real cost would not have
+/// caught the path doubling.
 fn measure_native_allowance_payment() -> u64 {
     let mut env = Env::new();
     load_native_subscriptions_program(&mut env);
@@ -333,23 +383,10 @@ fn measure_native_allowance_payment() -> u64 {
 }
 
 #[test]
-fn execute_payment_native_allowance_cu_cost_is_reported_and_sane() {
-    let measured = measure_native_allowance_payment();
-    println!(
-        "execute_payment (NativeAllowance, SPL Token, any destination): {measured} CU \
-         — no committed baseline yet (ADR-014); compare against SPL_ANY's {} CU vault-mode \
-         baseline when deciding one",
-        SPL_ANY.baseline
-    );
-
-    // Solana's per-instruction CU ceiling is 1.4M, but a sane budget for one payment
-    // instruction is far below that — this only guards against a gross regression (an
-    // accidental unbounded loop, a forgotten bump cache), not a tight design gate.
-    const SANITY_CEILING: u64 = 150_000;
-    assert!(
-        measured <= SANITY_CEILING,
-        "execute_payment (NativeAllowance) costs {measured} CU, over the {SANITY_CEILING} CU \
-         sanity ceiling — investigate before treating this as a real number"
+fn execute_payment_native_allowance_fits_its_budget() {
+    assert_within_budget(
+        "execute_payment_native_allowance",
+        measure_native_allowance_payment(),
     );
 }
 
@@ -363,6 +400,10 @@ fn compute_unit_measurements_are_reproducible() {
     let second = measure_spl_payment(1);
     let third = measure_sol_payment();
     let fourth = measure_sol_payment();
+    // Covered here because it carries a committed baseline like the others — a baseline on
+    // a measurement that moves on its own is noise dressed as a gate.
+    let fifth = measure_native_allowance_payment();
+    let sixth = measure_native_allowance_payment();
 
     assert_eq!(
         first, second,
@@ -371,5 +412,10 @@ fn compute_unit_measurements_are_reproducible() {
     assert_eq!(
         third, fourth,
         "execute_payment_sol varied between identical runs: {third} then {fourth} CU"
+    );
+    assert_eq!(
+        fifth, sixth,
+        "execute_payment (NativeAllowance) varied between identical runs: {fifth} then \
+         {sixth} CU"
     );
 }

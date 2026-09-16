@@ -42,7 +42,19 @@ with a locally built stub.
 
 ## CU budgets
 
-`budget.rs` measures real costs; `execute_payment` targets ≤40k CU. ADR-008 wants CI to fail
-on a >10% regression against a committed budget, and that baseline file does not exist yet
-(ADR-015). Until it does, a number moving in `budget.rs` is something to look at rather
-than something CI will catch for you.
+`cu-baselines.txt` holds the committed numbers and `budget.rs` asserts against them, so the
+ADR-008 gate — fail on >10% over the committed budget — runs inside `cargo test --workspace`
+and therefore inside CI. Each path carries two thresholds: the spec §10 design gate, which
+catches an instruction outgrowing what it was designed for, and the baseline at +10%, which
+catches a *change* long before that.
+
+Do not retype a number in `cu-baselines.txt` to make a red test green. `scripts/cu-baseline.sh`
+re-measures and `--write` applies the result; the diff it leaves is the reviewable claim that
+the new cost is intended, and it belongs in the commit that caused it. Hand-maintained
+baselines are what let these figures fall ~820 CU behind the build while the gate stayed
+green.
+
+A path with `none` in the gate column has a baseline but no spec number — currently the
+ADR-014 `NativeAllowance` CPI, whose design ceiling waits on the caller-supplied-bumps gap.
+A baseline only has to be reproducible, which `compute_unit_measurements_are_reproducible`
+asserts for every measured path.

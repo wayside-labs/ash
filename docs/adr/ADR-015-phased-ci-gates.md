@@ -53,6 +53,7 @@ Option D.
 |---|---|
 | fmt, clippy `-D warnings`, `cargo test --workspace` | `scripts/verify.sh rust` |
 | account layout snapshot | `programs/agent_rails/tests/layout.rs`, inside that run |
+| CU regression >10% over the committed baseline | `programs/agent_rails/tests/cu-baselines.txt`, asserted by `tests/budget.rs` inside that run; refreshed with `scripts/cu-baseline.sh` |
 | `overflow-checks = true` still set | `scripts/verify.sh rust` |
 | Biome, tsc, vitest, `pnpm audit` | `scripts/verify.sh ts` |
 | generated client matches the committed IDL | `pnpm codegen:check`, same script |
@@ -75,7 +76,6 @@ assertion — because the invariants they protect had no mechanism otherwise.
 | **Trident stateful fuzzing** | No harness and no corpus exist. Writing them is a project, not a CI step. | A harness under `programs/agent_rails/`, a committed corpus, then a short run per PR and a long one nightly. |
 | **Kani bounded model checking** | Same: no proofs written. ADR-008 already scoped it as nightly and non-blocking. | Proofs for no-overflow, monotone rollover, the `≤` partial order, and hash injectivity in `seq`. |
 | **Coverage thresholds (policy ≥95%, SDK ≥85%)** | No coverage tooling is configured on either side, so the numbers are unknown. Turning on a threshold before measuring picks it arbitrarily. | `cargo-llvm-cov` and vitest v8 coverage, measured first, then gated at the ADR-008 numbers. |
-| **CU regression >10%** | `tests/budget.rs` measures cost but no baseline is committed, so there is nothing to regress against. | A committed budget file and a comparison step. Until then a moving number in `budget.rs` is something a human reads. |
 | **`cargo-mutants`** | Nightly in ADR-008; needs a runtime budget decided against metered minutes. | A nightly workflow once the suite above is in place. |
 | **Verifiable build hash** | Belongs with the release process (ADR-011), which has not run yet. | A release workflow producing and publishing the hash. |
 | **Surfpool E2E, devnet smoke** | Nightly and release-tag scoped in ADR-008; needs a funded devnet keypair held as a secret. | A nightly workflow plus the secret. |
