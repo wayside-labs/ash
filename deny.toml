@@ -1,0 +1,44 @@
+# cargo-deny configuration. Run locally with `cargo deny check`.
+
+[advisories]
+# RustSec advisories are a hard failure: this program custodies funds, and an
+# advisory in a dependency is not something to merge past and revisit later.
+version = 2
+yanked = "deny"
+# Vulnerabilities deny everywhere. `unmaintained` is scoped to crates this workspace
+# depends on directly: the Solana tree carries five unmaintained transitives
+# (ansi_term, bincode, derivative, libsecp256k1, paste) that nothing here can act on,
+# and a gate that can only be satisfied by ignoring it is not a gate.
+unmaintained = "workspace"
+
+[licenses]
+version = 2
+# The workspace is Apache-2.0 (ADR-011). These are the permissive licenses that
+# combine with it without adding obligations to downstream users.
+allow = [
+  "Apache-2.0",
+  "Apache-2.0 WITH LLVM-exception",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "MIT",
+  "Unicode-3.0",
+  "Zlib",
+]
+confidence-threshold = 0.9
+
+[bans]
+# Duplicate versions are a warning rather than a denial: the Solana dependency tree
+# routinely carries two majors of a crate mid-migration. They are worth seeing —
+# a duplicated `@solana/program-client-core` on the TypeScript side is exactly what
+# made the generated client untypeable — but not worth blocking a merge over.
+multiple-versions = "warn"
+wildcards = "deny"
+# `agent-rails-policy` is a path dependency and carries no version by design; a path
+# dep inside the workspace is not the supply-chain risk this check is aimed at.
+allow-wildcard-paths = true
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+# The IDL and program bytes must come from crates.io, not an arbitrary git ref.
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
