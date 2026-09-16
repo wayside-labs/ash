@@ -6,7 +6,7 @@
 
 use crate::error::PolicyError;
 use crate::types::{
-    DestinationMode, MintCeiling, MintLimit, PolicyArgsView, Remaining, SpendCounter, TreasuryView,
+    DestinationMode, MintCeiling, MintLimit, PolicyInputView, Remaining, SpendCounter, TreasuryView,
 };
 use crate::{MAX_MINTS, MIN_WINDOW_SECONDS};
 
@@ -61,7 +61,7 @@ pub fn limit_leq_ceiling(l: &MintLimit, c: &MintCeiling) -> bool {
 
 /// Whole-policy ceiling check used by `create_policy`, `update_policy`, and the runtime
 /// re-check in `execute_payment` (spec §7.2).
-pub fn policy_leq_ceiling(p: &PolicyArgsView, t: &TreasuryView) -> Result<(), PolicyError> {
+pub fn policy_leq_ceiling(p: &PolicyInputView, t: &TreasuryView) -> Result<(), PolicyError> {
     if p.mint_limits.is_empty() {
         return Err(PolicyError::InvalidLimit);
     }

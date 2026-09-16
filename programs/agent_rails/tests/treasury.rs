@@ -6,7 +6,7 @@ use anchor_litesvm::{Pubkey, Signer};
 
 use agent_rails::constants::{MintFlags, NATIVE_MINT, PROGRAM_VERSION};
 use agent_rails::state::MintCeiling;
-use agent_rails::{AgentRailsError, MintCeilingArgs};
+use agent_rails::{AgentRailsError, MintCeilingInput};
 
 use common::{
     add_mint_ix, add_native_mint, add_native_mint_ix, add_spl_mint, add_spl_mint_ix,
@@ -96,7 +96,7 @@ fn add_mint_stores_the_ceiling_in_the_treasury_slot() {
     let mut env = Env::new();
     let fixture = create_treasury(&mut env, false, false);
 
-    let ceiling = MintCeilingArgs {
+    let ceiling = MintCeilingInput {
         max_per_tx: 25_000_000_000,
         max_short_window: 100_000_000_000,
         max_long_window: 400_000_000_000,
@@ -220,7 +220,7 @@ fn add_mint_rejects_an_invalid_ceiling() {
         &env,
         &fixture.treasury,
         &fixture.owner.pubkey(),
-        MintCeilingArgs {
+        MintCeilingInput {
             min_short_window_seconds: 30, // below MIN_WINDOW_SECONDS
             ..permissive_ceiling()
         },

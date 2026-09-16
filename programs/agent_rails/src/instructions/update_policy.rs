@@ -13,7 +13,7 @@
 
 use anchor_lang::prelude::*;
 
-use crate::args::PolicyArgs;
+use crate::args::PolicyInput;
 use crate::constants::{SEED_POLICY, SEED_TREASURY};
 use crate::error::AgentRailsError;
 use crate::events::{PolicyUpdated, EVENT_SCHEMA_VERSION};
@@ -44,7 +44,7 @@ pub struct UpdatePolicy<'info> {
     pub policy: Box<Account<'info, Policy>>,
 }
 
-pub fn update_policy_handler(ctx: Context<UpdatePolicy>, args: PolicyArgs) -> Result<()> {
+pub fn update_policy_handler(ctx: Context<UpdatePolicy>, args: PolicyInput) -> Result<()> {
     require!(
         ctx.accounts
             .treasury

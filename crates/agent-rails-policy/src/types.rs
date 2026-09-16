@@ -77,10 +77,10 @@ pub struct TreasuryView<'a> {
     pub allow_create_destination_ata: bool,
 }
 
-/// The `PolicyArgs` instruction payload (spec §4.2), borrowed rather than owned so the
+/// The `PolicyInput` instruction payload (spec §4.2), borrowed rather than owned so the
 /// crate works under `no_std` without an allocator.
 #[derive(Clone, Copy, Debug)]
-pub struct PolicyArgsView<'a> {
+pub struct PolicyInputView<'a> {
     pub mint_limits: &'a [MintLimit],
     pub destination_mode: u8,
     pub require_memo: bool,

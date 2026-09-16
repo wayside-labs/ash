@@ -8,9 +8,9 @@ use anchor_lang::prelude::*;
 use crate::constants::{INTENT_ID_LEN, MAX_MINTS};
 use crate::state::{MintCeiling, MintLimit};
 
-/// `MintCeilingArgs` (spec §4.2). Amounts are in base units.
+/// `MintCeilingInput` (spec §4.2). Amounts are in base units.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct MintCeilingArgs {
+pub struct MintCeilingInput {
     pub max_per_tx: u64,
     pub max_short_window: u64,
     pub max_long_window: u64,
@@ -19,7 +19,7 @@ pub struct MintCeilingArgs {
     pub min_long_window_seconds: u32,
 }
 
-impl MintCeilingArgs {
+impl MintCeilingInput {
     pub fn to_state(self) -> MintCeiling {
         MintCeiling {
             max_per_tx: self.max_per_tx,
@@ -32,13 +32,13 @@ impl MintCeilingArgs {
     }
 }
 
-/// `MintLimitArgs` (spec §4.2).
+/// `MintLimitInput` (spec §4.2).
 ///
 /// The v1.1 `approval_threshold` and `cooldown_seconds` fields are deliberately absent: the
 /// program writes them as zero, so there is no way for a client to set a byte that a future
 /// version will interpret differently.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct MintLimitArgs {
+pub struct MintLimitInput {
     pub mint: Pubkey,
     pub per_tx_max: u64,
     pub short_window_max: u64,
@@ -48,7 +48,7 @@ pub struct MintLimitArgs {
     pub lifetime_max: u64,
 }
 
-impl MintLimitArgs {
+impl MintLimitInput {
     pub fn to_state(self) -> MintLimit {
         MintLimit {
             mint: self.mint,
@@ -78,16 +78,16 @@ impl MintLimitArgs {
     }
 }
 
-/// `PolicyArgs` (spec §4.2) — the full rule set an operator writes in one instruction.
+/// `PolicyInput` (spec §4.2) — the full rule set an operator writes in one instruction.
 ///
 /// Passed whole rather than field by field so that `policy_leq_ceiling` can judge it as a
 /// unit: whether a policy is legal depends on every limit *and* both destination flags
 /// together, and a per-field setter would let an operator step through an illegal
 /// intermediate state.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, Default, PartialEq, Eq)]
-pub struct PolicyArgs {
+pub struct PolicyInput {
     /// 1..=`MAX_MINTS` entries, each for a mint configured on the treasury.
-    pub mint_limits: Vec<MintLimitArgs>,
+    pub mint_limits: Vec<MintLimitInput>,
     /// `DestinationMode`.
     pub destination_mode: u8,
     pub require_memo: bool,
@@ -95,7 +95,7 @@ pub struct PolicyArgs {
     pub create_destination_ata: bool,
 }
 
-impl PolicyArgs {
+impl PolicyInput {
     /// The limits as the policy crate sees them, plus how many slots are used.
     ///
     /// Returns a fixed array rather than a `Vec` so the caller can hand the crate a slice

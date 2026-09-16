@@ -14,7 +14,7 @@ use anchor_spl::token_2022::spl_token_2022::{
 };
 use anchor_spl::token_interface::TokenInterface;
 
-use crate::args::MintCeilingArgs;
+use crate::args::MintCeilingInput;
 use crate::constants::{MintFlags, NATIVE_MINT, SEED_TREASURY};
 use crate::error::{AgentRailsError, IntoAnchorResult};
 use crate::events::{MintAdded, EVENT_SCHEMA_VERSION};
@@ -60,7 +60,7 @@ pub struct AddMint<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn add_mint_handler(ctx: Context<AddMint>, ceiling: MintCeilingArgs) -> Result<()> {
+pub fn add_mint_handler(ctx: Context<AddMint>, ceiling: MintCeilingInput) -> Result<()> {
     let ceiling = ceiling.to_state();
     agent_rails_policy::validate_ceiling(&ceiling.to_policy()).or_anchor_err()?;
 

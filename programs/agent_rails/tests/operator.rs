@@ -16,7 +16,7 @@ mod common;
 
 use anchor_litesvm::{Pubkey, Signer};
 
-use agent_rails::args::PolicyArgs;
+use agent_rails::args::PolicyInput;
 use agent_rails::constants::{AuthMode, MAX_SESSION_TTL_SECONDS, NATIVE_MINT};
 use agent_rails::events::{
     AllowlistEntryAdded, AllowlistEntryRemoved, PolicyClosed, PolicyCreated, SessionClosed,
@@ -105,7 +105,7 @@ fn create_policy_writes_the_rules_and_counts_the_policy() {
     assert_eq!(
         event.limits_hash,
         sha256(&borsh_bytes(&args)),
-        "limits_hash must commit to the PolicyArgs the operator signed for"
+        "limits_hash must commit to the PolicyInput the operator signed for"
     );
 }
 
@@ -276,7 +276,7 @@ fn create_policy_rejects_duplicate_and_empty_limit_sets() {
     let (fixture, mint) = treasury_with_mint(&mut env);
     let owner = fixture.owner.insecure_clone();
 
-    let empty = PolicyArgs {
+    let empty = PolicyInput {
         mint_limits: vec![],
         destination_mode: 0,
         require_memo: false,
@@ -350,7 +350,7 @@ fn create_session_starts_a_genesis_chain_and_mirrors_the_policy_slots() {
     let (fixture, mint) = treasury_with_mint(&mut env);
     add_native_mint(&mut env, &fixture, permissive_ceiling());
 
-    let args = PolicyArgs {
+    let args = PolicyInput {
         mint_limits: vec![
             permissive_limit_args(mint),
             permissive_limit_args(NATIVE_MINT),
@@ -934,7 +934,7 @@ fn an_allowlist_override_is_bounded_by_the_tightest_mint_slot() {
     // Bounding by the loosest slot would let an override raise the tightest one.
     let mut tight = permissive_limit_args(NATIVE_MINT);
     tight.per_tx_max = 1_000;
-    let args = PolicyArgs {
+    let args = PolicyInput {
         mint_limits: vec![permissive_limit_args(mint), tight],
         destination_mode: 1,
         require_memo: false,

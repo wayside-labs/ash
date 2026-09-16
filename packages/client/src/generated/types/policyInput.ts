@@ -21,23 +21,23 @@ import {
   type Encoder,
 } from "@solana/kit";
 import {
-  getMintLimitArgsDecoder,
-  getMintLimitArgsEncoder,
-  type MintLimitArgs,
-  type MintLimitArgsArgs,
+  getMintLimitInputDecoder,
+  getMintLimitInputEncoder,
+  type MintLimitInput,
+  type MintLimitInputArgs,
 } from "./index.js";
 
 /**
- * `PolicyArgs` (spec §4.2) — the full rule set an operator writes in one instruction.
+ * `PolicyInput` (spec §4.2) — the full rule set an operator writes in one instruction.
  *
  * Passed whole rather than field by field so that `policy_leq_ceiling` can judge it as a
  * unit: whether a policy is legal depends on every limit *and* both destination flags
  * together, and a per-field setter would let an operator step through an illegal
  * intermediate state.
  */
-export type PolicyArgs = {
+export type PolicyInput = {
   /** 1..=`MAX_MINTS` entries, each for a mint configured on the treasury. */
-  mintLimits: Array<MintLimitArgs>;
+  mintLimits: Array<MintLimitInput>;
   /** `DestinationMode`. */
   destinationMode: number;
   requireMemo: boolean;
@@ -45,9 +45,9 @@ export type PolicyArgs = {
   createDestinationAta: boolean;
 };
 
-export type PolicyArgsArgs = {
+export type PolicyInputArgs = {
   /** 1..=`MAX_MINTS` entries, each for a mint configured on the treasury. */
-  mintLimits: Array<MintLimitArgsArgs>;
+  mintLimits: Array<MintLimitInputArgs>;
   /** `DestinationMode`. */
   destinationMode: number;
   requireMemo: boolean;
@@ -55,24 +55,24 @@ export type PolicyArgsArgs = {
   createDestinationAta: boolean;
 };
 
-export function getPolicyArgsEncoder(): Encoder<PolicyArgsArgs> {
+export function getPolicyInputEncoder(): Encoder<PolicyInputArgs> {
   return getStructEncoder([
-    ["mintLimits", getArrayEncoder(getMintLimitArgsEncoder())],
+    ["mintLimits", getArrayEncoder(getMintLimitInputEncoder())],
     ["destinationMode", getU8Encoder()],
     ["requireMemo", getBooleanEncoder()],
     ["createDestinationAta", getBooleanEncoder()],
   ]);
 }
 
-export function getPolicyArgsDecoder(): Decoder<PolicyArgs> {
+export function getPolicyInputDecoder(): Decoder<PolicyInput> {
   return getStructDecoder([
-    ["mintLimits", getArrayDecoder(getMintLimitArgsDecoder())],
+    ["mintLimits", getArrayDecoder(getMintLimitInputDecoder())],
     ["destinationMode", getU8Decoder()],
     ["requireMemo", getBooleanDecoder()],
     ["createDestinationAta", getBooleanDecoder()],
   ]);
 }
 
-export function getPolicyArgsCodec(): Codec<PolicyArgsArgs, PolicyArgs> {
-  return combineCodec(getPolicyArgsEncoder(), getPolicyArgsDecoder());
+export function getPolicyInputCodec(): Codec<PolicyInputArgs, PolicyInput> {
+  return combineCodec(getPolicyInputEncoder(), getPolicyInputDecoder());
 }

@@ -30,7 +30,7 @@ pub use engine::{
 };
 pub use error::PolicyError;
 pub use types::{
-    DestinationMode, Key, MintCeiling, MintCeilingEntry, MintLimit, PolicyArgsView, Remaining,
+    DestinationMode, Key, MintCeiling, MintCeilingEntry, MintLimit, PolicyInputView, Remaining,
     SpendCounter, TreasuryView,
 };
 

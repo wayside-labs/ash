@@ -18,7 +18,7 @@ mod common;
 
 use anchor_litesvm::{Keypair, Pubkey, Signer};
 
-use agent_rails::args::{MintCeilingArgs, PolicyArgs};
+use agent_rails::args::{MintCeilingInput, PolicyInput};
 use agent_rails::constants::{MIN_WINDOW_SECONDS, NATIVE_MINT};
 use agent_rails::events::{CeilingUpdated, MintRemoved, PolicyUpdated};
 use agent_rails::AgentRailsError;
@@ -124,7 +124,7 @@ fn set_ceiling_overwrites_the_slot_and_both_destination_flags() {
     let mut env = Env::new();
     let (fixture, mint) = treasury_with_mint(&mut env);
 
-    let tightened = MintCeilingArgs {
+    let tightened = MintCeilingInput {
         max_per_tx: 1_000,
         max_short_window: 2_000,
         max_long_window: 3_000,
@@ -369,7 +369,7 @@ fn update_policy_keeps_session_counters() {
     // looked up by mint, never by index (spec §3.3.1). Prepending the native mint here moves
     // the original mint from slot 0 to slot 1.
     add_native_mint(&mut env, &f.treasury, permissive_ceiling());
-    let args = PolicyArgs {
+    let args = PolicyInput {
         mint_limits: vec![
             permissive_limit_args(NATIVE_MINT),
             permissive_limit_args(f.mint),

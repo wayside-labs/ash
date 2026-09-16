@@ -7,7 +7,7 @@
 
 use anchor_lang::prelude::*;
 
-use crate::args::PolicyArgs;
+use crate::args::PolicyInput;
 use crate::constants::{MAX_NAME_LEN, SEED_POLICY, SEED_TREASURY};
 use crate::error::AgentRailsError;
 use crate::events::{PolicyCreated, EVENT_SCHEMA_VERSION};
@@ -46,7 +46,7 @@ pub struct CreatePolicy<'info> {
 pub fn create_policy_handler(
     ctx: Context<CreatePolicy>,
     name: [u8; MAX_NAME_LEN],
-    args: PolicyArgs,
+    args: PolicyInput,
 ) -> Result<()> {
     require!(
         ctx.accounts

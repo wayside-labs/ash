@@ -8,10 +8,10 @@
 
 export * from "./fundingMode.js";
 export * from "./mintCeiling.js";
-export * from "./mintCeilingArgs.js";
+export * from "./mintCeilingInput.js";
 export * from "./mintConfig.js";
 export * from "./mintLimit.js";
-export * from "./mintLimitArgs.js";
+export * from "./mintLimitInput.js";
 export * from "./paymentIntent.js";
-export * from "./policyArgs.js";
+export * from "./policyInput.js";
 export * from "./spendCounter.js";

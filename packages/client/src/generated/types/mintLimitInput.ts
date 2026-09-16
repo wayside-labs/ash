@@ -23,13 +23,13 @@ import {
 } from "@solana/kit";
 
 /**
- * `MintLimitArgs` (spec §4.2).
+ * `MintLimitInput` (spec §4.2).
  *
  * The v1.1 `approval_threshold` and `cooldown_seconds` fields are deliberately absent: the
  * program writes them as zero, so there is no way for a client to set a byte that a future
  * version will interpret differently.
  */
-export type MintLimitArgs = {
+export type MintLimitInput = {
   mint: Address;
   perTxMax: bigint;
   shortWindowMax: bigint;
@@ -39,7 +39,7 @@ export type MintLimitArgs = {
   lifetimeMax: bigint;
 };
 
-export type MintLimitArgsArgs = {
+export type MintLimitInputArgs = {
   mint: Address;
   perTxMax: number | bigint;
   shortWindowMax: number | bigint;
@@ -49,7 +49,7 @@ export type MintLimitArgsArgs = {
   lifetimeMax: number | bigint;
 };
 
-export function getMintLimitArgsEncoder(): FixedSizeEncoder<MintLimitArgsArgs> {
+export function getMintLimitInputEncoder(): FixedSizeEncoder<MintLimitInputArgs> {
   return getStructEncoder([
     ["mint", getAddressEncoder()],
     ["perTxMax", getU64Encoder()],
@@ -61,7 +61,7 @@ export function getMintLimitArgsEncoder(): FixedSizeEncoder<MintLimitArgsArgs> {
   ]);
 }
 
-export function getMintLimitArgsDecoder(): FixedSizeDecoder<MintLimitArgs> {
+export function getMintLimitInputDecoder(): FixedSizeDecoder<MintLimitInput> {
   return getStructDecoder([
     ["mint", getAddressDecoder()],
     ["perTxMax", getU64Decoder()],
@@ -73,9 +73,9 @@ export function getMintLimitArgsDecoder(): FixedSizeDecoder<MintLimitArgs> {
   ]);
 }
 
-export function getMintLimitArgsCodec(): FixedSizeCodec<
-  MintLimitArgsArgs,
-  MintLimitArgs
+export function getMintLimitInputCodec(): FixedSizeCodec<
+  MintLimitInputArgs,
+  MintLimitInput
 > {
-  return combineCodec(getMintLimitArgsEncoder(), getMintLimitArgsDecoder());
+  return combineCodec(getMintLimitInputEncoder(), getMintLimitInputDecoder());
 }

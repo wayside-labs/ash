@@ -42,10 +42,10 @@ import {
 } from "@solana/program-client-core";
 import { AGENT_RAILS_PROGRAM_ADDRESS } from "../programs/index.js";
 import {
-  getMintCeilingArgsDecoder,
-  getMintCeilingArgsEncoder,
-  type MintCeilingArgs,
-  type MintCeilingArgsArgs,
+  getMintCeilingInputDecoder,
+  getMintCeilingInputEncoder,
+  type MintCeilingInput,
+  type MintCeilingInputArgs,
 } from "../types/index.js";
 
 export const SET_CEILING_DISCRIMINATOR: ReadonlyUint8Array = new Uint8Array([
@@ -87,14 +87,14 @@ export type SetCeilingInstruction<
 export type SetCeilingInstructionData = {
   discriminator: ReadonlyUint8Array;
   mint: Address;
-  ceiling: MintCeilingArgs;
+  ceiling: MintCeilingInput;
   allowAnyDestination: boolean;
   allowCreateDestinationAta: boolean;
 };
 
 export type SetCeilingInstructionDataArgs = {
   mint: Address;
-  ceiling: MintCeilingArgsArgs;
+  ceiling: MintCeilingInputArgs;
   allowAnyDestination: boolean;
   allowCreateDestinationAta: boolean;
 };
@@ -104,7 +104,7 @@ export function getSetCeilingInstructionDataEncoder(): FixedSizeEncoder<SetCeili
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
       ["mint", getAddressEncoder()],
-      ["ceiling", getMintCeilingArgsEncoder()],
+      ["ceiling", getMintCeilingInputEncoder()],
       ["allowAnyDestination", getBooleanEncoder()],
       ["allowCreateDestinationAta", getBooleanEncoder()],
     ]),
@@ -116,7 +116,7 @@ export function getSetCeilingInstructionDataDecoder(): FixedSizeDecoder<SetCeili
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
     ["mint", getAddressDecoder()],
-    ["ceiling", getMintCeilingArgsDecoder()],
+    ["ceiling", getMintCeilingInputDecoder()],
     ["allowAnyDestination", getBooleanDecoder()],
     ["allowCreateDestinationAta", getBooleanDecoder()],
   ]);

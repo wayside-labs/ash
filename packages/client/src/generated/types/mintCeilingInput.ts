@@ -19,8 +19,8 @@ import {
   type FixedSizeEncoder,
 } from "@solana/kit";
 
-/** `MintCeilingArgs` (spec §4.2). Amounts are in base units. */
-export type MintCeilingArgs = {
+/** `MintCeilingInput` (spec §4.2). Amounts are in base units. */
+export type MintCeilingInput = {
   maxPerTx: bigint;
   maxShortWindow: bigint;
   maxLongWindow: bigint;
@@ -29,7 +29,7 @@ export type MintCeilingArgs = {
   minLongWindowSeconds: number;
 };
 
-export type MintCeilingArgsArgs = {
+export type MintCeilingInputArgs = {
   maxPerTx: number | bigint;
   maxShortWindow: number | bigint;
   maxLongWindow: number | bigint;
@@ -38,7 +38,7 @@ export type MintCeilingArgsArgs = {
   minLongWindowSeconds: number;
 };
 
-export function getMintCeilingArgsEncoder(): FixedSizeEncoder<MintCeilingArgsArgs> {
+export function getMintCeilingInputEncoder(): FixedSizeEncoder<MintCeilingInputArgs> {
   return getStructEncoder([
     ["maxPerTx", getU64Encoder()],
     ["maxShortWindow", getU64Encoder()],
@@ -49,7 +49,7 @@ export function getMintCeilingArgsEncoder(): FixedSizeEncoder<MintCeilingArgsArg
   ]);
 }
 
-export function getMintCeilingArgsDecoder(): FixedSizeDecoder<MintCeilingArgs> {
+export function getMintCeilingInputDecoder(): FixedSizeDecoder<MintCeilingInput> {
   return getStructDecoder([
     ["maxPerTx", getU64Decoder()],
     ["maxShortWindow", getU64Decoder()],
@@ -60,9 +60,12 @@ export function getMintCeilingArgsDecoder(): FixedSizeDecoder<MintCeilingArgs> {
   ]);
 }
 
-export function getMintCeilingArgsCodec(): FixedSizeCodec<
-  MintCeilingArgsArgs,
-  MintCeilingArgs
+export function getMintCeilingInputCodec(): FixedSizeCodec<
+  MintCeilingInputArgs,
+  MintCeilingInput
 > {
-  return combineCodec(getMintCeilingArgsEncoder(), getMintCeilingArgsDecoder());
+  return combineCodec(
+    getMintCeilingInputEncoder(),
+    getMintCeilingInputDecoder(),
+  );
 }
