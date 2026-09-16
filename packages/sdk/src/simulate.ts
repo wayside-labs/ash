@@ -7,14 +7,14 @@ import {
   type SimulateTransactionApi,
   SOLANA_ERROR__JSON_RPC__SERVER_ERROR_SEND_TRANSACTION_PREFLIGHT_FAILURE,
   type SolanaRpcApi,
-  type TransactionMessage,
 } from "@solana/kit";
 import { agentRailsErrorFromCode, toAgentRailsError } from "./error-mapping.js";
 import { AgentRailsError } from "./errors.js";
+import type { PaymentTransactionMessage } from "./payment-intent.js";
 
 export type SimulatePaymentInput = {
   rpc: Rpc<SolanaRpcApi & SimulateTransactionApi>;
-  transactionMessage: TransactionMessage;
+  transactionMessage: PaymentTransactionMessage;
   commitment?: Commitment;
 };
 

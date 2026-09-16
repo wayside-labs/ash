@@ -1,6 +1,8 @@
-import { AGENT_RAILS_ERROR__PAUSED } from "@agent-rails/client";
+import { AGENT_RAILS_ERROR__PAUSED, AGENT_RAILS_PROGRAM_ADDRESS } from "@agent-rails/client";
 import {
+  address,
   appendTransactionMessageInstruction,
+  blockhash,
   createNoopSigner,
   createTransactionMessage,
   pipe,
@@ -12,7 +14,7 @@ import { agentRailsErrorFromCode } from "./error-mapping.js";
 import { isAgentRailsError } from "./errors.js";
 import { simulatePayment } from "./simulate.js";
 
-const FEE_PAYER = "11111111111111111111111111111116" as const;
+const FEE_PAYER = address("11111111111111111111111111111116");
 
 function mockTransactionMessage() {
   const feePayer = createNoopSigner(FEE_PAYER);
@@ -22,7 +24,7 @@ function mockTransactionMessage() {
     (message) =>
       setTransactionMessageLifetimeUsingBlockhash(
         {
-          blockhash: "EkSnNWid2cvwEVnVx9aBxgney8D4R9fKQ89KWkdHUjbv",
+          blockhash: blockhash("EkSnNWid2cvwEVnVx9aBxgney8D4R9fKQ89KWkdHUjbv"),
           lastValidBlockHeight: 1_000_000n,
         },
         message,
@@ -30,7 +32,7 @@ function mockTransactionMessage() {
     (message) =>
       appendTransactionMessageInstruction(
         {
-          programAddress: "4qjD6vSgYa3oBKde3KVzsH8oCcP9BKsirX1xtD5SS6BS",
+          programAddress: AGENT_RAILS_PROGRAM_ADDRESS,
           accounts: [],
           data: new Uint8Array(16),
         },

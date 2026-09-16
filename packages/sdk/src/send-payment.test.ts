@@ -1,5 +1,7 @@
+import { AGENT_RAILS_PROGRAM_ADDRESS } from "@agent-rails/client";
 import {
   appendTransactionMessageInstruction,
+  blockhash,
   createTransactionMessage,
   generateKeyPairSigner,
   pipe,
@@ -17,7 +19,7 @@ async function mockTransactionMessage() {
     (message) =>
       setTransactionMessageLifetimeUsingBlockhash(
         {
-          blockhash: "EkSnNWid2cvwEVnVx9aBxgney8D4R9fKQ89KWkdHUjbv",
+          blockhash: blockhash("EkSnNWid2cvwEVnVx9aBxgney8D4R9fKQ89KWkdHUjbv"),
           lastValidBlockHeight: 1_000_000n,
         },
         message,
@@ -25,7 +27,7 @@ async function mockTransactionMessage() {
     (message) =>
       appendTransactionMessageInstruction(
         {
-          programAddress: "4qjD6vSgYa3oBKde3KVzsH8oCcP9BKsirX1xtD5SS6BS",
+          programAddress: AGENT_RAILS_PROGRAM_ADDRESS,
           accounts: [],
           data: new Uint8Array(16),
         },

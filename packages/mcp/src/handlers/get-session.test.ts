@@ -1,4 +1,6 @@
-import { fetchMaybeAgentSession } from "@agent-rails/client";
+import { AGENT_RAILS_PROGRAM_ADDRESS, fetchMaybeAgentSession } from "@agent-rails/client";
+import { NATIVE_MINT } from "@agent-rails/contract";
+import { address, lamports } from "@solana/kit";
 import { describe, expect, it, vi } from "vitest";
 import type { ServerContext } from "../context.js";
 import { testBoundContext, testConfig } from "../testing.js";
@@ -12,10 +14,10 @@ vi.mock("@agent-rails/client", async (importOriginal) => {
   };
 });
 
-const SESSION = "11111111111111111111111111111114";
-const TREASURY = "11111111111111111111111111111112";
-const POLICY = "11111111111111111111111111111113";
-const SESSION_KEY = "11111111111111111111111111111117";
+const SESSION = address("11111111111111111111111111111114");
+const TREASURY = address("11111111111111111111111111111112");
+const POLICY = address("11111111111111111111111111111113");
+const SESSION_KEY = address("11111111111111111111111111111117");
 
 // The session address comes from the binding, never from a tool argument.
 const context = {
@@ -34,6 +36,10 @@ describe("handleGetSession", () => {
     vi.mocked(fetchMaybeAgentSession).mockResolvedValue({
       exists: true,
       address: SESSION,
+      executable: false,
+      lamports: lamports(0n),
+      programAddress: AGENT_RAILS_PROGRAM_ADDRESS,
+      space: 0n,
       data: {
         discriminator: new Uint8Array(8),
         version: 1,
@@ -51,7 +57,7 @@ describe("handleGetSession", () => {
         auditHead: new Uint8Array(32).fill(0xab),
         spend: [
           {
-            mint: "So11111111111111111111111111111111111111112",
+            mint: address(NATIVE_MINT),
             shortWindowStart: 1_700_000_000n,
             shortSpent: 500n,
             longWindowStart: 1_700_000_000n,
@@ -83,7 +89,7 @@ describe("handleGetSession", () => {
       audit_head: "ab".repeat(32),
       spend: [
         {
-          mint: "So11111111111111111111111111111111111111112",
+          mint: address(NATIVE_MINT),
           short_window_start: "1700000000",
           short_spent: "500",
           long_window_start: "1700000000",

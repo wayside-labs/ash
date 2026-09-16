@@ -1,4 +1,5 @@
 import { fetchMaybePolicy } from "@agent-rails/client";
+import { address } from "@solana/kit";
 import { describe, expect, it, vi } from "vitest";
 import type { ServerContext } from "../context.js";
 import { testBoundContext, testConfig, testSecurity } from "../testing.js";
@@ -12,9 +13,9 @@ vi.mock("@agent-rails/client", async (importOriginal) => {
   };
 });
 
-const POLICY = "11111111111111111111111111111113";
-const TREASURY = "11111111111111111111111111111112";
-const USDC = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+const POLICY = address("11111111111111111111111111111113");
+const TREASURY = address("11111111111111111111111111111112");
+const USDC = address("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
 
 // The policy address comes from the binding, never from a tool argument.
 const context = {

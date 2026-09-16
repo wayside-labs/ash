@@ -88,11 +88,16 @@ function createStallingRpc(broadcasts: string[]) {
 function intentIdFromWireTransaction(wireTransaction: string): string {
   const transaction = getTransactionDecoder().decode(getBase64Encoder().encode(wireTransaction));
   const message = getCompiledTransactionMessageDecoder().decode(transaction.messageBytes);
+  // v1 compiled messages carry a different instruction payload and no `instructions` array;
+  // the SDK builds version 0, so anything else means the fixture drifted.
+  if (message.version === 1) {
+    throw new Error(`expected a version 0 message, got v${message.version}`);
+  }
   const instruction = message.instructions[0];
   if (!instruction?.data) {
     throw new Error("transaction carried no instruction data");
   }
-  return Array.from(instruction.data.slice(8, 24), (byte) =>
+  return Array.from(Uint8Array.from(instruction.data).slice(8, 24), (byte) =>
     byte.toString(16).padStart(2, "0"),
   ).join("");
 }

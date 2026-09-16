@@ -1,4 +1,6 @@
-import { fetchMaybeIntentReceipt } from "@agent-rails/client";
+import { AGENT_RAILS_PROGRAM_ADDRESS, fetchMaybeIntentReceipt } from "@agent-rails/client";
+import { NATIVE_MINT } from "@agent-rails/contract";
+import { address, lamports } from "@solana/kit";
 import { describe, expect, it, vi } from "vitest";
 import type { ServerContext } from "../context.js";
 import { PaymentGovernor } from "../governor.js";
@@ -13,11 +15,11 @@ vi.mock("@agent-rails/client", async (importOriginal) => {
   };
 });
 
-const SESSION = "11111111111111111111111111111114";
+const SESSION = address("11111111111111111111111111111114");
 const INTENT_ID = "0123456789abcdef0123456789abcdef";
-const RECEIPT_PDA = "11111111111111111111111111111118";
-const DESTINATION = "11111111111111111111111111111115";
-const FEE_PAYER = "11111111111111111111111111111116";
+const RECEIPT_PDA = address("11111111111111111111111111111118");
+const DESTINATION = address("11111111111111111111111111111115");
+const FEE_PAYER = address("11111111111111111111111111111116");
 
 function createContext(): ServerContext {
   return {
@@ -32,13 +34,17 @@ describe("handleGetPaymentStatus", () => {
     vi.mocked(fetchMaybeIntentReceipt).mockResolvedValue({
       exists: true,
       address: RECEIPT_PDA,
+      executable: false,
+      lamports: lamports(0n),
+      programAddress: AGENT_RAILS_PROGRAM_ADDRESS,
+      space: 0n,
       data: {
         discriminator: new Uint8Array(8),
         version: 1,
         bump: 253,
         session: SESSION,
         intentId: Uint8Array.from(Buffer.from(INTENT_ID, "hex")),
-        mint: "So11111111111111111111111111111111111111112",
+        mint: address(NATIVE_MINT),
         destinationOwner: DESTINATION,
         amount: 1_000n,
         seq: 4n,
@@ -62,7 +68,7 @@ describe("handleGetPaymentStatus", () => {
       version: 1,
       session: SESSION,
       intent_id: INTENT_ID,
-      mint: "So11111111111111111111111111111111111111112",
+      mint: address(NATIVE_MINT),
       destination_owner: DESTINATION,
       amount: "1000",
       seq: "4",
@@ -79,13 +85,17 @@ describe("handleGetPaymentStatus", () => {
     vi.mocked(fetchMaybeIntentReceipt).mockResolvedValue({
       exists: true,
       address: RECEIPT_PDA,
+      executable: false,
+      lamports: lamports(0n),
+      programAddress: AGENT_RAILS_PROGRAM_ADDRESS,
+      space: 0n,
       data: {
         discriminator: new Uint8Array(8),
         version: 1,
         bump: 253,
         session: SESSION,
         intentId: Uint8Array.from(Buffer.from(INTENT_ID, "hex")),
-        mint: "So11111111111111111111111111111111111111112",
+        mint: address(NATIVE_MINT),
         destinationOwner: DESTINATION,
         amount: 1_000n,
         seq: 4n,

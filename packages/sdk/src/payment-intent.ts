@@ -13,14 +13,15 @@ import {
 } from "@agent-rails/contract";
 import {
   type Address,
+  address,
   appendTransactionMessageInstruction,
   type Blockhash,
   createTransactionMessage,
   type Instruction,
   pipe,
+  type ReadonlyUint8Array,
   setTransactionMessageFeePayerSigner,
   setTransactionMessageLifetimeUsingBlockhash,
-  type TransactionMessage,
   type TransactionSigner,
 } from "@solana/kit";
 import {
@@ -71,11 +72,33 @@ export type PaymentPdas = {
   allowlistEntry?: Address;
 };
 
+function buildTransactionMessage(
+  feePayer: TransactionSigner,
+  recentBlockhash: BlockhashLifetime,
+  instruction: Instruction,
+) {
+  return pipe(
+    createTransactionMessage({ version: 0 }),
+    (message) => setTransactionMessageFeePayerSigner(feePayer, message),
+    (message) => setTransactionMessageLifetimeUsingBlockhash(recentBlockhash, message),
+    (message) => appendTransactionMessageInstruction(instruction, message),
+  );
+}
+
+/**
+ * A payment message that already carries its fee-payer signer and blockhash lifetime.
+ *
+ * Inferred from the builder rather than written out: `signTransactionMessageWithSigners`
+ * and `partiallySignTransactionMessageWithSigners` both demand those proofs, and widening
+ * to plain `TransactionMessage` at the boundary is what threw them away.
+ */
+export type PaymentTransactionMessage = ReturnType<typeof buildTransactionMessage>;
+
 export type PaymentIntentBuildResult = {
   path: PaymentPath;
   intent: PaymentIntent;
   instruction: Instruction;
-  transactionMessage: TransactionMessage;
+  transactionMessage: PaymentTransactionMessage;
   pdas: PaymentPdas;
 };
 
@@ -94,7 +117,23 @@ export function createIntentId(bytes: Uint8Array): Uint8Array {
   return bytes;
 }
 
-function parseIntentFields(params: BuildPaymentIntentParams): PaymentIntent {
+/**
+ * The validated intent plus every context address branded as a Kit `Address`.
+ *
+ * `paymentBuildSchema` proves the base58 shape, but Zod infers plain `string`; the
+ * instruction builders want the branded type. Branding once here is what keeps an
+ * unchecked cast out of every call site below.
+ */
+type ParsedPayment = {
+  intent: PaymentIntent;
+  treasury: Address;
+  policy: Address;
+  session: Address;
+  allowlistEntry?: Address;
+  tokenProgram?: Address;
+};
+
+function parsePayment(params: BuildPaymentIntentParams): ParsedPayment {
   const intentId = createIntentId(Uint8Array.from(Buffer.from(params.intent_id, "hex")));
 
   paymentBuildSchema.parse({
@@ -113,15 +152,30 @@ function parseIntentFields(params: BuildPaymentIntentParams): PaymentIntent {
 
   const intent: PaymentIntent = {
     intentId,
-    mint: params.mint,
-    destination: params.destination,
+    mint: address(params.mint),
+    destination: address(params.destination),
     amount: params.amount,
     expiresAt: params.expires_at,
   };
   if (params.memo) {
     intent.memo = params.memo;
   }
-  return intent;
+
+  const parsed: ParsedPayment = {
+    intent,
+    treasury: address(params.treasury),
+    policy: address(params.policy),
+    session: address(params.session),
+  };
+  // Assigned conditionally rather than as `?? undefined`: `exactOptionalPropertyTypes`
+  // distinguishes an absent property from one explicitly set to `undefined`.
+  if (params.allowlistEntry !== undefined) {
+    parsed.allowlistEntry = address(params.allowlistEntry);
+  }
+  if (params.tokenProgram !== undefined) {
+    parsed.tokenProgram = address(params.tokenProgram);
+  }
+  return parsed;
 }
 
 function encodeMemo(memo?: string): Uint8Array {
@@ -135,7 +189,10 @@ function isNativeMint(mint: Address): boolean {
   return mint === NATIVE_MINT;
 }
 
-function instructionPath(data: Uint8Array): PaymentPath {
+function instructionPath(data: ReadonlyUint8Array | undefined): PaymentPath {
+  if (data === undefined) {
+    throw new Error("Payment instruction carries no data");
+  }
   const discriminator = data.subarray(0, 8);
   if (discriminator.every((byte, index) => byte === EXECUTE_PAYMENT_SOL_DISCRIMINATOR[index])) {
     return "sol";
@@ -153,9 +210,9 @@ function instructionPath(data: Uint8Array): PaymentPath {
 export async function buildPaymentIntent(
   params: BuildPaymentIntentParams,
 ): Promise<PaymentIntentBuildResult> {
-  const intent = parseIntentFields(params);
+  const { intent, treasury, policy, session, allowlistEntry, tokenProgram } = parsePayment(params);
   const [receipt] = await findReceiptPda({
-    session: params.session,
+    session,
     intentId: intent.intentId,
   });
   const [eventAuthority] = await findEventAuthorityPda();
@@ -173,8 +230,8 @@ export async function buildPaymentIntent(
     receipt,
     eventAuthority,
   };
-  if (params.allowlistEntry) {
-    pdas.allowlistEntry = params.allowlistEntry;
+  if (allowlistEntry !== undefined) {
+    pdas.allowlistEntry = allowlistEntry;
   }
 
   let instruction: Instruction;
@@ -183,61 +240,60 @@ export async function buildPaymentIntent(
     instruction = await getExecutePaymentSolInstructionAsync({
       feePayer: params.feePayer,
       sessionKey: params.sessionKey,
-      treasury: params.treasury,
-      policy: params.policy,
-      session: params.session,
-      allowlistEntry: params.allowlistEntry,
+      treasury,
+      policy,
+      session,
+      ...(allowlistEntry !== undefined ? { allowlistEntry } : {}),
       destinationOwner: intent.destination,
       receipt,
       eventAuthority,
       program: AGENT_RAILS_PROGRAM_ADDRESS,
       intent: onChainIntent,
     });
-    const solVaultAccount = instruction.accounts[6];
+    const solVaultAccount = instruction.accounts?.[6];
     if (solVaultAccount && typeof solVaultAccount.address === "string") {
       pdas.solVault = solVaultAccount.address;
     }
   } else {
-    const tokenProgram = params.tokenProgram ?? TOKEN_PROGRAM_ADDRESS;
+    const splTokenProgram = tokenProgram ?? TOKEN_PROGRAM_ADDRESS;
     const [destinationAta] =
       params.destinationAta !== undefined
         ? [params.destinationAta]
         : await findAssociatedTokenAddress({
             owner: intent.destination,
             mint: intent.mint,
-            tokenProgram,
+            tokenProgram: splTokenProgram,
           });
 
     instruction = await getExecutePaymentInstructionAsync({
       feePayer: params.feePayer,
       sessionKey: params.sessionKey,
-      treasury: params.treasury,
-      policy: params.policy,
-      session: params.session,
-      allowlistEntry: params.allowlistEntry,
+      treasury,
+      policy,
+      session,
+      ...(allowlistEntry !== undefined ? { allowlistEntry } : {}),
       mint: intent.mint,
       destinationOwner: intent.destination,
       destinationAta,
       receipt,
-      tokenProgram,
+      tokenProgram: splTokenProgram,
       eventAuthority,
       program: AGENT_RAILS_PROGRAM_ADDRESS,
       intent: onChainIntent,
     });
 
     pdas.destinationAta = destinationAta;
-    const vaultAtaAccount = instruction.accounts[7];
+    const vaultAtaAccount = instruction.accounts?.[7];
     if (vaultAtaAccount && typeof vaultAtaAccount.address === "string") {
       pdas.vaultAta = vaultAtaAccount.address;
     }
   }
 
   const path = instructionPath(instruction.data);
-  const transactionMessage = pipe(
-    createTransactionMessage({ version: 0 }),
-    (message) => setTransactionMessageFeePayerSigner(params.feePayer, message),
-    (message) => setTransactionMessageLifetimeUsingBlockhash(params.recentBlockhash, message),
-    (message) => appendTransactionMessageInstruction(instruction, message),
+  const transactionMessage = buildTransactionMessage(
+    params.feePayer,
+    params.recentBlockhash,
+    instruction,
   );
 
   return {

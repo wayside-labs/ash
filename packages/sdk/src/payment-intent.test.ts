@@ -1,18 +1,18 @@
 import { NATIVE_MINT } from "@agent-rails/contract";
-import { createNoopSigner } from "@solana/kit";
+import { address, blockhash, createNoopSigner } from "@solana/kit";
 import { describe, expect, it } from "vitest";
 import { buildPaymentIntent, createIntentId } from "./payment-intent.js";
 
-const TREASURY = "11111111111111111111111111111112" as const;
-const POLICY = "11111111111111111111111111111113" as const;
-const SESSION = "11111111111111111111111111111114" as const;
-const DESTINATION = "11111111111111111111111111111115" as const;
-const FEE_PAYER = "11111111111111111111111111111116" as const;
-const SESSION_KEY = "11111111111111111111111111111117" as const;
-const SPL_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v" as const;
+const TREASURY = address("11111111111111111111111111111112");
+const POLICY = address("11111111111111111111111111111113");
+const SESSION = address("11111111111111111111111111111114");
+const DESTINATION = address("11111111111111111111111111111115");
+const FEE_PAYER = address("11111111111111111111111111111116");
+const SESSION_KEY = address("11111111111111111111111111111117");
+const SPL_MINT = address("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
 
 const recentBlockhash = {
-  blockhash: "EkSnNWid2cvwEVnVx9aBxgney8D4R9fKQ89KWkdHUjbv" as const,
+  blockhash: blockhash("EkSnNWid2cvwEVnVx9aBxgney8D4R9fKQ89KWkdHUjbv"),
   lastValidBlockHeight: 1_000_000n,
 };
 
@@ -64,7 +64,7 @@ describe("buildPaymentIntent", () => {
     });
 
     expect(result.pdas.allowlistEntry).toBe(allowlistEntry);
-    const allowlistMeta = result.instruction.accounts.find(
+    const allowlistMeta = result.instruction.accounts?.find(
       (account) => account.address === allowlistEntry,
     );
     expect(allowlistMeta).toBeDefined();
