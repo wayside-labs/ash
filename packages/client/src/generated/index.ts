@@ -6,10 +6,10 @@
  * @see https://github.com/codama-idl/codama
  */
 
-export * from "./accounts";
-export * from "./errors";
-export * from "./events";
-export * from "./instructions";
-export * from "./pdas";
-export * from "./programs";
-export * from "./types";
+export * from "./accounts/index.js";
+export * from "./errors/index.js";
+export * from "./events/index.js";
+export * from "./instructions/index.js";
+export * from "./pdas/index.js";
+export * from "./programs/index.js";
+export * from "./types/index.js";

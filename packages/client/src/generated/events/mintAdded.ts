@@ -32,7 +32,7 @@ import {
   getMintCeilingEncoder,
   type MintCeiling,
   type MintCeilingArgs,
-} from "../types";
+} from "../types/index.js";
 
 export const MINT_ADDED_EVENT_DISCRIMINATOR: ReadonlyUint8Array =
   new Uint8Array([15, 37, 223, 254, 230, 151, 165, 171]);

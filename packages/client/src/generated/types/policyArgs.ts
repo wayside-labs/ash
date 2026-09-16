@@ -25,7 +25,7 @@ import {
   getMintLimitArgsEncoder,
   type MintLimitArgs,
   type MintLimitArgsArgs,
-} from ".";
+} from "./index.js";
 
 /**
  * `PolicyArgs` (spec §4.2) — the full rule set an operator writes in one instruction.

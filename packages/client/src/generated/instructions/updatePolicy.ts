@@ -36,13 +36,13 @@ import {
   getAccountMetaFactory,
   type ResolvedInstructionAccount,
 } from "@solana/program-client-core";
-import { AGENT_RAILS_PROGRAM_ADDRESS } from "../programs";
+import { AGENT_RAILS_PROGRAM_ADDRESS } from "../programs/index.js";
 import {
   getPolicyArgsDecoder,
   getPolicyArgsEncoder,
   type PolicyArgs,
   type PolicyArgsArgs,
-} from "../types";
+} from "../types/index.js";
 
 export const UPDATE_POLICY_DISCRIMINATOR: ReadonlyUint8Array = new Uint8Array([
   212, 245, 246, 7, 163, 151, 18, 57,

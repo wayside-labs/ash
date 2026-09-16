@@ -6,8 +6,8 @@
  * @see https://github.com/codama-idl/codama
  */
 
-export * from "./agentSession";
-export * from "./allowlistEntry";
-export * from "./intentReceipt";
-export * from "./policy";
-export * from "./treasury";
+export * from "./agentSession.js";
+export * from "./allowlistEntry.js";
+export * from "./intentReceipt.js";
+export * from "./policy.js";
+export * from "./treasury.js";

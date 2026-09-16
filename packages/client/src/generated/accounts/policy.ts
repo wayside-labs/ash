@@ -49,7 +49,7 @@ import {
   getMintLimitEncoder,
   type MintLimit,
   type MintLimitArgs,
-} from "../types";
+} from "../types/index.js";
 
 export const POLICY_DISCRIMINATOR: ReadonlyUint8Array = new Uint8Array([
   222, 135, 7, 163, 235, 177, 33, 68,

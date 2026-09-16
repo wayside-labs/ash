@@ -6,12 +6,12 @@
  * @see https://github.com/codama-idl/codama
  */
 
-export * from "./fundingMode";
-export * from "./mintCeiling";
-export * from "./mintCeilingArgs";
-export * from "./mintConfig";
-export * from "./mintLimit";
-export * from "./mintLimitArgs";
-export * from "./paymentIntent";
-export * from "./policyArgs";
-export * from "./spendCounter";
+export * from "./fundingMode.js";
+export * from "./mintCeiling.js";
+export * from "./mintCeilingArgs.js";
+export * from "./mintConfig.js";
+export * from "./mintLimit.js";
+export * from "./mintLimitArgs.js";
+export * from "./paymentIntent.js";
+export * from "./policyArgs.js";
+export * from "./spendCounter.js";

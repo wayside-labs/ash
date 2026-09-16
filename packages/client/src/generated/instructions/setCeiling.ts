@@ -40,13 +40,13 @@ import {
   getAccountMetaFactory,
   type ResolvedInstructionAccount,
 } from "@solana/program-client-core";
-import { AGENT_RAILS_PROGRAM_ADDRESS } from "../programs";
+import { AGENT_RAILS_PROGRAM_ADDRESS } from "../programs/index.js";
 import {
   getMintCeilingArgsDecoder,
   getMintCeilingArgsEncoder,
   type MintCeilingArgs,
   type MintCeilingArgsArgs,
-} from "../types";
+} from "../types/index.js";
 
 export const SET_CEILING_DISCRIMINATOR: ReadonlyUint8Array = new Uint8Array([
   209, 123, 112, 251, 0, 173, 196, 22,

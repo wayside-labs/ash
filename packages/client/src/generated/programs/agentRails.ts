@@ -50,7 +50,7 @@ import {
   type PolicyArgs,
   type Treasury,
   type TreasuryArgs,
-} from "../accounts";
+} from "../accounts/index.js";
 import {
   getAddAllowlistEntryInstructionAsync,
   getAddGuardianInstruction,
@@ -144,14 +144,14 @@ import {
   type UnpauseInput,
   type UpdatePolicyInput,
   type WithdrawAsyncInput,
-} from "../instructions";
+} from "../instructions/index.js";
 import {
   findEntryPda,
   findPolicyPda,
   findSessionPda,
   findSolVaultPda,
   findTreasuryPda,
-} from "../pdas";
+} from "../pdas/index.js";
 
 export const AGENT_RAILS_PROGRAM_ADDRESS =
   "4qjD6vSgYa3oBKde3KVzsH8oCcP9BKsirX1xtD5SS6BS" as Address<"4qjD6vSgYa3oBKde3KVzsH8oCcP9BKsirX1xtD5SS6BS">;

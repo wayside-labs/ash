@@ -38,14 +38,14 @@ import {
   getNonNullResolvedInstructionInput,
   type ResolvedInstructionAccount,
 } from "@solana/program-client-core";
-import { findPolicyPda } from "../pdas";
-import { AGENT_RAILS_PROGRAM_ADDRESS } from "../programs";
+import { findPolicyPda } from "../pdas/index.js";
+import { AGENT_RAILS_PROGRAM_ADDRESS } from "../programs/index.js";
 import {
   getPolicyArgsDecoder,
   getPolicyArgsEncoder,
   type PolicyArgs,
   type PolicyArgsArgs,
-} from "../types";
+} from "../types/index.js";
 
 export const CREATE_POLICY_DISCRIMINATOR: ReadonlyUint8Array = new Uint8Array([
   27, 81, 33, 27, 196, 103, 246, 53,

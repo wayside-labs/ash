@@ -38,7 +38,7 @@ import {
   getAccountMetaFactory,
   type ResolvedInstructionAccount,
 } from "@solana/program-client-core";
-import { AGENT_RAILS_PROGRAM_ADDRESS } from "../programs";
+import { AGENT_RAILS_PROGRAM_ADDRESS } from "../programs/index.js";
 
 export const ADD_GUARDIAN_DISCRIMINATOR: ReadonlyUint8Array = new Uint8Array([
   167, 189, 170, 27, 74, 240, 201, 241,

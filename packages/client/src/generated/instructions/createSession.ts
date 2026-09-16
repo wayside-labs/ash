@@ -44,8 +44,8 @@ import {
   getNonNullResolvedInstructionInput,
   type ResolvedInstructionAccount,
 } from "@solana/program-client-core";
-import { findSessionPda } from "../pdas";
-import { AGENT_RAILS_PROGRAM_ADDRESS } from "../programs";
+import { findSessionPda } from "../pdas/index.js";
+import { AGENT_RAILS_PROGRAM_ADDRESS } from "../programs/index.js";
 
 export const CREATE_SESSION_DISCRIMINATOR: ReadonlyUint8Array = new Uint8Array([
   242, 193, 143, 179, 150, 25, 122, 227,
