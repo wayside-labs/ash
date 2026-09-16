@@ -31,6 +31,17 @@ pre-commit:
 pre-push:
   parallel: true
   jobs:
+    # main is protected on the remote, so a direct push is rejected there anyway. This
+    # job exists to fail in a second rather than after the slow jobs below have run, and
+    # it is deliberately bypassable (`--no-verify`, `LEFTHOOK=0`) — the server is the
+    # gate, this is just the fast feedback.
+    - name: no-direct-main
+      run: |
+        test "$(git rev-parse --abbrev-ref HEAD)" != main || {
+          echo "main takes merges, not pushes: open a PR"
+          exit 1
+        }
+
     - name: clippy
       run: cargo clippy --workspace --all-targets -- -D warnings
 
