@@ -41,9 +41,24 @@ produce dead statements that read as handled cases. Do not "fix" the remaining r
 reaching for `saturating_*` — that trades an unreachable branch for a silent wrong answer,
 which is the trade this crate exists to refuse.
 
-ADR-008 also calls for `cargo-fuzz` and Kani proofs on this crate. Neither exists yet —
-see ADR-015 for what is deferred. Do not read their absence as a decision that they are
-unnecessary.
+`src/proofs.rs` holds the Kani harnesses, compiled only under `cfg(kani)` and run by
+`scripts/verify.sh kani`. They are not a second opinion on the proptests: proptest builds
+inputs that are valid by construction, so it never reaches a counter a corrupted account
+could carry, and the harnesses quantify over every `i64` instead. Changing `roll_window`,
+`limit_leq_ceiling` or `audit_preimage` without running them is changing exactly what they
+were written to hold still. The proofs discharge against one pinned Kani release
+(`KANI_VERSION` in `scripts/verify.sh`); bumping it is a deliberate change with the proofs
+re-run, not a version bump.
+
+Two of the harnesses have no counterpart in ADR-008's list, and the reason is worth keeping:
+the four properties it names all pass a `limit_leq_ceiling` whose window comparison is
+reversed. `<=` for `>=` is still reflexive, antisymmetric and transitive — a sound partial
+order pointing the wrong way, letting an operator set a window *shorter* than the ceiling's
+minimum and reset the budget faster than the owner allowed. The algebra cannot see
+direction; only rollover behaviour can.
+
+ADR-008 also calls for `cargo-fuzz` on this crate, which does not exist yet — see ADR-015
+for what is deferred. Do not read its absence as a decision that it is unnecessary.
 
 ## Arithmetic
 
