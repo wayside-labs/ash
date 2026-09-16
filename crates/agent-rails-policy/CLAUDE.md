@@ -25,7 +25,7 @@ than in `proptests.rs`.
 `tests/error_codes.rs` pins the properties of the code tables — distinct codes, distinct
 reason strings, `Display` agreeing with `reason_code()`. Whether those numbers match the
 Anchor codes the program actually emits needs both crates, so it lives in
-`programs/agent_rails/tests/`.
+`programs/agent_rails/tests/error_codes.rs`.
 
 The crate is gated at ≥95% line coverage (`cargo llvm-cov --fail-under-lines 95`, in
 `scripts/verify.sh rust`) and currently measures 99.2%. The two uncovered lines are the

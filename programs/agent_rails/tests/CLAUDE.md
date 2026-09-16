@@ -21,7 +21,17 @@ passing on the wrong rejection.
 `payments` execute paths, `budget` CU measurements, `lifecycle` session and receipt
 lifetimes, `admin` owner-only instructions, `operator` policy and allowlist edits,
 `treasury` creation and mints, `native_allowance` the ADR-014 CPI, `pda_owner` a
-program-derived `Treasury.owner`, `layout` byte offsets.
+program-derived `Treasury.owner`, `layout` byte offsets, `error_codes` the policy crate's
+hardcoded spec §9 numbers against the codes Anchor actually derives.
+
+## error_codes.rs needs no SVM
+
+It asserts over types rather than over a running program, so it does not use `common` and
+costs nothing to run. Anchor numbers `#[error_code]` variants by declaration order, so
+inserting one anywhere but the end renumbers every variant after it — the rule
+`src/error.rs` states as "never reorder or remove a variant; append only". This is what
+enforces that rule for the subset `agent-rails-policy` hardcodes, and it names the code
+that moved when it fails.
 
 ## layout.rs is a snapshot, not a test you fix
 
