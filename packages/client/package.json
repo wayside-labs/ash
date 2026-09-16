@@ -16,6 +16,7 @@
   "scripts": {
     "codegen": "codama run js",
     "build": "tsdown",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
