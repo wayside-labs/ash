@@ -1,0 +1,28 @@
+# cargo-mutants scope and budget (ADR-008 nightly, ADR-015).
+#
+# Everything here is scoping, not thresholds. The gate is "no surviving mutant" — there is
+# no tolerated count to drift upward, and the escape hatch for genuinely untestable code is
+# `#[mutants::skip]` at the site, which a reviewer sees in the diff. A numeric allowance
+# would not be visible anywhere.
+
+# The policy crate only. The Anchor program is deliberately out of scope: its tests drive an
+# SVM, so `cargo test --workspace` takes 93s against this crate's 1s, and one mutant costs
+# what the entire policy run costs. Mutation testing is affordable exactly where the code is
+# pure, which is the same property ADR-008 split the crate out for.
+examine_globs = ["crates/agent-rails-policy/src/**/*.rs"]
+
+# `proofs.rs` is `cfg(kani)`, so `cargo test` never compiles it. Mutating it produces
+# mutants no test run can possibly kill — 51 of them, 29% of the total, all reported as
+# survivors. Excluding it is the difference between a gate and a permanent red.
+exclude_globs = ["crates/agent-rails-policy/src/proofs.rs"]
+
+# Run only this package's tests per mutant, rather than the workspace. Without it each of
+# the 127 mutants pays for the SVM integration suite.
+test_package = ["agent-rails-policy"]
+
+# The suite finishes in under a second, so cargo-mutants' auto-derived timeout would be its
+# own floor. Pinning it high is deliberate: the timeout exists to catch a mutant that made
+# the code loop forever, not to police speed, and a tight bound on a loaded CI runner turns
+# a slow mutant into a false "caught". Headroom here costs nothing unless something actually
+# hangs.
+minimum_test_timeout = 60
