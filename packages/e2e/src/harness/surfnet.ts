@@ -123,6 +123,9 @@ export async function startSurfnet(options?: {
 
   const child: ChildProcess = spawn(
     "surfpool",
+    // `--ci` is required, not merely tidy: without it surfpool waits on something and the
+    // harness hangs until the hook timeout. It also silences surfpool's own log, which is
+    // why the deploy's stdout is captured below instead — that is the diagnosable half.
     ["start", "--ci", "-n", network, "-p", String(port), "-w", String(wsPort), "--no-studio"],
     { stdio: ["ignore", "pipe", "pipe"], detached: false },
   );
@@ -163,7 +166,7 @@ export async function startSurfnet(options?: {
     // `--url` is spelled with the loopback address on purpose: .claude/hooks/guard.sh
     // denies a deploy that is not explicitly pinned to loopback, which is what keeps this
     // harness from ever being pointed at a cluster holding custody (ADR-011).
-    await run("solana", [
+    const deployOutput = await run("solana", [
       "program",
       "deploy",
       join(REPO_ROOT, "target/deploy/agent_rails.so"),
@@ -194,13 +197,18 @@ export async function startSurfnet(options?: {
       if (!executable) await new Promise((r) => setTimeout(r, 500));
     }
     if (!executable) {
-      throw new Error(`program ${PROGRAM_ID} is not executable 30s after a successful deploy`);
+      throw new Error(
+        `program ${PROGRAM_ID} is not executable 30s after a deploy that exited 0.\n` +
+          `--- solana program deploy ---\n${deployOutput}`,
+      );
     }
 
     return { rpcUrl, wsUrl: `ws://127.0.0.1:${wsPort}`, payerKeypairPath, stop };
   } catch (error) {
     stop();
-    throw new Error(`surfnet startup failed: ${String(error)}\n--- surfpool ---\n${surfpoolLog}`);
+    throw new Error(
+      `surfnet startup failed: ${String(error)}\n--- surfpool (last 4000 chars) ---\n${surfpoolLog.slice(-4000)}`,
+    );
   }
 }
 
