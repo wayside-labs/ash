@@ -28,3 +28,9 @@ dist/
 # cargo-mutants working directory: rebuilt every run, never reviewed.
 mutants.out/
 mutants.out.old/
+
+# Working drafts, deliberately ignored by path rather than by directory: `docs/research/`
+# carries three committed documents alongside the uncommitted one, and ignoring the folder
+# would silently swallow the next real document added to it.
+docs/research/agent-orgs-and-defi-mandates.md
+docs/strategy/crypto-worlds-fair-playbook.md
