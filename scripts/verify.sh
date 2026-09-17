@@ -11,6 +11,7 @@
 #   scripts/verify.sh ts       lint, typecheck, test, codegen drift, audit
 #   scripts/verify.sh kani     bounded model checking of the policy crate
 #   scripts/verify.sh mutants  mutation testing of the policy crate (nightly gate)
+#   scripts/verify.sh e2e      Surfpool end-to-end suite (nightly gate)
 #
 # The integration tests deploy compiled programs, so a fresh checkout with an
 # empty target/ needs `cargo build-sbf` (or `anchor build`) once before the rust
@@ -117,6 +118,27 @@ if [[ $group == mutants ]]; then
   fi
 fi
 
+# Not part of `all`, for the same reason as `mutants`: ADR-008 scopes layer 5 to nightly,
+# it needs a compiled program and the surfpool binary, and it boots a validator per file.
+if [[ $group == e2e ]]; then
+  # Layer 5 of the ADR-008 pyramid: the only layer where the TypeScript client talks to a
+  # validator. Everything below it executes instructions without a network, so a blockhash
+  # that expires and a confirmation that times out are unreachable there.
+  if ! command -v surfpool >/dev/null 2>&1; then
+    printf '\n\033[1m▸ e2e (surfpool)\033[0m\n'
+    printf '\033[33mskipped: surfpool is not installed\033[0m\n'
+    printf '  https://docs.surfpool.run — or: cargo install surfpool-cli\n'
+    skipped+=("e2e (surfpool)")
+  elif [[ ! -f target/deploy/agent_rails.so ]]; then
+    printf '\n\033[1m▸ e2e (surfpool)\033[0m\n'
+    printf '\033[33mskipped: target/deploy/agent_rails.so is missing\033[0m\n'
+    printf '  cargo build-sbf --manifest-path programs/agent_rails/Cargo.toml\n'
+    skipped+=("e2e (surfpool)")
+  else
+    run "e2e (surfpool)" pnpm --filter @agent-rails/e2e test
+  fi
+fi
+
 if [[ $group == all || $group == ts ]]; then
   run "pnpm lint" pnpm lint
   run "pnpm typecheck" pnpm typecheck
@@ -129,8 +151,8 @@ if [[ $group == all || $group == ts ]]; then
   run "coverage (sdk >=85%)" pnpm coverage
 fi
 
-if [[ $group != all && $group != rust && $group != ts && $group != kani && $group != mutants ]]; then
-  echo "usage: scripts/verify.sh [all|rust|ts|kani|mutants]" >&2
+if [[ $group != all && $group != rust && $group != ts && $group != kani && $group != mutants && $group != e2e ]]; then
+  echo "usage: scripts/verify.sh [all|rust|ts|kani|mutants|e2e]" >&2
   exit 2
 fi
 

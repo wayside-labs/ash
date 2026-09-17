@@ -1,0 +1,121 @@
+name: E2E
+
+# Layer 5 of the ADR-008 pyramid: the TypeScript client against a real validator.
+#
+# Everything below this layer executes instructions without a network. `litesvm` has no
+# blockhash that expires, no `getSignatureStatuses` that lags behind inclusion, and no
+# confirmation that can be waited on and time out — and all three are load-bearing in
+# `sendPayment`. This is the only job where that code is exercised at all.
+#
+# Nightly, as ADR-008 scoped it. The run is ~45s of tests behind a ~2m build, and the thing
+# it protects against is an RPC or client change breaking the payment path silently rather
+# than a regression a pull request would introduce.
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+  # So a change to the suite or its harness is exercised by the pull request that makes it.
+  pull_request:
+    paths:
+      - "packages/e2e/**"
+      - "packages/sdk/src/send-payment.ts"
+      - ".github/workflows/e2e.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  surfnet:
+    name: surfpool e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - id: versions
+        run: |
+          agave=$(sed -n 's/^  AGAVE_VERSION: \(.*\)$/\1/p' .github/workflows/idl.yml)
+          test -n "$agave" || { echo "AGAVE_VERSION missing from .github/workflows/idl.yml"; exit 1; }
+          echo "agave=$agave" >> "$GITHUB_OUTPUT"
+
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: solana-cache
+        with:
+          path: ~/.local/share/solana
+          key: solana-${{ steps.versions.outputs.agave }}
+
+      - if: steps.solana-cache.outputs.cache-hit != 'true'
+        run: sh -c "$(curl -sSfL https://release.anza.xyz/v${{ steps.versions.outputs.agave }}/install)"
+
+      - run: echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
+
+      # The suite deploys this onto the surfnet on every run; it is the artifact under test.
+      - run: cargo build-sbf --manifest-path programs/agent_rails/Cargo.toml
+
+      - name: install surfpool
+        run: |
+          curl -sSfL https://install.surfpool.run | bash
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+
+      # The secret earns its place here rather than in the suite. The surfnet forks devnet,
+      # so every account the tests do not create is fetched from the real cluster: if devnet
+      # is unreachable the fork is degraded and a red suite would be misread as a client
+      # regression. Checking the funded key also keeps the precondition for the deferred
+      # devnet-smoke row honest — that row needs this key to still have a balance, and a
+      # drained key should be visible before it blocks a release rather than after.
+      #
+      # Written to a file with a restrictive umask and deleted in a step that always runs;
+      # never echoed, never passed as an argument.
+      # No `if:` on the secret — `secrets` is not available in a step condition and a
+      # job-level env would hand the key to every other step. The emptiness check is inside
+      # the script, where the secret is already scoped to this step alone.
+      - name: devnet preflight
+        env:
+          DEVNET_KEYPAIR: ${{ secrets.DEVNET_KEYPAIR }}
+        run: |
+          if [ -z "$DEVNET_KEYPAIR" ]; then
+            echo "DEVNET_KEYPAIR is not set; skipping the devnet preflight."
+            echo "The surfnet leg does not need it — see the comment above."
+            exit 0
+          fi
+          umask 077
+          printf '%s' "$DEVNET_KEYPAIR" > "$RUNNER_TEMP/devnet.json"
+          pubkey=$(solana-keygen pubkey "$RUNNER_TEMP/devnet.json")
+          echo "devnet CI key: $pubkey"
+          solana balance "$pubkey" --url devnet
+          lamports=$(solana balance "$pubkey" --url devnet --lamports | awk '{print $1}')
+          # One devnet deploy of this program needs ~7.1 SOL for programdata alone, so this
+          # floor is not "enough to deploy" — it is "the key still exists and the faucet
+          # work was not lost".
+          test "$lamports" -ge 100000000 || { echo "devnet key below 0.1 SOL"; exit 1; }
+
+      - run: scripts/verify.sh e2e
+
+      - name: shred the devnet keypair
+        if: always()
+        run: rm -f "$RUNNER_TEMP/devnet.json"
+
+      - if: failure()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: e2e-logs
+          path: packages/e2e/**/*.log
+          retention-days: 14
+          if-no-files-found: ignore

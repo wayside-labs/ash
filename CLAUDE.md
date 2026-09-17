@@ -62,6 +62,7 @@ cargo test --workspace          # also wired as `anchor test` via Anchor.toml [s
 cargo test -p agent-rails-policy                       # policy crate only (proptest suite)
 cargo kani -p agent-rails-policy --output-format terse  # the Kani proofs; needs the pinned kani-verifier
 scripts/verify.sh mutants                               # mutation testing, ~4 min; not part of `verify.sh all`
+scripts/verify.sh e2e                                   # surfpool E2E, ~45s; needs surfpool + a built .so
 cargo test -p agent_rails                               # program integration tests (anchor-litesvm, no validator needed)
 cargo test -p agent_rails --test payments               # a single integration test file, e.g. tests/payments.rs
 cargo test -p agent_rails --test payments some_test_name # a single test function
@@ -84,7 +85,7 @@ Layered, Rust-first, documented in full in `ARCHITECTURE.md` §11 and `docs/adr/
 2. `anchor-litesvm` integration tests in `programs/agent_rails/tests/` — every instruction, adversarial paths, clock warps.
 3. Trident stateful fuzzing — blocked upstream: every published Trident needs `solana-sdk ^2.3` and this tree is Anchor 1.1.2 on solana 3.x (ADR-015). `cargo-mutants` gates the policy crate's test quality in the meantime (`.cargo/mutants.toml`, nightly).
 4. `litesvm` (npm) for SDK/MCP; MCP contract tests via in-memory transport; tool-schema snapshots.
-5. Surfpool E2E nightly (mainnet-forked USDC), devnet smoke on release tags.
+5. Surfpool E2E nightly — `packages/e2e/`, `scripts/verify.sh e2e`. Forks devnet, pays in SOL, and includes a blinding proxy that withholds `getSignatureStatuses` to drive the SDK's `indeterminate` path. Devnet smoke on release tags is still deferred (ADR-015).
 
 Coverage thresholds enforced in CI: policy crate ≥95% lines (`cargo llvm-cov`, measured 99.2%) and SDK ≥85% lines/statements/functions with ≥70% branches (thresholds in `packages/sdk/vitest.config.ts`, measured 89.4%). Both run inside `scripts/verify.sh`; the Rust half skips loudly when `cargo-llvm-cov` is not installed, so a green local run is not proof it was measured. `scripts/verify.sh kani` skips the same way without `cargo-kani`. CU regression >10% over the committed baseline fails CI; baselines are in `programs/agent_rails/tests/cu-baselines.txt`, refreshed with `scripts/cu-baseline.sh`, and the spec §10 design gates are ≤45k CU for `execute_payment` and ≤35k for `execute_payment_sol`. (ADR-010's ≤40k / ≤600 bytes are the original design estimates; spec §10.1 amends them with measured figures and says why.)
 
