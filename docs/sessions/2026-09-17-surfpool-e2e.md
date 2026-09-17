@@ -7,8 +7,9 @@ ones that bound a sprint.
 ## What landed
 
 `packages/e2e/` — layer 5 of the ADR-008 pyramid, the only tests where the TypeScript client
-talks to a validator. Four tests across two files, ~45s. Wired as `scripts/verify.sh e2e`
-and `.github/workflows/e2e.yml` (nightly). ADR-015's "Surfpool E2E" row moved to
+talks to a validator. Four tests across two files: 45s locally, 18s on the runner, inside a 2m3s job
+whose cost is mostly `cargo build-sbf`. Wired as `scripts/verify.sh e2e` and
+`.github/workflows/e2e.yml` (nightly). ADR-015's "Surfpool E2E" row moved to
 "Enforced today"; the deferred table is down to three rows, none of which anyone here can
 close.
 

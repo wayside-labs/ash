@@ -72,7 +72,8 @@ the IDL from the program and fails if the committed one differs. ADR-008 asked f
 diff comment"; a failing gate was chosen over a comment, because a comment is advisory.
 
 `.github/workflows/e2e.yml`, nightly and manually dispatchable, path-filtered on pull
-requests to the suite and to `send-payment.ts`. Four tests, ~45s behind a ~2m program build.
+requests to the suite and to `send-payment.ts`. Measured on the runner: 2m3s end to end,
+65s of it `cargo build-sbf` and 18s of it the tests.
 
 `.github/workflows/mutants.yml`, nightly and manually dispatchable, path-filtered on pull
 requests to the gate's own files. 127 mutants, ~4m10s.

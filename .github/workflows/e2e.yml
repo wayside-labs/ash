@@ -7,9 +7,9 @@ name: E2E
 # confirmation that can be waited on and time out — and all three are load-bearing in
 # `sendPayment`. This is the only job where that code is exercised at all.
 #
-# Nightly, as ADR-008 scoped it. The run is ~45s of tests behind a ~2m build, and the thing
-# it protects against is an RPC or client change breaking the payment path silently rather
-# than a regression a pull request would introduce.
+# Nightly, as ADR-008 scoped it. Measured on the runner: 2m3s end to end, 65s of it building
+# the program and 18s of it the tests. What it protects against is an RPC or client change
+# breaking the payment path silently, rather than a regression a pull request would introduce.
 on:
   schedule:
     - cron: "0 3 * * *"
