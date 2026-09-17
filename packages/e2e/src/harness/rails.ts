@@ -6,8 +6,10 @@ import {
   getCreateTreasuryInstruction,
 } from "@agent-rails/client";
 import {
+  AccountRole,
   type Address,
   address,
+  addSignersToInstruction,
   appendTransactionMessageInstructions,
   createSolanaRpc,
   createTransactionMessage,
@@ -158,14 +160,17 @@ export function transferSol(
   const data = new Uint8Array(12);
   new DataView(data.buffer).setUint32(0, 2, true);
   new DataView(data.buffer).setBigUint64(4, lamports, true);
-  return {
+  // `addSignersToInstruction` rather than a hand-written signer meta: the base `Instruction`
+  // type deliberately does not carry signers, and casting past that was hiding the fact that
+  // the harness was asserting a shape the type system knows how to produce.
+  return addSignersToInstruction([source], {
     programAddress: address("11111111111111111111111111111111"),
     accounts: [
-      { address: source.address, role: 3 as const, signer: source },
-      { address: destination, role: 1 as const },
+      { address: source.address, role: AccountRole.WRITABLE_SIGNER },
+      { address: destination, role: AccountRole.WRITABLE },
     ],
     data,
-  } as unknown as Instruction;
+  });
 }
 
 export type RailsFixture = {
