@@ -135,7 +135,7 @@ if [[ $group == e2e ]]; then
     printf '  cargo build-sbf --manifest-path programs/agent_rails/Cargo.toml\n'
     skipped+=("e2e (surfpool)")
   else
-    run "e2e (surfpool)" pnpm --filter @agent-rails/e2e test
+    run "e2e (surfpool)" pnpm --filter @agent-rails/e2e test:e2e
   fi
 fi
 
