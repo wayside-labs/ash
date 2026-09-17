@@ -9,6 +9,7 @@
 #   scripts/verify.sh          everything
 #   scripts/verify.sh rust     fmt, clippy, overflow-checks, cargo test
 #   scripts/verify.sh ts       lint, typecheck, test, codegen drift, audit
+#   scripts/verify.sh kani     bounded model checking of the policy crate
 #
 # The integration tests deploy compiled programs, so a fresh checkout with an
 # empty target/ needs `cargo build-sbf` (or `anchor build`) once before the rust
@@ -19,12 +20,18 @@
 # part of a normal checkout, and CI has them. `cargo deny check` is worth running
 # locally when you touch dependencies.
 #
-# Coverage is included but skips loudly when cargo-llvm-cov is missing, rather than
-# passing quietly: a gate that reports success because its tool is absent is worse
-# than one that is not there at all. CI installs it, so CI always runs it.
+# Coverage and Kani are included but skip loudly when their tool is missing, rather
+# than passing quietly: a gate that reports success because its tool is absent is worse
+# than one that is not there at all. CI installs both, so CI always runs them.
 
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
+
+# Pinned, and read back out of this file by .github/workflows/kani.yml so there is one
+# version rather than a local one and a CI one. Kani ships its own rustc and its own CBMC,
+# and a proof that discharges under one release is not evidence about another: an upgrade
+# is a deliberate change, made here, with the proofs re-run.
+KANI_VERSION=0.68.0
 
 group=${1:-all}
 failed=()
@@ -60,6 +67,26 @@ if [[ $group == all || $group == rust ]]; then
   fi
 fi
 
+if [[ $group == all || $group == kani ]]; then
+  # ADR-008 layer 1, ADR-015. Proptest samples the policy arithmetic; these harnesses
+  # quantify over every input of their types, which is the only way the crate's claims
+  # about corrupted counters and the ceiling partial order get checked at all — proptest
+  # generates inputs that are valid by construction and so never reaches them.
+  if command -v cargo-kani >/dev/null 2>&1; then
+    installed=$(cargo kani --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+    if [[ -n $installed && $installed != "$KANI_VERSION" ]]; then
+      printf '\033[33m! kani %s installed, %s pinned — proofs discharge against the solver that ran them\033[0m\n' \
+        "$installed" "$KANI_VERSION"
+    fi
+    run "kani (policy proofs)" cargo kani -p agent-rails-policy --output-format terse
+  else
+    printf '\n\033[1m▸ kani (policy proofs)\033[0m\n'
+    printf '\033[33mskipped: cargo-kani is not installed\033[0m\n'
+    printf '  cargo install --locked kani-verifier --version %s && cargo-kani setup\n' "$KANI_VERSION"
+    skipped+=("kani (policy proofs)")
+  fi
+fi
+
 if [[ $group == all || $group == ts ]]; then
   run "pnpm lint" pnpm lint
   run "pnpm typecheck" pnpm typecheck
@@ -72,8 +99,8 @@ if [[ $group == all || $group == ts ]]; then
   run "coverage (sdk >=85%)" pnpm coverage
 fi
 
-if [[ $group != all && $group != rust && $group != ts ]]; then
-  echo "usage: scripts/verify.sh [all|rust|ts]" >&2
+if [[ $group != all && $group != rust && $group != ts && $group != kani ]]; then
+  echo "usage: scripts/verify.sh [all|rust|ts|kani]" >&2
   exit 2
 fi
 

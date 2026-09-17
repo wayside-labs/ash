@@ -16,6 +16,10 @@
 mod audit;
 mod engine;
 mod error;
+// Bounded model-checking harnesses (ADR-008 layer 1). `cfg(kani)` is set only by
+// `cargo kani`, so this module is absent from every normal and on-chain build.
+#[cfg(kani)]
+mod proofs;
 mod types;
 
 pub use audit::{

@@ -60,6 +60,7 @@ pnpm --filter @agent-rails/sdk exec vitest run -t "some test name"
 ```bash
 cargo test --workspace          # also wired as `anchor test` via Anchor.toml [scripts]
 cargo test -p agent-rails-policy                       # policy crate only (proptest suite)
+cargo kani -p agent-rails-policy --output-format terse  # the Kani proofs; needs the pinned kani-verifier
 cargo test -p agent_rails                               # program integration tests (anchor-litesvm, no validator needed)
 cargo test -p agent_rails --test payments               # a single integration test file, e.g. tests/payments.rs
 cargo test -p agent_rails --test payments some_test_name # a single test function
@@ -78,13 +79,13 @@ Rust integration tests (`programs/agent_rails/tests/*.rs`: `payments`, `budget`,
 
 Layered, Rust-first, documented in full in `ARCHITECTURE.md` §11 and `docs/adr/ADR-008-test-harness.md`:
 
-1. `agent-rails-policy`: proptest + cargo-fuzz; Kani bounded model checking (nightly, non-blocking).
+1. `agent-rails-policy`: proptest + cargo-fuzz; Kani bounded model checking (`src/proofs.rs`, `scripts/verify.sh kani`).
 2. `anchor-litesvm` integration tests in `programs/agent_rails/tests/` — every instruction, adversarial paths, clock warps.
 3. Trident stateful fuzzing with system invariants (vault balance vs. receipts, counters ≤ limits, `Policy ≤ Ceiling`, paused ⇒ no payment, etc.).
 4. `litesvm` (npm) for SDK/MCP; MCP contract tests via in-memory transport; tool-schema snapshots.
 5. Surfpool E2E nightly (mainnet-forked USDC), devnet smoke on release tags.
 
-Coverage thresholds enforced in CI: policy crate ≥95% lines (`cargo llvm-cov`, measured 99.2%) and SDK ≥85% lines/statements/functions with ≥70% branches (thresholds in `packages/sdk/vitest.config.ts`, measured 89.4%). Both run inside `scripts/verify.sh`; the Rust half skips loudly when `cargo-llvm-cov` is not installed, so a green local run is not proof it was measured. CU regression >10% over the committed baseline fails CI; baselines are in `programs/agent_rails/tests/cu-baselines.txt`, refreshed with `scripts/cu-baseline.sh`, and the spec §10 design gates are ≤45k CU for `execute_payment` and ≤35k for `execute_payment_sol`. (ADR-010's ≤40k / ≤600 bytes are the original design estimates; spec §10.1 amends them with measured figures and says why.)
+Coverage thresholds enforced in CI: policy crate ≥95% lines (`cargo llvm-cov`, measured 99.2%) and SDK ≥85% lines/statements/functions with ≥70% branches (thresholds in `packages/sdk/vitest.config.ts`, measured 89.4%). Both run inside `scripts/verify.sh`; the Rust half skips loudly when `cargo-llvm-cov` is not installed, so a green local run is not proof it was measured. `scripts/verify.sh kani` skips the same way without `cargo-kani`. CU regression >10% over the committed baseline fails CI; baselines are in `programs/agent_rails/tests/cu-baselines.txt`, refreshed with `scripts/cu-baseline.sh`, and the spec §10 design gates are ≤45k CU for `execute_payment` and ≤35k for `execute_payment_sol`. (ADR-010's ≤40k / ≤600 bytes are the original design estimates; spec §10.1 amends them with measured figures and says why.)
 
 ## Key invariants to preserve when editing
 

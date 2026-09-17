@@ -14,6 +14,13 @@ std = []
 # `audit_preimage` to the `sol_sha256` syscall instead, which is far cheaper in CU.
 hash = ["dep:sha2"]
 
+# `cargo kani` sets `cfg(kani)` itself; every other build has never heard of it, and under
+# `clippy -D warnings` an undeclared cfg is a hard error rather than a warning. Declaring it
+# here is what lets src/proofs.rs be `cfg`-gated instead of hidden behind a Cargo feature
+# that a normal build could accidentally turn on.
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }
+
 [dependencies]
 sha2 = { version = "0.10", default-features = false, optional = true }
 
