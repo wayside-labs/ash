@@ -97,7 +97,15 @@ Bash)
   fi
   if grep -qE '(^|[[:space:]])anchor[[:space:]]+deploy' <<<"$command" ||
     grep -qE '(^|[[:space:]])solana[[:space:]]+program[[:space:]]+(deploy|write-buffer|set-upgrade-authority|close)' <<<"$command"; then
-    decide deny "This deploys or changes authority on a live program. ADR-011 puts upgrades behind the multisig and a public notice window, and no CI step sits between this command and a program holding custody. The owner runs it."
+    # A deploy pinned to a loopback RPC cannot reach a program holding custody: the only
+    # thing listening there is an ephemeral surfnet that dies with the test run. The E2E
+    # suite has to deploy on every run, so denying it would mean the gate can never be
+    # built locally. A deploy with no `--url` uses whatever cluster is configured, so the
+    # absence of the flag stays denied — the exemption is the explicit loopback, never
+    # the default.
+    if ! grep -qE -- '--url[[:space:]]+(http://)?(127\.0\.0\.1|localhost)(:[0-9]+)?' <<<"$command"; then
+      decide deny "This deploys or changes authority on a live program. ADR-011 puts upgrades behind the multisig and a public notice window, and no CI step sits between this command and a program holding custody. The owner runs it."
+    fi
   fi
   # Not exhaustive by construction — see the header. Catches the obvious redirect.
   if grep -qE 'packages/client/src/generated' <<<"$command" &&
