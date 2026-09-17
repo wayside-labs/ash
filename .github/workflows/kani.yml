@@ -75,3 +75,6 @@ jobs:
       # passing when cargo-kani is absent, so a broken install here fails visibly instead
       # of reporting a green run that verified nothing.
       - run: scripts/verify.sh kani
+        env:
+          # A skipped check is not a passed check; see scripts/verify.sh.
+          VERIFY_STRICT: 1

@@ -61,10 +61,26 @@ jobs:
       # The suite deploys this onto the surfnet on every run; it is the artifact under test.
       - run: cargo build-sbf --manifest-path programs/agent_rails/Cargo.toml
 
+      # Pinned by version and checksum, for the reason every action here is pinned by SHA,
+      # and downloaded rather than piped into a shell. The first version of this step was
+      # `curl -sSfL https://install.surfpool.run | bash` against a host that does not exist:
+      # `curl` failed, the pipeline's exit status was bash's, `bash -e` saw success, and the
+      # job went green having run no tests. `set -o pipefail` is here so that cannot recur
+      # even if this ever becomes a pipeline again.
       - name: install surfpool
+        env:
+          SURFPOOL_VERSION: 1.5.0
+          SURFPOOL_SHA256: 5b20a3b46e60c4f819af7b4da5c3ea211f76041710617841cc23247d15887ddc
         run: |
-          curl -sSfL https://install.surfpool.run | bash
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          set -euo pipefail
+          tarball="$RUNNER_TEMP/surfpool.tar.gz"
+          curl -sSfL -o "$tarball" \
+            "https://github.com/txtx/surfpool/releases/download/v${SURFPOOL_VERSION}/surfpool-linux-x64.tar.gz"
+          echo "${SURFPOOL_SHA256}  $tarball" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/bin"
+          tar -xzf "$tarball" -C "$RUNNER_TEMP/bin" surfpool
+          chmod +x "$RUNNER_TEMP/bin/surfpool"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
 
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -106,7 +122,12 @@ jobs:
           # work was not lost".
           test "$lamports" -ge 100000000 || { echo "devnet key below 0.1 SOL"; exit 1; }
 
+      # VERIFY_STRICT turns the script's loud skip into a failure. Without it a missing
+      # surfpool or an unbuilt .so reports success, which is how the broken install above
+      # went unnoticed: the gate was green and had run nothing.
       - run: scripts/verify.sh e2e
+        env:
+          VERIFY_STRICT: 1
 
       - name: shred the devnet keypair
         if: always()

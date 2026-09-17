@@ -80,6 +80,29 @@ Two mechanisms stop the double payment, and each was broken on purpose:
 - Change the SDK's `indeterminate()` to report `denied`: the first test catches it —
   `expected 'denied' to be 'indeterminate'`.
 
+## The gate that passed without running
+
+The first CI run of this workflow reported **green having executed no tests**, and it took
+three independent failures lining up:
+
+1. The install step fetched `https://install.surfpool.run`, a host that does not exist. The
+   URL was invented rather than looked up.
+2. `curl -sSfL ... | bash` gives the pipeline `bash`'s exit status, not `curl`'s, so
+   `shell: bash -e` saw a success. `curl: (6) Could not resolve host` scrolled past as
+   ordinary output.
+3. `scripts/verify.sh` then did exactly what it was designed to do — skip loudly rather than
+   pass quietly when the tool is absent — and "loudly" means nothing in a log nobody reads.
+
+Each layer behaved as specified and the composition reported success. The fixes are a
+checksum-pinned tarball from the real release, `set -o pipefail`, and `VERIFY_STRICT=1`,
+which turns a skip into a failure and is now set in the kani and mutants jobs too, since
+they call the same script with the same escape hatch.
+
+The third is the general one. A loud skip is right for a developer's terminal and wrong for
+CI, and the script could not previously tell the two apart. This is the second time in this
+repository that a tool's presence turned a gate into a tautology, after the coverage binary;
+it is the first time it happened in CI rather than locally.
+
 ## Two harness bugs worth remembering
 
 The first version polled `getHealth` on a fixed port and found a **stray surfpool from an

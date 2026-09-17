@@ -22,9 +22,15 @@
 # part of a normal checkout, and CI has them. `cargo deny check` is worth running
 # locally when you touch dependencies.
 #
-# Coverage and Kani are included but skip loudly when their tool is missing, rather
-# than passing quietly: a gate that reports success because its tool is absent is worse
-# than one that is not there at all. CI installs both, so CI always runs them.
+# Coverage, Kani, mutants and e2e skip loudly when their tool is missing, rather than
+# passing quietly: a gate that reports success because its tool is absent is worse than one
+# that is not there at all.
+#
+# "Loudly" is enough for a human reading their own terminal and is not enough for CI, where
+# nobody reads a green log. Set VERIFY_STRICT=1 — every CI job that calls this script does —
+# and a skip becomes a failure. This is not hypothetical: the e2e workflow shipped with an
+# install step whose URL did not resolve, `curl | bash` hid the failure from `bash -e`, and
+# the job reported success having run no tests at all.
 
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
@@ -41,8 +47,21 @@ KANI_VERSION=0.68.0
 MUTANTS_VERSION=27.1.0
 
 group=${1:-all}
+strict=${VERIFY_STRICT:-0}
 failed=()
 skipped=()
+
+# Record a skip. Under VERIFY_STRICT it is a failure instead, because a check that did not
+# run is not a check that passed.
+note_skip() {
+  local name=$1
+  if [[ $strict == 1 ]]; then
+    printf '\033[31mstrict: refusing to pass with this check skipped\033[0m\n'
+    failed+=("$name (skipped under VERIFY_STRICT)")
+  else
+    skipped+=("$name")
+  fi
+}
 
 run() {
   local name=$1
@@ -70,7 +89,7 @@ if [[ $group == all || $group == rust ]]; then
     printf '\n\033[1m▸ coverage (policy >=95%%)\033[0m\n'
     printf '\033[33mskipped: cargo-llvm-cov is not installed\033[0m\n'
     printf '  cargo install cargo-llvm-cov --locked\n'
-    skipped+=("coverage (policy >=95%%)")
+    note_skip "coverage (policy >=95%%)"
   fi
 fi
 
@@ -90,7 +109,7 @@ if [[ $group == all || $group == kani ]]; then
     printf '\n\033[1m▸ kani (policy proofs)\033[0m\n'
     printf '\033[33mskipped: cargo-kani is not installed\033[0m\n'
     printf '  cargo install --locked kani-verifier --version %s && cargo-kani setup\n' "$KANI_VERSION"
-    skipped+=("kani (policy proofs)")
+    note_skip "kani (policy proofs)"
   fi
 fi
 
@@ -114,7 +133,7 @@ if [[ $group == mutants ]]; then
     printf '\n\033[1m▸ mutants (policy, no survivors)\033[0m\n'
     printf '\033[33mskipped: cargo-mutants is not installed\033[0m\n'
     printf '  cargo install --locked cargo-mutants --version %s\n' "$MUTANTS_VERSION"
-    skipped+=("mutants (policy, no survivors)")
+    note_skip "mutants (policy, no survivors)"
   fi
 fi
 
@@ -128,12 +147,12 @@ if [[ $group == e2e ]]; then
     printf '\n\033[1m▸ e2e (surfpool)\033[0m\n'
     printf '\033[33mskipped: surfpool is not installed\033[0m\n'
     printf '  https://docs.surfpool.run — or: cargo install surfpool-cli\n'
-    skipped+=("e2e (surfpool)")
+    note_skip "e2e (surfpool)"
   elif [[ ! -f target/deploy/agent_rails.so ]]; then
     printf '\n\033[1m▸ e2e (surfpool)\033[0m\n'
     printf '\033[33mskipped: target/deploy/agent_rails.so is missing\033[0m\n'
     printf '  cargo build-sbf --manifest-path programs/agent_rails/Cargo.toml\n'
-    skipped+=("e2e (surfpool)")
+    note_skip "e2e (surfpool)"
   else
     run "e2e (surfpool)" pnpm --filter @agent-rails/e2e test:e2e
   fi

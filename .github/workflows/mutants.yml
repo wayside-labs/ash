@@ -68,6 +68,9 @@ jobs:
       # when cargo-mutants is absent, so a broken install fails visibly instead of reporting
       # a green run that mutated nothing.
       - run: scripts/verify.sh mutants
+        env:
+          # A skipped check is not a passed check; see scripts/verify.sh.
+          VERIFY_STRICT: 1
 
       # The surviving-mutant list is the actionable output, and it is gone once the runner
       # is torn down.
