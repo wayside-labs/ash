@@ -21,6 +21,37 @@ importers:
         specifier: ^5.9.2
         version: 5.9.3
 
+  packages/cli:
+    dependencies:
+      '@agent-rails/client':
+        specifier: workspace:*
+        version: link:../client
+      '@agent-rails/contract':
+        specifier: workspace:*
+        version: link:../contract
+      '@agent-rails/sdk':
+        specifier: workspace:*
+        version: link:../sdk
+      '@solana/kit':
+        specifier: ^8.2.0
+        version: 8.2.0(typescript@5.9.3)
+      commander:
+        specifier: ^15.0.0
+        version: 15.0.0
+      picocolors:
+        specifier: ^1.1.1
+        version: 1.1.1
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.1
+      tsdown:
+        specifier: ^0.15.0
+        version: 0.15.12(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)(typescript@5.9.3)
+      vitest:
+        specifier: ^4.0.0
+        version: 4.1.11(@types/node@22.20.1)(@vitest/coverage-v8@4.1.11)(vite@8.2.2(@types/node@22.20.1)(jiti@2.7.0))
+
   packages/client:
     dependencies:
       '@solana/kit':

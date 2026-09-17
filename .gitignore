@@ -13,6 +13,10 @@ dist/
 # Solana keypairs are raw secret keys; never commit one, wherever it lands.
 **/*keypair*.json
 
+# `agent-rails init` output: generated keys, the per-cluster manifest and the MCP config
+# snippet. Per-developer state, and the keys are already covered above.
+.agent-rails/
+
 # Surfpool simnet logs from the E2E harness
 .surfpool/
 
