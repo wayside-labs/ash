@@ -64,11 +64,16 @@ Option D.
 | SAST | `sast` job (semgrep `p/typescript`, `p/rust`) |
 | Kani proofs: no overflow, monotone rollover, the `≤` partial order, audit preimage injective in `seq` | `crates/agent-rails-policy/src/proofs.rs`, run by `scripts/verify.sh kani` |
 | `cargo-mutants`: no surviving mutant in the policy crate | `.cargo/mutants.toml`, run by `scripts/verify.sh mutants` |
+| Surfpool E2E: the client against a real validator, happy path and dropped confirmation | `packages/e2e/`, run by `scripts/verify.sh e2e` |
 | SHA-pinned Actions, `permissions: contents: read` | throughout |
 
 `.github/workflows/idl.yml`, path-filtered to the program and its dependencies: rebuilds
 the IDL from the program and fails if the committed one differs. ADR-008 asked for an "IDL
 diff comment"; a failing gate was chosen over a comment, because a comment is advisory.
+
+`.github/workflows/e2e.yml`, nightly and manually dispatchable, path-filtered on pull
+requests to the suite and to `send-payment.ts`. Measured on the runner: 2m3s end to end,
+65s of it `cargo build-sbf` and 18s of it the tests.
 
 `.github/workflows/mutants.yml`, nightly and manually dispatchable, path-filtered on pull
 requests to the gate's own files. 127 mutants, ~4m10s.
@@ -88,7 +93,6 @@ assertion — because the invariants they protect had no mechanism otherwise.
 |---|---|---|
 | **Trident stateful fuzzing** | Blocked upstream, not unwritten. Every published Trident — 0.12.0 and the 0.13.0-rc line alike — requires `solana-sdk ^2.3`, and this tree is Anchor 1.1.2 on solana 3.x. Cargo resolves the pair, then produces three incompatible majors of `solana-pubkey` (2.4.0 / 3.0.0 / 4.3.0) and of `solana-instruction` (2.3.3 / 3.5.1 / 4.0.0). A harness cannot hand its generated pubkeys to an instruction that expects a different `Pubkey` of the same name. | A Trident release that supports Anchor 1.x / solana 3.x. Nothing in this repository unblocks it. |
 | **Verifiable build hash** | Belongs with the release process (ADR-011), which has not run yet. | A release workflow producing and publishing the hash. |
-| **Surfpool E2E** | The secret it was waiting on exists: `DEVNET_KEYPAIR`, set and funded on devnet 2026-09-17. Nothing external blocks it now — there is simply no suite. No Surfpool tests, no mainnet-forked USDC fixture, no nightly workflow. | An E2E suite against mainnet-forked USDC, plus a nightly workflow that consumes `DEVNET_KEYPAIR`. |
 | **devnet smoke on release tags** | Release-tag scoped in ADR-008, and there is no release workflow to hang it on — the same missing artifact the verifiable build hash row names. No tag has been pushed. | The ADR-011 release workflow, with a smoke job on the tag. |
 
 `DEVNET_KEYPAIR` is a repository Actions secret holding a devnet keypair, funded on
@@ -126,6 +130,22 @@ nightly on the assumption that model checking is slow; measured, a whole run is 
 is less than the `rust` job already spends. Nightly is kept as well, because a
 Kani release can change what its solver discharges without the crate changing — but a proof
 that only ever fails at 05:00 names the wrong commit.
+
+The E2E suite forks **devnet**, not mainnet, and pays in **SOL** rather than USDC — both
+depart from ADR-008's "Surfpool E2E nightly (mainnet-forked USDC)". The fork target is
+incidental: what the fork buys is that accounts the tests do not create are fetched from a
+real cluster, and devnet is the cluster this project's deferred smoke row already points at.
+The SOL path is the substantive choice. `execute_payment_sol` needs no mint, no associated
+token accounts and no token program, which removes roughly two thirds of the setup without
+removing anything under test: idempotency, the receipt PDA, the audit chain and the
+confirmation handling are identical on both paths, and spec §10 separates them only on
+compute. An SPL leg is worth adding; it is not worth blocking the gate on.
+
+Running the suite against real devnet was considered and is not currently possible. The
+program is not deployed there, and deploying it needs **7.10 SOL** for programdata alone
+(measured: `solana rent` on `2 × 698264 + 45` bytes) against the 5 SOL the CI key holds,
+before counting the transient buffer. That is a funding decision, not an engineering one,
+and it belongs to the devnet-smoke row rather than to this one.
 
 `cargo-mutants` stays nightly, where Kani did not, and the reason is measured rather than
 deferential: the run is ~4m10s of rebuild-and-test across 127 mutants, against 38s of solver
@@ -170,6 +190,14 @@ trade so the next reader does not spend the ten minutes rediscovering it.
   necessary and not sufficient: the direction of the order is only visible in what the
   windows do, which is why `proofs.rs` carries two harnesses ADR-008 did not name. A gate
   accepted on the strength of its passing would have shipped that hole.
+- The E2E suite is the only place the client's transport assumptions are tested. Layers 1-4
+  execute instructions without a network, so a blockhash that expires, a
+  `getSignatureStatuses` that lags behind inclusion, and a confirmation that times out are
+  all unreachable below layer 5 — and all three are load-bearing in `sendPayment`. The
+  blinding proxy in `packages/e2e/src/harness/` reproduces the dangerous one deterministically:
+  the transaction is relayed and settles, only the *answer* is withheld. Blinding the status
+  read rather than dropping the send is the point, because a dropped send is the easy case
+  where nothing happened.
 - `cargo-mutants` found nine surviving mutants on its first run against a crate measuring
   99.2% line coverage, seven of them in the ceiling partial order. `cargo test` contained
   nothing that failed when `limit_leq_ceiling` was replaced with `-> true`: proptest
