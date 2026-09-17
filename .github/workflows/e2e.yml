@@ -132,11 +132,3 @@ jobs:
       - name: shred the devnet keypair
         if: always()
         run: rm -f "$RUNNER_TEMP/devnet.json"
-
-      - if: failure()
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
-        with:
-          name: e2e-logs
-          path: packages/e2e/**/*.log
-          retention-days: 14
-          if-no-files-found: ignore
