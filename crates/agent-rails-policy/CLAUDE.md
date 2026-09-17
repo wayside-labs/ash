@@ -57,8 +57,24 @@ order pointing the wrong way, letting an operator set a window *shorter* than th
 minimum and reset the budget faster than the owner allowed. The algebra cannot see
 direction; only rollover behaviour can.
 
+`tests/ceiling_order.rs` exists because `cargo mutants` said it had to. Every test in it
+kills a specific surviving mutant, and seven of the nine it was written for were in
+`limit_leq_ceiling` — a function this crate proves under Kani and covers at 99.2% by line,
+while `cargo test` contained nothing that failed when it was replaced with `-> true`. That
+is the failure mode to remember: coverage says a line ran, mutation says an assertion
+depended on it, and a crate can be fully covered by a suite that asserts nothing about the
+rule in question.
+
+Run it with `scripts/verify.sh mutants` (~4 minutes; deliberately not part of
+`verify.sh all`, and nightly in CI). The gate is zero survivors. When a mutant genuinely
+cannot be killed, `#[mutants::skip]` at the site is the answer — never a tolerated count,
+which nobody would see drift. `.cargo/mutants.toml` carries the scope: this crate only, and
+never `src/proofs.rs`, which `cargo test` does not compile.
+
 ADR-008 also calls for `cargo-fuzz` on this crate, which does not exist yet — see ADR-015
-for what is deferred. Do not read its absence as a decision that it is unnecessary.
+for what is deferred. Trident is deferred there too, and not for want of writing it: every
+published Trident needs `solana-sdk ^2.3` and this tree is Anchor 1.1.2 on solana 3.x. Do
+not read either absence as a decision that it is unnecessary.
 
 ## Arithmetic
 
