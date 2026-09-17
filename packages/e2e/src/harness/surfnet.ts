@@ -4,6 +4,7 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { installProgram } from "./install-program.js";
 
 /** Repo root, so the harness works whatever directory vitest was invoked from. */
 const REPO_ROOT = resolve(fileURLToPath(new URL(".", import.meta.url)), "../../../..");
@@ -163,24 +164,7 @@ export async function startSurfnet(options?: {
     ]);
     await run("solana", ["airdrop", "100", "--keypair", payerKeypairPath, "--url", rpcUrl]);
 
-    // `--url` is spelled with the loopback address on purpose: .claude/hooks/guard.sh
-    // denies a deploy that is not explicitly pinned to loopback, which is what keeps this
-    // harness from ever being pointed at a cluster holding custody (ADR-011).
-    const deployOutput = await run("solana", [
-      "program",
-      "deploy",
-      join(REPO_ROOT, "target/deploy/agent_rails.so"),
-      "--program-id",
-      join(REPO_ROOT, "target/deploy/agent_rails-keypair.json"),
-      "--keypair",
-      payerKeypairPath,
-      "--url",
-      rpcUrl,
-      // Submit the deploy over RPC rather than opening a TPU/QUIC client. The TPU path
-      // needs the websocket and a leader schedule; a surfnet has neither in the shape the
-      // CLI expects, and it panics rather than failing.
-      "--use-rpc",
-    ]);
+    await installProgram(rpcUrl, PROGRAM_ID, join(REPO_ROOT, "target/deploy/agent_rails.so"));
 
     // Poll rather than read once. `solana program deploy` returns when the final
     // transaction is confirmed, but the account read that follows can still be served from
@@ -197,10 +181,7 @@ export async function startSurfnet(options?: {
       if (!executable) await new Promise((r) => setTimeout(r, 500));
     }
     if (!executable) {
-      throw new Error(
-        `program ${PROGRAM_ID} is not executable 30s after a deploy that exited 0.\n` +
-          `--- solana program deploy ---\n${deployOutput}`,
-      );
+      throw new Error(`program ${PROGRAM_ID} is not executable after being installed`);
     }
 
     return { rpcUrl, wsUrl: `ws://127.0.0.1:${wsPort}`, payerKeypairPath, stop };

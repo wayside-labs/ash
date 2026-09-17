@@ -42,9 +42,18 @@ report `denied` and the first test catches that. A green run here has been seen 
 deliberately **not** part of `verify.sh all` — it boots a validator per file and deploys a
 700 KB program, and ADR-008 scopes layer 5 to nightly.
 
-The harness deploys with `--url http://127.0.0.1:<port>`, which is what
-`.claude/hooks/guard.sh` requires: that hook denies any program deploy not pinned to
-loopback, so this suite can never be pointed at a cluster holding custody (ADR-011).
+The harness installs the program by writing the loader's accounts through Surfpool's
+`surfnet_setAccount` cheatcode, not by running a deploy command. That is not a shortcut, it
+is the only thing that works: `solana program deploy` deploys at whatever address its keypair
+file names, and `target/deploy/agent_rails-keypair.json` is gitignored, because `.gitignore`
+refuses to carry raw secret keys. On a developer's machine that file happens to hold the key
+behind `declare_id!`; on a fresh checkout `cargo build-sbf` mints a new one, the program
+lands at a random address, and every instruction fails its own declared-id check. CI did
+exactly that, silently, at a program id nobody recognised.
+
+A surfnet owns its ledger, so the program can simply be placed where the program says it
+lives. No keypair enters the repository and no deploy command runs — which also means
+`.claude/hooks/guard.sh` needs no exception for this suite.
 
 ## Scope, and what it is not
 

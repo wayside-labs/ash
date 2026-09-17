@@ -50,16 +50,25 @@ caller cannot tell, because that is the one where a retry pays twice. An error r
 would have exercised the transport-failure branch instead of the timeout branch, so the
 proxy returns the `{context, value: [null]}` a lagging node really sends.
 
-### The guard was narrowed, not bypassed
+### The guard was narrowed, then the narrowing was given back
 
-`.claude/hooks/guard.sh` denied every `solana program deploy`, and the E2E harness must
-deploy on every run. The rule now exempts deploys explicitly pinned to loopback, and denies
-everything else — including a deploy with no `--url`, which would use the configured cluster.
-The guard got more precise, not weaker: it is now impossible for this harness to be pointed
-at a cluster holding custody, which the blanket rule only achieved by making the harness
-impossible.
+`.claude/hooks/guard.sh` denies every `solana program deploy`, and the first harness needed to
+deploy on every run. The rule was narrowed — with the owner's decision, not the agent's — to
+exempt deploys explicitly pinned to loopback.
 
-This was the owner's call, not the agent's, and was taken as one.
+That change is **not** in the final diff, because the harness stopped needing it. The
+program is now installed by writing the loader's accounts through Surfpool's
+`surfnet_setAccount`, so no deploy command runs at all. A security control you no longer
+need to touch is one you should not touch, and the narrowed rule was reverted once the
+keyless path worked.
+
+The reason the keyless path exists is not elegance. `solana program deploy` deploys at whatever
+address its keypair file names, and `target/deploy/agent_rails-keypair.json` is gitignored
+because `.gitignore` refuses to carry raw secret keys. Locally that file holds the key
+behind `declare_id!` and everything worked; in CI `cargo build-sbf` minted a fresh one, the
+program landed at `FFKD9nM8…` instead of `4qjD6vSg…`, the deploy command exited 0, and every
+instruction would have failed its own declared-id check. A surfnet owns its ledger, so the
+program can simply be placed where the program says it lives.
 
 ### The secret does real work
 
