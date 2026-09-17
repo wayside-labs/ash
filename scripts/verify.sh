@@ -10,6 +10,7 @@
 #   scripts/verify.sh rust     fmt, clippy, overflow-checks, cargo test
 #   scripts/verify.sh ts       lint, typecheck, test, codegen drift, audit
 #   scripts/verify.sh kani     bounded model checking of the policy crate
+#   scripts/verify.sh mutants  mutation testing of the policy crate (nightly gate)
 #
 # The integration tests deploy compiled programs, so a fresh checkout with an
 # empty target/ needs `cargo build-sbf` (or `anchor build`) once before the rust
@@ -32,6 +33,11 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 # and a proof that discharges under one release is not evidence about another: an upgrade
 # is a deliberate change, made here, with the proofs re-run.
 KANI_VERSION=0.68.0
+
+# Pinned and read back out of this file by .github/workflows/mutants.yml, for the same
+# reason as above. A cargo-mutants release can change which mutants it generates, and a
+# gate whose population moves under it reports a regression that is really an upgrade.
+MUTANTS_VERSION=27.1.0
 
 group=${1:-all}
 failed=()
@@ -87,6 +93,30 @@ if [[ $group == all || $group == kani ]]; then
   fi
 fi
 
+# Not part of `all`, unlike every other group here. ADR-008 scopes cargo-mutants to
+# nightly, and the run costs ~4 minutes against the ~3 the whole rest of this script
+# takes — tripling the local gate for a check that does not gate a pull request would
+# only teach people to stop running the local gate. `verify.sh mutants` on demand, and
+# the nightly workflow otherwise.
+if [[ $group == mutants ]]; then
+  # The gate is "no surviving mutant"; cargo-mutants exits non-zero when one survives.
+  # Scope, exclusions and timeout all live in .cargo/mutants.toml so this command and the
+  # nightly workflow cannot disagree about what is being measured.
+  if command -v cargo-mutants >/dev/null 2>&1; then
+    installed=$(cargo mutants --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+    if [[ -n $installed && $installed != "$MUTANTS_VERSION" ]]; then
+      printf '\033[33m! cargo-mutants %s installed, %s pinned — the mutant population is version-dependent\033[0m\n' \
+        "$installed" "$MUTANTS_VERSION"
+    fi
+    run "mutants (policy, no survivors)" cargo mutants --jobs 4
+  else
+    printf '\n\033[1m▸ mutants (policy, no survivors)\033[0m\n'
+    printf '\033[33mskipped: cargo-mutants is not installed\033[0m\n'
+    printf '  cargo install --locked cargo-mutants --version %s\n' "$MUTANTS_VERSION"
+    skipped+=("mutants (policy, no survivors)")
+  fi
+fi
+
 if [[ $group == all || $group == ts ]]; then
   run "pnpm lint" pnpm lint
   run "pnpm typecheck" pnpm typecheck
@@ -99,8 +129,8 @@ if [[ $group == all || $group == ts ]]; then
   run "coverage (sdk >=85%)" pnpm coverage
 fi
 
-if [[ $group != all && $group != rust && $group != ts && $group != kani ]]; then
-  echo "usage: scripts/verify.sh [all|rust|ts|kani]" >&2
+if [[ $group != all && $group != rust && $group != ts && $group != kani && $group != mutants ]]; then
+  echo "usage: scripts/verify.sh [all|rust|ts|kani|mutants]" >&2
   exit 2
 fi
 

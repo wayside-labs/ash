@@ -24,3 +24,7 @@ dist/
 .env
 .env.*
 !.env.example
+
+# cargo-mutants working directory: rebuilt every run, never reviewed.
+mutants.out/
+mutants.out.old/

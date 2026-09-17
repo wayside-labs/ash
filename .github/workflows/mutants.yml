@@ -1,0 +1,79 @@
+name: Mutants
+
+# Mutation testing of crates/agent-rails-policy (ADR-008 nightly, ADR-015).
+#
+# Coverage says a line ran. Mutation testing says an assertion depended on it, which is a
+# different claim and the one that matters: this crate measured 99.2% line coverage while
+# `cargo test` contained nothing that failed when `limit_leq_ceiling` was replaced with
+# `-> true`. Nine mutants survived the first run against a suite that looked fully covered.
+#
+# Nightly rather than per pull request, unlike the Kani job. That is a measured decision and
+# not deference to ADR-008: the run is ~4m10s of rebuild-and-test across 127 mutants, where
+# Kani is 38s of solver. Kani earned its place on the critical path; this does not, and test
+# quality moves slowly enough that a night's lag costs little.
+on:
+  schedule:
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+  # So a change to the gate itself is exercised by the pull request that makes it, rather
+  # than discovered at 04:00 the next morning.
+  pull_request:
+    paths:
+      - ".cargo/mutants.toml"
+      - ".github/workflows/mutants.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  mutants:
+    name: policy mutants
+    runs-on: ubuntu-latest
+    # The measured run is ~4m10s plus install. The cap is a runaway guard, not a budget:
+    # a mutant that makes the code loop forever is exactly what this job exists to find,
+    # and without a ceiling it would burn a runner for six hours before anyone noticed.
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Read out of scripts/verify.sh rather than declared here, for the reason ci.yml reads
+      # AGAVE_VERSION out of idl.yml: the script runs the gate, so the version it expects is
+      # the version that matters, and two copies drift apart.
+      - id: versions
+        run: |
+          mutants=$(sed -n 's/^MUTANTS_VERSION=\(.*\)$/\1/p' scripts/verify.sh)
+          test -n "$mutants" || { echo "MUTANTS_VERSION missing from scripts/verify.sh"; exit 1; }
+          echo "mutants=$mutants" >> "$GITHUB_OUTPUT"
+
+      # Worth caching here where it was not for Kani: this job rebuilds the crate 127 times,
+      # so a warm target/ pays for itself on every mutant rather than once, and the cache is
+      # the ordinary Rust one rather than Kani's 2 GB toolchain bundle.
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+
+      # Prebuilt, not `cargo install`: compiling cargo-mutants costs minutes per run and
+      # this job has no other reason to be slow.
+      - uses: taiki-e/install-action@26e9283f268b880168bdbd2c545dfcd60ec2c6ab # v2.87.13
+        with:
+          tool: cargo-mutants@${{ steps.versions.outputs.mutants }}
+
+      # Delegated to the script for the same reason every other gate is: one list of checks,
+      # not a local one and a CI one. `verify.sh mutants` skips loudly rather than passing
+      # when cargo-mutants is absent, so a broken install fails visibly instead of reporting
+      # a green run that mutated nothing.
+      - run: scripts/verify.sh mutants
+
+      # The surviving-mutant list is the actionable output, and it is gone once the runner
+      # is torn down.
+      - if: failure()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: mutants-out
+          path: mutants.out/
+          retention-days: 14

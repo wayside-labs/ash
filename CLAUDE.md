@@ -61,6 +61,7 @@ pnpm --filter @agent-rails/sdk exec vitest run -t "some test name"
 cargo test --workspace          # also wired as `anchor test` via Anchor.toml [scripts]
 cargo test -p agent-rails-policy                       # policy crate only (proptest suite)
 cargo kani -p agent-rails-policy --output-format terse  # the Kani proofs; needs the pinned kani-verifier
+scripts/verify.sh mutants                               # mutation testing, ~4 min; not part of `verify.sh all`
 cargo test -p agent_rails                               # program integration tests (anchor-litesvm, no validator needed)
 cargo test -p agent_rails --test payments               # a single integration test file, e.g. tests/payments.rs
 cargo test -p agent_rails --test payments some_test_name # a single test function
@@ -81,7 +82,7 @@ Layered, Rust-first, documented in full in `ARCHITECTURE.md` §11 and `docs/adr/
 
 1. `agent-rails-policy`: proptest + cargo-fuzz; Kani bounded model checking (`src/proofs.rs`, `scripts/verify.sh kani`).
 2. `anchor-litesvm` integration tests in `programs/agent_rails/tests/` — every instruction, adversarial paths, clock warps.
-3. Trident stateful fuzzing with system invariants (vault balance vs. receipts, counters ≤ limits, `Policy ≤ Ceiling`, paused ⇒ no payment, etc.).
+3. Trident stateful fuzzing — blocked upstream: every published Trident needs `solana-sdk ^2.3` and this tree is Anchor 1.1.2 on solana 3.x (ADR-015). `cargo-mutants` gates the policy crate's test quality in the meantime (`.cargo/mutants.toml`, nightly).
 4. `litesvm` (npm) for SDK/MCP; MCP contract tests via in-memory transport; tool-schema snapshots.
 5. Surfpool E2E nightly (mainnet-forked USDC), devnet smoke on release tags.
 
