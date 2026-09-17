@@ -72,6 +72,48 @@ describe("simulatePayment", () => {
     expect(result.unitsConsumed).toBe(42_000n);
   });
 
+  /**
+   * The regression this file previously missed.
+   *
+   * The mock below used to pass `Custom` as a plain number, so a guard that accepted only
+   * numbers looked correct here while rejecting every denial a real validator sends. The
+   * bigint form is what `simulateTransaction` actually returns, so it is what is asserted.
+   */
+  it("maps a bigint Custom code to its reason code, as a real RPC sends it", async () => {
+    const rpc = {
+      simulateTransaction: () => ({
+        send: async () => ({
+          value: {
+            err: { InstructionError: [0n, { Custom: BigInt(AGENT_RAILS_ERROR__PAUSED) }] },
+            logs: [],
+          },
+        }),
+      }),
+    };
+
+    await expect(
+      simulatePayment({ rpc: rpc as never, transactionMessage: mockTransactionMessage() }),
+    ).rejects.toMatchObject({ reasonCode: "TREASURY_PAUSED" });
+  });
+
+  it("reports an unrecognised failure without crashing on its bigints", async () => {
+    const rpc = {
+      simulateTransaction: () => ({
+        send: async () => ({
+          value: { err: { InsufficientFundsForRent: { account_index: 3n } }, logs: [] },
+        }),
+      }),
+    };
+
+    await expect(
+      simulatePayment({ rpc: rpc as never, transactionMessage: mockTransactionMessage() }),
+    ).rejects.toMatchObject({
+      reasonCode: "UNKNOWN_PROGRAM_ERROR",
+      // Not "Do not know how to serialize a BigInt", which is what this used to say.
+      message: 'Simulation failed: {"InsufficientFundsForRent":{"account_index":"3"}}',
+    });
+  });
+
   it("throws AgentRailsError when simulation returns a custom program error", async () => {
     const rpc = {
       simulateTransaction: () => ({

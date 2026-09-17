@@ -13,7 +13,12 @@ import {
   sendTransactionWithoutConfirmingFactory,
   signTransactionMessageWithSigners,
 } from "@solana/kit";
-import { toAgentRailsError } from "./error-mapping.js";
+import {
+  agentRailsErrorFromCode,
+  customCodeFromTransactionError,
+  stringifyRpcError,
+  toAgentRailsError,
+} from "./error-mapping.js";
 import { AgentRailsError } from "./errors.js";
 import type { PaymentTransactionMessage } from "./payment-intent.js";
 
@@ -104,9 +109,16 @@ async function waitForSignatureConfirmation(
       if (status.err) {
         // The transaction was included and reverted. Nothing moved, no receipt exists, and
         // the failure is a decision rather than an unknown: this one is a denial.
+        // The program decided, so report *what* it decided. This used to hardcode
+        // `UNKNOWN_PROGRAM_ERROR` and stringify the payload, which threw on its bigints and
+        // replaced a precise denial with a serialisation complaint.
+        const code = customCodeFromTransactionError(status.err);
+        if (code !== undefined) {
+          throw agentRailsErrorFromCode(code, status.err).withContext({ signature });
+        }
         throw new AgentRailsError({
           reasonCode: "UNKNOWN_PROGRAM_ERROR",
-          message: `Transaction failed on-chain: ${JSON.stringify(status.err)}`,
+          message: `Transaction failed on-chain: ${stringifyRpcError(status.err)}`,
           outcome: "denied",
           source: "program",
           signature,

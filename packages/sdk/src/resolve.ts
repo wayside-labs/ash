@@ -1,6 +1,11 @@
 import { fetchMaybeIntentReceipt, type IntentReceipt } from "@agent-rails/client";
 import { intentIdToHex } from "@agent-rails/contract";
 import type { Address, GetSignatureStatusesApi, Rpc, Signature, SolanaRpcApi } from "@solana/kit";
+import {
+  agentRailsErrorFromCode,
+  customCodeFromTransactionError,
+  stringifyRpcError,
+} from "./error-mapping.js";
 import { findReceiptPda } from "./pdas.js";
 
 export type ResolveRpc = Rpc<SolanaRpcApi & GetSignatureStatusesApi>;
@@ -26,6 +31,19 @@ export type PaymentResolution =
     }
   | { outcome: "denied"; receipt: Address; intentId: string; signature?: string; detail: string }
   | { outcome: "indeterminate"; receipt: Address; intentId: string; signature?: string };
+
+/**
+ * The program’s own words when it decided, the raw payload when something else failed.
+ *
+ * Both halves matter: a caller reading "the per-transaction limit was exceeded" can act on
+ * it, and a caller reading a serialised `InsufficientFundsForRent` at least has something
+ * to search for. Plain `JSON.stringify` gives neither, because every one of these payloads
+ * contains bigints and throws.
+ */
+function describeTransactionError(err: unknown): string {
+  const code = customCodeFromTransactionError(err);
+  return code === undefined ? stringifyRpcError(err) : agentRailsErrorFromCode(code, err).message;
+}
 
 const DEFAULT_ATTEMPTS = 8;
 const DEFAULT_INTERVAL_MS = 750;
@@ -79,7 +97,7 @@ export async function resolvePaymentOutcome(
         return {
           outcome: "denied",
           ...base,
-          detail: `Transaction failed on-chain: ${JSON.stringify(status.err)}`,
+          detail: `Transaction failed on-chain: ${describeTransactionError(status.err)}`,
         };
       }
     }
