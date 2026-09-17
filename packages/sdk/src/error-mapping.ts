@@ -126,12 +126,77 @@ export function reasonCodeFromProgramError(code: number): AnyReasonCode {
   );
 }
 
+/** Anchor error codes are `u32`; anything outside that range is not one. */
+const MAX_PROGRAM_ERROR_CODE = 4_294_967_295n;
+
+/**
+ * Normalise an error code that may arrive as either a `number` or a `bigint`.
+ *
+ * Kit upcasts every integer in an RPC response to `bigint` unless the field is on its
+ * numeric allowlist, and `InstructionError` is not on it — a real denial arrives as
+ * `{ InstructionError: [0n, { Custom: 101n }] }`. A `typeof === "number"` guard therefore
+ * rejects every genuine program error, and the caller falls through to
+ * `UNKNOWN_PROGRAM_ERROR`. Accepting both is not defensive coding; one of the two is what
+ * the network actually sends.
+ */
+function toProgramErrorCode(value: unknown): number | undefined {
+  if (typeof value === "number") {
+    return Number.isInteger(value) && value >= 0 ? value : undefined;
+  }
+  if (typeof value === "bigint") {
+    return value >= 0n && value <= MAX_PROGRAM_ERROR_CODE ? Number(value) : undefined;
+  }
+  return undefined;
+}
+
+/**
+ * Read an Anchor custom error code out of a raw RPC transaction error.
+ *
+ * Handles the `err` payload of both `simulateTransaction` and `getSignatureStatuses`,
+ * which share the shape `{ InstructionError: [index, { Custom: code }] }`. Returns
+ * `undefined` for anything else so the caller can report the raw failure rather than
+ * inventing a reason code for it.
+ */
+export function customCodeFromTransactionError(err: unknown): number | undefined {
+  if (!err || typeof err !== "object" || !("InstructionError" in err)) {
+    return undefined;
+  }
+  const instructionError = (err as { InstructionError: unknown }).InstructionError;
+  if (!Array.isArray(instructionError) || instructionError.length < 2) {
+    return undefined;
+  }
+  const detail: unknown = instructionError[1];
+  if (!detail || typeof detail !== "object" || !("Custom" in detail)) {
+    return undefined;
+  }
+  return toProgramErrorCode((detail as { Custom: unknown }).Custom);
+}
+
+/**
+ * `JSON.stringify` for an RPC error payload, which always contains bigints.
+ *
+ * Plain `JSON.stringify` throws `TypeError: Do not know how to serialize a BigInt` on
+ * every one of these objects. Thrown while building an error message, that replaces the
+ * actual denial with a serialisation complaint — the failure is reported, but as the wrong
+ * failure, which is worse than not reporting it.
+ */
+export function stringifyRpcError(err: unknown): string {
+  try {
+    return (
+      JSON.stringify(err, (_key, value: unknown) =>
+        typeof value === "bigint" ? value.toString() : value,
+      ) ?? String(err)
+    );
+  } catch {
+    return String(err);
+  }
+}
+
 function extractCustomProgramErrorCode(error: unknown): number | undefined {
-  if (
-    isSolanaError(error, SOLANA_ERROR__INSTRUCTION_ERROR__CUSTOM) &&
-    typeof error.context.code === "number"
-  ) {
-    return error.context.code;
+  if (isSolanaError(error, SOLANA_ERROR__INSTRUCTION_ERROR__CUSTOM)) {
+    // Kit builds this context itself and types `code` as a number, but it is normalised
+    // through the same helper so a reason code can never be lost to a type mismatch.
+    return toProgramErrorCode(error.context.code);
   }
   return undefined;
 }

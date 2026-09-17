@@ -8,7 +8,12 @@ import {
   SOLANA_ERROR__JSON_RPC__SERVER_ERROR_SEND_TRANSACTION_PREFLIGHT_FAILURE,
   type SolanaRpcApi,
 } from "@solana/kit";
-import { agentRailsErrorFromCode, toAgentRailsError } from "./error-mapping.js";
+import {
+  agentRailsErrorFromCode,
+  customCodeFromTransactionError,
+  stringifyRpcError,
+  toAgentRailsError,
+} from "./error-mapping.js";
 import { AgentRailsError } from "./errors.js";
 import type { PaymentTransactionMessage } from "./payment-intent.js";
 
@@ -23,30 +28,6 @@ export type SimulatePaymentResult = {
   logs: readonly string[];
   unitsConsumed: bigint;
 };
-
-function extractCustomCodeFromSimulationValue(
-  value: Readonly<{ err?: unknown }>,
-): number | undefined {
-  const err = value.err;
-  if (!err || typeof err !== "object") {
-    return undefined;
-  }
-
-  if ("InstructionError" in err) {
-    const instructionError = (err as { InstructionError: [number, unknown] }).InstructionError;
-    const [, detail] = instructionError;
-    if (
-      detail &&
-      typeof detail === "object" &&
-      "Custom" in detail &&
-      typeof (detail as { Custom: number }).Custom === "number"
-    ) {
-      return (detail as { Custom: number }).Custom;
-    }
-  }
-
-  return undefined;
-}
 
 /**
  * Dry-run a payment transaction against an RPC node and map program failures to
@@ -69,13 +50,13 @@ export async function simulatePayment(input: SimulatePaymentInput): Promise<Simu
 
     const simulation = response.value;
     if (simulation.err) {
-      const customCode = extractCustomCodeFromSimulationValue(simulation);
+      const customCode = customCodeFromTransactionError(simulation.err);
       if (customCode !== undefined) {
         throw agentRailsErrorFromCode(customCode, simulation.err);
       }
       throw new AgentRailsError({
         reasonCode: "UNKNOWN_PROGRAM_ERROR",
-        message: `Simulation failed: ${JSON.stringify(simulation.err)}`,
+        message: `Simulation failed: ${stringifyRpcError(simulation.err)}`,
         outcome: "denied",
         source: "simulation",
       });

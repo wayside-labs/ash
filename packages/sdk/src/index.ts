@@ -12,7 +12,9 @@ export {
 } from "./destinations.js";
 export {
   agentRailsErrorFromCode,
+  customCodeFromTransactionError,
   reasonCodeFromProgramError,
+  stringifyRpcError,
   toAgentRailsError,
 } from "./error-mapping.js";
 export {
