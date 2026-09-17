@@ -85,7 +85,16 @@ assertion — because the invariants they protect had no mechanism otherwise.
 | **Trident stateful fuzzing** | No harness and no corpus exist. Writing them is a project, not a CI step. | A harness under `programs/agent_rails/`, a committed corpus, then a short run per PR and a long one nightly. |
 | **`cargo-mutants`** | Nightly in ADR-008; needs a runtime budget decided against metered minutes. | A nightly workflow once the suite above is in place. |
 | **Verifiable build hash** | Belongs with the release process (ADR-011), which has not run yet. | A release workflow producing and publishing the hash. |
-| **Surfpool E2E, devnet smoke** | Nightly and release-tag scoped in ADR-008; needs a funded devnet keypair held as a secret. | A nightly workflow plus the secret. |
+| **Surfpool E2E** | The secret it was waiting on exists: `DEVNET_KEYPAIR`, set and funded on devnet 2026-09-17. Nothing external blocks it now — there is simply no suite. No Surfpool tests, no mainnet-forked USDC fixture, no nightly workflow. | An E2E suite against mainnet-forked USDC, plus a nightly workflow that consumes `DEVNET_KEYPAIR`. |
+| **devnet smoke on release tags** | Release-tag scoped in ADR-008, and there is no release workflow to hang it on — the same missing artifact the verifiable build hash row names. No tag has been pushed. | The ADR-011 release workflow, with a smoke job on the tag. |
+
+`DEVNET_KEYPAIR` is a repository Actions secret holding a devnet keypair, funded on
+2026-09-17. Recorded here so the next reader does not generate a second one, and so the
+balance can be checked without it:
+`5eznzq18xdeVaagEkyo7DYb8v12mAWmYcz6AdWTnH8JQ`. A nightly job that spends will drain it, and
+topping it up is manual — the public faucet rate-limits by IP and refused six consecutive
+requests from the machine that created the key. Worth knowing before a red nightly is
+diagnosed as a test failure.
 
 ### Two gates that will not be implemented as written
 
