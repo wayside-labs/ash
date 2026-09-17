@@ -179,11 +179,22 @@ export async function startSurfnet(options?: {
       "--use-rpc",
     ]);
 
-    const account = (await rpc(rpcUrl, "getAccountInfo", [PROGRAM_ID, { encoding: "base64" }])) as {
-      result?: { value?: { executable?: boolean } | null };
-    };
-    if (!account.result?.value?.executable) {
-      throw new Error(`program ${PROGRAM_ID} is not executable after deploy`);
+    // Poll rather than read once. `solana program deploy` returns when the final
+    // transaction is confirmed, but the account read that follows can still be served from
+    // a slot before the program became executable — a single sample passes on a workstation
+    // and fails on a loaded CI runner, which is precisely the flake worth not shipping.
+    let executable = false;
+    const deployDeadline = Date.now() + 30_000;
+    while (Date.now() < deployDeadline && !executable) {
+      const account = (await rpc(rpcUrl, "getAccountInfo", [
+        PROGRAM_ID,
+        { encoding: "base64", commitment: "confirmed" },
+      ])) as { result?: { value?: { executable?: boolean } | null } };
+      executable = account.result?.value?.executable === true;
+      if (!executable) await new Promise((r) => setTimeout(r, 500));
+    }
+    if (!executable) {
+      throw new Error(`program ${PROGRAM_ID} is not executable 30s after a successful deploy`);
     }
 
     return { rpcUrl, wsUrl: `ws://127.0.0.1:${wsPort}`, payerKeypairPath, stop };
