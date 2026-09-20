@@ -17,7 +17,7 @@
 >   `demo: true` e rotuladas na UI.
 > - **Leituras on-chain reais** via `@agent-rails/sdk`: saldos, Treasury, Policy e
 >   AgentSession com contadores de gasto e decimais do mint.
-> - **Chat real** com Claude (`@ai-sdk/anthropic`), com streaming e quatro
+> - **Chat real** com Claude, com streaming e quatro
 >   ferramentas *somente leitura*. Sem chave, cai em modo demonstração explícito.
 > - **Chaves de API no servidor.** A API só devolve máscara; o valor nunca chega ao
 >   navegador.

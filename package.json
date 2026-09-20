@@ -28,5 +28,10 @@
     "lefthook": "^2.1.14",
     "turbo": "^2.5.0",
     "typescript": "^5.9.2"
+  },
+  "pnpm": {
+    "overrides": {
+      "postcss": "^8.5.23"
+    }
   }
 }

@@ -1,7 +1,6 @@
-import { createAnthropic } from "@ai-sdk/anthropic";
-import { streamText } from "ai";
 import { z } from "zod";
 import { solanaClusterSchema } from "@/lib/schema";
+import { streamAnthropicApi } from "@/lib/server/llm/anthropic-api";
 import { isClaudeCliModel, streamClaudeCli } from "@/lib/server/llm/claude-cli";
 import { buildContext } from "@/lib/server/llm/context";
 import { SYSTEM_PROMPT, withContext } from "@/lib/server/llm/prompt";
@@ -93,22 +92,24 @@ export async function POST(req: Request) {
     });
   }
 
-  const anthropic = createAnthropic({ apiKey });
-  const result = streamText({
-    // A text stream has already sent its 200 by the time the provider fails,
-    // so an auth or rate-limit error would otherwise arrive as an empty body.
-    onError: ({ error }) => {
-      console.error("[chat] provider error:", error);
+  const response = textStream(
+    streamAnthropicApi({
+      apiKey,
+      model: chosen,
+      systemPrompt: SYSTEM_PROMPT,
+      messages: [
+        ...messages.slice(0, -1),
+        { role: "user" as const, content: withContext(context, last) },
+      ],
+      ...(req.signal ? { signal: req.signal } : {}),
+    }),
+    // The 200 is already sent by the time the provider can fail, so an auth or
+    // rate-limit error would otherwise arrive as a silently empty body.
+    (error) => {
+      console.error("[chat] anthropic api error:", error);
+      return `\n\n⚠️ ${error instanceof Error ? error.message : "Falha ao falar com a API da Anthropic."}`;
     },
-    model: anthropic(chosen),
-    system: SYSTEM_PROMPT,
-    messages: [
-      ...messages.slice(0, -1),
-      { role: "user" as const, content: withContext(context, last) },
-    ],
-  });
-
-  const response = result.toTextStreamResponse();
+  );
   response.headers.set("x-agent-rails-mode", "anthropic-api");
   return response;
 }

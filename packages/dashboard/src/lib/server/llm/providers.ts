@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { readState } from "@/lib/server/store";
+import { ANTHROPIC_API_MODELS } from "./anthropic-api";
 
 const run = promisify(execFile);
 
@@ -65,11 +66,7 @@ export async function listProviders(): Promise<ProviderStatus[]> {
       detail: apiKey
         ? "Chave configurada — cobrado por token"
         : "Nenhuma chave Anthropic em My APIs",
-      models: [
-        { id: "claude-opus-5", label: "Opus 5" },
-        { id: "claude-sonnet-5", label: "Sonnet 5" },
-        { id: "claude-haiku-4-5", label: "Haiku 4.5" },
-      ],
+      models: [...ANTHROPIC_API_MODELS],
     },
     {
       id: "demo",

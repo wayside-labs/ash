@@ -8,7 +8,7 @@ Web dashboard for Agent Rails — chat-first UI to manage workflows, agents, tre
 - Tailwind CSS v4 + Radix UI (shadcn-style components)
 - Zustand (client preferences) + TanStack Query (server state)
 - Injected wallet connect: Phantom, Solflare, Backpack
-- Vercel AI SDK + `@ai-sdk/anthropic` for the chat
+- Local Claude Code CLI (subscription) or `@anthropic-ai/sdk` (API key) for the chat
 
 ## Run locally
 
