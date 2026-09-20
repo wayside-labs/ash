@@ -1,9 +1,43 @@
 # Agent Rails Dashboard — Handoff de implementação
 
-**Data:** 2026-09-19  
-**Status:** scaffold UI completo · dados mock · integração on-chain pendente  
-**Pacote:** `packages/dashboard` (`@agent-rails/dashboard`)  
-**Objetivo deste doc:** servir como referência para tornar o dashboard funcional (substituir mocks, conectar SDK/CLI, auth, chat real).
+**Criado:** 2026-09-19 · **Atualizado:** 2026-09-20
+**Pacote:** `packages/dashboard` (`@agent-rails/dashboard`)
+
+> ## Atualização — 2026-09-20: o dashboard deixou de ser mock
+>
+> O plano descrito abaixo foi executado. O que mudou:
+>
+> - **Program em devnet.** `4qjD6vSgYa3oBKde3KVzsH8oCcP9BKsirX1xtD5SS6BS` está
+>   deployado, authority `5eznzq18xdeVaagEkyo7DYb8v12mAWmYcz6AdWTnH8JQ`. Antes não
+>   estava em rede nenhuma, o que tornava impossível qualquer leitura real — e o
+>   handoff original não registrava isso.
+> - **`lib/mock-data.ts` não existe mais.** O estado vive em
+>   `~/.agent-rails/dashboard.json` (escrita atômica, modo 600), servido por rotas
+>   CRUD com validação Zod. Linhas de demonstração continuam existindo, marcadas
+>   `demo: true` e rotuladas na UI.
+> - **Leituras on-chain reais** via `@agent-rails/sdk`: saldos, Treasury, Policy e
+>   AgentSession com contadores de gasto e decimais do mint.
+> - **Chat real** com Claude (`@ai-sdk/anthropic`), com streaming e quatro
+>   ferramentas *somente leitura*. Sem chave, cai em modo demonstração explícito.
+> - **Chaves de API no servidor.** A API só devolve máscara; o valor nunca chega ao
+>   navegador.
+> - **Os ~24 botões sem handler** foram ligados, ou substituídos por um estado
+>   honesto ("ainda não existe") com o comando de CLI equivalente ao lado.
+>
+> - **Chat sem API key.** O provedor padrão passou a ser o **Claude Code local**
+>   em modo headless, usando a assinatura Claude do usuário. Sem chave, sem custo
+>   por token. O adaptador não lê o token OAuth guardado — ele tem escopo
+>   `user:sessions:claude_code`, então o caminho certo é acionar o cliente
+>   licenciado, não imitá-lo. Só funciona com o dashboard rodando na mesma
+>   máquina do CLI.
+> - **Saldo do cofre corrigido.** A página mostrava o *rent* da conta Treasury
+>   (0,0054 SOL) como se fosse o cofre; o dinheiro está no PDA `sol_vault`
+>   (0,2006 SOL) — 37x de diferença. Passou a resolver o vault.
+>
+> As seções 5, 6, 11, 15 e 18 foram atualizadas. O restante permanece como registro
+> do desenho original e do raciocínio de produto.
+
+**Objetivo original deste doc:** servir como referência para tornar o dashboard funcional (substituir mocks, conectar SDK/CLI, auth, chat real).
 
 ---
 
@@ -158,23 +192,27 @@ packages/dashboard/
 
 ## 5. Páginas e estado atual
 
-| Rota | Arquivo | UI | Dados | Ações |
-|---|---|---|---|---|
-| `/` | `page.tsx` | ✅ Chat + workflows | mock | Enviar chat (demo) |
-| `/workflows` | `workflows/page.tsx` | ✅ Netflix rows | mock | Botões sem handler |
-| `/agents` | `agents/page.tsx` | ✅ Grid por workflow | mock | — |
-| `/wallets` | `wallets/page.tsx` | ✅ Cards agrupados | mock | Copy sem clipboard |
-| `/treasury` | `treasury/page.tsx` | ✅ Cards cofre | mock | Depositar/Sacar fake |
-| `/limits` | `limits/page.tsx` | ✅ Progress bars | mock | — |
-| `/mcps` | `mcps/page.tsx` | ✅ Lista + switch | mock | Switch não persiste |
-| `/rag` | `rag/page.tsx` | ✅ Lista docs | mock | Upload fake |
-| `/skills` | `skills/page.tsx` | ✅ Tabs global/wf/agent | mock | Switch não persiste |
-| `/apis` | `apis/page.tsx` | ✅ Cards KEY + olho | mock | Não salva keys |
-| `/integrations` | `integrations/page.tsx` | ✅ dApps + modo toggle | mock + zustand | Toggle modo funciona |
-| `/harness` | `harness/page.tsx` | ✅ Runtime cards | mock derivado | Start/Stop fake |
-| `/account` | `account/page.tsx` | ✅ Login Google demo | zustand | Google = email hardcoded |
-| `/profile` | `profile/page.tsx` | ✅ Form perfil | zustand wallet | Salvar fake |
-| `/settings` | `settings/page.tsx` | ✅ RPC, idioma, prefs | zustand | Testar RPC fake |
+| Rota | Dados | Ações funcionais |
+|---|---|---|
+| `/` | store + RPC | chat com streaming, criar workflow/agente |
+| `/workflows` | store + RPC | criar/remover workflow, adicionar agente, scroll |
+| `/agents` | store + RPC | criar, pausar/ativar, remover |
+| `/wallets` | store + RPC | copiar endereço, abrir no explorer, saldo SOL real |
+| `/treasury` | store + RPC | ler Treasury/Policy/Session on-chain, copiar, explorer |
+| `/limits` | store | barras por agente, marca on-chain vs só-dashboard |
+| `/mcps` | store | criar, alternar (persiste), remover |
+| `/rag` | store | adicionar documento, remover |
+| `/skills` | store | criar, alternar (persiste), remover, abas por escopo |
+| `/apis` | store | salvar chave no servidor, mostrar máscara, remover |
+| `/integrations` | store + zustand | alternar conexão (persiste), trocar modo |
+| `/harness` | store | iniciar/parar, diálogo de logs |
+| `/account` | zustand | conectar/desconectar carteira |
+| `/profile` | store | editar e salvar perfil |
+| `/settings` | store + zustand | testar RPC, exportar, restaurar padrões, preferências |
+
+Depositar e sacar continuam desabilitados **de propósito**: movem dinheiro real e
+exigem construção e assinatura de transação pelo dono. A UI aponta o comando de
+CLI em vez de oferecer um botão que não faz nada.
 
 ### Header global (sempre visível)
 
@@ -192,38 +230,33 @@ Arquivo: `src/components/layout/sidebar.tsx` — collapse mobile, footer com mod
 
 ---
 
-## 6. O que é REAL vs MOCK
+## 6. O que é REAL vs ainda não existe
 
-### Funciona de verdade (persiste ou interage)
+### Real
 
 | Feature | Onde |
 |---|---|
-| Navegação entre páginas | Next.js App Router |
-| Dark mode | `html.dark` + CSS tokens |
-| Cluster / modo / modelo selecionado | `app-store.ts` → localStorage |
-| RPC customizado (valor no input) | zustand persist |
-| Toggle modo Solana/Agent Rails | zustand + Integrations page |
-| Connect Phantom | `getPhantomProvider()` → setWallet |
-| Chat POST | `/api/chat` → respostas demo contextual |
-| Layout responsivo | sidebar collapse mobile |
+| Persistência de tudo que você cria | `~/.agent-rails/dashboard.json`, escrita atômica, modo 600 |
+| CRUD com validação | `src/lib/schema.ts` (Zod) + `app/api/state/**` |
+| Saldos SOL | `POST /api/solana/balances`, revalida a cada 30s |
+| Treasury, Policy, AgentSession | `GET /api/solana/treasury` — decodifica contas reais |
+| Decimais do mint | `getMultipleAccounts` com `jsonParsed` |
+| Chat com Claude | `POST /api/chat`, streaming, 4 tools read-only |
+| Chaves de API | gravadas no servidor; a API só devolve máscara |
+| Connect wallet | Phantom, Solflare, Backpack, com detecção do provider |
+| Teste de RPC | `POST /api/solana/rpc-health` |
+| Guarda de SSRF | RPC customizado: só https e host público |
 
-### Mock / placeholder
+### Ainda não existe (e a UI diz isso)
 
-| Feature | Arquivo mock | O que falta |
-|---|---|---|
-| Workflows, agents, wallets | `lib/mock-data.ts` | Backend / indexer / on-chain reads |
-| Saldos, limites, status | mock | Treasury PDA, Policy, Session PDAs |
-| MCPs, RAG, Skills | mock | CRUD + MCP server config |
-| API keys | mock | Server-side encrypted storage |
-| Google OAuth | demo click | NextAuth ou Privy |
-| Depositar/Sacar | botões vazios | SDK withdraw + SPL transfer |
-| Criar workflow/agente | botões vazios | CLI `init` ou API bootstrap |
-| Chat inteligente | `demoReply()` | Vercel AI SDK + tool calling |
-| Harness logs | fake | Docker/API runtime |
-| Superteam Earn | listed disabled | API earn.superteam.fun |
-| `@agent-rails/sdk` | imported in package.json only | Plugin client + RPC reads |
-
----
+| Feature | O que falta |
+|---|---|
+| Depositar / Sacar | construir e assinar a transação no navegador |
+| Criar treasury pela UI | hoje via `pnpm agent-rails init` |
+| Indexação de RAG | pipeline de embeddings; documentos ficam `indexing` |
+| Runtime do Harness | API Docker para start/stop e logs |
+| Login Google / email | provedor de identidade com sessão no servidor |
+| Preço em USD | não há oráculo ligado; saldos aparecem em SOL |
 
 ## 7. Modelo de dados (types)
 
@@ -357,37 +390,37 @@ Plugin: `client.use(agentRails({ session, signer, security }))`
 
 ---
 
-## 11. Roadmap de implementação (ordem sugerida)
+## 11. Roadmap de implementação
 
-### Fase 1 — Hackathon MVP vertical (prioridade máxima)
+### Fase 1 — feito (2026-09-20)
 
-- [ ] **1.1** Kit client setup: `src/lib/agent-rails.ts` — createClient + RPC por cluster
-- [ ] **1.2** Wallet: migrar para `@solana/kit-plugin-wallet` ou manter Phantom com signer adapter
-- [ ] **1.3** Bootstrap API: `POST /api/bootstrap` — executa fluxo equivalente ao `agent-rails init`
-- [ ] **1.4** Persistência local: salvar workflows/treasuries em SQLite ou `~/.agent-rails/dashboard.json`
-- [ ] **1.5** Substituir mock-data por dados reais pós-bootstrap
-- [ ] **1.6** Treasury page: ler saldo real via RPC; botões deposit/withdraw wired
-- [ ] **1.7** Chat: conectar LLM + tool `create_workflow` que chama bootstrap
+- [x] **1.0** Deploy do program em devnet (era pré-requisito não registrado)
+- [x] **1.1** Cliente Kit server-side por cluster — `src/lib/server/solana.ts`
+- [x] **1.2** Wallet: Phantom, Solflare e Backpack com detecção de provider
+- [x] **1.4** Persistência — `~/.agent-rails/dashboard.json` + rotas CRUD
+- [x] **1.5** Mock substituído; linhas de demonstração marcadas `demo: true`
+- [x] **1.6** Treasury lendo saldo real; Policy e Session decodificadas
+- [x] **1.7** Chat com LLM real e tools somente leitura
 
-### Fase 2 — Diferencial demo
+### Fase 2 — feito
 
-- [ ] **2.1** Limits page: ler Policy + Session counters on-chain
-- [ ] **2.2** Wallets page: derivar endereços de PDAs reais
-- [ ] **2.3** My APIs: salvar keys criptografadas server-side (env ou vault)
-- [ ] **2.4** MCPs page: gerar snippet MCP config pós-init (como CLI já faz)
-- [ ] **2.5** Agents page: pause = link para revoke_session (operator)
+- [x] **2.1** Limits/Treasury lendo Policy e contadores de Session on-chain
+- [x] **2.3** Chaves de API salvas no servidor, nunca devolvidas ao navegador
+- [x] **2.5** Pausar agente persiste (revogar sessão on-chain segue sendo do operador)
 
-### Fase 3 — Pós-hackathon
+### Continua em aberto
 
+- [ ] **1.3** `POST /api/bootstrap` — criar treasury pela UI (hoje: CLI)
+- [ ] **1.6b** Depositar/Sacar: construir e assinar transação no navegador
+- [ ] **2.2** Derivar endereços de agente a partir das sessões on-chain
+- [ ] **2.4** Gerar snippet de config MCP pós-init na página `/mcps`
 - [ ] **3.1** Google OAuth real (Privy/NextAuth)
-- [ ] **3.2** RAG: upload + index (pgvector, etc.)
-- [ ] **3.3** Skills: filesystem skills + marketplace
-- [ ] **3.4** Harness: Docker API para start/stop agent runtime
-- [ ] **3.5** Superteam Earn: MCP ou integration tab — `GET /api/agents/listings/live`
-- [ ] **3.6** Indexer `@agent-rails/indexer` para histórico de pagamentos
-- [ ] **3.7** turbo.json: adicionar task `dev` para dashboard
-
----
+- [ ] **3.2** RAG: upload + indexação
+- [ ] **3.4** Harness: API Docker para start/stop e logs
+- [ ] **3.5** Superteam Earn
+- [ ] **3.6** Indexer para histórico de pagamentos
+- [ ] Oráculo de preço para exibir USD junto do SOL
+- [ ] Testes: o pacote ainda não tem vitest nem playwright
 
 ## 12. Spec UX por página (referência do usuário)
 
@@ -493,20 +526,19 @@ Dashboard incluído no lint global (`pnpm lint`). Formato: double quotes, semico
 
 ## 15. Problemas conhecidos / débito técnico
 
-| Issue | Detalhe | Fix |
-|---|---|---|
-| Dados 100% mock | `mock-data.ts` importado direto nas pages | API layer + RPC reads |
-| Phantom only | Sem Solflare, Backpack, Wallet Standard | `@solana/kit-plugin-wallet` |
-| Switches não persistem | MCPs, Skills — estado local only | Backend store |
-| Copy wallet | Botão sem `navigator.clipboard` | Implementar handler |
-| Chat demo only | Sem streaming LLM | AI SDK + env keys |
-| `@agent-rails/sdk` unused | Zero imports nos componentes | `lib/agent-rails.ts` |
-| Google auth fake | Email hardcoded | Privy/NextAuth |
-| No tests | Zero vitest/playwright | Adicionar smoke tests |
-| No turbo dev task | `pnpm dashboard` bypass turbo | Opcional |
-| Network install | Usuário precisou npmmirror + concurrency 1 | Documentado em README |
-
----
+| Issue | Situação |
+|---|---|
+| Dados 100% mock | **resolvido** — store no servidor + leituras RPC |
+| Phantom only | **resolvido** — Phantom, Solflare, Backpack |
+| Switches não persistem | **resolvido** — gravam via PATCH |
+| Copy wallet sem clipboard | **resolvido** — com toast de confirmação |
+| Chat demo only | **resolvido** — Claude com streaming; demo é fallback explícito |
+| `@agent-rails/sdk` sem uso | **resolvido** — usado em `lib/server/solana.ts` |
+| Google auth falso | **removido** — não fingir sessão que não existe |
+| Sem testes | **em aberto** — zero vitest/playwright no pacote |
+| Preço em USD | **em aberto** — sem oráculo; exibimos SOL |
+| Task `dev` no turbo | **em aberto** — `pnpm dashboard` continua fora do turbo |
+| Chat sem chave real testada | o caminho LLM não foi exercitado ao vivo (não havia credencial na máquina) |
 
 ## 16. Superteam Earn (integração futura)
 
@@ -545,20 +577,19 @@ ls packages/dashboard/node_modules/next
 
 ---
 
-## 18. Checklist "done" para considerar funcional
+## 18. Checklist "done"
 
-- [ ] Usuário conecta Phantom e vê endereço no header
-- [ ] Chat cria workflow real via bootstrap (treasury on devnet)
-- [ ] Workflows/Agents/Wallets mostram dados pós-bootstrap (não mock)
-- [ ] Treasury mostra saldo real do vault
-- [ ] Limits refletem policy on-chain
-- [ ] Modo Agent Rails vs Nativo altera fluxo de pagamento
-- [ ] Seletor de rede muda RPC em todas as leituras
-- [ ] Depositar/Sacar executam tx real (com confirmação UI)
-- [ ] API keys salvas server-side, chat usa modelo configurado
-- [ ] `pnpm dashboard:build` passa sem erro
-
----
+- [x] Usuário conecta carteira e vê o endereço no header
+- [x] Workflows/Agents/Wallets vêm do store, não de mock
+- [x] Treasury mostra saldo real do vault na rede selecionada
+- [x] Limits refletem a política on-chain (no detalhe do cofre)
+- [x] Seletor de rede troca o RPC em todas as leituras
+- [x] Chaves de API salvas no servidor; chat usa o modelo configurado
+- [x] `pnpm dashboard:build` passa sem erro
+- [x] `pnpm lint` e `typecheck` limpos
+- [ ] Chat cria workflow real via bootstrap (tool de escrita — decisão de segurança: não expor)
+- [ ] Depositar/Sacar executam transação real
+- [ ] Modo Agent Rails vs Nativo altera o fluxo de pagamento de fato
 
 ## 19. Referências no repo
 
@@ -575,6 +606,14 @@ ls packages/dashboard/node_modules/next
 
 ---
 
-## 20. Resumo executivo (1 parágrafo)
+## 20. Resumo executivo
 
-Foi criado o pacote `packages/dashboard` com Next.js 15, React 19, Tailwind v4 e 15 páginas de UI dark-mode alinhadas ao wireframe do usuário (chat-first, sidebar, workflows Netflix-style, treasury, limits, MCPs, RAG, skills, APIs, integrations, harness, account, profile, settings). Toda a camada de dados é mock (`lib/mock-data.ts`); wallet connect funciona apenas com Phantom; chat responde via demo server-side. O SDK e CLI Agent Rails existem no monorepo mas não estão conectados. Próximo passo crítico: API bootstrap + leituras RPC + substituir mocks + LLM chat com tools seguras — respeitando invariantes de privilégio do protocolo.
+`packages/dashboard` é um dashboard Next.js 15 / React 19 / Tailwind v4 com 15
+páginas em português. O estado do usuário persiste em `~/.agent-rails/dashboard.json`
+através de rotas CRUD validadas por Zod; saldos, Treasury, Policy e AgentSession são
+lidos da rede via `@agent-rails/sdk`, com o program deployado em devnet. O chat roda
+Claude com streaming e quatro ferramentas somente leitura — nenhuma que saque,
+altere política, despause ou crie sessão, porque a superfície voltada ao agente não
+pode escalar privilégio. O que ainda não existe (depósito/saque, criação de treasury
+pela UI, indexação de RAG, runtime do Harness, login por email) aparece na interface
+como tal, com o comando de CLI equivalente, em vez de um botão inerte.
