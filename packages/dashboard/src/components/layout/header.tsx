@@ -15,8 +15,12 @@ import { CLUSTER_LABELS } from "@/lib/solana";
 import type { OperationMode, SolanaCluster } from "@/lib/types";
 import { useAppStore } from "@/stores/app-store";
 
-const clusterVariants: Record<SolanaCluster, "warning" | "secondary" | "destructive"> = {
-  devnet: "warning",
+/**
+ * Mainnet is the only one where a mistake costs real money, so it is the only
+ * one that gets an alarming colour. Devnet and testnet stay quiet.
+ */
+const clusterVariants: Record<SolanaCluster, "secondary" | "outline" | "destructive"> = {
+  devnet: "outline",
   testnet: "secondary",
   "mainnet-beta": "destructive",
 };
@@ -65,7 +69,7 @@ export function Header() {
         </Select>
 
         <Select value={operationMode} onValueChange={(v) => setOperationMode(v as OperationMode)}>
-          <SelectTrigger className="hidden h-8 w-[140px] sm:flex">
+          <SelectTrigger className="hidden h-8 w-[168px] whitespace-nowrap sm:flex">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
