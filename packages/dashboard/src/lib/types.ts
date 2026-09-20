@@ -1,79 +1,73 @@
-export type SolanaCluster = "devnet" | "testnet" | "mainnet-beta";
+export type {
+  AgentStatus,
+  DashboardState,
+  OperationMode,
+  Profile,
+  Scope,
+  Settings,
+  SolanaCluster,
+  StoredAgent,
+  StoredApiKey,
+  StoredIntegration,
+  StoredMcp,
+  StoredRagDocument,
+  StoredSkill,
+  StoredWorkflow,
+} from "./schema";
 
-export type OperationMode = "native" | "agent-rails";
+import type {
+  AgentStatus,
+  Scope,
+  StoredAgent,
+  StoredIntegration,
+  StoredMcp,
+  StoredRagDocument,
+  StoredSkill,
+  StoredWorkflow,
+} from "./schema";
 
-export type AgentStatus = "active" | "paused" | "expired";
+/** Balance the UI shows: resolved from chain, or a demo figure, or unknown. */
+export type Money =
+  | { kind: "chain"; usd: number | null; sol: number }
+  | { kind: "demo"; usd: number }
+  | { kind: "unknown" };
 
-export interface Agent {
-  id: string;
-  name: string;
-  role: string;
-  workflowId: string;
-  walletAddress: string;
-  balanceUsd: number;
-  dailyLimitUsd: number;
-  dailySpentUsd: number;
-  paysTo: string[];
-  receivesFrom: string;
-  status: AgentStatus;
+export interface Agent extends StoredAgent {
+  balance: Money;
+  spentUsd: number | null;
+  workflowName: string;
 }
 
-export interface Workflow {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-  treasuryBalanceUsd: number;
+export interface Workflow extends StoredWorkflow {
+  balance: Money;
   agents: Agent[];
 }
 
 export interface WalletInfo {
   id: string;
   name: string;
-  address: string;
+  address: string | null;
   type: "treasury" | "agent" | "owner";
-  balanceUsd: number;
+  balance: Money;
   workflowId: string;
   workflowName: string;
   agentId?: string;
   agentName?: string;
   dailyLimitUsd?: number;
-  dailySpentUsd?: number;
+  dailySpentUsd?: number | null;
 }
 
-export interface McpServer {
-  id: string;
-  name: string;
-  description: string;
-  enabled: boolean;
-  scope: "global" | "workflow" | "agent";
-  scopeName?: string;
-}
-
-export interface RagDocument {
-  id: string;
-  name: string;
-  type: "pdf" | "md" | "url";
-  status: "indexed" | "indexing" | "error";
-  scope: "global" | "workflow" | "agent";
-  scopeName: string;
-}
-
-export interface Skill {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-  scope: "global" | "workflow" | "agent";
-  scopeName?: string;
-  enabled: boolean;
-}
+export type McpServer = StoredMcp;
+export type RagDocument = StoredRagDocument;
+export type Skill = StoredSkill;
+export type Integration = StoredIntegration;
 
 export interface ApiKeyEntry {
   id: string;
   provider: string;
   keyMasked: string;
-  status: "connected" | "disconnected" | "error";
+  status: "connected" | "disconnected";
+  createdAt: string;
 }
 
 export interface ChatMessage {
@@ -82,3 +76,5 @@ export interface ChatMessage {
   content: string;
   timestamp: Date;
 }
+
+export type { AgentStatus as AgentStatusType, Scope as ScopeType };

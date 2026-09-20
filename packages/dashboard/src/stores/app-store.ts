@@ -32,8 +32,10 @@ export const useAppStore = create<AppState>()(
       walletAddress: null,
       walletName: null,
       googleEmail: null,
-      sidebarCollapsed: false,
-      selectedModel: "claude-sonnet-4",
+      // Closed by default: below lg the sidebar is an overlay drawer.
+      sidebarCollapsed: true,
+      // Empty means "let the server pick the best available provider".
+      selectedModel: "",
 
       setCluster: (cluster) => set({ cluster }),
       setCustomRpc: (customRpc) => set({ customRpc }),
