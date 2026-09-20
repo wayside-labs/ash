@@ -1,84 +1,114 @@
-import type { NextRequest } from "next/server";
+import { createAnthropic } from "@ai-sdk/anthropic";
+import { streamText } from "ai";
+import { z } from "zod";
+import { solanaClusterSchema } from "@/lib/schema";
+import { isClaudeCliModel, streamClaudeCli } from "@/lib/server/llm/claude-cli";
+import { buildContext } from "@/lib/server/llm/context";
+import { SYSTEM_PROMPT, withContext } from "@/lib/server/llm/prompt";
+import { anthropicApiKey, resolveProvider } from "@/lib/server/llm/providers";
 
-const SYSTEM_PROMPT = `Você é o assistente do Agent Rails — uma plataforma que permite criar e gerenciar agentes de IA que fazem pagamentos na Solana com limites e segurança.
+export const dynamic = "force-dynamic";
+export const maxDuration = 120;
 
-Quando o usuário pedir para criar algo (ex: "sistema de agentes DeFi", "pagamentos de fornecedores"), responda em português brasileiro explicando:
-1. O que você vai criar (workflow, agentes, cofre/treasury)
-2. Como cada parte funciona em linguagem simples
-3. Próximos passos práticos
-
-Conceitos traduzidos:
-- Workflow = empresa/projeto/operação
-- Treasury/Cofre = fundo principal com dinheiro
-- Agent = funcionário digital com limites de gasto
-- Policy/Limites = quanto cada agente pode gastar
-- MCP = ferramentas que o agente usa (pagamentos, swaps, etc.)
-
-Seja conciso, amigável e prático. Use markdown leve quando útil.`;
+const requestSchema = z.object({
+  messages: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string() })).min(1),
+  model: z.string().optional(),
+  cluster: solanaClusterSchema.default("devnet"),
+  rpc: z.string().nullable().default(null),
+});
 
 function demoReply(message: string): string {
   const lower = message.toLowerCase();
-
   if (lower.includes("defi") || lower.includes("trading")) {
-    return `Perfeito! Vou criar um **Workflow DeFi Trading** com:
-
-1. **Cofre (Treasury)** — onde você deposita USDC/SOL
-2. **Agent "Trader Bot"** — executa swaps no Jupiter (limite: $100/dia)
-3. **Agent "Researcher"** — analisa mercado antes de operar
-4. **MCP Jupiter** — conectado para trocas de tokens
-5. **Limites** — teto de $500/semana no workflow
-
-**Próximo passo:** Conecte sua wallet e clique em "Criar tudo" na aba Workflows, ou me diga quanto quer depositar inicialmente.`;
+    return "Posso te ajudar a montar um **workflow de DeFi Trading**: um cofre, um agente executor com limite diário e um agente de análise sem permissão de pagar.\n\n⚠️ Estou em **modo demonstração** — nenhum modelo está disponível. Instale o Claude Code ou adicione uma chave em **My APIs**.";
   }
-
   if (lower.includes("fornecedor") || lower.includes("pagamento")) {
-    return `Vou montar um **Workflow de Pagamentos a Fornecedores**:
-
-1. **Cofre** — fundo central da empresa
-2. **Agent CFO** — aprova e executa pagamentos (limite: $500/dia)
-3. **Agent AP** — processa faturas e agenda pagamentos
-4. **Lista de destinos** — só paga para fornecedores cadastrados
-5. **Auditoria** — cada pagamento registrado on-chain
-
-**Segurança:** Mesmo se o agente for comprometido, ele não pode gastar mais que o limite diário.
-
-Conecte sua wallet para começar!`;
+    return "Para **pagamentos a fornecedores**, o desenho usual é: cofre da empresa, um agente com limite diário e uma lista de destinos permitidos — mesmo comprometido, o agente não paga fora da lista nem acima do limite.\n\n⚠️ Estou em **modo demonstração**.";
   }
-
-  if (lower.includes("loja") || lower.includes("e-commerce") || lower.includes("vendas")) {
-    return `Vou criar um **Workflow de Loja Online**:
-
-1. **Agent Vendas** — processa pedidos e pagamentos
-2. **Agent Suporte** — atende clientes (sem permissão de pagar)
-3. **Agent Logística** — paga transportadoras (limite: $30/dia)
-4. **RAG** — catálogo de produtos como base de conhecimento
-
-Cada agente tem seu próprio saldo e limites. Quer que eu configure agora?`;
-  }
-
-  return `Entendi! Para criar seu sistema de agentes, preciso saber um pouco mais:
-
-- **Tipo de operação:** DeFi, e-commerce, pagamentos, trading, outro?
-- **Quantos agentes** você imagina?
-- **Orçamento inicial** para o cofre?
-
-Exemplos do que posso criar:
-- "Quero agentes DeFi para trading"
-- "Preciso pagar fornecedores automaticamente"
-- "Quero uma loja online com agentes de vendas"
-
-Me conte mais e eu configuro tudo!`;
+  return "Sou o assistente do Agent Rails, mas estou em **modo demonstração** — nenhum modelo está disponível.\n\nSe você tem uma assinatura Claude, basta ter o **Claude Code** instalado nesta máquina. Caso prefira pagar por token, adicione uma chave Anthropic em **My APIs**.";
 }
 
-export async function POST(req: NextRequest) {
-  const body = (await req.json()) as { message: string; model: string };
-  const { message } = body;
+function textStream(source: AsyncIterable<string>, onError: (e: unknown) => string): Response {
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      try {
+        for await (const chunk of source) controller.enqueue(encoder.encode(chunk));
+      } catch (error) {
+        controller.enqueue(encoder.encode(onError(error)));
+      } finally {
+        controller.close();
+      }
+    },
+  });
+  return new Response(stream, {
+    headers: { "content-type": "text/plain; charset=utf-8" },
+  });
+}
 
-  if (!message?.trim()) {
-    return Response.json({ error: "Message required" }, { status: 400 });
+export async function POST(req: Request) {
+  const parsed = requestSchema.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) {
+    return Response.json({ error: "payload inválido" }, { status: 422 });
+  }
+  const { messages, model, cluster, rpc } = parsed.data;
+  const last = messages[messages.length - 1]?.content ?? "";
+
+  const { provider, model: chosen } = await resolveProvider(model);
+
+  if (provider === "demo") {
+    return new Response(demoReply(last), {
+      headers: { "content-type": "text/plain; charset=utf-8", "x-agent-rails-mode": "demo" },
+    });
   }
 
-  // Demo mode — configure OPENAI_API_KEY in .env for live LLM responses
-  void SYSTEM_PROMPT;
-  return Response.json({ reply: demoReply(message) });
+  const context = await buildContext(cluster, rpc);
+
+  if (provider === "claude-cli" && isClaudeCliModel(chosen)) {
+    // The CLI takes a single prompt, so prior turns are folded in as transcript.
+    const transcript = messages
+      .slice(0, -1)
+      .map((m) => `${m.role === "user" ? "Usuário" : "Assistente"}: ${m.content}`)
+      .join("\n");
+    const prompt = withContext(context, transcript ? `${transcript}\n\nUsuário: ${last}` : last);
+
+    const response = textStream(
+      streamClaudeCli({
+        prompt,
+        systemPrompt: SYSTEM_PROMPT,
+        model: chosen,
+        signal: req.signal,
+      }),
+      (error) =>
+        `\n\n⚠️ ${error instanceof Error ? error.message : "Falha ao falar com o Claude Code."}`,
+    );
+    response.headers.set("x-agent-rails-mode", "claude-cli");
+    return response;
+  }
+
+  const apiKey = await anthropicApiKey();
+  if (!apiKey) {
+    return new Response(demoReply(last), {
+      headers: { "content-type": "text/plain; charset=utf-8", "x-agent-rails-mode": "demo" },
+    });
+  }
+
+  const anthropic = createAnthropic({ apiKey });
+  const result = streamText({
+    // A text stream has already sent its 200 by the time the provider fails,
+    // so an auth or rate-limit error would otherwise arrive as an empty body.
+    onError: ({ error }) => {
+      console.error("[chat] provider error:", error);
+    },
+    model: anthropic(chosen),
+    system: SYSTEM_PROMPT,
+    messages: [
+      ...messages.slice(0, -1),
+      { role: "user" as const, content: withContext(context, last) },
+    ],
+  });
+
+  const response = result.toTextStreamResponse();
+  response.headers.set("x-agent-rails-mode", "anthropic-api");
+  return response;
 }
