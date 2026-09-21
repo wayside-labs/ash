@@ -21,7 +21,13 @@ import {
  * RAG, Harness and Integrations were pruned along with their pages: none of the
  * three had backend infrastructure behind it, and a nav entry is a promise.
  */
-export type NavItemDef = { href: string; labelKey: string; icon: LucideIcon };
+export type NavItemDef = {
+  href: string;
+  labelKey: string;
+  icon: LucideIcon;
+  /** Default true. Heavy or rare routes opt out to save idle prefetch bandwidth. */
+  prefetch?: boolean;
+};
 export type NavGroupDef = { labelKey: string | null; items: NavItemDef[] };
 
 export const navGroupDefs: NavGroupDef[] = [
@@ -47,17 +53,17 @@ export const navGroupDefs: NavGroupDef[] = [
   {
     labelKey: "nav.tools",
     items: [
-      { href: "/mcps", labelKey: "nav.mcps", icon: Cable },
-      { href: "/skills", labelKey: "nav.skills", icon: Brain },
-      { href: "/apis", labelKey: "nav.apis", icon: Key },
+      { href: "/mcps", labelKey: "nav.mcps", icon: Cable, prefetch: false },
+      { href: "/skills", labelKey: "nav.skills", icon: Brain, prefetch: false },
+      { href: "/apis", labelKey: "nav.apis", icon: Key, prefetch: false },
     ],
   },
   {
     labelKey: "nav.account",
     items: [
-      { href: "/account", labelKey: "nav.account", icon: User },
-      { href: "/profile", labelKey: "nav.profile", icon: Settings },
-      { href: "/settings", labelKey: "nav.settings", icon: Settings },
+      { href: "/account", labelKey: "nav.account", icon: User, prefetch: false },
+      { href: "/profile", labelKey: "nav.profile", icon: Settings, prefetch: false },
+      { href: "/settings", labelKey: "nav.settings", icon: Settings, prefetch: false },
     ],
   },
 ];

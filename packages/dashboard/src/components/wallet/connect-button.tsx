@@ -11,13 +11,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useTranslation } from "@/i18n/locale-provider";
 import { getWalletProvider, WALLETS, type WalletId } from "@/lib/solana";
-import { truncateAddress } from "@/lib/utils";
 import { useAppStore } from "@/stores/app-store";
+import { WalletBalance } from "./wallet-balance";
 
 export function ConnectButton() {
-  const { walletAddress, walletName, setWallet } = useAppStore();
+  const { walletAddress, setWallet } = useAppStore();
   const { t } = useTranslation();
   const [connecting, setConnecting] = useState<WalletId | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -75,16 +76,17 @@ export function ConnectButton() {
 
   if (walletAddress) {
     return (
-      <div className="flex items-center gap-2">
-        <div className="hidden items-center gap-2 rounded-lg border border-border bg-muted px-3 py-1.5 text-sm sm:flex">
-          <Wallet className="h-3.5 w-3.5 text-primary" />
-          <span className="text-muted-foreground">{walletName ?? t("wallet.defaultName")}</span>
-          <span className="num text-xs">{truncateAddress(walletAddress, 4)}</span>
-        </div>
-        <Button variant="outline" size="sm" onClick={disconnect}>
-          <LogOut className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">{t("wallet.disconnect")}</span>
-        </Button>
+      <div className="flex items-center gap-1">
+        <WalletBalance address={walletAddress} />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={disconnect}>
+              <LogOut className="h-3.5 w-3.5" />
+              <span className="sr-only">{t("wallet.disconnect")}</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{t("wallet.disconnect")}</TooltipContent>
+        </Tooltip>
       </div>
     );
   }

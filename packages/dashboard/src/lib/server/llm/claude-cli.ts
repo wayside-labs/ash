@@ -104,6 +104,14 @@ export async function* streamClaudeCli(
   try {
     let buffer = "";
     let sawText = false;
+    let lastYielded = "";
+
+    const emit = function* (text: string | null): Generator<string, void, unknown> {
+      if (!text || text === lastYielded) return;
+      lastYielded = text;
+      sawText = true;
+      yield text;
+    };
 
     for await (const chunk of child.stdout) {
       buffer += (chunk as Buffer).toString();
@@ -112,12 +120,12 @@ export async function* streamClaudeCli(
       buffer = lines.pop() ?? "";
 
       for (const line of lines) {
-        const text = extractDelta(line);
-        if (text) {
-          sawText = true;
-          yield text;
-        }
+        yield* emit(extractStreamLine(line, sawText));
       }
+    }
+
+    if (buffer.trim()) {
+      yield* emit(extractStreamLine(buffer, sawText));
     }
 
     const code = await exited;
@@ -135,7 +143,12 @@ export async function* streamClaudeCli(
   }
 }
 
-function extractDelta(line: string): string | null {
+/**
+ * Claude Code `stream-json` emits several line shapes. Streaming deltas use
+ * `stream_event`; rate limits and other API errors arrive as `assistant` or
+ * `result` lines instead — ignoring those produced the opaque "exit code 1".
+ */
+function extractStreamLine(line: string, sawStreamingText: boolean): string | null {
   const trimmed = line.trim();
   if (!trimmed) return null;
   let parsed: unknown;
@@ -144,14 +157,35 @@ function extractDelta(line: string): string | null {
   } catch {
     return null;
   }
+  if (!parsed || typeof parsed !== "object") return null;
   const event = parsed as {
     type?: string;
+    error?: string;
+    is_api_error_message?: boolean;
+    is_error?: boolean;
+    result?: string;
     event?: { type?: string; delta?: { type?: string; text?: string } };
+    message?: { content?: { type?: string; text?: string }[] };
   };
-  if (event.type !== "stream_event") return null;
-  if (event.event?.type !== "content_block_delta") return null;
-  if (event.event.delta?.type !== "text_delta") return null;
-  return event.event.delta.text ?? null;
+
+  if (event.type === "stream_event") {
+    if (event.event?.type !== "content_block_delta") return null;
+    if (event.event.delta?.type !== "text_delta") return null;
+    return event.event.delta.text ?? null;
+  }
+
+  if (event.type === "assistant" && (event.error || event.is_api_error_message)) {
+    for (const block of event.message?.content ?? []) {
+      if (block.type === "text" && block.text) return block.text;
+    }
+  }
+
+  if (event.type === "result" && typeof event.result === "string") {
+    if (event.is_error === true) return event.result;
+    if (!sawStreamingText) return event.result;
+  }
+
+  return null;
 }
 
 function firstLine(text: string): string {

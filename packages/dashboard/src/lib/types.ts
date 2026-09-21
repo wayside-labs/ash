@@ -36,6 +36,12 @@ export interface Agent extends StoredAgent {
   balance: Money;
   spentUsd: number | null;
   workflowName: string;
+  /** Resolved signing key — stored wallet or on-chain session_key when matched. */
+  signingKey: string | null;
+  /** Session PDA from store or on-chain match. */
+  resolvedSessionAddress: string | null;
+  /** True when signingKey came from chain but walletAddress is still empty. */
+  signingKeyFromChain: boolean;
 }
 
 export interface Workflow extends StoredWorkflow {

@@ -24,6 +24,11 @@ export function explorerUrl(address: string, cluster: SolanaCluster): string {
   return `https://explorer.solana.com/address/${address}${suffix}`;
 }
 
+export function solscanAccountUrl(address: string, cluster: SolanaCluster): string {
+  const base = `https://solscan.io/account/${address}`;
+  return cluster === "mainnet-beta" ? base : `${base}?cluster=${cluster}`;
+}
+
 export function explorerTxUrl(signature: string, cluster: SolanaCluster): string {
   const suffix = cluster === "mainnet-beta" ? "" : `?cluster=${cluster}`;
   return `https://explorer.solana.com/tx/${signature}${suffix}`;

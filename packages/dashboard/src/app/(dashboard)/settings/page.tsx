@@ -23,6 +23,7 @@ import {
   useRpcHealth,
   useUpdateSettings,
 } from "@/hooks/use-dashboard";
+import type { Locale } from "@/i18n";
 import { useTranslation } from "@/i18n/locale-provider";
 import { CLUSTER_LABELS } from "@/lib/solana";
 import type { SolanaCluster } from "@/lib/types";
@@ -30,7 +31,7 @@ import { useAppStore } from "@/stores/app-store";
 
 export default function SettingsPage() {
   const { t } = useTranslation();
-  const { cluster, customRpc, setCluster, setCustomRpc } = useAppStore();
+  const { cluster, customRpc, setCluster, setCustomRpc, setLocale } = useAppStore();
   const { data, isLoading } = useDashboardState();
   const saveSettings = useUpdateSettings();
   const reset = useResetState();
@@ -44,6 +45,8 @@ export default function SettingsPage() {
 
   const patch = async (partial: Record<string, unknown>) => {
     if (!settings) return;
+    const lang = partial.language;
+    if (lang === "en" || lang === "pt-BR") setLocale(lang as Locale);
     try {
       await saveSettings.mutateAsync({ ...settings, ...partial });
       toast(t("common.preferenceSaved"));

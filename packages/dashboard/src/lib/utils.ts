@@ -12,7 +12,22 @@ export function truncateAddress(address: string | null | undefined, chars = 4): 
   return `${address.slice(0, chars)}…${address.slice(-chars)}`;
 }
 
-export function formatUsd(amount: number, locale = "en-US"): string {
+export const HIDDEN_AMOUNT = "••••";
+
+/** Signed percent for price tickers, e.g. (+2.34%) / (−1.20%). */
+export function formatChangePct(value: number, locale = "en-US"): string {
+  const sign = value > 0 ? "+" : value < 0 ? "−" : "";
+  const abs = Math.abs(value);
+  const digits = abs >= 10 ? 1 : 2;
+  const formatted = abs.toLocaleString(locale, {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  });
+  return `(${sign}${formatted}%)`;
+}
+
+export function formatUsd(amount: number, locale = "en-US", hidden = false): string {
+  if (hidden) return HIDDEN_AMOUNT;
   return new Intl.NumberFormat(locale, {
     style: "currency",
     currency: "USD",
@@ -20,7 +35,8 @@ export function formatUsd(amount: number, locale = "en-US"): string {
   }).format(amount);
 }
 
-export function formatSol(sol: number): string {
+export function formatSol(sol: number, hidden = false): string {
+  if (hidden) return `${HIDDEN_AMOUNT} SOL`;
   const digits = sol === 0 || sol >= 1 ? 4 : 6;
   return `${sol.toFixed(digits).replace(/\.?0+$/, "")} SOL`;
 }
@@ -29,7 +45,8 @@ export function formatSol(sol: number): string {
  * One renderer for the three states a balance can be in, so no page has to
  * decide on its own what to show when an address was never provisioned.
  */
-export function formatMoney(money: Money): string {
+export function formatMoney(money: Money, hidden = false): string {
+  if (hidden && money.kind !== "unknown") return HIDDEN_AMOUNT;
   switch (money.kind) {
     case "chain":
       return formatSol(money.sol);
