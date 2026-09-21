@@ -20,5 +20,5 @@ export async function POST(req: Request) {
     );
   }
   const { cluster, rpc, treasuries } = parsed.data;
-  return Response.json({ vaults: await getVaultBalances(cluster, rpc, treasuries) });
+  return Response.json(await getVaultBalances(cluster, rpc, treasuries));
 }

@@ -130,4 +130,31 @@
     background-color: var(--color-background);
     box-shadow: inset 0 1px 2px 0 rgb(0 0 0 / 0.4);
   }
+
+  /* Spot-price tick: green/red on move, then back to neutral ink. */
+  @keyframes price-flash-up {
+    0% {
+      color: var(--color-good);
+    }
+    100% {
+      color: var(--color-foreground);
+    }
+  }
+
+  @keyframes price-flash-down {
+    0% {
+      color: var(--color-critical);
+    }
+    100% {
+      color: var(--color-foreground);
+    }
+  }
+
+  .price-flash-up {
+    animation: price-flash-up 1s ease-out forwards;
+  }
+
+  .price-flash-down {
+    animation: price-flash-down 1s ease-out forwards;
+  }
 }

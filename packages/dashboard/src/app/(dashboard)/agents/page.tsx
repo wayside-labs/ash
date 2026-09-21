@@ -1,22 +1,23 @@
 "use client";
 
-import { Bot, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { Bot, Loader2, Plus, Settings2, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { AgentCard } from "@/components/workflows/agent-card";
-import { CreateAgentDialog, EditAgentDialog } from "@/components/workflows/workflow-dialogs";
+import { AgentSettingsSheet } from "@/components/workflows/agent-settings-sheet";
+import { CreateAgentDialog } from "@/components/workflows/workflow-dialogs";
 import { useDeleteResource, useUpdateResource, useWorkflows } from "@/hooks/use-dashboard";
 import { useTranslation } from "@/i18n/locale-provider";
-import type { Agent } from "@/lib/types";
+import type { Agent, Workflow } from "@/lib/types";
 
 export default function AgentsPage() {
   const { t } = useTranslation();
-  const { workflows, isLoading } = useWorkflows();
+  const { workflows, isLoading } = useWorkflows({ withChain: false });
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<Agent | null>(null);
+  const [settings, setSettings] = useState<{ agent: Agent; workflow: Workflow } | null>(null);
   const update = useUpdateResource("agents");
   const remove = useDeleteResource("agents");
   const toast = useToast();
@@ -87,7 +88,11 @@ export default function AgentsPage() {
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {workflow.agents.map((agent) => (
                   <div key={agent.id} className="space-y-2">
-                    <AgentCard agent={agent} className="w-full" onClick={() => setEditing(agent)} />
+                    <AgentCard
+                      agent={agent}
+                      className="w-full"
+                      onClick={() => setSettings({ agent, workflow })}
+                    />
                     <div className="flex gap-2">
                       <Button
                         variant="outline"
@@ -101,10 +106,10 @@ export default function AgentsPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        aria-label={t("agents.aria.editAgent", { name: agent.name })}
-                        onClick={() => setEditing(agent)}
+                        aria-label={t("agentSettings.open", { name: agent.name })}
+                        onClick={() => setSettings({ agent, workflow })}
                       >
-                        <Pencil className="h-4 w-4" />
+                        <Settings2 className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost"
@@ -126,12 +131,13 @@ export default function AgentsPage() {
       <p className="mt-6 text-xs text-muted-foreground">{t("agents.footerNote")}</p>
 
       <CreateAgentDialog open={dialogOpen} onOpenChange={setDialogOpen} workflows={workflows} />
-      {editing && (
-        <EditAgentDialog
-          key={editing.id}
-          agent={editing}
+      {settings && (
+        <AgentSettingsSheet
+          key={settings.agent.id}
+          agent={settings.agent}
+          workflow={settings.workflow}
           open
-          onOpenChange={(open) => !open && setEditing(null)}
+          onOpenChange={(open) => !open && setSettings(null)}
         />
       )}
     </div>

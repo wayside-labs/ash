@@ -15,7 +15,7 @@ import { formatUsd, formatWindow, mintSymbol } from "@/lib/utils";
 
 export default function LimitsPage() {
   const { t } = useTranslation();
-  const { workflows, isLoading } = useWorkflows();
+  const { workflows, isLoading } = useWorkflows({ withChain: false });
 
   if (isLoading) {
     return (

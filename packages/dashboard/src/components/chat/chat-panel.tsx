@@ -130,12 +130,10 @@ export function ChatPanel({ className }: { className?: string }) {
     } catch (error) {
       if ((error as Error).name === "AbortError") return;
       const message = error instanceof Error ? error.message : t("chat.error.generic");
+      const hint =
+        mode === "claude-cli" ? t("chat.error.checkSubscription") : t("chat.error.checkApiKey");
       setMessages((prev) =>
-        prev.map((m) =>
-          m.id === assistantId
-            ? { ...m, content: `⚠️ ${message}\n\n${t("chat.error.checkApiKey")}` }
-            : m,
-        ),
+        prev.map((m) => (m.id === assistantId ? { ...m, content: `⚠️ ${message}\n\n${hint}` } : m)),
       );
     } finally {
       setStreaming(false);

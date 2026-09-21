@@ -11,6 +11,16 @@ const nextConfig: NextConfig = {
   // and trace the wrong files; pin it to the monorepo.
   outputFileTracingRoot: resolve(here, "../.."),
   reactStrictMode: true,
+  experimental: {
+    optimizePackageImports: [
+      "lucide-react",
+      "@radix-ui/react-dialog",
+      "@radix-ui/react-dropdown-menu",
+      "@radix-ui/react-select",
+      "@radix-ui/react-tabs",
+      "@radix-ui/react-tooltip",
+    ],
+  },
 };
 
 export default nextConfig;

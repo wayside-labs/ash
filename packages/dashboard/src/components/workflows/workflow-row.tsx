@@ -6,12 +6,14 @@ import { DemoBadge } from "@/components/shared/demo-badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { AgentCard } from "@/components/workflows/agent-card";
-import { EditAgentDialog, EditWorkflowDialog } from "@/components/workflows/workflow-dialogs";
+import { AgentSettingsSheet } from "@/components/workflows/agent-settings-sheet";
+import { EditWorkflowDialog } from "@/components/workflows/workflow-dialogs";
 import { useDeleteResource, useExportRunnerConfig } from "@/hooks/use-dashboard";
 import { useTranslation } from "@/i18n/locale-provider";
 import { runnerConfigFilename } from "@/lib/mcp-config";
 import type { Agent, Workflow } from "@/lib/types";
 import { cn, formatMoney, moneyTone } from "@/lib/utils";
+import { useBalancesHidden } from "@/stores/app-store";
 
 interface WorkflowRowProps {
   workflow: Workflow;
@@ -20,6 +22,7 @@ interface WorkflowRowProps {
 
 export function WorkflowRow({ workflow, onAddAgent }: WorkflowRowProps) {
   const { t } = useTranslation();
+  const hidden = useBalancesHidden();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -102,7 +105,7 @@ export function WorkflowRow({ workflow, onAddAgent }: WorkflowRowProps) {
             <p className="truncate text-sm text-muted-foreground">
               {workflow.description} · {t("common.vaultLabel")}{" "}
               <span className={`num ${moneyTone(workflow.balance)}`}>
-                {formatMoney(workflow.balance)}
+                {formatMoney(workflow.balance, hidden)}
               </span>
             </p>
           </div>
@@ -193,9 +196,10 @@ export function WorkflowRow({ workflow, onAddAgent }: WorkflowRowProps) {
         />
       )}
       {editingAgent && (
-        <EditAgentDialog
+        <AgentSettingsSheet
           key={editingAgent.id}
           agent={editingAgent}
+          workflow={workflow}
           open
           onOpenChange={(open) => !open && setEditingAgent(null)}
         />

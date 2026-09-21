@@ -13,7 +13,7 @@ import { useTranslation } from "@/i18n/locale-provider";
 import { explorerUrl } from "@/lib/solana";
 import type { WalletInfo } from "@/lib/types";
 import { copyToClipboard, formatMoney, formatUsd, moneyTone, truncateAddress } from "@/lib/utils";
-import { useAppStore } from "@/stores/app-store";
+import { useAppStore, useBalancesHidden } from "@/stores/app-store";
 
 const typeConfig = {
   treasury: { labelKey: "wallets.section.vault", variant: "default" as const },
@@ -41,6 +41,7 @@ export default function WalletsPage() {
   const { t, locale } = useTranslation();
   const { wallets, isLoading } = useWallets();
   const { cluster } = useAppStore();
+  const hidden = useBalancesHidden();
   const toast = useToast();
   const intl = intlLocale(locale);
 
@@ -109,8 +110,13 @@ export default function WalletsPage() {
                     <div className="flex items-center gap-4">
                       <div className="text-right">
                         <p className={`num text-lg font-semibold ${moneyTone(wallet.balance)}`}>
-                          {formatMoney(wallet.balance)}
+                          {formatMoney(wallet.balance, hidden)}
                         </p>
+                        {wallet.balance.kind === "chain" && wallet.balance.usd !== null && (
+                          <p className="num text-xs text-muted-foreground">
+                            {formatUsd(wallet.balance.usd, intl, hidden)}
+                          </p>
+                        )}
                         {type === "treasury" && wallet.balance.kind === "chain" && (
                           <p className="text-[11px] text-faint-foreground">
                             {t("wallets.solVaultBalance")}

@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ConnectButton } from "@/components/wallet/connect-button";
+import { SolPriceTicker } from "@/components/wallet/sol-price-ticker";
 import { useTranslation } from "@/i18n/locale-provider";
 import { CLUSTER_LABELS } from "@/lib/solana";
 import type { OperationMode, SolanaCluster } from "@/lib/types";
@@ -35,7 +36,7 @@ export function Header() {
   const { t } = useTranslation();
 
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-border bg-card/50 px-4 backdrop-blur-sm">
+    <header className="flex h-16 shrink-0 items-center justify-between gap-3 border-b border-border bg-card/50 px-4 backdrop-blur-sm">
       <div className="flex items-center gap-3">
         <Button
           variant="ghost"
@@ -67,7 +68,7 @@ export function Header() {
         </Select>
 
         <Select value={operationMode} onValueChange={(v) => setOperationMode(v as OperationMode)}>
-          <SelectTrigger className="hidden h-8 w-[168px] whitespace-nowrap sm:flex">
+          <SelectTrigger className="hidden h-8 w-[168px] whitespace-nowrap lg:flex">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -77,9 +78,11 @@ export function Header() {
         </Select>
 
         {googleEmail && (
-          <span className="hidden text-xs text-muted-foreground md:inline">{googleEmail}</span>
+          <span className="hidden text-xs text-muted-foreground xl:inline">{googleEmail}</span>
         )}
 
+        <span className="hidden h-8 w-px bg-border sm:block" />
+        <SolPriceTicker />
         <ConnectButton />
       </div>
     </header>

@@ -29,7 +29,7 @@ export function Sidebar() {
           sidebarCollapsed ? "-translate-x-full" : "translate-x-0",
         )}
       >
-        <div className="flex h-14 items-center border-b border-sidebar-border px-4">
+        <div className="flex h-16 items-center border-b border-sidebar-border px-4">
           <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-subtle-foreground">
             {t("common.menu")}
           </span>
@@ -52,6 +52,7 @@ export function Sidebar() {
                     <li key={item.href}>
                       <Link
                         href={item.href}
+                        prefetch={item.prefetch ?? true}
                         onClick={() => setSidebarCollapsed(true)}
                         className={cn(
                           "relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",

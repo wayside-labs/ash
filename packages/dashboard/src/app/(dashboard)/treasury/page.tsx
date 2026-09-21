@@ -21,16 +21,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/toast";
 import { CreateWorkflowDialog } from "@/components/workflows/workflow-dialogs";
 import { useWorkflows } from "@/hooks/use-dashboard";
+import { intlLocale } from "@/i18n";
 import { useTranslation } from "@/i18n/locale-provider";
 import type { VaultTransferKind } from "@/lib/server/solana";
 import { explorerUrl } from "@/lib/solana";
-import { copyToClipboard, formatMoney, moneyTone, truncateAddress } from "@/lib/utils";
-import { useAppStore } from "@/stores/app-store";
+import { copyToClipboard, formatMoney, formatUsd, moneyTone, truncateAddress } from "@/lib/utils";
+import { useAppStore, useBalancesHidden } from "@/stores/app-store";
 
 export default function TreasuryPage() {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const { workflows, isLoading, balances, vaults } = useWorkflows();
   const { cluster, walletAddress } = useAppStore();
+  const hidden = useBalancesHidden();
+  const intl = intlLocale(locale);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [detail, setDetail] = useState<string | null>(null);
   const [transfer, setTransfer] = useState<{ kind: VaultTransferKind; treasury: string } | null>(
@@ -106,8 +109,13 @@ export default function TreasuryPage() {
                 <CardContent className="space-y-4">
                   <div>
                     <p className={`num text-2xl font-bold ${moneyTone(workflow.balance)}`}>
-                      {formatMoney(workflow.balance)}
+                      {formatMoney(workflow.balance, hidden)}
                     </p>
+                    {workflow.balance.kind === "chain" && workflow.balance.usd !== null && (
+                      <p className="num text-sm text-muted-foreground">
+                        {formatUsd(workflow.balance.usd, intl, hidden)}
+                      </p>
+                    )}
                     {workflow.treasuryAddress ? (
                       <button
                         type="button"

@@ -18,7 +18,7 @@ import { useTranslation } from "@/i18n/locale-provider";
 import type { VaultTransferKind } from "@/lib/server/solana";
 import { explorerTxUrl, LAMPORTS_PER_SOL } from "@/lib/solana";
 import { formatSol, truncateAddress } from "@/lib/utils";
-import { useAppStore } from "@/stores/app-store";
+import { useAppStore, useBalancesHidden } from "@/stores/app-store";
 
 /**
  * A deposit still has to pay for its own signature, so offering the whole
@@ -48,6 +48,7 @@ export function VaultTransferDialog({
 }: VaultTransferDialogProps) {
   const { t } = useTranslation();
   const { cluster } = useAppStore();
+  const hidden = useBalancesHidden();
   const transfer = useVaultTransfer();
   const toast = useToast();
   const [amount, setAmount] = useState("");
@@ -150,11 +151,13 @@ export function VaultTransferDialog({
               <Row label={t("vaultTransfer.vault")} value={truncateAddress(solVault, 6)} mono />
               <Row
                 label={t("vaultTransfer.vaultBalance")}
-                value={vaultLamports === null ? "—" : formatSol(vaultLamports / LAMPORTS_PER_SOL)}
+                value={
+                  vaultLamports === null ? "—" : formatSol(vaultLamports / LAMPORTS_PER_SOL, hidden)
+                }
               />
               <Row
                 label={t(isDeposit ? "vaultTransfer.available" : "vaultTransfer.withdrawable")}
-                value={formatSol(maxSol)}
+                value={formatSol(maxSol, hidden)}
               />
             </div>
 

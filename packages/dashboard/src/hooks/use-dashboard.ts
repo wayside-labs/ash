@@ -1,11 +1,17 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { useTranslation } from "@/i18n/locale-provider";
+import {
+  isPayingAgent,
+  resolveAgentSessionAddress,
+  resolveAgentSigningKey,
+} from "@/lib/agent-wallet";
 import { runnerConfigFilename } from "@/lib/mcp-config";
 import type { ResourceName, SolanaCluster } from "@/lib/schema";
 import type { MaskedState } from "@/lib/server/present";
+import type { SolPrice } from "@/lib/server/price";
 import type {
   BalanceResult,
   BuiltTransaction,
@@ -37,7 +43,8 @@ export function useDashboardState() {
   return useQuery({
     queryKey: ["state"],
     queryFn: () => request<MaskedState>("/api/state"),
-    staleTime: 5_000,
+    staleTime: 60_000,
+    placeholderData: (previousData) => previousData,
   });
 }
 
@@ -139,7 +146,9 @@ export function useBalances(addresses: (string | null | undefined)[]) {
   const query = useQuery({
     queryKey: ["balances", cluster, customRpc, wanted],
     enabled: wanted.length > 0,
+    staleTime: 30_000,
     refetchInterval: 30_000,
+    placeholderData: (previousData) => previousData,
     queryFn: () =>
       request<{ balances: BalanceResult[] }>("/api/solana/balances", {
         method: "POST",
@@ -158,6 +167,17 @@ export function useBalances(addresses: (string | null | undefined)[]) {
   return { ...query, byAddress };
 }
 
+/** Spot SOL/USD, shared by the header ticker and every chain `Money.usd`. */
+export function useSolPrice() {
+  return useQuery({
+    queryKey: ["sol-price"],
+    queryFn: () => request<SolPrice>("/api/solana/price"),
+    staleTime: 15_000,
+    refetchInterval: 15_000,
+    placeholderData: (previousData) => previousData,
+  });
+}
+
 /** Resolves each treasury's sol_vault PDA and its balance — where the SOL is. */
 export function useVaultBalances(treasuries: (string | null | undefined)[]) {
   const { cluster, customRpc } = useAppStore();
@@ -169,7 +189,9 @@ export function useVaultBalances(treasuries: (string | null | undefined)[]) {
   const query = useQuery({
     queryKey: ["vault-balances", cluster, customRpc, wanted],
     enabled: wanted.length > 0,
+    staleTime: 30_000,
     refetchInterval: 30_000,
+    placeholderData: (previousData) => previousData,
     queryFn: () =>
       request<VaultBalances>("/api/solana/vault-balances", {
         method: "POST",
@@ -177,20 +199,25 @@ export function useVaultBalances(treasuries: (string | null | undefined)[]) {
       }),
   });
 
+  const rows = useMemo(
+    () => (Array.isArray(query.data?.vaults) ? query.data.vaults : []),
+    [query.data],
+  );
+
   const byTreasury = useMemo(() => {
     const map = new Map<string, number>();
-    for (const row of query.data?.vaults ?? []) {
+    for (const row of rows) {
       if (row.lamports !== null) map.set(row.treasury, row.lamports);
     }
     return map;
-  }, [query.data]);
+  }, [rows]);
 
   /** Full row — the vault PDA and on-chain owner the deposit/withdraw flow needs. */
   const vaultByTreasury = useMemo(() => {
     const map = new Map<string, VaultBalance>();
-    for (const row of query.data?.vaults ?? []) map.set(row.treasury, row);
+    for (const row of rows) map.set(row.treasury, row);
     return map;
-  }, [query.data]);
+  }, [rows]);
 
   return {
     ...query,
@@ -205,12 +232,39 @@ export function useTreasury(address: string | null) {
   return useQuery({
     queryKey: ["treasury", cluster, customRpc, address],
     enabled: Boolean(address),
-    queryFn: () => {
-      const params = new URLSearchParams({ cluster, address: address as string });
-      if (customRpc) params.set("rpc", customRpc);
-      return request<TreasuryView>(`/api/solana/treasury?${params}`);
-    },
+    staleTime: 60_000,
+    placeholderData: (previousData) => previousData,
+    queryFn: () => fetchTreasuryView(cluster, customRpc, address as string),
   });
+}
+
+function fetchTreasuryView(cluster: SolanaCluster, customRpc: string, address: string) {
+  const params = new URLSearchParams({ cluster, address });
+  if (customRpc) params.set("rpc", customRpc);
+  return request<TreasuryView>(`/api/solana/treasury?${params}`);
+}
+
+/** One treasury read per vault — used to resolve session_key → agent name. */
+function useTreasuryMap(addresses: string[], enabled: boolean) {
+  const { cluster, customRpc } = useAppStore();
+  const unique = useMemo(() => [...new Set(addresses.filter(Boolean))], [addresses]);
+  const queries = useQueries({
+    queries: unique.map((address) => ({
+      queryKey: ["treasury", cluster, customRpc, address],
+      queryFn: () => fetchTreasuryView(cluster, customRpc, address),
+      staleTime: 60_000,
+      enabled: enabled && Boolean(address),
+    })),
+  });
+  return useMemo(() => {
+    const map = new Map<string, TreasuryView>();
+    for (let i = 0; i < unique.length; i++) {
+      const view = queries[i]?.data;
+      const addr = unique[i];
+      if (view && addr) map.set(addr, view);
+    }
+    return map;
+  }, [unique, queries]);
 }
 
 export type VaultTransferInput = {
@@ -331,43 +385,83 @@ function money(
   return { kind: "unknown" };
 }
 
+export type UseWorkflowsOptions = {
+  /** When false, skip on-chain balance reads — faster for agents/limits. Default true. */
+  withChain?: boolean;
+};
+
 /**
  * The composed view every page renders: stored rows joined with whatever the
  * RPC could resolve. Rows without a real address stay `unknown` rather than
  * borrowing a number from somewhere else.
  */
-export function useWorkflows() {
+export function useWorkflows(options: UseWorkflowsOptions = {}) {
+  const withChain = options.withChain ?? true;
   const state = useDashboardState();
   const { walletAddress } = useAppStore();
+  const { data: price } = useSolPrice();
+  const solPriceUsd = withChain ? (price?.usd ?? null) : null;
+
+  const treasuryAddresses = useMemo(
+    () => (withChain ? (state.data?.workflows ?? []).map((w) => w.treasuryAddress) : []),
+    [state.data, withChain],
+  );
+  const treasuryMap = useTreasuryMap(
+    treasuryAddresses.filter((a): a is string => Boolean(a)),
+    withChain,
+  );
 
   const addresses = useMemo(() => {
+    if (!withChain) return [];
     const rows = state.data;
     if (!rows) return [];
-    return [...rows.agents.map((a) => a.walletAddress), walletAddress];
-  }, [state.data, walletAddress]);
+    const keys = rows.agents.flatMap((agent) => {
+      const workflow = rows.workflows.find((w) => w.id === agent.workflowId);
+      const sessions = workflow?.treasuryAddress
+        ? treasuryMap.get(workflow.treasuryAddress)?.sessions
+        : undefined;
+      const key = resolveAgentSigningKey(agent, sessions);
+      return key ? [key] : [];
+    });
+    return [...keys, walletAddress];
+  }, [state.data, walletAddress, withChain, treasuryMap]);
 
   const balances = useBalances(addresses);
   const vaults = useVaultBalances(
-    useMemo(() => (state.data?.workflows ?? []).map((w) => w.treasuryAddress), [state.data]),
+    useMemo(() => treasuryAddresses.filter((a): a is string => Boolean(a)), [treasuryAddresses]),
   );
 
   const workflows = useMemo<Workflow[]>(() => {
     const rows = state.data;
     if (!rows) return [];
     return rows.workflows.map((workflow) => {
+      const sessions = workflow.treasuryAddress
+        ? treasuryMap.get(workflow.treasuryAddress)?.sessions
+        : undefined;
       const agents: Agent[] = rows.agents
         .filter((agent) => agent.workflowId === workflow.id)
-        .map((agent) => ({
-          ...agent,
-          workflowName: workflow.name,
-          spentUsd: agent.demo ? agent.demoSpentUsd : null,
-          balance: money(
-            agent.walletAddress ? balances.byAddress.get(agent.walletAddress) : undefined,
-            agent.demoBalanceUsd,
-            agent.demo,
-            null,
-          ),
-        }));
+        .map((agent) => {
+          const signingKey = withChain
+            ? resolveAgentSigningKey(agent, sessions)
+            : agent.walletAddress;
+          const resolvedSessionAddress = withChain
+            ? resolveAgentSessionAddress(agent, sessions)
+            : agent.sessionAddress;
+          return {
+            ...agent,
+            workflowName: workflow.name,
+            spentUsd: agent.demo ? agent.demoSpentUsd : null,
+            signingKey,
+            resolvedSessionAddress,
+            signingKeyFromChain: withChain && !agent.walletAddress && Boolean(signingKey),
+            balance: money(
+              signingKey ? balances.byAddress.get(signingKey) : undefined,
+              agent.demoBalanceUsd,
+              agent.demo,
+              solPriceUsd,
+            ),
+          };
+        });
       return {
         ...workflow,
         agents,
@@ -375,18 +469,26 @@ export function useWorkflows() {
           workflow.treasuryAddress ? vaults.byTreasury.get(workflow.treasuryAddress) : undefined,
           workflow.demoBalanceUsd,
           workflow.demo,
-          null,
+          solPriceUsd,
         ),
       };
     });
-  }, [state.data, balances.byAddress, vaults.byTreasury]);
+  }, [state.data, balances.byAddress, vaults.byTreasury, solPriceUsd, treasuryMap, withChain]);
 
-  return { workflows, isLoading: state.isLoading, error: state.error, balances, vaults };
+  return {
+    workflows,
+    isLoading: state.isPending && !state.data,
+    error: state.error,
+    balances,
+    vaults,
+  };
 }
 
 export function useWallets(): { wallets: WalletInfo[]; isLoading: boolean } {
   const { workflows, isLoading, balances } = useWorkflows();
   const { walletAddress, walletName } = useAppStore();
+  const { data: price } = useSolPrice();
+  const solPriceUsd = price?.usd ?? null;
 
   const wallets = useMemo<WalletInfo[]>(() => {
     const rows: WalletInfo[] = [];
@@ -401,9 +503,10 @@ export function useWallets(): { wallets: WalletInfo[]; isLoading: boolean } {
         workflowName: workflow.name,
       });
       for (const agent of workflow.agents) {
+        if (!isPayingAgent(agent) && !agent.signingKey) continue;
         rows.push({
           id: `a_${agent.id}`,
-          address: agent.walletAddress,
+          address: agent.signingKey,
           type: "agent",
           balance: agent.balance,
           workflowId: workflow.id,
@@ -426,7 +529,11 @@ export function useWallets(): { wallets: WalletInfo[]; isLoading: boolean } {
         balance:
           lamports === undefined
             ? { kind: "unknown" }
-            : { kind: "chain", sol: lamports / LAMPORTS_PER_SOL, usd: null },
+            : {
+                kind: "chain",
+                sol: lamports / LAMPORTS_PER_SOL,
+                usd: solPriceUsd === null ? null : (lamports / LAMPORTS_PER_SOL) * solPriceUsd,
+              },
         workflowId: "",
         workflowName: "",
         ownerWalletName: walletName,
@@ -434,7 +541,7 @@ export function useWallets(): { wallets: WalletInfo[]; isLoading: boolean } {
     }
 
     return rows;
-  }, [workflows, walletAddress, walletName, balances.byAddress]);
+  }, [workflows, walletAddress, walletName, balances.byAddress, solPriceUsd]);
 
   return { wallets, isLoading };
 }
