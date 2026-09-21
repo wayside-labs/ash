@@ -2,10 +2,20 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
+import { useTranslation } from "@/i18n/locale-provider";
 import { runnerConfigFilename } from "@/lib/mcp-config";
 import type { ResourceName, SolanaCluster } from "@/lib/schema";
 import type { MaskedState } from "@/lib/server/present";
-import type { BalanceResult, TreasuryView, VaultBalance } from "@/lib/server/solana";
+import type {
+  BalanceResult,
+  BuiltTransaction,
+  ConfirmationResult,
+  TreasuryView,
+  VaultBalance,
+  VaultBalances,
+  VaultTransferKind,
+} from "@/lib/server/solana";
+import { getConnectedProvider, signAndSendTransaction } from "@/lib/solana";
 import type { Agent, Money, WalletInfo, Workflow } from "@/lib/types";
 import { useAppStore } from "@/stores/app-store";
 
@@ -161,7 +171,7 @@ export function useVaultBalances(treasuries: (string | null | undefined)[]) {
     enabled: wanted.length > 0,
     refetchInterval: 30_000,
     queryFn: () =>
-      request<{ vaults: VaultBalance[] }>("/api/solana/vault-balances", {
+      request<VaultBalances>("/api/solana/vault-balances", {
         method: "POST",
         body: JSON.stringify({ cluster, rpc: customRpc || null, treasuries: wanted }),
       }),
@@ -175,7 +185,19 @@ export function useVaultBalances(treasuries: (string | null | undefined)[]) {
     return map;
   }, [query.data]);
 
-  return { ...query, byTreasury };
+  /** Full row — the vault PDA and on-chain owner the deposit/withdraw flow needs. */
+  const vaultByTreasury = useMemo(() => {
+    const map = new Map<string, VaultBalance>();
+    for (const row of query.data?.vaults ?? []) map.set(row.treasury, row);
+    return map;
+  }, [query.data]);
+
+  return {
+    ...query,
+    byTreasury,
+    vaultByTreasury,
+    rentExemptMinimum: query.data?.rentExemptMinimum ?? 0,
+  };
 }
 
 export function useTreasury(address: string | null) {
@@ -189,6 +211,81 @@ export function useTreasury(address: string | null) {
       return request<TreasuryView>(`/api/solana/treasury?${params}`);
     },
   });
+}
+
+export type VaultTransferInput = {
+  kind: VaultTransferKind;
+  treasury: string;
+  lamports: bigint;
+};
+
+export type VaultTransferResult = {
+  signature: string;
+  status: ConfirmationResult["status"];
+};
+
+/**
+ * Build on the server, sign in the wallet, confirm on the server. The signing
+ * step is the only part that cannot move behind the API, because the key lives
+ * in the extension — so the browser never needs an RPC of its own and the
+ * custom-RPC allowlist stays enforceable.
+ */
+export function useVaultTransfer() {
+  const { cluster, customRpc, walletAddress } = useAppStore();
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
+
+  return useMutation({
+    mutationFn: async ({ kind, treasury, lamports }: VaultTransferInput) => {
+      const provider = getConnectedProvider(walletAddress);
+      if (!walletAddress || !provider) throw new Error(t("vaultTransfer.error.walletNotConnected"));
+
+      const built = await request<BuiltTransaction>("/api/solana/vault-transfer", {
+        method: "POST",
+        body: JSON.stringify({
+          cluster,
+          rpc: customRpc || null,
+          kind,
+          treasury,
+          wallet: walletAddress,
+          lamports: lamports.toString(),
+        }),
+      });
+
+      let signature: string;
+      try {
+        signature = await signAndSendTransaction(provider, built.transaction);
+      } catch (error) {
+        throw new Error(describeWalletError(error, t));
+      }
+
+      const confirmation = await request<ConfirmationResult>("/api/solana/confirm", {
+        method: "POST",
+        body: JSON.stringify({ cluster, rpc: customRpc || null, signature }),
+      });
+      if (confirmation.status === "failed") {
+        throw new Error(
+          t("vaultTransfer.error.rejectedOnChain", { detail: confirmation.error ?? "" }),
+        );
+      }
+      return { signature, status: confirmation.status } satisfies VaultTransferResult;
+    },
+    onSuccess: () => {
+      // The vault, the wallet that funded it, and any open treasury drawer all
+      // moved — refetch rather than patch, since the amounts are on-chain truth.
+      for (const key of ["vault-balances", "balances", "treasury"]) {
+        queryClient.invalidateQueries({ queryKey: [key] });
+      }
+    },
+  });
+}
+
+/** Wallet rejections are routine, not failures worth a stack trace. */
+function describeWalletError(error: unknown, t: (key: string) => string): string {
+  const message = error instanceof Error ? error.message : String(error);
+  if (message === "WALLET_CANNOT_SIGN") return t("vaultTransfer.error.walletCannotSign");
+  if (/user rejected|denied|cancel/i.test(message)) return t("vaultTransfer.error.rejected");
+  return message;
 }
 
 export type ProviderStatus = {
