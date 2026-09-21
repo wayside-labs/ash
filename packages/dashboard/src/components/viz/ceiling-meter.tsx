@@ -8,14 +8,29 @@ type Status = "good" | "warning" | "serious" | "critical" | "unknown";
 
 const STATUS_CONFIG: Record<
   Status,
-  { key: string; icon: typeof CheckCircle2; fill: string; ink: string }
+  { labelKey: string; icon: typeof CheckCircle2; fill: string; ink: string }
 > = {
-  good: { key: "ceiling.withinLimit", icon: CheckCircle2, fill: "bg-good", ink: "text-good" },
-  warning: { key: "ceiling.above50", icon: AlertTriangle, fill: "bg-warning", ink: "text-warning" },
-  serious: { key: "ceiling.above80", icon: AlertTriangle, fill: "bg-serious", ink: "text-serious" },
-  critical: { key: "ceiling.limitReached", icon: Ban, fill: "bg-critical", ink: "text-critical" },
+  good: { labelKey: "ceiling.withinLimit", icon: CheckCircle2, fill: "bg-good", ink: "text-good" },
+  warning: {
+    labelKey: "ceiling.above50",
+    icon: AlertTriangle,
+    fill: "bg-warning",
+    ink: "text-warning",
+  },
+  serious: {
+    labelKey: "ceiling.above80",
+    icon: AlertTriangle,
+    fill: "bg-serious",
+    ink: "text-serious",
+  },
+  critical: {
+    labelKey: "ceiling.limitReached",
+    icon: Ban,
+    fill: "bg-critical",
+    ink: "text-critical",
+  },
   unknown: {
-    key: "ceiling.noLimitSet",
+    labelKey: "ceiling.noLimitSet",
     icon: CircleDashed,
     fill: "bg-border-strong",
     ink: "text-faint-foreground",
@@ -59,7 +74,7 @@ export function CeilingMeter({
 
   const showPolicyBand = hasCeiling && policyPct < 99.5;
   const status = statusFor(spent, policy);
-  const { key: statusKey, icon: Icon, fill, ink } = STATUS_CONFIG[status];
+  const { labelKey: statusKey, icon: Icon, fill, ink } = STATUS_CONFIG[status];
 
   return (
     <div className={cn("space-y-1.5", className)}>
