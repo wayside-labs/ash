@@ -1,0 +1,133 @@
+@import "tailwindcss";
+
+/*
+ * Two things this palette encodes that a default dark theme does not:
+ *
+ * 1. Four surface levels instead of one. Depth comes from stepped surfaces and
+ *    a 1px top highlight, never from drop shadows (overlays excepted).
+ * 2. Status is a reserved scale. Green is "good", and it is also the brand —
+ *    those are the same meaning here, so the hue is not spent twice. Data
+ *    provenance (read from chain / demo / unknown) rides ink level and a badge
+ *    instead of a hue, so it can never be mistaken for a limit state.
+ *
+ * Every value below was checked with a WCAG contrast pass against
+ * --color-card (#0f0f12): marks clear 3:1, text clears 4.5:1.
+ */
+@theme {
+  /* Surfaces — page, card, raised, input/hover */
+  --color-background: #08080a;
+  --color-card: #0f0f12;
+  --color-elevated: #17171b;
+  --color-muted: #1f1f25;
+  --color-sidebar: #0a0a0c;
+
+  /* Borders */
+  --color-border-subtle: #1c1c21;
+  --color-border: #27272e;
+  --color-border-strong: #3a3a44;
+  --color-input: #27272e;
+  --color-sidebar-border: #17171b;
+
+  /* Ink — four levels, all ≥ 4.5:1 on --color-card */
+  --color-foreground: #f4f4f5;
+  --color-muted-foreground: #a1a1aa;
+  --color-subtle-foreground: #8b8b95;
+  --color-faint-foreground: #7a7a85;
+  --color-card-foreground: #f4f4f5;
+  --color-secondary-foreground: #f4f4f5;
+  --color-accent-foreground: #f4f4f5;
+  --color-destructive-foreground: #f4f4f5;
+
+  /* Brand + good status (one meaning: verified and healthy) */
+  --color-primary: #14f195;
+  --color-primary-foreground: #08080a;
+  --color-secondary: #1f1f25;
+
+  /* Structure — ceilings and policy bounds. Not a status. */
+  --color-ceiling: #7c8cff;
+  --color-accent: #7c8cff;
+
+  /* Status scale — reserved, always shipped with an icon and a label */
+  --color-good: #14f195;
+  --color-warning: #fab219;
+  --color-serious: #ec835a;
+  --color-critical: #f0575a;
+  --color-destructive: #f0575a;
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono-face), ui-monospace, "SFMono-Regular", monospace;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-sans);
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-border-strong);
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #4a4a56;
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /*
+   * Money, addresses and limits. Proportional figures at display size — a
+   * hero number in tabular-nums looks loose because every digit takes a zero's
+   * width. `.num-col` adds tabular figures and is for columns only.
+   */
+  .num {
+    font-family: var(--font-mono);
+    font-feature-settings: "zero" 1;
+    letter-spacing: -0.01em;
+  }
+
+  .num-col {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /*
+   * The machined edge: a hairline of light along the top of a raised surface.
+   * One inset shadow, no drop shadow — depth without a halo.
+   */
+  .surface-raised {
+    background-color: var(--color-card);
+    box-shadow: inset 0 1px 0 0 rgb(255 255 255 / 0.04);
+  }
+
+  .surface-sunken {
+    background-color: var(--color-background);
+    box-shadow: inset 0 1px 2px 0 rgb(0 0 0 / 0.4);
+  }
+}

@@ -19,12 +19,19 @@
     "codegen": "pnpm --filter @agent-rails/client run codegen",
     "idl:sync": "pnpm idl:build && pnpm codegen && pnpm build",
     "codegen:check": "pnpm codegen && git diff --exit-code packages/client/src/generated",
-    "coverage": "turbo run coverage"
+    "coverage": "turbo run coverage",
+    "dashboard": "pnpm --filter @agent-rails/dashboard dev",
+    "dashboard:build": "pnpm --filter @agent-rails/dashboard build"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.0.0",
     "lefthook": "^2.1.14",
     "turbo": "^2.5.0",
     "typescript": "^5.9.2"
+  },
+  "pnpm": {
+    "overrides": {
+      "postcss": "^8.5.23"
+    }
   }
 }
