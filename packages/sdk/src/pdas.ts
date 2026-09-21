@@ -19,6 +19,13 @@ export const TOKEN_PROGRAM_ADDRESS =
 export const ASSOCIATED_TOKEN_PROGRAM_ADDRESS =
   "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL" as Address<"ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL">;
 
+/** Solana Foundation Subscriptions & Allowances program (ADR-014). */
+export const NATIVE_SUBSCRIPTIONS_PROGRAM_ADDRESS =
+  "De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44" as Address<"De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44">;
+
+/** Agent Rails only ever maintains one active native delegation per (treasury, mint). */
+export const NATIVE_ALLOWANCE_NONCE = 0n;
+
 export {
   findEntryPda,
   findEntryPda as findAllowlistPda,
@@ -67,6 +74,49 @@ export async function findAssociatedTokenAddress(input: AssociatedTokenAddressIn
       addressEncoder.encode(input.owner),
       addressEncoder.encode(tokenProgram),
       addressEncoder.encode(input.mint),
+    ],
+  });
+}
+
+export type NativeSubscriptionAuthorityPdaInput = {
+  owner: Address;
+  mint: Address;
+};
+
+/** Native `SubscriptionAuthority` PDA: `[SubscriptionAuthority, owner, mint]`. */
+export async function findNativeSubscriptionAuthorityPda(
+  input: NativeSubscriptionAuthorityPdaInput,
+) {
+  return getProgramDerivedAddress({
+    programAddress: NATIVE_SUBSCRIPTIONS_PROGRAM_ADDRESS,
+    seeds: [
+      bytesEncoder.encode(new TextEncoder().encode("SubscriptionAuthority")),
+      addressEncoder.encode(input.owner),
+      addressEncoder.encode(input.mint),
+    ],
+  });
+}
+
+export type NativeFixedDelegationPdaInput = {
+  subscriptionAuthority: Address;
+  delegator: Address;
+  delegatee: Address;
+  nonce?: bigint;
+};
+
+/** Native `FixedDelegation` PDA: `[delegation, authority, delegator, delegatee, nonce_le]`. */
+export async function findNativeFixedDelegationPda(input: NativeFixedDelegationPdaInput) {
+  const nonce = input.nonce ?? NATIVE_ALLOWANCE_NONCE;
+  const nonceLe = new Uint8Array(8);
+  new DataView(nonceLe.buffer).setBigUint64(0, nonce, true);
+  return getProgramDerivedAddress({
+    programAddress: NATIVE_SUBSCRIPTIONS_PROGRAM_ADDRESS,
+    seeds: [
+      bytesEncoder.encode(new TextEncoder().encode("delegation")),
+      addressEncoder.encode(input.subscriptionAuthority),
+      addressEncoder.encode(input.delegator),
+      addressEncoder.encode(input.delegatee),
+      nonceLe,
     ],
   });
 }

@@ -278,6 +278,18 @@ export type VaultTransferResult = {
   status: ConfirmationResult["status"];
 };
 
+export type EnableNativeAllowanceInput = {
+  treasury: string;
+  mint: string;
+  amountCap: bigint;
+  expiryTs: bigint;
+};
+
+export type EnableNativeAllowanceResult = {
+  signature: string;
+  status: ConfirmationResult["status"];
+};
+
 /**
  * Build on the server, sign in the wallet, confirm on the server. The signing
  * step is the only part that cannot move behind the API, because the key lives
@@ -306,39 +318,231 @@ export function useVaultTransfer() {
         }),
       });
 
-      let signature: string;
-      try {
-        signature = await signAndSendTransaction(provider, built.transaction);
-      } catch (error) {
-        throw new Error(describeWalletError(error, t));
-      }
-
-      const confirmation = await request<ConfirmationResult>("/api/solana/confirm", {
-        method: "POST",
-        body: JSON.stringify({ cluster, rpc: customRpc || null, signature }),
+      return signConfirmAndReturn({
+        provider,
+        built,
+        cluster,
+        customRpc,
+        t,
+        scope: "vault",
+        onChainErrorKey: "vaultTransfer.error.rejectedOnChain",
       });
-      if (confirmation.status === "failed") {
-        throw new Error(
-          t("vaultTransfer.error.rejectedOnChain", { detail: confirmation.error ?? "" }),
-        );
-      }
-      return { signature, status: confirmation.status } satisfies VaultTransferResult;
     },
-    onSuccess: () => {
-      // The vault, the wallet that funded it, and any open treasury drawer all
-      // moved — refetch rather than patch, since the amounts are on-chain truth.
-      for (const key of ["vault-balances", "balances", "treasury"]) {
-        queryClient.invalidateQueries({ queryKey: [key] });
-      }
-    },
+    onSuccess: () => invalidateTreasuryQueries(queryClient),
   });
 }
 
+export function useEnableNativeAllowance() {
+  const { cluster, customRpc, walletAddress } = useAppStore();
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
+
+  return useMutation({
+    mutationFn: async ({ treasury, mint, amountCap, expiryTs }: EnableNativeAllowanceInput) => {
+      const provider = getConnectedProvider(walletAddress);
+      if (!walletAddress || !provider) {
+        throw new Error(t("nativeAllowance.error.walletNotConnected"));
+      }
+
+      const built = await request<BuiltTransaction>("/api/solana/enable-native-allowance", {
+        method: "POST",
+        body: JSON.stringify({
+          cluster,
+          rpc: customRpc || null,
+          treasury,
+          wallet: walletAddress,
+          mint,
+          amountCap: amountCap.toString(),
+          expiryTs: expiryTs.toString(),
+        }),
+      });
+
+      return signConfirmAndReturn({
+        provider,
+        built,
+        cluster,
+        customRpc,
+        t,
+        scope: "native",
+        onChainErrorKey: "nativeAllowance.error.rejectedOnChain",
+      });
+    },
+    onSuccess: () => invalidateTreasuryQueries(queryClient),
+  });
+}
+
+export type AddMintInput = {
+  treasury: string;
+  mint: string;
+};
+
+export type AddMintResult = {
+  signature: string;
+  status: ConfirmationResult["status"];
+};
+
+export function useAddMint() {
+  const { cluster, customRpc, walletAddress } = useAppStore();
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
+
+  return useMutation({
+    mutationFn: async ({ treasury, mint }: AddMintInput) => {
+      const provider = getConnectedProvider(walletAddress);
+      if (!walletAddress || !provider) {
+        throw new Error(t("addAsset.error.walletNotConnected"));
+      }
+
+      const built = await request<BuiltTransaction>("/api/solana/add-mint", {
+        method: "POST",
+        body: JSON.stringify({
+          cluster,
+          rpc: customRpc || null,
+          treasury,
+          wallet: walletAddress,
+          mint,
+        }),
+      });
+
+      return signConfirmAndReturn({
+        provider,
+        built,
+        cluster,
+        customRpc,
+        t,
+        scope: "addAsset",
+        onChainErrorKey: "addAsset.error.rejectedOnChain",
+      });
+    },
+    onSuccess: () => invalidateTreasuryQueries(queryClient),
+  });
+}
+
+export type ActivateSecurityPolicyInput = {
+  treasury: string;
+  policy: string;
+  mint: string;
+  fundingMode: "isolatedVault" | "nativeAllowance";
+  allowanceCap?: bigint;
+  expiryTs?: bigint;
+  maxPerTransaction: bigint;
+  dailyLimit: bigint;
+  allowlist: string[];
+};
+
+export type ActivateSecurityPolicyResult = {
+  signature: string;
+  status: ConfirmationResult["status"];
+};
+
+export function useActivateSecurityPolicy() {
+  const { cluster, customRpc, walletAddress } = useAppStore();
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
+
+  return useMutation({
+    mutationFn: async (input: ActivateSecurityPolicyInput) => {
+      const provider = getConnectedProvider(walletAddress);
+      if (!walletAddress || !provider) {
+        throw new Error(t("securityWizard.error.walletNotConnected"));
+      }
+
+      const built = await request<BuiltTransaction>("/api/solana/activate-security-policy", {
+        method: "POST",
+        body: JSON.stringify({
+          cluster,
+          rpc: customRpc || null,
+          treasury: input.treasury,
+          wallet: walletAddress,
+          policy: input.policy,
+          mint: input.mint,
+          fundingMode: input.fundingMode,
+          maxPerTransaction: input.maxPerTransaction.toString(),
+          dailyLimit: input.dailyLimit.toString(),
+          allowlist: input.allowlist,
+          ...(input.allowanceCap !== undefined ? { amountCap: input.allowanceCap.toString() } : {}),
+          ...(input.expiryTs !== undefined ? { expiryTs: input.expiryTs.toString() } : {}),
+        }),
+      });
+
+      return signConfirmAndReturn({
+        provider,
+        built,
+        cluster,
+        customRpc,
+        t,
+        scope: "security",
+        onChainErrorKey: "securityWizard.error.rejectedOnChain",
+      });
+    },
+    onSuccess: () => invalidateTreasuryQueries(queryClient),
+  });
+}
+
+function invalidateTreasuryQueries(queryClient: ReturnType<typeof useQueryClient>) {
+  for (const key of ["vault-balances", "balances", "treasury"]) {
+    queryClient.invalidateQueries({ queryKey: [key] });
+  }
+}
+
+async function signConfirmAndReturn({
+  provider,
+  built,
+  cluster,
+  customRpc,
+  t,
+  scope,
+  onChainErrorKey,
+}: {
+  provider: NonNullable<ReturnType<typeof getConnectedProvider>>;
+  built: BuiltTransaction;
+  cluster: SolanaCluster;
+  customRpc: string;
+  t: (key: string, vars?: Record<string, string>) => string;
+  scope: WalletErrorScope;
+  onChainErrorKey: string;
+}): Promise<{ signature: string; status: ConfirmationResult["status"] }> {
+  let signature: string;
+  try {
+    signature = await signAndSendTransaction(provider, built.transaction);
+  } catch (error) {
+    throw new Error(describeWalletError(error, t, scope));
+  }
+
+  const confirmation = await request<ConfirmationResult>("/api/solana/confirm", {
+    method: "POST",
+    body: JSON.stringify({ cluster, rpc: customRpc || null, signature }),
+  });
+  if (confirmation.status === "failed") {
+    throw new Error(t(onChainErrorKey, { detail: confirmation.error ?? "" }));
+  }
+  return { signature, status: confirmation.status };
+}
+
+type WalletErrorScope = "vault" | "native" | "addAsset" | "security";
+
 /** Wallet rejections are routine, not failures worth a stack trace. */
-function describeWalletError(error: unknown, t: (key: string) => string): string {
+function describeWalletError(
+  error: unknown,
+  t: (key: string) => string,
+  scope: WalletErrorScope,
+): string {
+  const prefix =
+    scope === "native"
+      ? "nativeAllowance.error"
+      : scope === "addAsset"
+        ? "addAsset.error"
+        : scope === "security"
+          ? "securityWizard.error"
+          : "vaultTransfer.error";
   const message = error instanceof Error ? error.message : String(error);
-  if (message === "WALLET_CANNOT_SIGN") return t("vaultTransfer.error.walletCannotSign");
-  if (/user rejected|denied|cancel/i.test(message)) return t("vaultTransfer.error.rejected");
+  if (message === "WALLET_CANNOT_SIGN") return t(`${prefix}.walletCannotSign`);
+  if (
+    /user rejected|denied|cancel|WalletSignTransactionError/i.test(message) ||
+    (error instanceof Error && error.name === "WalletSignTransactionError")
+  ) {
+    return t(`${prefix}.rejected`);
+  }
   return message;
 }
 

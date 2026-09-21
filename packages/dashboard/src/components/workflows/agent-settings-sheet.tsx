@@ -17,6 +17,16 @@ import {
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { DemoBadge } from "@/components/shared/demo-badge";
+import {
+  EnableNativeAllowanceDialog,
+  type EnableNativeAllowanceTarget,
+} from "@/components/treasury/enable-native-allowance-dialog";
+import {
+  defaultMintSelection,
+  getNativeAllowanceEligibility,
+  MintSelector,
+  NativeAllowanceEnableButton,
+} from "@/components/treasury/mint-selector";
 import { VaultTransferDialog } from "@/components/treasury/vault-transfer-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -37,6 +47,7 @@ import { CeilingMeter } from "@/components/viz/ceiling-meter";
 import {
   useDashboardState,
   useDeleteResource,
+  useTreasury,
   useUpdateResource,
   useWorkflows,
 } from "@/hooks/use-dashboard";
@@ -87,6 +98,9 @@ export function AgentSettingsSheet({
   const [transfer, setTransfer] = useState<{ kind: VaultTransferKind; treasury: string } | null>(
     null,
   );
+  const [enableTarget, setEnableTarget] = useState<EnableNativeAllowanceTarget | null>(null);
+  const [selectedMint, setSelectedMint] = useState<string | null>(null);
+  const treasuryView = useTreasury(workflow.treasuryAddress);
 
   useEffect(() => {
     if (!open) return;
@@ -96,6 +110,18 @@ export function AgentSettingsSheet({
     setWallet(agent.walletAddress ?? agent.signingKey ?? "");
     setTab("overview");
   }, [open, agent]);
+
+  useEffect(() => {
+    const mints = treasuryView.data?.mints ?? [];
+    if (mints.length === 0) {
+      setSelectedMint(null);
+      return;
+    }
+    setSelectedMint((prev) => {
+      if (prev && mints.some((m) => m.mint === prev)) return prev;
+      return defaultMintSelection(mints);
+    });
+  }, [treasuryView.data?.mints]);
 
   const walletInvalid = isMalformedAddress(wallet);
   const limit = Number(dailyLimitUsd);
@@ -110,6 +136,12 @@ export function AgentSettingsSheet({
     : undefined;
   const isOwner = Boolean(walletAddress) && vault?.owner === walletAddress;
   const transferVault = transfer ? vaults.vaultByTreasury.get(transfer.treasury) : undefined;
+  const treasuryMints = treasuryView.data?.mints ?? [];
+  const selectedMintConfig = treasuryMints.find((m) => m.mint === selectedMint) ?? null;
+  const nativeEligibility = getNativeAllowanceEligibility(selectedMintConfig, {
+    isOwner,
+    walletConnected: Boolean(walletAddress),
+  });
 
   const scopedMcps = useMemo(
     () => (state.data?.mcps ?? []).filter((mcp) => appliesToAgent(mcp, agent, workflow)),
@@ -466,6 +498,71 @@ export function AgentSettingsSheet({
                         {t("treasury.withdrawOwnerOnly")}
                       </p>
                     ) : null}
+                    {treasuryMints.length > 0 && (
+                      <section className="space-y-3 rounded-lg border border-border bg-surface-card p-3">
+                        <div>
+                          <p className="text-sm font-medium text-accent">
+                            {t("agentSettings.treasury.fundingModes")}
+                          </p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {t("agentSettings.treasury.fundingModesHint")}
+                          </p>
+                        </div>
+
+                        <MintSelector
+                          mints={treasuryMints}
+                          value={selectedMint}
+                          onValueChange={setSelectedMint}
+                        />
+
+                        {nativeEligibility.reason === "nativeSol" && (
+                          <p className="rounded-lg border border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+                            {t("nativeAllowance.solVaultOnlyHint")}
+                          </p>
+                        )}
+
+                        {nativeEligibility.reason === "alreadyNative" && (
+                          <p className="text-xs text-muted-foreground">
+                            {t("nativeAllowance.activeHint")}
+                          </p>
+                        )}
+
+                        {!walletAddress ? (
+                          <p className="text-xs text-muted-foreground">
+                            {t("nativeAllowance.connectWalletHint")}
+                          </p>
+                        ) : !isOwner ? (
+                          <p className="text-xs text-muted-foreground">
+                            {t("nativeAllowance.ownerOnlyHint")}
+                          </p>
+                        ) : null}
+
+                        {isOwner && (
+                          <NativeAllowanceEnableButton
+                            disabled={!nativeEligibility.canEnable}
+                            tooltip={
+                              nativeEligibility.reason === "nativeSol"
+                                ? t("nativeAllowance.solVaultOnlyHint")
+                                : undefined
+                            }
+                            onEnable={() => {
+                              if (
+                                !nativeEligibility.canEnable ||
+                                !selectedMintConfig ||
+                                !workflow.treasuryAddress
+                              ) {
+                                return;
+                              }
+                              setEnableTarget({
+                                treasury: workflow.treasuryAddress,
+                                mint: selectedMintConfig.mint,
+                                decimals: selectedMintConfig.decimals,
+                              });
+                            }}
+                          />
+                        )}
+                      </section>
+                    )}
                     <div className="flex flex-wrap gap-2">
                       <Button variant="outline" size="sm" asChild>
                         <Link href="/treasury">{t("agentSettings.treasury.openTreasury")}</Link>
@@ -587,6 +684,7 @@ export function AgentSettingsSheet({
         rentExemptMinimum={vaults.rentExemptMinimum}
         onClose={() => setTransfer(null)}
       />
+      <EnableNativeAllowanceDialog target={enableTarget} onClose={() => setEnableTarget(null)} />
     </>
   );
 }

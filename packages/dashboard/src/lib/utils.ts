@@ -87,7 +87,7 @@ export function formatBaseUnits(
   return value.toLocaleString(locale, { maximumFractionDigits: decimals });
 }
 
-const NATIVE_MINT = "So11111111111111111111111111111111111111112";
+export const NATIVE_MINT = "So11111111111111111111111111111111111111112";
 
 /** Known mints get their ticker; anything else falls back to a short address. */
 export function mintSymbol(mint: string): string {

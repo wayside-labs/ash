@@ -5,9 +5,19 @@ import {
   decodeAgentSession,
   decodePolicy,
   decodeTreasury,
+  findAssociatedTokenAddress,
   findEventAuthorityPda,
+  findNativeFixedDelegationPda,
+  findNativeSubscriptionAuthorityPda,
   findSolVaultPda,
+  getAddAllowlistEntryInstructionAsync,
+  getAddMintInstruction,
+  getEnableNativeAllowanceInstruction,
+  getSetCeilingInstruction,
+  getUpdatePolicyInstruction,
   getWithdrawInstructionAsync,
+  loadDestinationIndex,
+  NATIVE_SUBSCRIPTIONS_PROGRAM_ADDRESS,
   POLICY_DISCRIMINATOR,
 } from "@agent-rails/sdk";
 import {
@@ -109,9 +119,12 @@ export type TreasuryView = {
   decimals: Record<string, number>;
 };
 
+export type TreasuryFundingMode = "isolatedVault" | "nativeAllowance";
+
 export type MintCeilingView = {
   mint: string;
   decimals: number;
+  fundingMode: TreasuryFundingMode;
   maxPerTx: string;
   maxShortWindow: string;
   maxLongWindow: string;
@@ -221,6 +234,8 @@ export async function readTreasury(
     mints: treasury.mints.slice(0, treasury.mintCount).map((m) => ({
       mint: m.mint,
       decimals: m.decimals,
+      // `FundingMode.NativeAllowance` is discriminant 1 in the generated client.
+      fundingMode: m.fundingMode === 1 ? "nativeAllowance" : "isolatedVault",
       maxPerTx: m.ceiling.maxPerTx.toString(),
       maxShortWindow: m.ceiling.maxShortWindow.toString(),
       maxLongWindow: m.ceiling.maxLongWindow.toString(),
@@ -493,6 +508,15 @@ export type BuiltTransaction = {
   lastValidBlockHeight: number;
 };
 
+export type EnableNativeAllowanceRequest = {
+  treasury: string;
+  /** Connected wallet — must be the on-chain owner. */
+  wallet: string;
+  mint: string;
+  amountCap: bigint;
+  expiryTs: bigint;
+};
+
 export async function buildVaultTransfer(
   cluster: SolanaCluster,
   customRpc: string | null,
@@ -523,6 +547,65 @@ export async function buildVaultTransfer(
 
   return {
     transaction: getBase64EncodedWireTransaction(compileTransaction(message)),
+    solVault,
+    lastValidBlockHeight: Number(latestBlockhash.lastValidBlockHeight),
+  };
+}
+
+export async function buildEnableNativeAllowance(
+  cluster: SolanaCluster,
+  customRpc: string | null,
+  req: EnableNativeAllowanceRequest,
+): Promise<BuiltTransaction> {
+  if (
+    !isLikelyAddress(req.treasury) ||
+    !isLikelyAddress(req.wallet) ||
+    !isLikelyAddress(req.mint)
+  ) {
+    throw new SolanaRequestError("api.error.invalidPayload");
+  }
+  if (req.amountCap <= 0n) throw new SolanaRequestError("api.error.amountMustBePositive");
+  const nowSec = BigInt(Math.floor(Date.now() / 1000));
+  if (req.expiryTs <= nowSec) throw new SolanaRequestError("api.error.expiryMustBeFuture");
+  if (req.mint === NATIVE_MINT) throw new SolanaRequestError("api.error.nativeAllowanceSplOnly");
+
+  const rpc = rpcFor(cluster, customRpc);
+  const treasuryPk = address(req.treasury);
+  const walletPk = address(req.wallet);
+  const mintPk = address(req.mint);
+
+  const treasury = await fetchTreasury(rpc, treasuryPk);
+  if (!treasury) throw new SolanaRequestError("api.error.treasuryNotFound");
+  if (treasury.owner !== walletPk) throw new SolanaRequestError("api.error.notTreasuryOwner");
+
+  const mintSlot = treasury.mints
+    .slice(0, treasury.mintCount)
+    .find((config) => config.mint === mintPk);
+  if (!mintSlot) throw new SolanaRequestError("api.error.mintNotConfigured");
+  if (mintSlot.fundingMode === 1) {
+    throw new SolanaRequestError("api.error.alreadyNativeAllowance");
+  }
+
+  const [ownerAta] = await findAssociatedTokenAddress({ owner: walletPk, mint: mintPk });
+  const ownerAtaInfo = await rpc.getAccountInfo(ownerAta, { encoding: "base64" }).send();
+  if (!ownerAtaInfo.value) throw new SolanaRequestError("api.error.ownerAtaMissing");
+
+  const { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
+  const [solVault] = await findSolVaultPda({ treasury: treasuryPk });
+
+  const { enableNativeAllowanceTx } = await import("@agent-rails/sdk");
+  const built = await enableNativeAllowanceTx({
+    owner: createNoopSigner(walletPk),
+    treasury: treasuryPk,
+    mint: mintPk,
+    ownerAta,
+    amountCap: req.amountCap,
+    expiryTs: req.expiryTs,
+    recentBlockhash: latestBlockhash,
+  });
+
+  return {
+    transaction: built.wireTransaction,
     solVault,
     lastValidBlockHeight: Number(latestBlockhash.lastValidBlockHeight),
   };
@@ -597,6 +680,382 @@ export async function confirmSignature(
   }
 
   return { signature: sig, status: "timeout" };
+}
+
+const TOKEN_2022_PROGRAM_ADDRESS = address("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb");
+const SPL_TOKEN_PROGRAM_ADDRESS = address("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
+const MINT_ACCOUNT_SIZE = 82;
+const MINT_DECIMALS_OFFSET = 44;
+const DAY_SECONDS = 86_400;
+const DESTINATION_MODE_ALLOWLIST = 1;
+
+export type AddMintRequest = {
+  treasury: string;
+  wallet: string;
+  mint: string;
+};
+
+export type ActivateSecurityPolicyRequest = {
+  treasury: string;
+  wallet: string;
+  policy: string;
+  mint: string;
+  fundingMode: TreasuryFundingMode;
+  allowanceCap?: bigint;
+  expiryTs?: bigint;
+  maxPerTransaction: bigint;
+  dailyLimit: bigint;
+  allowlist: string[];
+};
+
+type SplMintInfo = {
+  mint: Address;
+  tokenProgram: Address;
+  decimals: number;
+  vaultAta: Address;
+};
+
+async function readSplMint(rpc: Rpc, mintPk: Address, treasuryPk: Address): Promise<SplMintInfo> {
+  const { value } = await rpc.getAccountInfo(mintPk, { encoding: "base64" }).send();
+  if (!value) throw new SolanaRequestError("api.error.invalidMintAccount");
+
+  const owner = value.owner as Address;
+  if (owner !== SPL_TOKEN_PROGRAM_ADDRESS && owner !== TOKEN_2022_PROGRAM_ADDRESS) {
+    throw new SolanaRequestError("api.error.invalidMintAccount");
+  }
+
+  const data = new Uint8Array(base64.encode(value.data[0]));
+  if (data.length < MINT_ACCOUNT_SIZE) throw new SolanaRequestError("api.error.invalidMintAccount");
+
+  const decimals = data[MINT_DECIMALS_OFFSET];
+  if (decimals === undefined) throw new SolanaRequestError("api.error.invalidMintAccount");
+
+  const [vaultAta] = await findAssociatedTokenAddress({
+    owner: treasuryPk,
+    mint: mintPk,
+    tokenProgram: owner,
+  });
+
+  return { mint: mintPk, tokenProgram: owner, decimals, vaultAta };
+}
+
+function generousOwnerCeiling(decimals: number) {
+  const unit = 10n ** BigInt(decimals);
+  const perTx = 1_000_000n * unit;
+  return {
+    maxPerTx: perTx,
+    maxShortWindow: perTx * 10n,
+    maxLongWindow: perTx * 100n,
+    maxLifetime: perTx * 1_000n,
+    minShortWindowSeconds: 3_600,
+    minLongWindowSeconds: DAY_SECONDS,
+  };
+}
+
+function policyLimitsFromWizard(perTx: bigint, daily: bigint) {
+  const longWindowMax = daily * 30n;
+  const lifetimeMax = daily * 365n;
+  return {
+    perTxMax: perTx,
+    shortWindowMax: daily,
+    shortWindowSeconds: DAY_SECONDS,
+    longWindowMax: longWindowMax > daily ? longWindowMax : daily,
+    longWindowSeconds: DAY_SECONDS * 30,
+    lifetimeMax: lifetimeMax > longWindowMax ? lifetimeMax : longWindowMax,
+  };
+}
+
+function ceilingFromLimits(limits: ReturnType<typeof policyLimitsFromWizard>) {
+  return {
+    maxPerTx: limits.perTxMax,
+    maxShortWindow: limits.shortWindowMax,
+    maxLongWindow: limits.longWindowMax,
+    maxLifetime: limits.lifetimeMax,
+    minShortWindowSeconds: limits.shortWindowSeconds,
+    minLongWindowSeconds: limits.longWindowSeconds,
+  };
+}
+
+function ceilingCovers(
+  ceiling: {
+    maxPerTx: bigint;
+    maxShortWindow: bigint;
+    maxLongWindow: bigint;
+    maxLifetime: bigint;
+  },
+  limits: ReturnType<typeof policyLimitsFromWizard>,
+): boolean {
+  return (
+    ceiling.maxPerTx >= limits.perTxMax &&
+    ceiling.maxShortWindow >= limits.shortWindowMax &&
+    ceiling.maxLongWindow >= limits.longWindowMax &&
+    ceiling.maxLifetime >= limits.lifetimeMax
+  );
+}
+
+/** 32-byte NUL-padded UTF-8 label for allowlist entries. */
+function encodeAllowlistLabel(value: string): Uint8Array {
+  const bytes = new TextEncoder().encode(value.slice(0, 32));
+  const out = new Uint8Array(32);
+  out.set(bytes.slice(0, 32));
+  return out;
+}
+
+export async function buildAddMint(
+  cluster: SolanaCluster,
+  customRpc: string | null,
+  req: AddMintRequest,
+): Promise<BuiltTransaction> {
+  if (
+    !isLikelyAddress(req.treasury) ||
+    !isLikelyAddress(req.wallet) ||
+    !isLikelyAddress(req.mint)
+  ) {
+    throw new SolanaRequestError("api.error.invalidPayload");
+  }
+  if (req.mint === NATIVE_MINT) throw new SolanaRequestError("api.error.addMintSplOnly");
+
+  const rpc = rpcFor(cluster, customRpc);
+  const treasuryPk = address(req.treasury);
+  const walletPk = address(req.wallet);
+  const mintPk = address(req.mint);
+
+  const treasury = await fetchTreasury(rpc, treasuryPk);
+  if (!treasury) throw new SolanaRequestError("api.error.treasuryNotFound");
+  if (treasury.owner !== walletPk) throw new SolanaRequestError("api.error.notTreasuryOwner");
+
+  const existing = treasury.mints
+    .slice(0, treasury.mintCount)
+    .some((config) => config.mint === mintPk);
+  if (existing) throw new SolanaRequestError("api.error.mintAlreadyConfigured");
+  if (treasury.mintCount >= treasury.mints.length) {
+    throw new SolanaRequestError("api.error.treasuryMintSlotsFull");
+  }
+
+  const mintInfo = await readSplMint(rpc, mintPk, treasuryPk);
+  const [eventAuthority] = await findEventAuthorityPda();
+  const owner = createNoopSigner(walletPk);
+
+  const instruction = getAddMintInstruction({
+    owner,
+    treasury: treasuryPk,
+    mint: mintInfo.mint,
+    vaultAta: mintInfo.vaultAta,
+    tokenProgram: mintInfo.tokenProgram,
+    eventAuthority,
+    program: AGENT_RAILS_PROGRAM_ADDRESS,
+    ceiling: generousOwnerCeiling(mintInfo.decimals),
+  });
+
+  const { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
+  const [solVault] = await findSolVaultPda({ treasury: treasuryPk });
+  const message = pipe(
+    createTransactionMessage({ version: 0 }),
+    (m) => setTransactionMessageFeePayer(walletPk, m),
+    (m) => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, m),
+    (m) => appendTransactionMessageInstructions([instruction], m),
+  );
+
+  return {
+    transaction: getBase64EncodedWireTransaction(compileTransaction(message)),
+    solVault,
+    lastValidBlockHeight: Number(latestBlockhash.lastValidBlockHeight),
+  };
+}
+
+export async function buildActivateSecurityPolicy(
+  cluster: SolanaCluster,
+  customRpc: string | null,
+  req: ActivateSecurityPolicyRequest,
+): Promise<BuiltTransaction> {
+  if (
+    !isLikelyAddress(req.treasury) ||
+    !isLikelyAddress(req.wallet) ||
+    !isLikelyAddress(req.policy) ||
+    !isLikelyAddress(req.mint)
+  ) {
+    throw new SolanaRequestError("api.error.invalidPayload");
+  }
+  if (req.maxPerTransaction <= 0n || req.dailyLimit <= 0n) {
+    throw new SolanaRequestError("api.error.amountMustBePositive");
+  }
+  if (req.maxPerTransaction > req.dailyLimit) {
+    throw new SolanaRequestError("api.error.perTxExceedsDaily");
+  }
+  if (req.allowlist.length === 0) throw new SolanaRequestError("api.error.allowlistRequired");
+
+  const rpc = rpcFor(cluster, customRpc);
+  const treasuryPk = address(req.treasury);
+  const walletPk = address(req.wallet);
+  const policyPk = address(req.policy);
+  const mintPk = address(req.mint);
+  const owner = createNoopSigner(walletPk);
+
+  const treasury = await fetchTreasury(rpc, treasuryPk);
+  if (!treasury) throw new SolanaRequestError("api.error.treasuryNotFound");
+  if (treasury.owner !== walletPk && treasury.operator !== walletPk) {
+    throw new SolanaRequestError("api.error.notTreasuryOperator");
+  }
+
+  const mintSlot = treasury.mints
+    .slice(0, treasury.mintCount)
+    .find((config) => config.mint === mintPk);
+  if (!mintSlot) throw new SolanaRequestError("api.error.mintNotConfigured");
+
+  const policies = await readPolicies(rpc, treasuryPk);
+  const policy = policies.find((p) => p.address === req.policy);
+  if (!policy) throw new SolanaRequestError("api.error.noPolicyConfigured");
+
+  const wizardLimits = policyLimitsFromWizard(req.maxPerTransaction, req.dailyLimit);
+  const instructions: Instruction[] = [];
+  const [eventAuthority] = await findEventAuthorityPda();
+
+  if (!ceilingCovers(mintSlot.ceiling, wizardLimits)) {
+    instructions.push(
+      getSetCeilingInstruction({
+        owner,
+        treasury: treasuryPk,
+        eventAuthority,
+        program: AGENT_RAILS_PROGRAM_ADDRESS,
+        mint: mintPk,
+        ceiling: ceilingFromLimits(wizardLimits),
+        allowAnyDestination: treasury.allowAnyDestination,
+        allowCreateDestinationAta: treasury.allowCreateDestinationAta,
+      }),
+    );
+  }
+
+  if (req.fundingMode === "nativeAllowance") {
+    if (mintPk === address(NATIVE_MINT)) {
+      throw new SolanaRequestError("api.error.nativeAllowanceSplOnly");
+    }
+    if (mintSlot.fundingMode === 1) {
+      throw new SolanaRequestError("api.error.alreadyNativeAllowance");
+    }
+    if (!req.allowanceCap || !req.expiryTs) {
+      throw new SolanaRequestError("api.error.invalidPayload");
+    }
+    const nowSec = BigInt(Math.floor(Date.now() / 1000));
+    if (req.expiryTs <= nowSec) throw new SolanaRequestError("api.error.expiryMustBeFuture");
+
+    const [ownerAta] = await findAssociatedTokenAddress({ owner: walletPk, mint: mintPk });
+    const ownerAtaInfo = await rpc.getAccountInfo(ownerAta, { encoding: "base64" }).send();
+    if (!ownerAtaInfo.value) throw new SolanaRequestError("api.error.ownerAtaMissing");
+
+    const [subscriptionAuthority] = await findNativeSubscriptionAuthorityPda({
+      owner: walletPk,
+      mint: mintPk,
+    });
+    const [nativeDelegation] = await findNativeFixedDelegationPda({
+      subscriptionAuthority,
+      delegator: walletPk,
+      delegatee: treasuryPk,
+    });
+
+    instructions.push(
+      getEnableNativeAllowanceInstruction({
+        owner,
+        treasury: treasuryPk,
+        mint: mintPk,
+        ownerAta,
+        subscriptionAuthority,
+        nativeDelegation,
+        tokenProgram: mintSlot.tokenProgram,
+        nativeSubscriptionsProgram: NATIVE_SUBSCRIPTIONS_PROGRAM_ADDRESS,
+        eventAuthority,
+        program: AGENT_RAILS_PROGRAM_ADDRESS,
+        amountCap: req.allowanceCap,
+        expiryTs: req.expiryTs,
+      }),
+    );
+  }
+
+  // Rebuild mint limits for every configured treasury mint.
+  const configuredMints = treasury.mints.slice(0, treasury.mintCount);
+  const mintLimits = configuredMints.map((config) => {
+    const existing = policy.limits.find((limit) => limit.mint === config.mint);
+    const limits =
+      config.mint === mintPk
+        ? wizardLimits
+        : existing
+          ? {
+              perTxMax: BigInt(existing.perTxMax),
+              shortWindowMax: BigInt(existing.shortWindowMax),
+              shortWindowSeconds: existing.shortWindowSeconds,
+              longWindowMax: BigInt(existing.longWindowMax),
+              longWindowSeconds: existing.longWindowSeconds,
+              lifetimeMax: BigInt(existing.lifetimeMax),
+            }
+          : {
+              perTxMax: config.ceiling.maxPerTx,
+              shortWindowMax: config.ceiling.maxShortWindow,
+              shortWindowSeconds: config.ceiling.minShortWindowSeconds,
+              longWindowMax: config.ceiling.maxLongWindow,
+              longWindowSeconds: config.ceiling.minLongWindowSeconds,
+              lifetimeMax: config.ceiling.maxLifetime,
+            };
+    return {
+      mint: config.mint,
+      ...limits,
+    };
+  });
+
+  instructions.push(
+    getUpdatePolicyInstruction({
+      operator: owner,
+      treasury: treasuryPk,
+      policy: policyPk,
+      eventAuthority,
+      program: AGENT_RAILS_PROGRAM_ADDRESS,
+      args: {
+        mintLimits,
+        destinationMode: DESTINATION_MODE_ALLOWLIST,
+        requireMemo: policy.requireMemo,
+        createDestinationAta: false,
+      },
+    }),
+  );
+
+  const destinationIndex = await loadDestinationIndex({
+    rpc: rpc as Parameters<typeof loadDestinationIndex>[0]["rpc"],
+    policy: policyPk,
+  });
+  const existingOwners = new Set(destinationIndex.entries.map((entry) => entry.owner));
+  for (const destination of req.allowlist) {
+    const destinationPk = address(destination);
+    if (existingOwners.has(destinationPk)) continue;
+    instructions.push(
+      await getAddAllowlistEntryInstructionAsync({
+        operator: owner,
+        treasury: treasuryPk,
+        policy: policyPk,
+        eventAuthority,
+        program: AGENT_RAILS_PROGRAM_ADDRESS,
+        destinationOwner: destinationPk,
+        label: encodeAllowlistLabel(truncateAllowlistLabel(destination)),
+        perTxMaxOverride: 0n,
+      }),
+    );
+  }
+
+  const { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
+  const [solVault] = await findSolVaultPda({ treasury: treasuryPk });
+  const message = pipe(
+    createTransactionMessage({ version: 0 }),
+    (m) => setTransactionMessageFeePayer(walletPk, m),
+    (m) => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, m),
+    (m) => appendTransactionMessageInstructions(instructions, m),
+  );
+
+  return {
+    transaction: getBase64EncodedWireTransaction(compileTransaction(message)),
+    solVault,
+    lastValidBlockHeight: Number(latestBlockhash.lastValidBlockHeight),
+  };
+}
+
+function truncateAllowlistLabel(addressValue: string): string {
+  return addressValue.length > 32 ? addressValue.slice(0, 32) : addressValue;
 }
 
 export { CLUSTER_RPC_URLS };

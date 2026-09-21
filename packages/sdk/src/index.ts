@@ -11,6 +11,11 @@ export {
   resolveDestination,
 } from "./destinations.js";
 export {
+  type EnableNativeAllowanceTxParams,
+  type EnableNativeAllowanceTxResult,
+  enableNativeAllowanceTx,
+} from "./enable-native-allowance.js";
+export {
   agentRailsErrorFromCode,
   customCodeFromTransactionError,
   reasonCodeFromProgramError,
@@ -46,11 +51,15 @@ export {
   findAssociatedTokenAddress,
   findEntryPda,
   findEventAuthorityPda,
+  findNativeFixedDelegationPda,
+  findNativeSubscriptionAuthorityPda,
   findPolicyPda,
   findReceiptPda,
   findSessionPda,
   findSolVaultPda,
   findTreasuryPda,
+  NATIVE_ALLOWANCE_NONCE,
+  NATIVE_SUBSCRIPTIONS_PROGRAM_ADDRESS,
   TOKEN_PROGRAM_ADDRESS,
 } from "./pdas.js";
 export {
