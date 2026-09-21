@@ -13,7 +13,7 @@ import { useTreasury } from "@/hooks/use-dashboard";
 import { intlLocale } from "@/i18n";
 import { useTranslation } from "@/i18n/locale-provider";
 import { LAMPORTS_PER_SOL } from "@/lib/solana";
-import { formatBaseUnits, formatSol, formatWindow, truncateAddress } from "@/lib/utils";
+import { formatBaseUnits, formatSol, formatWindow, mintSymbol, truncateAddress } from "@/lib/utils";
 
 export function TreasuryDetail({
   address,
@@ -103,7 +103,7 @@ export function TreasuryDetail({
                         return (
                           <div key={limit.mint} className="grid grid-cols-2 gap-1 text-xs">
                             <span className="num col-span-2 text-faint-foreground">
-                              {truncateAddress(limit.mint, 6)}
+                              {mintSymbol(limit.mint)} · {truncateAddress(limit.mint, 6)}
                             </span>
                             <span className="text-muted-foreground">
                               {t("treasuryDetail.perTransaction")}
@@ -179,7 +179,8 @@ export function TreasuryDetail({
                               data.decimals[counter.mint],
                               intl,
                               unlimited,
-                            )}
+                            )}{" "}
+                            {mintSymbol(counter.mint)}
                           </p>
                         ))}
                       </div>

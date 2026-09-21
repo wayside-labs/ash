@@ -12,6 +12,10 @@
       "types": "./dist/constants.d.ts",
       "import": "./dist/constants.js"
     },
+    "./mints": {
+      "types": "./dist/mints.d.ts",
+      "import": "./dist/mints.js"
+    },
     "./reason-codes": {
       "types": "./dist/reason-codes.d.ts",
       "import": "./dist/reason-codes.js"

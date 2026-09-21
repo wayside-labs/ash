@@ -109,7 +109,6 @@ export function AgentSettingsSheet({
     ? vaults.vaultByTreasury.get(workflow.treasuryAddress)
     : undefined;
   const isOwner = Boolean(walletAddress) && vault?.owner === walletAddress;
-  const transferVault = transfer ? vaults.vaultByTreasury.get(transfer.treasury) : undefined;
 
   const scopedMcps = useMemo(
     () => (state.data?.mcps ?? []).filter((mcp) => appliesToAgent(mcp, agent, workflow)),
@@ -412,6 +411,13 @@ export function AgentSettingsSheet({
                   <p className={cn("num mb-1 text-2xl font-bold", moneyTone(workflow.balance))}>
                     {formatMoney(workflow.balance, hidden)}
                   </p>
+                  {workflow.assets
+                    .filter((asset) => asset.mint !== workflow.primaryMint)
+                    .map((asset) => (
+                      <p key={asset.mint} className="num mb-1 text-xs text-faint-foreground">
+                        {formatMoney(asset.money, hidden)}
+                      </p>
+                    ))}
                   {workflow.treasuryAddress ? (
                     <p className="num text-xs text-muted-foreground">
                       {truncateAddress(workflow.treasuryAddress, 8)}
@@ -581,8 +587,9 @@ export function AgentSettingsSheet({
       <VaultTransferDialog
         kind={transfer?.kind ?? null}
         treasury={transfer?.treasury ?? null}
-        solVault={transferVault?.solVault ?? null}
-        vaultLamports={transfer ? (vaults.byTreasury.get(transfer.treasury) ?? null) : null}
+        assets={workflow.assets}
+        defaultMint={workflow.primaryMint}
+        ownerTokenByMint={vaults.ownerTokenByMint}
         walletLamports={walletAddress ? (balances.byAddress.get(walletAddress) ?? null) : null}
         rentExemptMinimum={vaults.rentExemptMinimum}
         onClose={() => setTransfer(null)}

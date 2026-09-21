@@ -28,9 +28,38 @@ import type {
 
 /** Balance the UI shows: resolved from chain, or a demo figure, or unknown. */
 export type Money =
+  /** Native SOL, in whole SOL. */
   | { kind: "chain"; usd: number | null; sol: number }
+  /**
+   * An SPL / Token-2022 balance in human units. `usd` is filled only for mints
+   * we know are dollar-pegged; every other token stays `null` rather than
+   * borrowing the SOL feed's number.
+   */
+  | {
+      kind: "token";
+      usd: number | null;
+      amount: number;
+      mint: string;
+      symbol: string;
+      decimals: number;
+    }
   | { kind: "demo"; usd: number }
   | { kind: "unknown" };
+
+/** One asset a vault holds, as the UI needs it: already in human units. */
+export interface VaultAsset {
+  mint: string;
+  symbol: string;
+  decimals: number;
+  /** Base units, as a string — the amount any transaction is actually built from. */
+  raw: string;
+  amount: number;
+  money: Money;
+  vault: string;
+  exists: boolean;
+  fundingMode: "isolated-vault" | "native-allowance";
+  configured: boolean;
+}
 
 export interface Agent extends StoredAgent {
   balance: Money;
@@ -45,7 +74,18 @@ export interface Agent extends StoredAgent {
 }
 
 export interface Workflow extends StoredWorkflow {
+  /**
+   * The headline figure: the vault's stablecoin balance when the treasury has
+   * one configured, otherwise its SOL. Settlement is what an operator wants to
+   * read first; SOL is the fee balance and lives in `solBalance`.
+   */
   balance: Money;
+  /** Always the `sol_vault` balance, whatever `balance` is denominated in. */
+  solBalance: Money;
+  /** Every configured mint plus native SOL, in the order the treasury lists them. */
+  assets: VaultAsset[];
+  /** Mint `balance` is denominated in, or null for a row with no treasury. */
+  primaryMint: string | null;
   agents: Agent[];
 }
 
@@ -54,6 +94,8 @@ export interface WalletInfo {
   address: string | null;
   type: "treasury" | "agent" | "owner";
   balance: Money;
+  /** The SOL line under a vault whose headline balance is a token. */
+  secondary?: Money;
   workflowId: string;
   workflowName: string;
   agentId?: string;

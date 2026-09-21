@@ -41,7 +41,9 @@ export default function TreasuryPage() {
   );
   const toast = useToast();
 
-  const transferVault = transfer ? vaults.vaultByTreasury.get(transfer.treasury) : undefined;
+  const transferWorkflow = transfer
+    ? workflows.find((w) => w.treasuryAddress === transfer.treasury)
+    : undefined;
 
   return (
     <div>
@@ -109,13 +111,24 @@ export default function TreasuryPage() {
                 <CardContent className="space-y-4">
                   <div>
                     <p className={`num text-2xl font-bold ${moneyTone(workflow.balance)}`}>
-                      {formatMoney(workflow.balance, hidden)}
+                      {formatMoney(workflow.balance, hidden, intl)}
                     </p>
-                    {workflow.balance.kind === "chain" && workflow.balance.usd !== null && (
-                      <p className="num text-sm text-muted-foreground">
-                        {formatUsd(workflow.balance.usd, intl, hidden)}
-                      </p>
-                    )}
+                    {workflow.balance.kind !== "unknown" &&
+                      workflow.balance.kind !== "demo" &&
+                      workflow.balance.usd !== null && (
+                        <p className="num text-sm text-muted-foreground">
+                          {formatUsd(workflow.balance.usd, intl, hidden)}
+                        </p>
+                      )}
+                    {/* Every other mint the treasury holds, SOL included when it is
+                        not the headline — the fee balance is not optional context. */}
+                    {workflow.assets
+                      .filter((asset) => asset.mint !== workflow.primaryMint)
+                      .map((asset) => (
+                        <p key={asset.mint} className="num text-xs text-faint-foreground">
+                          {formatMoney(asset.money, hidden, intl)}
+                        </p>
+                      ))}
                     {workflow.treasuryAddress ? (
                       <button
                         type="button"
@@ -244,8 +257,9 @@ export default function TreasuryPage() {
       <VaultTransferDialog
         kind={transfer?.kind ?? null}
         treasury={transfer?.treasury ?? null}
-        solVault={transferVault?.solVault ?? null}
-        vaultLamports={transferVault?.lamports ?? null}
+        assets={transferWorkflow?.assets ?? []}
+        defaultMint={transferWorkflow?.primaryMint ?? null}
+        ownerTokenByMint={vaults.ownerTokenByMint}
         walletLamports={walletAddress ? (balances.byAddress.get(walletAddress) ?? null) : null}
         rentExemptMinimum={vaults.rentExemptMinimum}
         onClose={() => setTransfer(null)}

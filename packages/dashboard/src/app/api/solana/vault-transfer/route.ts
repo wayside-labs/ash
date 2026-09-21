@@ -1,3 +1,4 @@
+import { NATIVE_MINT } from "@agent-rails/contract/constants";
 import { z } from "zod";
 import { addressSchema, solanaClusterSchema } from "@/lib/schema";
 import { serverT } from "@/lib/server/i18n";
@@ -11,8 +12,10 @@ const bodySchema = z.object({
   kind: z.enum(["deposit", "withdraw"]),
   treasury: addressSchema,
   wallet: addressSchema,
-  /** Lamports as a decimal string — a u64 does not survive JSON as a number. */
-  lamports: z.string().regex(/^\d+$/),
+  /** The native sentinel when omitted, which keeps the SOL path the default. */
+  mint: addressSchema.default(NATIVE_MINT),
+  /** Base units as a decimal string — a u64 does not survive JSON as a number. */
+  amount: z.string().regex(/^\d+$/),
 });
 
 export async function POST(req: Request) {
@@ -23,13 +26,14 @@ export async function POST(req: Request) {
       { status: 422 },
     );
   }
-  const { cluster, rpc, kind, treasury, wallet, lamports } = parsed.data;
+  const { cluster, rpc, kind, treasury, wallet, mint, amount } = parsed.data;
   try {
     const built = await buildVaultTransfer(cluster, rpc, {
       kind,
       treasury,
       wallet,
-      lamports: BigInt(lamports),
+      mint,
+      amount: BigInt(amount),
     });
     return Response.json(built);
   } catch (error) {
