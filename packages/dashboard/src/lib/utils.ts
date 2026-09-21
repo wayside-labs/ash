@@ -12,8 +12,8 @@ export function truncateAddress(address: string | null | undefined, chars = 4): 
   return `${address.slice(0, chars)}…${address.slice(-chars)}`;
 }
 
-export function formatUsd(amount: number): string {
-  return new Intl.NumberFormat("pt-BR", {
+export function formatUsd(amount: number, locale = "en-US"): string {
+  return new Intl.NumberFormat(locale, {
     style: "currency",
     currency: "USD",
     minimumFractionDigits: 2,
@@ -57,12 +57,17 @@ const U64_MAX = "18446744073709551615";
  * Renders a base-unit amount using the mint's decimals. `u64::MAX` is the
  * program's "unlimited" sentinel, not a number worth printing.
  */
-export function formatBaseUnits(raw: string, decimals: number | undefined): string {
-  if (raw === U64_MAX) return "ilimitado";
+export function formatBaseUnits(
+  raw: string,
+  decimals: number | undefined,
+  locale = "en-US",
+  unlimitedLabel = "unlimited",
+): string {
+  if (raw === U64_MAX) return unlimitedLabel;
   if (decimals === undefined) return raw;
   const value = Number(raw) / 10 ** decimals;
   if (!Number.isFinite(value)) return raw;
-  return value.toLocaleString("pt-BR", { maximumFractionDigits: decimals });
+  return value.toLocaleString(locale, { maximumFractionDigits: decimals });
 }
 
 const NATIVE_MINT = "So11111111111111111111111111111111111111112";

@@ -1,5 +1,6 @@
 import { isResourceName, RESOURCE_SCHEMAS } from "@/lib/schema";
-import { maskState } from "@/lib/server/present";
+import { serverT } from "@/lib/server/i18n";
+import { MASKED_ENV_VALUE, maskState } from "@/lib/server/present";
 import { mutateState, newId } from "@/lib/server/store";
 
 export const dynamic = "force-dynamic";
@@ -9,7 +10,10 @@ type Params = { params: Promise<{ resource: string }> };
 export async function POST(req: Request, { params }: Params) {
   const { resource } = await params;
   if (!isResourceName(resource)) {
-    return Response.json({ error: `recurso desconhecido: ${resource}` }, { status: 404 });
+    return Response.json(
+      { error: await serverT("api.error.unknownResource", { resource }) },
+      { status: 404 },
+    );
   }
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
@@ -22,7 +26,7 @@ export async function POST(req: Request, { params }: Params) {
   const parsed = RESOURCE_SCHEMAS[resource].safeParse(candidate);
   if (!parsed.success) {
     return Response.json(
-      { error: "payload inválido", issues: parsed.error.issues },
+      { error: await serverT("api.error.invalidPayload"), issues: parsed.error.issues },
       { status: 422 },
     );
   }
@@ -36,8 +40,20 @@ export async function POST(req: Request, { params }: Params) {
   );
 }
 
+/** The echo of the created row is a read like any other — same mask applies. */
 function maskOne(resource: string, row: unknown) {
-  if (resource !== "apiKeys") return row;
-  const { secret: _secret, ...rest } = row as { secret: string };
-  return rest;
+  if (resource === "apiKeys") {
+    const { secret: _secret, ...rest } = row as { secret: string };
+    return rest;
+  }
+  if (resource === "mcps") {
+    const mcp = row as { env: Record<string, string> };
+    return {
+      ...mcp,
+      env: Object.fromEntries(
+        Object.entries(mcp.env).map(([key, value]) => [key, value ? MASKED_ENV_VALUE : ""]),
+      ),
+    };
+  }
+  return row;
 }

@@ -10,12 +10,12 @@ const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono-face" }
 
 export const metadata: Metadata = {
   title: "Agent Rails — Dashboard",
-  description: "Gerencie agentes de IA com pagamentos seguros na Solana",
+  description: "Manage AI agents with secure Solana payments",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR" className="dark">
+    <html lang="en" className="dark">
       <body className={`${inter.variable} ${mono.variable} font-sans antialiased`}>
         <Providers>{children}</Providers>
       </body>

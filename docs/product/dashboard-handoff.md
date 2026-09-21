@@ -34,6 +34,18 @@
 >   (0,0054 SOL) como se fosse o cofre; o dinheiro está no PDA `sol_vault`
 >   (0,2006 SOL) — 37x de diferença. Passou a resolver o vault.
 >
+> - **RAG, Harness e Integrations foram removidas** — páginas e entradas de
+>   navegação. Nenhuma tinha backend por trás, e uma entrada na sidebar é uma
+>   promessa. As coleções `rag` e `integrations` seguem no schema para que um
+>   `dashboard.json` existente continue a fazer parse; nada as semeia nem as
+>   renderiza. As subseções RAG, Integrations e Harness da §12 (spec UX) ficam
+>   como registro do desenho original.
+> - **Editar workflow e agente.** Antes só era possível criar e remover:
+>   `EditWorkflowDialog` e `EditAgentDialog` agora fazem `PATCH` nas rotas
+>   genéricas `/api/state/[resource]/[id]`, e o estado devolvido entra direto no
+>   cache do TanStack Query — a lista rerenderiza sem refetch. Endereços passam
+>   por validação base58 antes do submit, nos dialogs de criar e de editar.
+>
 > As seções 5, 6, 11, 15 e 18 foram atualizadas. O restante permanece como registro
 > do desenho original e do raciocínio de produto.
 
@@ -145,13 +157,10 @@ packages/dashboard/
     │       ├── agents/page.tsx
     │       ├── wallets/page.tsx
     │       ├── mcps/page.tsx
-    │       ├── rag/page.tsx
     │       ├── skills/page.tsx
     │       ├── apis/page.tsx
     │       ├── treasury/page.tsx
     │       ├── limits/page.tsx
-    │       ├── integrations/page.tsx
-    │       ├── harness/page.tsx
     │       ├── account/page.tsx
     │       ├── profile/page.tsx
     │       └── settings/page.tsx
@@ -194,18 +203,15 @@ packages/dashboard/
 
 | Rota | Dados | Ações funcionais |
 |---|---|---|
-| `/` | store + RPC | chat com streaming, criar workflow/agente |
-| `/workflows` | store + RPC | criar/remover workflow, adicionar agente, scroll |
-| `/agents` | store + RPC | criar, pausar/ativar, remover |
+| `/` | store + RPC | chat com streaming, criar e editar workflow/agente |
+| `/workflows` | store + RPC | criar/editar/remover workflow, adicionar e editar agente, scroll |
+| `/agents` | store + RPC | criar, editar, pausar/ativar, remover |
 | `/wallets` | store + RPC | copiar endereço, abrir no explorer, saldo SOL real |
 | `/treasury` | store + RPC | ler Treasury/Policy/Session on-chain, copiar, explorer |
 | `/limits` | store | barras por agente, marca on-chain vs só-dashboard |
 | `/mcps` | store | criar, alternar (persiste), remover |
-| `/rag` | store | adicionar documento, remover |
 | `/skills` | store | criar, alternar (persiste), remover, abas por escopo |
 | `/apis` | store | salvar chave no servidor, mostrar máscara, remover |
-| `/integrations` | store + zustand | alternar conexão (persiste), trocar modo |
-| `/harness` | store | iniciar/parar, diálogo de logs |
 | `/account` | zustand | conectar/desconectar carteira |
 | `/profile` | store | editar e salvar perfil |
 | `/settings` | store + zustand | testar RPC, exportar, restaurar padrões, preferências |
@@ -253,10 +259,12 @@ Arquivo: `src/components/layout/sidebar.tsx` — collapse mobile, footer com mod
 |---|---|
 | Depositar / Sacar | construir e assinar a transação no navegador |
 | Criar treasury pela UI | hoje via `pnpm agent-rails init` |
-| Indexação de RAG | pipeline de embeddings; documentos ficam `indexing` |
-| Runtime do Harness | API Docker para start/stop e logs |
 | Login Google / email | provedor de identidade com sessão no servidor |
 | Preço em USD | não há oráculo ligado; saldos aparecem em SOL |
+
+RAG e Harness saíram desta tabela porque saíram da UI: em vez de uma página que
+diz "ainda não existe", não há página. Voltam quando houver pipeline de embeddings
+e runtime Docker por trás.
 
 ## 7. Modelo de dados (types)
 

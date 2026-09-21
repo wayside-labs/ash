@@ -25,10 +25,12 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { useCreateResource, useDashboardState, useDeleteResource } from "@/hooks/use-dashboard";
+import { useTranslation } from "@/i18n/locale-provider";
 
-const PROVIDERS = ["Anthropic", "OpenAI", "Helius", "Outro"];
+const PROVIDERS = ["Anthropic", "OpenAI", "Helius", "Other"];
 
 export default function ApisPage() {
+  const { t } = useTranslation();
   const { data, isLoading } = useDashboardState();
   const create = useCreateResource("apiKeys");
   const remove = useDeleteResource("apiKeys");
@@ -40,27 +42,29 @@ export default function ApisPage() {
 
   const keys = data?.apiKeys ?? [];
 
+  const providerLabel = (p: string) => (p === "Other" ? t("apis.provider.other") : p);
+
   const submit = async () => {
     if (!secret.trim()) return;
     try {
       await create.mutateAsync({ provider, secret: secret.trim() });
-      toast(`Chave ${provider} salva no servidor.`);
+      toast(t("apis.keySaved", { provider: provider ?? "" }));
       setSecret("");
       setOpen(false);
     } catch (error) {
-      toast(error instanceof Error ? error.message : "Falha ao salvar", "error");
+      toast(error instanceof Error ? error.message : t("common.failedToSave"), "error");
     }
   };
 
   return (
     <div>
       <PageHeader
-        title="My APIs"
-        description="Chaves de API dos provedores de IA"
+        title={t("apis.title")}
+        description={t("apis.description")}
         action={
           <Button onClick={() => setOpen(true)}>
             <Plus className="h-4 w-4" />
-            Adicionar provedor
+            {t("apis.addProvider")}
           </Button>
         }
       />
@@ -69,11 +73,8 @@ export default function ApisPage() {
         <CardContent className="flex items-start gap-3 p-4">
           <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
           <div className="text-sm">
-            <p className="font-medium">As chaves ficam no servidor</p>
-            <p className="text-muted-foreground">
-              O valor completo nunca é enviado de volta ao navegador — a API só devolve uma máscara.
-              Uma chave Anthropic aqui liga o chat aos seus dados reais.
-            </p>
+            <p className="font-medium">{t("apis.securityTitle")}</p>
+            <p className="text-muted-foreground">{t("apis.securityDescription")}</p>
           </div>
         </CardContent>
       </Card>
@@ -81,14 +82,14 @@ export default function ApisPage() {
       {isLoading ? (
         <div className="flex items-center gap-2 py-12 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
-          Carregando…
+          {t("common.loading")}
         </div>
       ) : keys.length === 0 ? (
         <EmptyState
           icon={KeyRound}
-          title="Nenhuma chave configurada"
-          description="Sem chave, o chat responde em modo demonstração."
-          action={{ label: "Adicionar chave", onClick: () => setOpen(true) }}
+          title={t("apis.emptyTitle")}
+          description={t("apis.emptyDescription")}
+          action={{ label: t("apis.addKey"), onClick: () => setOpen(true) }}
         />
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
@@ -99,12 +100,14 @@ export default function ApisPage() {
                   <CardTitle>{api.provider}</CardTitle>
                   <div className="flex items-center gap-2">
                     <Badge variant={api.status === "connected" ? "success" : "secondary"}>
-                      {api.status === "connected" ? "conectado" : "vazio"}
+                      {api.status === "connected"
+                        ? t("apis.status.connected")
+                        : t("apis.status.empty")}
                     </Badge>
                     <Button
                       variant="ghost"
                       size="icon"
-                      aria-label={`Remover chave ${api.provider}`}
+                      aria-label={t("apis.aria.removeKey", { provider: api.provider })}
                       onClick={() => remove.mutate(api.id)}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -113,7 +116,9 @@ export default function ApisPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <Label className="mb-2 block text-xs text-muted-foreground">KEY</Label>
+                <Label className="mb-2 block text-xs text-muted-foreground">
+                  {t("common.key")}
+                </Label>
                 <div className="flex gap-2">
                   <Input
                     type={visible[api.id] ? "text" : "password"}
@@ -124,15 +129,13 @@ export default function ApisPage() {
                   <Button
                     variant="outline"
                     size="icon"
-                    aria-label={visible[api.id] ? "Ocultar" : "Mostrar"}
+                    aria-label={visible[api.id] ? t("common.hide") : t("common.show")}
                     onClick={() => setVisible((v) => ({ ...v, [api.id]: !v[api.id] }))}
                   >
                     {visible[api.id] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </Button>
                 </div>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Mesmo revelado, isto é a máscara — o valor real não sai do servidor.
-                </p>
+                <p className="mt-2 text-xs text-muted-foreground">{t("apis.maskNote")}</p>
               </CardContent>
             </Card>
           ))}
@@ -142,15 +145,12 @@ export default function ApisPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Adicionar chave de API</DialogTitle>
-            <DialogDescription>
-              A chave é gravada em ~/.agent-rails/dashboard.json com permissão 600 e nunca volta
-              inteira para o navegador.
-            </DialogDescription>
+            <DialogTitle>{t("apis.dialog.title")}</DialogTitle>
+            <DialogDescription>{t("apis.dialog.description")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Provedor</Label>
+              <Label>{t("common.provider")}</Label>
               <Select value={provider} onValueChange={setProvider}>
                 <SelectTrigger>
                   <SelectValue />
@@ -158,14 +158,14 @@ export default function ApisPage() {
                 <SelectContent>
                   {PROVIDERS.map((p) => (
                     <SelectItem key={p} value={p}>
-                      {p}
+                      {providerLabel(p)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="api-secret">Chave</Label>
+              <Label htmlFor="api-secret">{t("common.key")}</Label>
               <Input
                 id="api-secret"
                 type="password"
@@ -178,10 +178,10 @@ export default function ApisPage() {
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setOpen(false)}>
-              Cancelar
+              {t("common.cancel")}
             </Button>
             <Button onClick={submit} disabled={!secret.trim() || create.isPending}>
-              Salvar
+              {t("common.save")}
             </Button>
           </div>
         </DialogContent>

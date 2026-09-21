@@ -7,27 +7,29 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/components/ui/toast";
 import { ConnectButton } from "@/components/wallet/connect-button";
+import { useTranslation } from "@/i18n/locale-provider";
 import { truncateAddress } from "@/lib/utils";
 import { useAppStore } from "@/stores/app-store";
 
 export default function AccountPage() {
+  const { t } = useTranslation();
   const { walletAddress, walletName, setWallet } = useAppStore();
   const toast = useToast();
 
   return (
     <div>
-      <PageHeader title="Account" description="Como você se identifica neste dashboard" />
+      <PageHeader title={t("account.title")} description={t("account.description")} />
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Identidade</CardTitle>
+            <CardTitle>{t("account.identity")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {walletAddress ? (
               <div className="space-y-3">
                 <div>
-                  <p className="text-xs text-muted-foreground">Carteira conectada</p>
+                  <p className="text-xs text-muted-foreground">{t("account.connectedWallet")}</p>
                   <p className="num text-sm">{truncateAddress(walletAddress, 8)}</p>
                   {walletName && <p className="text-xs text-muted-foreground">{walletName}</p>}
                 </div>
@@ -36,18 +38,16 @@ export default function AccountPage() {
                   size="sm"
                   onClick={() => {
                     setWallet(null);
-                    toast("Carteira desconectada.");
+                    toast(t("common.walletDisconnected"));
                   }}
                 >
                   <LogOut className="h-3.5 w-3.5" />
-                  Desconectar
+                  {t("common.disconnect")}
                 </Button>
               </div>
             ) : (
               <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  Sua carteira é a identidade deste dashboard. Nada aqui exige senha.
-                </p>
+                <p className="text-sm text-muted-foreground">{t("account.noWalletHint")}</p>
                 <ConnectButton />
               </div>
             )}
@@ -56,22 +56,17 @@ export default function AccountPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Login por email e Google</CardTitle>
+            <CardTitle>{t("account.emailGoogleTitle")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/40 p-3">
               <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">
-                Ainda não existe. O botão anterior apenas gravava um email fixo no navegador, o que
-                dava a impressão de uma sessão que nunca houve — por isso foi removido em vez de
-                mantido como enfeite.
+                {t("account.emailGoogleNotImplemented")}
               </p>
             </div>
             <Separator />
-            <p className="text-xs text-muted-foreground">
-              Para autenticação real, o caminho é um provedor de identidade (NextAuth ou Privy) com
-              sessão no servidor. Enquanto isso, a carteira conectada cumpre o papel.
-            </p>
+            <p className="text-xs text-muted-foreground">{t("account.authFutureNote")}</p>
           </CardContent>
         </Card>
       </div>

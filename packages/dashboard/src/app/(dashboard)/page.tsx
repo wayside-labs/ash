@@ -8,8 +8,10 @@ import { Button } from "@/components/ui/button";
 import { CreateAgentDialog, CreateWorkflowDialog } from "@/components/workflows/workflow-dialogs";
 import { WorkflowRow } from "@/components/workflows/workflow-row";
 import { useWorkflows } from "@/hooks/use-dashboard";
+import { useTranslation } from "@/i18n/locale-provider";
 
 export default function HomePage() {
+  const { t } = useTranslation();
   const { workflows, isLoading } = useWorkflows();
   const [workflowDialog, setWorkflowDialog] = useState(false);
   const [agentDialog, setAgentDialog] = useState<string | null>(null);
@@ -22,24 +24,24 @@ export default function HomePage() {
 
       <div className="flex-1 overflow-y-auto">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Seus Workflows</h2>
+          <h2 className="text-lg font-semibold">{t("home.workflowsTitle")}</h2>
           <Button size="sm" onClick={() => setWorkflowDialog(true)}>
             <Plus className="h-3.5 w-3.5" />
-            Novo
+            {t("home.newButton")}
           </Button>
         </div>
 
         {isLoading ? (
           <div className="flex items-center gap-2 py-12 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Carregando…
+            {t("common.loading")}
           </div>
         ) : workflows.length === 0 ? (
           <EmptyState
             icon={Zap}
-            title="Nenhum workflow ainda"
-            description="Crie o primeiro workflow para agrupar agentes em torno de um cofre."
-            action={{ label: "Criar workflow", onClick: () => setWorkflowDialog(true) }}
+            title={t("home.emptyTitle")}
+            description={t("home.emptyDescription")}
+            action={{ label: t("home.createWorkflow"), onClick: () => setWorkflowDialog(true) }}
           />
         ) : (
           workflows.map((workflow) => (

@@ -2,25 +2,22 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslation } from "@/i18n/locale-provider";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/stores/app-store";
-import { navGroups } from "./nav-items";
+import { navGroupDefs } from "./nav-items";
 
 export function Sidebar() {
   const pathname = usePathname();
   const { sidebarCollapsed, setSidebarCollapsed, operationMode } = useAppStore();
+  const { t } = useTranslation();
 
   return (
     <>
-      {/*
-       * Below lg the aside is a fixed drawer, so the backdrop belongs to the
-       * OPEN state. It was keyed to the collapsed state, which meant the drawer
-       * sat over the page with nothing to dismiss it on a narrow viewport.
-       */}
       {!sidebarCollapsed && (
         <button
           type="button"
-          aria-label="Fechar menu"
+          aria-label={t("header.closeMenu")}
           className="fixed inset-0 z-40 bg-black/60 lg:hidden"
           onClick={() => setSidebarCollapsed(true)}
         />
@@ -34,16 +31,16 @@ export function Sidebar() {
       >
         <div className="flex h-14 items-center border-b border-sidebar-border px-4">
           <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-subtle-foreground">
-            Menu
+            {t("common.menu")}
           </span>
         </div>
 
         <nav className="flex-1 space-y-4 overflow-y-auto p-2">
-          {navGroups.map((group, index) => (
-            <div key={group.label ?? `group-${index}`}>
-              {group.label && (
+          {navGroupDefs.map((group, index) => (
+            <div key={group.labelKey ?? `group-${index}`}>
+              {group.labelKey && (
                 <p className="px-3 pb-1.5 pt-1 text-[10px] font-medium uppercase tracking-[0.14em] text-faint-foreground">
-                  {group.label}
+                  {t(group.labelKey)}
                 </p>
               )}
               <ul className="space-y-0.5">
@@ -63,7 +60,6 @@ export function Sidebar() {
                             : "text-muted-foreground hover:bg-elevated/60 hover:text-foreground",
                         )}
                       >
-                        {/* A 2px rail beats a filled pill for marking place. */}
                         {isActive && (
                           <span
                             className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-primary"
@@ -71,7 +67,7 @@ export function Sidebar() {
                           />
                         )}
                         <Icon className="h-4 w-4 shrink-0" />
-                        {item.label}
+                        {t(item.labelKey)}
                       </Link>
                     </li>
                   );
@@ -82,7 +78,7 @@ export function Sidebar() {
         </nav>
 
         <div className="border-t border-sidebar-border p-3">
-          <p className="text-[11px] text-faint-foreground">Modo</p>
+          <p className="text-[11px] text-faint-foreground">{t("common.mode")}</p>
           <p className="flex items-center gap-1.5 text-xs text-foreground">
             <span
               className={cn(
@@ -91,7 +87,7 @@ export function Sidebar() {
               )}
               aria-hidden
             />
-            {operationMode === "native" ? "Solana Nativo" : "Agent Rails Vault"}
+            {operationMode === "native" ? t("mode.native") : t("mode.agentRails")}
           </p>
         </div>
       </aside>

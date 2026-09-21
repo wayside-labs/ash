@@ -20,11 +20,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/toast";
 import { CreateWorkflowDialog } from "@/components/workflows/workflow-dialogs";
 import { useWorkflows } from "@/hooks/use-dashboard";
+import { useTranslation } from "@/i18n/locale-provider";
 import { explorerUrl } from "@/lib/solana";
 import { copyToClipboard, formatMoney, moneyTone, truncateAddress } from "@/lib/utils";
 import { useAppStore } from "@/stores/app-store";
 
 export default function TreasuryPage() {
+  const { t } = useTranslation();
   const { workflows, isLoading, balances, vaults } = useWorkflows();
   const { cluster } = useAppStore();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -34,14 +36,14 @@ export default function TreasuryPage() {
   return (
     <div>
       <PageHeader
-        title="Treasury"
-        description="Cofres e fundos de cada workflow"
+        title={t("treasury.title")}
+        description={t("treasury.description")}
         action={
           <div className="flex gap-2">
             <Button
               variant="outline"
               size="icon"
-              aria-label="Atualizar saldos"
+              aria-label={t("treasury.aria.refreshBalances")}
               onClick={() => {
                 balances.refetch();
                 vaults.refetch();
@@ -56,7 +58,7 @@ export default function TreasuryPage() {
             </Button>
             <Button onClick={() => setDialogOpen(true)}>
               <Plus className="h-4 w-4" />
-              Novo Cofre
+              {t("treasury.newVault")}
             </Button>
           </div>
         }
@@ -65,14 +67,14 @@ export default function TreasuryPage() {
       {isLoading ? (
         <div className="flex items-center gap-2 py-12 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
-          Carregando…
+          {t("common.loading")}
         </div>
       ) : workflows.length === 0 ? (
         <EmptyState
           icon={Wallet}
-          title="Nenhum cofre"
-          description="Cada workflow tem um cofre. Crie um workflow para começar."
-          action={{ label: "Criar workflow", onClick: () => setDialogOpen(true) }}
+          title={t("treasury.emptyTitle")}
+          description={t("treasury.emptyDescription")}
+          action={{ label: t("treasury.createWorkflow"), onClick: () => setDialogOpen(true) }}
         />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -99,7 +101,7 @@ export default function TreasuryPage() {
                       onClick={async () => {
                         const ok = await copyToClipboard(workflow.treasuryAddress as string);
                         toast(
-                          ok ? "Endereço copiado." : "Não foi possível copiar.",
+                          ok ? t("common.addressCopied") : t("common.couldNotCopy"),
                           ok ? "success" : "error",
                         );
                       }}
@@ -108,7 +110,7 @@ export default function TreasuryPage() {
                     </button>
                   ) : (
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Sem treasury on-chain conectada
+                      {t("treasury.noTreasuryConnected")}
                     </p>
                   )}
                 </div>
@@ -121,9 +123,14 @@ export default function TreasuryPage() {
                       className="flex-1"
                       onClick={() => setDetail(workflow.treasuryAddress)}
                     >
-                      Ver política e sessões
+                      {t("treasury.viewPolicySessions")}
                     </Button>
-                    <Button variant="ghost" size="icon" asChild aria-label="Abrir no explorer">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      asChild
+                      aria-label={t("treasury.aria.openInExplorer")}
+                    >
                       <a
                         href={explorerUrl(workflow.treasuryAddress, cluster)}
                         target="_blank"
@@ -135,28 +142,27 @@ export default function TreasuryPage() {
                   </div>
                 ) : (
                   <div className="space-y-2 rounded-lg border border-dashed border-border p-3">
-                    <p className="text-xs text-muted-foreground">
-                      Depositar e sacar movem fundos reais e exigem a assinatura do dono. Crie a
-                      treasury pelo CLI e conecte o endereço a este workflow:
-                    </p>
+                    <p className="text-xs text-muted-foreground">{t("treasury.setupHint")}</p>
                     <code className="block rounded bg-muted px-2 py-1 text-[11px] text-foreground">
                       pnpm agent-rails init --rpc &lt;url&gt;
                     </code>
                     <div className="flex gap-2 opacity-50">
                       <Button variant="outline" size="sm" className="flex-1" disabled>
                         <ArrowDownLeft className="h-3.5 w-3.5" />
-                        Depositar
+                        {t("common.deposit")}
                       </Button>
                       <Button variant="outline" size="sm" className="flex-1" disabled>
                         <ArrowUpRight className="h-3.5 w-3.5" />
-                        Sacar
+                        {t("common.withdraw")}
                       </Button>
                     </div>
                   </div>
                 )}
 
                 <p className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Badge variant="outline">{workflow.agents.length} agentes</Badge>
+                  <Badge variant="outline">
+                    {t("common.agentsCount", { count: workflow.agents.length })}
+                  </Badge>
                   <Badge variant="outline">{workflow.cluster}</Badge>
                 </p>
               </CardContent>

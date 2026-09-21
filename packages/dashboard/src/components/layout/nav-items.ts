@@ -4,65 +4,60 @@ import {
   Brain,
   Cable,
   CreditCard,
-  FileText,
   Gauge,
   Home,
   Key,
-  Link2,
   Settings,
   User,
   Wallet,
-  Wrench,
   Zap,
 } from "lucide-react";
 
 /**
- * Fifteen flat entries read as a list, not a navigation. Grouped by what the
- * reader is trying to do: run the operation, follow the money, configure the
- * tooling, manage themselves.
+ * Flat entries read as a list, not a navigation. Grouped by what the reader is
+ * trying to do: run the operation, follow the money, configure the tooling,
+ * manage themselves.
+ *
+ * RAG, Harness and Integrations were pruned along with their pages: none of the
+ * three had backend infrastructure behind it, and a nav entry is a promise.
  */
-export type NavItem = { href: string; label: string; icon: LucideIcon };
-export type NavGroup = { label: string | null; items: NavItem[] };
+export type NavItemDef = { href: string; labelKey: string; icon: LucideIcon };
+export type NavGroupDef = { labelKey: string | null; items: NavItemDef[] };
 
-export const navGroups: NavGroup[] = [
+export const navGroupDefs: NavGroupDef[] = [
   {
-    label: null,
-    items: [{ href: "/", label: "Home", icon: Home }],
+    labelKey: null,
+    items: [{ href: "/", labelKey: "nav.home", icon: Home }],
   },
   {
-    label: "Operação",
+    labelKey: "nav.operation",
     items: [
-      { href: "/workflows", label: "Workflows", icon: Zap },
-      { href: "/agents", label: "Agents", icon: Bot },
-      { href: "/harness", label: "Harness", icon: Wrench },
+      { href: "/workflows", labelKey: "nav.workflows", icon: Zap },
+      { href: "/agents", labelKey: "nav.agents", icon: Bot },
     ],
   },
   {
-    label: "Dinheiro",
+    labelKey: "nav.money",
     items: [
-      { href: "/treasury", label: "Treasury", icon: CreditCard },
-      { href: "/limits", label: "Limits", icon: Gauge },
-      { href: "/wallets", label: "Wallets", icon: Wallet },
+      { href: "/treasury", labelKey: "nav.treasury", icon: CreditCard },
+      { href: "/limits", labelKey: "nav.limits", icon: Gauge },
+      { href: "/wallets", labelKey: "nav.wallets", icon: Wallet },
     ],
   },
   {
-    label: "Ferramentas",
+    labelKey: "nav.tools",
     items: [
-      { href: "/mcps", label: "MCPs", icon: Cable },
-      { href: "/skills", label: "Skills", icon: Brain },
-      { href: "/rag", label: "RAG", icon: FileText },
-      { href: "/apis", label: "My APIs", icon: Key },
-      { href: "/integrations", label: "Integrações", icon: Link2 },
+      { href: "/mcps", labelKey: "nav.mcps", icon: Cable },
+      { href: "/skills", labelKey: "nav.skills", icon: Brain },
+      { href: "/apis", labelKey: "nav.apis", icon: Key },
     ],
   },
   {
-    label: "Conta",
+    labelKey: "nav.account",
     items: [
-      { href: "/account", label: "Account", icon: User },
-      { href: "/profile", label: "Profile", icon: Settings },
-      { href: "/settings", label: "Settings", icon: Settings },
+      { href: "/account", labelKey: "nav.account", icon: User },
+      { href: "/profile", labelKey: "nav.profile", icon: Settings },
+      { href: "/settings", labelKey: "nav.settings", icon: Settings },
     ],
   },
 ];
-
-export const navItems: NavItem[] = navGroups.flatMap((group) => group.items);

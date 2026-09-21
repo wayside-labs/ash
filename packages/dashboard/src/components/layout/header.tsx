@@ -11,14 +11,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ConnectButton } from "@/components/wallet/connect-button";
+import { useTranslation } from "@/i18n/locale-provider";
 import { CLUSTER_LABELS } from "@/lib/solana";
 import type { OperationMode, SolanaCluster } from "@/lib/types";
 import { useAppStore } from "@/stores/app-store";
 
-/**
- * Mainnet is the only one where a mistake costs real money, so it is the only
- * one that gets an alarming colour. Devnet and testnet stay quiet.
- */
 const clusterVariants: Record<SolanaCluster, "secondary" | "outline" | "destructive"> = {
   devnet: "outline",
   testnet: "secondary",
@@ -35,6 +32,7 @@ export function Header() {
     setOperationMode,
     setSidebarCollapsed,
   } = useAppStore();
+  const { t } = useTranslation();
 
   return (
     <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-border bg-card/50 px-4 backdrop-blur-sm">
@@ -50,7 +48,7 @@ export function Header() {
 
         <div className="flex items-center gap-2">
           <Shield className="h-5 w-5 text-primary" />
-          <span className="hidden font-semibold sm:inline">Agent Rails</span>
+          <span className="hidden font-semibold sm:inline">{t("header.brand")}</span>
         </div>
       </div>
 
@@ -62,9 +60,9 @@ export function Header() {
             </Badge>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="devnet">Devnet</SelectItem>
-            <SelectItem value="testnet">Testnet</SelectItem>
-            <SelectItem value="mainnet-beta">Mainnet</SelectItem>
+            <SelectItem value="devnet">{CLUSTER_LABELS.devnet}</SelectItem>
+            <SelectItem value="testnet">{CLUSTER_LABELS.testnet}</SelectItem>
+            <SelectItem value="mainnet-beta">{CLUSTER_LABELS["mainnet-beta"]}</SelectItem>
           </SelectContent>
         </Select>
 
@@ -73,8 +71,8 @@ export function Header() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="native">Solana Nativo</SelectItem>
-            <SelectItem value="agent-rails">Agent Rails Vault</SelectItem>
+            <SelectItem value="native">{t("mode.native")}</SelectItem>
+            <SelectItem value="agent-rails">{t("mode.agentRails")}</SelectItem>
           </SelectContent>
         </Select>
 

@@ -10,14 +10,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useTreasury } from "@/hooks/use-dashboard";
+import { intlLocale } from "@/i18n";
+import { useTranslation } from "@/i18n/locale-provider";
 import { LAMPORTS_PER_SOL } from "@/lib/solana";
 import { formatBaseUnits, formatSol, formatWindow, truncateAddress } from "@/lib/utils";
 
-/**
- * Everything here is decoded straight from the Treasury, Policy and
- * AgentSession accounts — the window into what the program actually enforces,
- * as opposed to the dashboard's own labels.
- */
 export function TreasuryDetail({
   address,
   onClose,
@@ -25,13 +22,16 @@ export function TreasuryDetail({
   address: string | null;
   onClose: () => void;
 }) {
+  const { t, locale } = useTranslation();
   const { data, isLoading, error } = useTreasury(address);
+  const intl = intlLocale(locale);
+  const unlimited = t("common.unlimited");
 
   return (
     <Dialog open={address !== null} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Cofre on-chain</DialogTitle>
+          <DialogTitle>{t("treasuryDetail.title")}</DialogTitle>
           <DialogDescription className="num text-xs">
             {truncateAddress(address, 8)}
           </DialogDescription>
@@ -40,14 +40,14 @@ export function TreasuryDetail({
         {isLoading && (
           <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Lendo a conta na rede…
+            {t("treasuryDetail.loading")}
           </div>
         )}
 
         {error && (
           <div className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
-            <span>{error instanceof Error ? error.message : "Falha na leitura"}</span>
+            <span>{error instanceof Error ? error.message : t("common.readFailed")}</span>
           </div>
         )}
 
@@ -55,31 +55,48 @@ export function TreasuryDetail({
           <div className="space-y-5 text-sm">
             <div className="grid grid-cols-2 gap-3">
               <Field
-                label="Saldo do cofre (SOL)"
+                label={t("treasuryDetail.vaultBalanceSol")}
                 value={formatSol(data.solVaultLamports / LAMPORTS_PER_SOL)}
               />
               <Field
-                label="Estado"
-                value={data.paused ? "Pausado" : "Ativo"}
+                label={t("treasuryDetail.status")}
+                value={
+                  data.paused ? t("treasuryDetail.statusPaused") : t("treasuryDetail.statusActive")
+                }
                 tone={data.paused ? "warning" : "success"}
               />
-              <Field label="Dono" value={truncateAddress(data.owner, 6)} mono />
-              <Field label="Operador" value={truncateAddress(data.operator, 6)} mono />
-              <Field label="Sessões ativas" value={String(data.activeSessions)} />
-              <Field label="Políticas" value={String(data.policyCount)} />
+              <Field
+                label={t("treasuryDetail.owner")}
+                value={truncateAddress(data.owner, 6)}
+                mono
+              />
+              <Field
+                label={t("treasuryDetail.operator")}
+                value={truncateAddress(data.operator, 6)}
+                mono
+              />
+              <Field
+                label={t("treasuryDetail.activeSessions")}
+                value={String(data.activeSessions)}
+              />
+              <Field label={t("treasuryDetail.policies")} value={String(data.policyCount)} />
             </div>
 
             <section>
-              <h3 className="mb-2 text-sm font-medium">Políticas</h3>
+              <h3 className="mb-2 text-sm font-medium">{t("treasuryDetail.policies")}</h3>
               {data.policies.length === 0 ? (
-                <p className="text-xs text-muted-foreground">Nenhuma política aberta.</p>
+                <p className="text-xs text-muted-foreground">
+                  {t("treasuryDetail.noOpenPolicies")}
+                </p>
               ) : (
                 <div className="space-y-3">
                   {data.policies.map((policy) => (
                     <div key={policy.address} className="rounded-lg border border-border p-3">
                       <div className="mb-2 flex items-center gap-2">
-                        <span className="font-medium">{policy.name || "(sem nome)"}</span>
-                        {policy.requireMemo && <Badge variant="outline">memo obrigatório</Badge>}
+                        <span className="font-medium">{policy.name || t("common.unnamed")}</span>
+                        {policy.requireMemo && (
+                          <Badge variant="outline">{t("treasuryDetail.memoRequired")}</Badge>
+                        )}
                       </div>
                       {policy.limits.map((limit) => {
                         const dec = data.decimals[limit.mint];
@@ -88,25 +105,33 @@ export function TreasuryDetail({
                             <span className="num col-span-2 text-faint-foreground">
                               {truncateAddress(limit.mint, 6)}
                             </span>
-                            <span className="text-muted-foreground">Por transação</span>
+                            <span className="text-muted-foreground">
+                              {t("treasuryDetail.perTransaction")}
+                            </span>
                             <span className="num num-col text-right">
-                              {formatBaseUnits(limit.perTxMax, dec)}
+                              {formatBaseUnits(limit.perTxMax, dec, intl, unlimited)}
                             </span>
                             <span className="text-muted-foreground">
-                              Janela curta ({formatWindow(limit.shortWindowSeconds)})
+                              {t("treasuryDetail.shortWindow", {
+                                window: formatWindow(limit.shortWindowSeconds),
+                              })}
                             </span>
                             <span className="num num-col text-right">
-                              {formatBaseUnits(limit.shortWindowMax, dec)}
+                              {formatBaseUnits(limit.shortWindowMax, dec, intl, unlimited)}
                             </span>
                             <span className="text-muted-foreground">
-                              Janela longa ({formatWindow(limit.longWindowSeconds)})
+                              {t("treasuryDetail.longWindow", {
+                                window: formatWindow(limit.longWindowSeconds),
+                              })}
                             </span>
                             <span className="num num-col text-right">
-                              {formatBaseUnits(limit.longWindowMax, dec)}
+                              {formatBaseUnits(limit.longWindowMax, dec, intl, unlimited)}
                             </span>
-                            <span className="text-muted-foreground">Vida da sessão</span>
+                            <span className="text-muted-foreground">
+                              {t("treasuryDetail.sessionLifetime")}
+                            </span>
                             <span className="num num-col text-right">
-                              {formatBaseUnits(limit.lifetimeMax, dec)}
+                              {formatBaseUnits(limit.lifetimeMax, dec, intl, unlimited)}
                             </span>
                           </div>
                         );
@@ -118,9 +143,9 @@ export function TreasuryDetail({
             </section>
 
             <section>
-              <h3 className="mb-2 text-sm font-medium">Sessões</h3>
+              <h3 className="mb-2 text-sm font-medium">{t("treasuryDetail.sessionsSection")}</h3>
               {data.sessions.length === 0 ? (
-                <p className="text-xs text-muted-foreground">Nenhuma sessão nesta treasury.</p>
+                <p className="text-xs text-muted-foreground">{t("treasuryDetail.noSessions")}</p>
               ) : (
                 <div className="space-y-2">
                   {data.sessions.map((session) => (
@@ -129,23 +154,32 @@ export function TreasuryDetail({
                       className="flex items-center justify-between rounded-lg border border-border p-3 text-xs"
                     >
                       <div>
-                        <p className="font-medium">{session.label || "(sem rótulo)"}</p>
+                        <p className="font-medium">{session.label || t("common.noLabel")}</p>
                         <p className="num text-muted-foreground">
                           {truncateAddress(session.sessionKey, 5)}
                         </p>
                       </div>
                       <div className="text-right">
                         <Badge variant={session.revoked ? "destructive" : "success"}>
-                          {session.revoked ? "revogada" : "ativa"}
+                          {session.revoked
+                            ? t("treasuryDetail.sessionRevoked")
+                            : t("treasuryDetail.sessionActive")}
                         </Badge>
                         <p className="mt-1 text-muted-foreground">
-                          {session.seq} pagamentos · expira{" "}
-                          {new Date(session.expiresAt * 1000).toLocaleDateString("pt-BR")}
+                          {t("treasuryDetail.sessionPaymentsExpires", {
+                            count: session.seq,
+                            date: new Date(session.expiresAt * 1000).toLocaleDateString(intl),
+                          })}
                         </p>
                         {session.spend.map((counter) => (
                           <p key={counter.mint} className="text-muted-foreground">
-                            gasto:{" "}
-                            {formatBaseUnits(counter.lifetimeSpent, data.decimals[counter.mint])}
+                            {t("treasuryDetail.spent")}{" "}
+                            {formatBaseUnits(
+                              counter.lifetimeSpent,
+                              data.decimals[counter.mint],
+                              intl,
+                              unlimited,
+                            )}
                           </p>
                         ))}
                       </div>

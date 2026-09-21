@@ -45,7 +45,6 @@ export interface Workflow extends StoredWorkflow {
 
 export interface WalletInfo {
   id: string;
-  name: string;
   address: string | null;
   type: "treasury" | "agent" | "owner";
   balance: Money;
@@ -53,6 +52,8 @@ export interface WalletInfo {
   workflowName: string;
   agentId?: string;
   agentName?: string;
+  agentRole?: string;
+  ownerWalletName?: string | null;
   dailyLimitUsd?: number;
   dailySpentUsd?: number | null;
 }

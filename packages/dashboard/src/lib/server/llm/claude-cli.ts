@@ -124,8 +124,8 @@ export async function* streamClaudeCli(
     if (!sawText) {
       throw new Error(
         code === 0
-          ? "O Claude Code não retornou texto."
-          : `O Claude Code encerrou com código ${code}. ${firstLine(stderr)}`,
+          ? "Claude Code returned no text."
+          : `Claude Code exited with code ${code}. ${firstLine(stderr)}`,
       );
     }
   } finally {

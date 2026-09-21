@@ -112,17 +112,14 @@ rather than one that was never run. The seam is
 | Route | Description |
 |---|---|
 | `/` | Chat + workflow rows |
-| `/workflows` | Workflow rows with horizontal agent scroll |
-| `/agents` | All agents by workflow, pause/remove |
+| `/workflows` | Workflow rows with horizontal agent scroll, edit/remove |
+| `/agents` | All agents by workflow, pause/edit/remove |
 | `/wallets` | Treasury, agent and owner addresses with live SOL balances |
 | `/treasury` | Cofres per workflow; opens the on-chain policy/session view |
 | `/limits` | Spending limits with progress bars |
 | `/mcps` | MCP servers (persisted toggles) |
-| `/rag` | Knowledge base documents |
 | `/skills` | Agent skills (global / workflow / agent) |
 | `/apis` | LLM API keys, stored server-side |
-| `/integrations` | dApp connections + Solana Nativo vs Agent Rails Vault |
-| `/harness` | Agent runtime state |
 | `/account` | Connected wallet identity |
 | `/profile` | Profile fields |
 | `/settings` | Network, RPC, preferences, export/reset |
@@ -160,9 +157,14 @@ light palette yet.
 
 ## Not implemented yet
 
-Deposit/withdraw transactions, treasury creation from the UI (use the CLI),
-RAG indexing, a Docker runtime for Harness, and email/Google auth. Each of those
-says so in the UI instead of showing a button that does nothing.
+Deposit/withdraw transactions, treasury creation from the UI (use the CLI), and
+email/Google auth. Each of those says so in the UI instead of showing a button
+that does nothing.
+
+RAG, Harness and Integrations were removed outright rather than shipped as
+labels: none had backend infrastructure behind it, and a nav entry reads as a
+promise. Their state collections (`rag`, `integrations`) stay in the schema so an
+existing `dashboard.json` still parses, but nothing seeds or renders them.
 
 ## Environment
 

@@ -1,4 +1,5 @@
 import { profileSchema, settingsSchema } from "@/lib/schema";
+import { serverT } from "@/lib/server/i18n";
 import { maskState } from "@/lib/server/present";
 import { mutateState, readState, resetState } from "@/lib/server/store";
 
@@ -20,13 +21,13 @@ export async function PATCH(req: Request) {
 
   if (profile && !profile.success) {
     return Response.json(
-      { error: "perfil inválido", issues: profile.error.issues },
+      { error: await serverT("api.error.invalidProfile"), issues: profile.error.issues },
       { status: 422 },
     );
   }
   if (settings && !settings.success) {
     return Response.json(
-      { error: "preferências inválidas", issues: settings.error.issues },
+      { error: await serverT("api.error.invalidSettings"), issues: settings.error.issues },
       { status: 422 },
     );
   }
@@ -38,7 +39,7 @@ export async function PATCH(req: Request) {
   return Response.json(maskState(state));
 }
 
-/** Settings → Dados → "Restaurar padrões". */
+/** Settings → Data → "Restore defaults". */
 export async function DELETE() {
   return Response.json(maskState(await resetState()));
 }

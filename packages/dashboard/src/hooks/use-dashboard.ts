@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
+import { runnerConfigFilename } from "@/lib/mcp-config";
 import type { ResourceName, SolanaCluster } from "@/lib/schema";
 import type { MaskedState } from "@/lib/server/present";
 import type { BalanceResult, TreasuryView, VaultBalance } from "@/lib/server/solana";
@@ -62,6 +63,37 @@ export function useDeleteResource(resource: ResourceName) {
   return useStateMutation((id: string) =>
     request<MaskedState>(`/api/state/${resource}/${id}`, { method: "DELETE" }),
   );
+}
+
+/**
+ * Downloads the workflow's `.mcp.json`. The body is fetched as an opaque blob
+ * rather than parsed: it is the only response that carries unmasked env values,
+ * so it goes straight from the network to the user's disk. The counts come back
+ * in headers so the toast can say what was compiled.
+ */
+export function useExportRunnerConfig() {
+  return useMutation({
+    mutationFn: async (workflow: { id: string; name: string }) => {
+      const res = await fetch(
+        `/api/export/runner-config?workflowId=${encodeURIComponent(workflow.id)}`,
+      );
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(body.error ?? `${res.status} ${res.statusText}`);
+      }
+      const servers = Number(res.headers.get("X-Runner-Servers") ?? 0);
+      const skipped = Number(res.headers.get("X-Runner-Skipped") ?? 0);
+
+      const url = URL.createObjectURL(await res.blob());
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = runnerConfigFilename(workflow.name);
+      a.click();
+      URL.revokeObjectURL(url);
+
+      return { servers, skipped };
+    },
+  });
 }
 
 export function useUpdateProfile() {
@@ -169,8 +201,10 @@ export type ProviderStatus = {
 
 /** What this machine can actually run the chat on. */
 export function useChatProviders() {
+  const { data: state } = useDashboardState();
+  const locale = state?.settings.language ?? "en";
   return useQuery({
-    queryKey: ["chat-providers"],
+    queryKey: ["chat-providers", locale],
     queryFn: () => request<{ providers: ProviderStatus[] }>("/api/chat/providers"),
     staleTime: 60_000,
   });
@@ -263,7 +297,6 @@ export function useWallets(): { wallets: WalletInfo[]; isLoading: boolean } {
     for (const workflow of workflows) {
       rows.push({
         id: `t_${workflow.id}`,
-        name: `Cofre — ${workflow.name}`,
         address: workflow.treasuryAddress,
         type: "treasury",
         balance: workflow.balance,
@@ -273,7 +306,6 @@ export function useWallets(): { wallets: WalletInfo[]; isLoading: boolean } {
       for (const agent of workflow.agents) {
         rows.push({
           id: `a_${agent.id}`,
-          name: `${agent.name} — ${agent.role}`,
           address: agent.walletAddress,
           type: "agent",
           balance: agent.balance,
@@ -281,6 +313,7 @@ export function useWallets(): { wallets: WalletInfo[]; isLoading: boolean } {
           workflowName: workflow.name,
           agentId: agent.id,
           agentName: agent.name,
+          agentRole: agent.role,
           dailyLimitUsd: agent.dailyLimitUsd,
           dailySpentUsd: agent.spentUsd,
         });
@@ -291,7 +324,6 @@ export function useWallets(): { wallets: WalletInfo[]; isLoading: boolean } {
       const lamports = balances.byAddress.get(walletAddress);
       rows.push({
         id: "owner",
-        name: walletName ? `Sua wallet (${walletName})` : "Sua wallet",
         address: walletAddress,
         type: "owner",
         balance:
@@ -299,7 +331,8 @@ export function useWallets(): { wallets: WalletInfo[]; isLoading: boolean } {
             ? { kind: "unknown" }
             : { kind: "chain", sol: lamports / LAMPORTS_PER_SOL, usd: null },
         workflowId: "",
-        workflowName: "Todos",
+        workflowName: "",
+        ownerWalletName: walletName,
       });
     }
 

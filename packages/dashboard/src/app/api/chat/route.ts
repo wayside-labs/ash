@@ -1,9 +1,12 @@
 import { z } from "zod";
+import { t } from "@/i18n";
 import { solanaClusterSchema } from "@/lib/schema";
+import { getDashboardLocale, serverT } from "@/lib/server/i18n";
 import { streamAnthropicApi } from "@/lib/server/llm/anthropic-api";
 import { isClaudeCliModel, streamClaudeCli } from "@/lib/server/llm/claude-cli";
 import { buildContext } from "@/lib/server/llm/context";
-import { SYSTEM_PROMPT, withContext } from "@/lib/server/llm/prompt";
+import { getDemoReply, getSystemPrompt, transcriptRoleLabel } from "@/lib/server/llm/i18n";
+import { withContextLocalized } from "@/lib/server/llm/prompt";
 import { anthropicApiKey, resolveProvider } from "@/lib/server/llm/providers";
 
 export const dynamic = "force-dynamic";
@@ -15,17 +18,6 @@ const requestSchema = z.object({
   cluster: solanaClusterSchema.default("devnet"),
   rpc: z.string().nullable().default(null),
 });
-
-function demoReply(message: string): string {
-  const lower = message.toLowerCase();
-  if (lower.includes("defi") || lower.includes("trading")) {
-    return "Posso te ajudar a montar um **workflow de DeFi Trading**: um cofre, um agente executor com limite diário e um agente de análise sem permissão de pagar.\n\n⚠️ Estou em **modo demonstração** — nenhum modelo está disponível. Instale o Claude Code ou adicione uma chave em **My APIs**.";
-  }
-  if (lower.includes("fornecedor") || lower.includes("pagamento")) {
-    return "Para **pagamentos a fornecedores**, o desenho usual é: cofre da empresa, um agente com limite diário e uma lista de destinos permitidos — mesmo comprometido, o agente não paga fora da lista nem acima do limite.\n\n⚠️ Estou em **modo demonstração**.";
-  }
-  return "Sou o assistente do Agent Rails, mas estou em **modo demonstração** — nenhum modelo está disponível.\n\nSe você tem uma assinatura Claude, basta ter o **Claude Code** instalado nesta máquina. Caso prefira pagar por token, adicione uma chave Anthropic em **My APIs**.";
-}
 
 function textStream(source: AsyncIterable<string>, onError: (e: unknown) => string): Response {
   const encoder = new TextEncoder();
@@ -48,38 +40,43 @@ function textStream(source: AsyncIterable<string>, onError: (e: unknown) => stri
 export async function POST(req: Request) {
   const parsed = requestSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
-    return Response.json({ error: "payload inválido" }, { status: 422 });
+    return Response.json({ error: await serverT("api.error.invalidPayload") }, { status: 422 });
   }
   const { messages, model, cluster, rpc } = parsed.data;
   const last = messages[messages.length - 1]?.content ?? "";
+  const locale = await getDashboardLocale();
 
   const { provider, model: chosen } = await resolveProvider(model);
 
   if (provider === "demo") {
-    return new Response(demoReply(last), {
+    return new Response(getDemoReply(locale, last), {
       headers: { "content-type": "text/plain; charset=utf-8", "x-agent-rails-mode": "demo" },
     });
   }
 
   const context = await buildContext(cluster, rpc);
+  const systemPrompt = getSystemPrompt(locale);
 
   if (provider === "claude-cli" && isClaudeCliModel(chosen)) {
-    // The CLI takes a single prompt, so prior turns are folded in as transcript.
     const transcript = messages
       .slice(0, -1)
-      .map((m) => `${m.role === "user" ? "Usuário" : "Assistente"}: ${m.content}`)
+      .map((m) => `${transcriptRoleLabel(locale, m.role)}: ${m.content}`)
       .join("\n");
-    const prompt = withContext(context, transcript ? `${transcript}\n\nUsuário: ${last}` : last);
+    const prompt = withContextLocalized(
+      locale,
+      context,
+      transcript ? `${transcript}\n\n${transcriptRoleLabel(locale, "user")}: ${last}` : last,
+    );
 
     const response = textStream(
       streamClaudeCli({
         prompt,
-        systemPrompt: SYSTEM_PROMPT,
+        systemPrompt,
         model: chosen,
         signal: req.signal,
       }),
       (error) =>
-        `\n\n⚠️ ${error instanceof Error ? error.message : "Falha ao falar com o Claude Code."}`,
+        `\n\n⚠️ ${error instanceof Error ? error.message : t("llm.error.claudeCliFailed", locale)}`,
     );
     response.headers.set("x-agent-rails-mode", "claude-cli");
     return response;
@@ -87,7 +84,7 @@ export async function POST(req: Request) {
 
   const apiKey = await anthropicApiKey();
   if (!apiKey) {
-    return new Response(demoReply(last), {
+    return new Response(getDemoReply(locale, last), {
       headers: { "content-type": "text/plain; charset=utf-8", "x-agent-rails-mode": "demo" },
     });
   }
@@ -96,18 +93,16 @@ export async function POST(req: Request) {
     streamAnthropicApi({
       apiKey,
       model: chosen,
-      systemPrompt: SYSTEM_PROMPT,
+      systemPrompt,
       messages: [
         ...messages.slice(0, -1),
-        { role: "user" as const, content: withContext(context, last) },
+        { role: "user" as const, content: withContextLocalized(locale, context, last) },
       ],
       ...(req.signal ? { signal: req.signal } : {}),
     }),
-    // The 200 is already sent by the time the provider can fail, so an auth or
-    // rate-limit error would otherwise arrive as a silently empty body.
     (error) => {
       console.error("[chat] anthropic api error:", error);
-      return `\n\n⚠️ ${error instanceof Error ? error.message : "Falha ao falar com a API da Anthropic."}`;
+      return `\n\n⚠️ ${error instanceof Error ? error.message : t("llm.error.anthropicFailed", locale)}`;
     },
   );
   response.headers.set("x-agent-rails-mode", "anthropic-api");

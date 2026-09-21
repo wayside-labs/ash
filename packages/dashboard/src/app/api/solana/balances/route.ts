@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { solanaClusterSchema } from "@/lib/schema";
+import { serverT } from "@/lib/server/i18n";
 import { getBalances } from "@/lib/server/solana";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +15,7 @@ export async function POST(req: Request) {
   const parsed = bodySchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
     return Response.json(
-      { error: "payload inválido", issues: parsed.error.issues },
+      { error: await serverT("api.error.invalidPayload"), issues: parsed.error.issues },
       { status: 422 },
     );
   }

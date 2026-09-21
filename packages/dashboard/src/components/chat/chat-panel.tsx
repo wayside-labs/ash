@@ -1,7 +1,7 @@
 "use client";
 
 import { Bot, Loader2, Send, Square } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Markdown } from "@/components/chat/markdown";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,46 +17,54 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useChatProviders } from "@/hooks/use-dashboard";
+import { useTranslation } from "@/i18n/locale-provider";
 import type { ChatMessage } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/stores/app-store";
 
-const WELCOME: ChatMessage = {
-  id: "welcome",
-  role: "assistant",
-  content:
-    'Olá! Sou o assistente do Agent Rails. Diga o que você quer construir — por exemplo *"quero um sistema de agentes DeFi"* — e eu explico cada parte.\n\nPosso ler seus workflows e cofres on-chain, mas não assino nada: qualquer movimento de dinheiro é você quem confirma.',
-  timestamp: new Date(),
-};
-
 export function ChatPanel({ className }: { className?: string }) {
+  const { t } = useTranslation();
   const { selectedModel, setSelectedModel, cluster, customRpc } = useAppStore();
   const providers = useChatProviders();
   const available = (providers.data?.providers ?? []).filter((p) => p.available);
   const activeProvider = available.find((p) => p.models.some((m) => m.id === selectedModel));
 
-  // The server picks a provider when none is chosen; mirror that choice so the
-  // selector states what is actually answering instead of "detectando…".
+  const welcome = useMemo<ChatMessage>(
+    () => ({
+      id: "welcome",
+      role: "assistant",
+      content: t("chat.welcome"),
+      timestamp: new Date(),
+    }),
+    [t],
+  );
+
   useEffect(() => {
     if (available.length === 0) return;
     if (activeProvider) return;
     const fallback = available[0]?.models[0]?.id;
     if (fallback) setSelectedModel(fallback);
   }, [available, activeProvider, setSelectedModel]);
-  const [messages, setMessages] = useState<ChatMessage[]>([WELCOME]);
+
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [mode, setMode] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
+  useEffect(() => {
+    setMessages((prev) => {
+      const withoutWelcome = prev.filter((m) => m.id !== "welcome");
+      return [welcome, ...withoutWelcome];
+    });
+  }, [welcome]);
+
   const scrollToBottom = useCallback(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, []);
 
   useEffect(scrollToBottom, [scrollToBottom]);
-
-  // An in-flight stream outlives the component without this.
   useEffect(() => () => abortRef.current?.abort(), []);
 
   const send = async () => {
@@ -99,7 +107,7 @@ export function ChatPanel({ className }: { className?: string }) {
 
       if (!res.ok || !res.body) {
         const detail = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(detail.error ?? `Erro ${res.status}`);
+        throw new Error(detail.error ?? t("chat.error.httpStatus", { status: res.status }));
       }
 
       setMode(res.headers.get("x-agent-rails-mode"));
@@ -116,21 +124,16 @@ export function ChatPanel({ className }: { className?: string }) {
         scrollToBottom();
       }
 
-      // The provider streams under an already-sent 200, so a rejected key ends
-      // as a clean but empty stream. Say so instead of leaving a blank bubble.
       if (!buffer.trim()) {
-        throw new Error(
-          "O provedor não retornou nenhum texto. Isso costuma ser chave inválida, sem crédito ou limite de uso.",
-        );
+        throw new Error(t("chat.error.noText"));
       }
     } catch (error) {
       if ((error as Error).name === "AbortError") return;
-      const message =
-        error instanceof Error ? error.message : "Não consegui processar sua mensagem.";
+      const message = error instanceof Error ? error.message : t("chat.error.generic");
       setMessages((prev) =>
         prev.map((m) =>
           m.id === assistantId
-            ? { ...m, content: `⚠️ ${message}\n\nVerifique a chave de API em **My APIs**.` }
+            ? { ...m, content: `⚠️ ${message}\n\n${t("chat.error.checkApiKey")}` }
             : m,
         ),
       );
@@ -153,11 +156,13 @@ export function ChatPanel({ className }: { className?: string }) {
       <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
         <div className="flex items-center gap-2">
           <Bot className="h-4 w-4 text-primary" />
-          <span className="text-sm font-medium">Chat</span>
+          <span className="text-sm font-medium">{t("chat.title")}</span>
         </div>
-        {mode === "demo" && <Badge variant="warning">modo demonstração</Badge>}
-        {mode === "claude-cli" && <Badge variant="success">sua assinatura Claude</Badge>}
-        {mode === "anthropic-api" && <Badge variant="outline">API por token</Badge>}
+        {mode === "demo" && <Badge variant="warning">{t("chat.badge.demoMode")}</Badge>}
+        {mode === "claude-cli" && (
+          <Badge variant="success">{t("chat.badge.claudeSubscription")}</Badge>
+        )}
+        {mode === "anthropic-api" && <Badge variant="outline">{t("chat.badge.tokenApi")}</Badge>}
       </div>
 
       <ScrollArea className="flex-1 px-4">
@@ -180,7 +185,7 @@ export function ChatPanel({ className }: { className?: string }) {
                 ) : (
                   <span className="flex items-center gap-2 text-muted-foreground">
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    Pensando…
+                    {t("chat.thinking")}
                   </span>
                 )}
               </div>
@@ -196,7 +201,7 @@ export function ChatPanel({ className }: { className?: string }) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="O que você quer construir?"
+            placeholder={t("chat.placeholder")}
             className="max-h-32 min-h-[44px] resize-none"
             rows={1}
           />
@@ -204,22 +209,27 @@ export function ChatPanel({ className }: { className?: string }) {
             <Button
               size="icon"
               variant="outline"
-              aria-label="Parar"
+              aria-label={t("chat.aria.stop")}
               onClick={() => abortRef.current?.abort()}
             >
               <Square className="h-4 w-4" />
             </Button>
           ) : (
-            <Button size="icon" aria-label="Enviar" onClick={send} disabled={!input.trim()}>
+            <Button
+              size="icon"
+              aria-label={t("chat.aria.send")}
+              onClick={send}
+              disabled={!input.trim()}
+            >
               <Send className="h-4 w-4" />
             </Button>
           )}
         </div>
         <div className="mt-2 flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">Modelo:</span>
+          <span className="text-xs text-muted-foreground">{t("chat.modelLabel")}</span>
           <Select value={selectedModel || undefined} onValueChange={setSelectedModel}>
             <SelectTrigger className="h-7 w-auto border-0 bg-transparent text-xs">
-              <SelectValue placeholder="detectando…" />
+              <SelectValue placeholder={t("chat.modelDetecting")} />
             </SelectTrigger>
             <SelectContent>
               {available.map((provider) => (

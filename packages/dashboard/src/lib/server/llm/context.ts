@@ -12,41 +12,41 @@ import { readState } from "@/lib/server/store";
  */
 export async function buildContext(cluster: SolanaCluster, rpc: string | null): Promise<string> {
   const state = await readState();
-  const lines: string[] = [`Rede selecionada: ${cluster}.`];
+  const lines: string[] = [`Selected cluster: ${cluster}.`];
 
   if (state.workflows.length === 0) {
-    lines.push("O usuário ainda não tem nenhum workflow.");
+    lines.push("The user has no workflows yet.");
   }
 
   for (const workflow of state.workflows) {
     const agents = state.agents.filter((a) => a.workflowId === workflow.id);
-    const tag = workflow.demo ? " [demonstração, não existe on-chain]" : "";
+    const tag = workflow.demo ? " [demo, not on-chain]" : "";
     lines.push(`\n## Workflow "${workflow.name}"${tag}`);
     if (workflow.description) lines.push(workflow.description);
 
     if (agents.length === 0) {
-      lines.push("Sem agentes.");
+      lines.push("No agents.");
     } else {
       for (const agent of agents) {
         lines.push(
-          `- Agente "${agent.name}" (${agent.role || "sem cargo"}), status ${agent.status}, limite diário no dashboard US$ ${agent.dailyLimitUsd}.`,
+          `- Agent "${agent.name}" (${agent.role || "no role"}), status ${agent.status}, dashboard daily limit US$ ${agent.dailyLimitUsd}.`,
         );
       }
     }
 
     if (!workflow.treasuryAddress) {
-      lines.push("Sem treasury on-chain: os números acima são só rótulos do dashboard.");
+      lines.push("No on-chain treasury: the numbers above are dashboard labels only.");
       continue;
     }
 
     try {
       const view = await readTreasury(cluster, rpc, workflow.treasuryAddress);
       if (!view) {
-        lines.push(`Treasury ${workflow.treasuryAddress} não encontrada em ${cluster}.`);
+        lines.push(`Treasury ${workflow.treasuryAddress} not found on ${cluster}.`);
         continue;
       }
       lines.push(
-        `Treasury on-chain ${view.address}: ${view.solVaultLamports / LAMPORTS_PER_SOL} SOL no cofre, ${view.paused ? "PAUSADA" : "ativa"}, ${view.activeSessions} sessão(ões) ativa(s).`,
+        `On-chain treasury ${view.address}: ${view.solVaultLamports / LAMPORTS_PER_SOL} SOL in vault, ${view.paused ? "PAUSED" : "active"}, ${view.activeSessions} active session(s).`,
       );
       for (const policy of view.policies) {
         for (const limit of policy.limits) {
@@ -54,21 +54,21 @@ export async function buildContext(cluster: SolanaCluster, rpc: string | null): 
           const ceiling = view.mints.find((m) => m.mint === limit.mint);
           const scale = (raw: string) => Number(raw) / 10 ** decimals;
           lines.push(
-            `  Política "${policy.name}" para ${limit.mint}: por transação ${scale(limit.perTxMax)}, janela curta ${scale(limit.shortWindowMax)} a cada ${limit.shortWindowSeconds}s, janela longa ${scale(limit.longWindowMax)} a cada ${limit.longWindowSeconds}s.` +
+            `  Policy "${policy.name}" for ${limit.mint}: per tx ${scale(limit.perTxMax)}, short window ${scale(limit.shortWindowMax)} every ${limit.shortWindowSeconds}s, long window ${scale(limit.longWindowMax)} every ${limit.longWindowSeconds}s.` +
               (ceiling
-                ? ` Teto do dono: por transação ${scale(ceiling.maxPerTx)}, janela curta ${scale(ceiling.maxShortWindow)}.`
+                ? ` Owner ceiling: per tx ${scale(ceiling.maxPerTx)}, short window ${scale(ceiling.maxShortWindow)}.`
                 : ""),
           );
         }
       }
       for (const session of view.sessions) {
         lines.push(
-          `  Sessão "${session.label}": ${session.revoked ? "revogada" : "ativa"}, ${session.seq} pagamento(s) executado(s), expira em ${new Date(session.expiresAt * 1000).toISOString()}.`,
+          `  Session "${session.label}": ${session.revoked ? "revoked" : "active"}, ${session.seq} payment(s) executed, expires ${new Date(session.expiresAt * 1000).toISOString()}.`,
         );
       }
     } catch (error) {
       lines.push(
-        `Falha ao ler a treasury on-chain: ${error instanceof Error ? error.message : "erro desconhecido"}.`,
+        `Failed to read on-chain treasury: ${error instanceof Error ? error.message : "unknown error"}.`,
       );
     }
   }
@@ -78,7 +78,7 @@ export async function buildContext(cluster: SolanaCluster, rpc: string | null): 
     // Spell out whose tools these are: they belong to the user's agents, not to
     // the assistant, which runs with no tools at all.
     lines.push(
-      `\nMCPs que o usuário habilitou para os AGENTES dele (você não tem acesso a nenhum deles): ${enabledMcps.join(", ")}.`,
+      `\nMCPs the user enabled for their AGENTS (you have no access to any of them): ${enabledMcps.join(", ")}.`,
     );
   }
 

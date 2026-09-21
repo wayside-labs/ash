@@ -16,7 +16,7 @@ export type Scope = z.infer<typeof scopeSchema>;
  */
 const BASE58_ADDRESS = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 
-export const addressSchema = z.string().regex(BASE58_ADDRESS, "endereço Solana inválido");
+export const addressSchema = z.string().regex(BASE58_ADDRESS, "invalid Solana address");
 
 export function isLikelyAddress(value: string | null | undefined): value is string {
   return typeof value === "string" && BASE58_ADDRESS.test(value) && value.length >= 43;
@@ -54,6 +54,15 @@ export const agentSchema = z.object({
   createdAt: z.string(),
 });
 
+/**
+ * POSIX-ish environment variable name. The runner passes these straight to a
+ * spawned process, so a key with a `=` or a space in it would produce an
+ * environment block no shell can represent.
+ */
+const ENV_KEY = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+export const envKeySchema = z.string().regex(ENV_KEY, "invalid environment variable name");
+
 export const mcpServerSchema = z.object({
   id: z.string(),
   name: z.string().min(1),
@@ -61,6 +70,15 @@ export const mcpServerSchema = z.object({
   enabled: z.boolean().default(false),
   scope: scopeSchema.default("global"),
   scopeName: z.string().nullable().default(null),
+  /** Executable the runner spawns, e.g. `npx` or `node`. Empty = not runnable yet. */
+  command: z.string().default(""),
+  args: z.array(z.string()).default([]),
+  /**
+   * Connection strings and API keys. Same secret class as `apiKeySchema.secret`:
+   * masked by `maskState` on every read and only ever emitted whole by the
+   * runner-config export route.
+   */
+  env: z.record(envKeySchema, z.string()).default({}),
   demo: z.boolean().default(false),
 });
 
@@ -70,7 +88,7 @@ export const ragDocumentSchema = z.object({
   type: z.enum(["pdf", "md", "url"]),
   status: z.enum(["indexed", "indexing", "error"]).default("indexing"),
   scope: scopeSchema.default("global"),
-  scopeName: z.string().default("Todos"),
+  scopeName: z.string().default("All"),
   source: z.string().nullable().default(null),
   demo: z.boolean().default(false),
 });
@@ -80,6 +98,12 @@ export const skillSchema = z.object({
   name: z.string().min(1),
   description: z.string().default(""),
   icon: z.string().default("🧩"),
+  /**
+   * The skill itself: Markdown injected into the agent's system prompt. The
+   * description is the one-liner that decides *whether* to load it; this is
+   * what the agent actually reads.
+   */
+  content: z.string().default(""),
   scope: scopeSchema.default("global"),
   scopeName: z.string().nullable().default(null),
   enabled: z.boolean().default(false),
@@ -111,7 +135,7 @@ export const profileSchema = z.object({
 });
 
 export const settingsSchema = z.object({
-  language: z.enum(["pt-BR", "en"]).default("pt-BR"),
+  language: z.enum(["pt-BR", "en"]).default("en"),
   emailNotifications: z.boolean().default(false),
   limitAlerts: z.boolean().default(true),
 });
@@ -127,7 +151,7 @@ export const dashboardStateSchema = z.object({
   integrations: z.array(integrationSchema).default([]),
   profile: profileSchema.default({ displayName: "", company: "", bio: "", email: "" }),
   settings: settingsSchema.default({
-    language: "pt-BR",
+    language: "en",
     emailNotifications: false,
     limitAlerts: true,
   }),

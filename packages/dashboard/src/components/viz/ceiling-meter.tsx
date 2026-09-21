@@ -1,34 +1,21 @@
 "use client";
 
 import { AlertTriangle, Ban, CheckCircle2, CircleDashed } from "lucide-react";
+import { useTranslation } from "@/i18n/locale-provider";
 import { cn } from "@/lib/utils";
-
-/**
- * The three bounds the protocol actually enforces, drawn as one bar:
- *
- *   ├──────────────── teto do dono ────────────────┤
- *   ├──── política do operador ────┤
- *   ├── gasto ──┤
- *
- * The bar's full width is the ceiling. The tinted span is the policy — what the
- * operator was allowed to set inside it. The filled span is what the agent has
- * actually spent. Because loosening only ever flows downhill, the policy can
- * never exceed the ceiling and the fill can never exceed the policy; if the data
- * ever says otherwise, that is a bug worth seeing, so it is drawn, not clamped.
- */
 
 type Status = "good" | "warning" | "serious" | "critical" | "unknown";
 
-const STATUS: Record<
+const STATUS_CONFIG: Record<
   Status,
-  { label: string; icon: typeof CheckCircle2; fill: string; ink: string }
+  { key: string; icon: typeof CheckCircle2; fill: string; ink: string }
 > = {
-  good: { label: "dentro do limite", icon: CheckCircle2, fill: "bg-good", ink: "text-good" },
-  warning: { label: "acima de 50%", icon: AlertTriangle, fill: "bg-warning", ink: "text-warning" },
-  serious: { label: "acima de 80%", icon: AlertTriangle, fill: "bg-serious", ink: "text-serious" },
-  critical: { label: "limite atingido", icon: Ban, fill: "bg-critical", ink: "text-critical" },
+  good: { key: "ceiling.withinLimit", icon: CheckCircle2, fill: "bg-good", ink: "text-good" },
+  warning: { key: "ceiling.above50", icon: AlertTriangle, fill: "bg-warning", ink: "text-warning" },
+  serious: { key: "ceiling.above80", icon: AlertTriangle, fill: "bg-serious", ink: "text-serious" },
+  critical: { key: "ceiling.limitReached", icon: Ban, fill: "bg-critical", ink: "text-critical" },
   unknown: {
-    label: "sem limite definido",
+    key: "ceiling.noLimitSet",
     icon: CircleDashed,
     fill: "bg-border-strong",
     ink: "text-faint-foreground",
@@ -46,15 +33,11 @@ function statusFor(spent: number, policy: number): Status {
 
 export interface CeilingMeterProps {
   label: string;
-  /** Owner ceiling. Omit when the row has no on-chain treasury behind it. */
   ceiling?: number | null;
-  /** Operator policy — the bound that actually binds the agent. */
   policy: number;
   spent: number;
-  /** Renders raw numbers; the caller owns units. */
   format: (value: number) => string;
   className?: string;
-  /** Right-hand caption, e.g. the mint or the window. */
   note?: string;
 }
 
@@ -67,9 +50,8 @@ export function CeilingMeter({
   className,
   note,
 }: CeilingMeterProps) {
+  const { t } = useTranslation();
   const hasCeiling = typeof ceiling === "number" && ceiling > 0;
-  // Without a ceiling the policy is the whole bar, so the reader is not shown
-  // headroom that was never measured.
   const span = hasCeiling ? Math.max(ceiling, policy) : Math.max(policy, spent, 1);
 
   const policyPct = span > 0 ? Math.min((policy / span) * 100, 100) : 0;
@@ -77,7 +59,7 @@ export function CeilingMeter({
 
   const showPolicyBand = hasCeiling && policyPct < 99.5;
   const status = statusFor(spent, policy);
-  const { label: statusLabel, icon: Icon, fill, ink } = STATUS[status];
+  const { key: statusKey, icon: Icon, fill, ink } = STATUS_CONFIG[status];
 
   return (
     <div className={cn("space-y-1.5", className)}>
@@ -88,14 +70,7 @@ export function CeilingMeter({
         </span>
       </div>
 
-      {/* Track = the owner ceiling. Sunken so the fills sit on top of it. */}
       <div className="surface-sunken relative h-2.5 w-full overflow-hidden rounded-full">
-        {/*
-         * The policy band is drawn only when it is genuinely narrower than the
-         * ceiling. Painting it full-width where no ceiling exists would make the
-         * tint read as the track and imply a bound that was never set.
-         * A 2px surface gap separates it from the ceiling headroom.
-         */}
         {showPolicyBand && (
           <>
             <div
@@ -109,7 +84,6 @@ export function CeilingMeter({
             />
           </>
         )}
-        {/* Spend fill: 4px rounded data-end, square at the baseline. */}
         <div
           className={cn(
             "absolute inset-y-0 left-0 rounded-r-[4px] transition-[width] duration-500",
@@ -120,18 +94,18 @@ export function CeilingMeter({
       </div>
 
       <div className="flex items-center justify-between gap-3 text-[11px]">
-        {/* Status never travels as colour alone — icon and words carry it too. */}
         <span className="flex items-center gap-1 text-muted-foreground">
           <Icon className={cn("h-3 w-3", ink)} aria-hidden />
-          {statusLabel}
+          {t(statusKey)}
         </span>
         <span className="truncate text-faint-foreground">
           {hasCeiling ? (
             <>
-              teto do dono <span className="num">{format(ceiling as number)}</span>
+              {t("ceiling.ownerCeilingPrefix")}{" "}
+              <span className="num">{format(ceiling as number)}</span>
             </>
           ) : (
-            (note ?? "sem teto on-chain")
+            (note ?? t("ceiling.noOnChainCeiling"))
           )}
         </span>
       </div>
@@ -139,28 +113,30 @@ export function CeilingMeter({
   );
 }
 
-/**
- * The legend for the three bands. One per card, not one per meter — the bands
- * mean the same thing on every row.
- */
 export function CeilingLegend({
   className,
   hasCeiling = true,
 }: {
   className?: string;
-  /** Without an on-chain treasury there is no ceiling band to explain. */
   hasCeiling?: boolean;
 }) {
+  const { t } = useTranslation();
   return (
     <div className={cn("flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px]", className)}>
-      <Key swatch="bg-good" label="gasto do agente" />
+      <Key swatch="bg-good" label={t("ceiling.legend.agentSpend")} />
       {hasCeiling ? (
         <>
-          <Key swatch="bg-ceiling/25" label="política do operador" />
-          <Key swatch="bg-background border border-border" label="teto do dono" />
+          <Key swatch="bg-ceiling/25" label={t("ceiling.legend.operatorPolicy")} />
+          <Key
+            swatch="bg-background border border-border"
+            label={t("ceiling.legend.ownerCeiling")}
+          />
         </>
       ) : (
-        <Key swatch="bg-background border border-border" label="limite do dashboard" />
+        <Key
+          swatch="bg-background border border-border"
+          label={t("ceiling.legend.dashboardLimit")}
+        />
       )}
     </div>
   );

@@ -1,19 +1,22 @@
 "use client";
 
-import { Bot, Loader2, Plus, Trash2 } from "lucide-react";
+import { Bot, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { AgentCard } from "@/components/workflows/agent-card";
-import { CreateAgentDialog } from "@/components/workflows/workflow-dialogs";
+import { CreateAgentDialog, EditAgentDialog } from "@/components/workflows/workflow-dialogs";
 import { useDeleteResource, useUpdateResource, useWorkflows } from "@/hooks/use-dashboard";
+import { useTranslation } from "@/i18n/locale-provider";
 import type { Agent } from "@/lib/types";
 
 export default function AgentsPage() {
+  const { t } = useTranslation();
   const { workflows, isLoading } = useWorkflows();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<Agent | null>(null);
   const update = useUpdateResource("agents");
   const remove = useDeleteResource("agents");
   const toast = useToast();
@@ -22,19 +25,24 @@ export default function AgentsPage() {
     const next = agent.status === "active" ? "paused" : "active";
     try {
       await update.mutateAsync({ id: agent.id, status: next });
-      toast(`${agent.name} agora está ${next === "active" ? "ativo" : "pausado"}.`);
+      toast(
+        t("agents.statusChanged", {
+          name: agent.name,
+          status: next === "active" ? t("common.active") : t("common.paused"),
+        }),
+      );
     } catch (error) {
-      toast(error instanceof Error ? error.message : "Falha ao atualizar", "error");
+      toast(error instanceof Error ? error.message : t("common.failedToUpdate"), "error");
     }
   };
 
   const removeAgent = async (agent: Agent) => {
-    if (!window.confirm(`Remover o agente "${agent.name}"?`)) return;
+    if (!window.confirm(t("agents.confirmRemove", { name: agent.name }))) return;
     try {
       await remove.mutateAsync(agent.id);
-      toast(`Agente "${agent.name}" removido.`);
+      toast(t("agents.removed", { name: agent.name }));
     } catch (error) {
-      toast(error instanceof Error ? error.message : "Falha ao remover", "error");
+      toast(error instanceof Error ? error.message : t("common.failedToRemove"), "error");
     }
   };
 
@@ -43,12 +51,12 @@ export default function AgentsPage() {
   return (
     <div>
       <PageHeader
-        title="Agents"
-        description="Todos os agentes organizados por workflow"
+        title={t("agents.title")}
+        description={t("agents.description")}
         action={
           <Button onClick={() => setDialogOpen(true)} disabled={workflows.length === 0}>
             <Plus className="h-4 w-4" />
-            Novo Agente
+            {t("agents.newAgent")}
           </Button>
         }
       />
@@ -56,15 +64,15 @@ export default function AgentsPage() {
       {isLoading ? (
         <div className="flex items-center gap-2 py-12 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
-          Carregando…
+          {t("common.loading")}
         </div>
       ) : !hasAgents ? (
         <EmptyState
           icon={Bot}
-          title="Nenhum agente"
-          description="Crie um workflow primeiro e depois adicione agentes a ele."
+          title={t("agents.emptyTitle")}
+          description={t("agents.emptyDescription")}
           {...(workflows.length > 0
-            ? { action: { label: "Criar agente", onClick: () => setDialogOpen(true) } }
+            ? { action: { label: t("agents.createAgent"), onClick: () => setDialogOpen(true) } }
             : {})}
         />
       ) : (
@@ -79,7 +87,7 @@ export default function AgentsPage() {
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {workflow.agents.map((agent) => (
                   <div key={agent.id} className="space-y-2">
-                    <AgentCard agent={agent} className="w-full" />
+                    <AgentCard agent={agent} className="w-full" onClick={() => setEditing(agent)} />
                     <div className="flex gap-2">
                       <Button
                         variant="outline"
@@ -88,12 +96,20 @@ export default function AgentsPage() {
                         onClick={() => toggleStatus(agent)}
                         disabled={update.isPending}
                       >
-                        {agent.status === "active" ? "Pausar" : "Ativar"}
+                        {agent.status === "active" ? t("common.pause") : t("common.activate")}
                       </Button>
                       <Button
                         variant="ghost"
                         size="icon"
-                        aria-label={`Remover ${agent.name}`}
+                        aria-label={t("agents.aria.editAgent", { name: agent.name })}
+                        onClick={() => setEditing(agent)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={t("agents.aria.removeAgent", { name: agent.name })}
                         onClick={() => removeAgent(agent)}
                         disabled={remove.isPending}
                       >
@@ -107,12 +123,17 @@ export default function AgentsPage() {
           ))
       )}
 
-      <p className="mt-6 text-xs text-muted-foreground">
-        Pausar aqui muda apenas o rótulo no dashboard. Revogar a sessão on-chain é uma ação de
-        operador e exige assinatura — nunca do lado do agente.
-      </p>
+      <p className="mt-6 text-xs text-muted-foreground">{t("agents.footerNote")}</p>
 
       <CreateAgentDialog open={dialogOpen} onOpenChange={setDialogOpen} workflows={workflows} />
+      {editing && (
+        <EditAgentDialog
+          key={editing.id}
+          agent={editing}
+          open
+          onOpenChange={(open) => !open && setEditing(null)}
+        />
+      )}
     </div>
   );
 }
