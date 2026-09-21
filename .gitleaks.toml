@@ -1,0 +1,26 @@
+# gitleaks configuration.
+#
+# This file only ever *narrows* the default ruleset, and only for findings that
+# were read and confirmed harmless. Prefer a narrow allowlist over disabling a
+# rule: the secrets gate is the last thing standing between a pasted key and a
+# public repository.
+
+[extend]
+useDefault = true
+
+# `generic-api-key` matches `<anything>key<anything>: "<value>"` on entropy
+# alone, so the dashboard's i18n message keys read to it as credentials — the
+# two below carry digits, which is what pushes them over the entropy threshold.
+#
+# Allowlisted by the matched *value* rather than by fingerprint: a fingerprint
+# pins to a commit SHA, so every rebase or edit of the line mints a new one and
+# the gate goes red again for the same non-finding.
+[[allowlists]]
+description = "i18n message keys in the ceiling meter, not credentials"
+condition = "AND"
+paths = ['''packages/dashboard/src/components/viz/ceiling-meter\.tsx''']
+regexTarget = "secret"
+regexes = [
+  '''^ceiling\.above50$''',
+  '''^ceiling\.above80$''',
+]
