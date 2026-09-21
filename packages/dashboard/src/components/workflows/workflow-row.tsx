@@ -1,6 +1,7 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Download, Pencil, Plus, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, Network, Pencil, Plus, Trash2 } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DemoBadge } from "@/components/shared/demo-badge";
 import { Button } from "@/components/ui/button";
@@ -111,6 +112,12 @@ export function WorkflowRow({ workflow, onAddAgent }: WorkflowRowProps) {
           </div>
         </div>
         <div className="flex shrink-0 gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/workflows/${workflow.id}/canvas`}>
+              <Network className="h-3.5 w-3.5" />
+              {t("workflowRow.openCanvas")}
+            </Link>
+          </Button>
           <Button variant="outline" size="sm" onClick={() => onAddAgent?.(workflow.id)}>
             <Plus className="h-3.5 w-3.5" />
             {t("workflowRow.addAgent")}

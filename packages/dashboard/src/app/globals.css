@@ -126,6 +126,13 @@
     box-shadow: inset 0 1px 0 0 rgb(255 255 255 / 0.04);
   }
 
+  /* Flow nodes and cards — raised surface with a machined border. */
+  .surface-card {
+    background-color: var(--color-card);
+    border: 1px solid var(--color-border);
+    box-shadow: inset 0 1px 0 0 rgb(255 255 255 / 0.04);
+  }
+
   .surface-sunken {
     background-color: var(--color-background);
     box-shadow: inset 0 1px 2px 0 rgb(0 0 0 / 0.4);
