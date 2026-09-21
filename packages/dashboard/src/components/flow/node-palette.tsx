@@ -123,6 +123,22 @@ export function NodePalette({ workflowId, className }: { workflowId: string; cla
         },
       }),
     },
+    {
+      type: "action",
+      labelKey: "flowCanvas.palette.bulkPay",
+      descriptionKey: "flowCanvas.palette.bulkPayHint",
+      icon: Zap,
+      accent: "text-accent",
+      buildPayload: () => ({
+        type: "action",
+        data: {
+          kind: "action",
+          name: "Bulk Pay",
+          provider: "Agent Rails",
+          enabled: true,
+        },
+      }),
+    },
   ];
 
   return (

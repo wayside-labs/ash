@@ -21,7 +21,7 @@ export async function buildContext(cluster: SolanaCluster, rpc: string | null): 
   for (const workflow of state.workflows) {
     const agents = state.agents.filter((a) => a.workflowId === workflow.id);
     const tag = workflow.demo ? " [demo, not on-chain]" : "";
-    lines.push(`\n## Workflow "${workflow.name}"${tag}`);
+    lines.push(`\n## Workflow "${workflow.name}" (id: ${workflow.id})${tag}`);
     if (workflow.description) lines.push(workflow.description);
 
     if (agents.length === 0) {

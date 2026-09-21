@@ -1,3 +1,5 @@
+"use client";
+
 import type { NodeTypes } from "@xyflow/react";
 import { ActionNode } from "@/components/flow/action-node";
 import { AgentNode } from "@/components/flow/agent-node";

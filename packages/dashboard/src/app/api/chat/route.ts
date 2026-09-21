@@ -1,8 +1,10 @@
 import { z } from "zod";
 import { t } from "@/i18n";
+import { CHAT_STREAM_NDJSON } from "@/lib/chat-stream";
 import { solanaClusterSchema } from "@/lib/schema";
 import { getDashboardLocale, serverT } from "@/lib/server/i18n";
-import { streamAnthropicApi } from "@/lib/server/llm/anthropic-api";
+import { chatStreamToNdjson, streamAnthropicApi } from "@/lib/server/llm/anthropic-api";
+import { CHAT_TOOL_SYSTEM_APPENDIX } from "@/lib/server/llm/chat-tools";
 import { isClaudeCliModel, streamClaudeCli } from "@/lib/server/llm/claude-cli";
 import { buildContext } from "@/lib/server/llm/context";
 import { getDemoReply, getSystemPrompt, transcriptRoleLabel } from "@/lib/server/llm/i18n";
@@ -89,22 +91,40 @@ export async function POST(req: Request) {
     });
   }
 
-  const response = textStream(
-    streamAnthropicApi({
-      apiKey,
-      model: chosen,
-      systemPrompt,
-      messages: [
-        ...messages.slice(0, -1),
-        { role: "user" as const, content: withContextLocalized(locale, context, last) },
-      ],
-      ...(req.signal ? { signal: req.signal } : {}),
-    }),
-    (error) => {
-      console.error("[chat] anthropic api error:", error);
-      return `\n\n⚠️ ${error instanceof Error ? error.message : t("llm.error.anthropicFailed", locale)}`;
-    },
-  );
-  response.headers.set("x-agent-rails-mode", "anthropic-api");
-  return response;
+  try {
+    const response = new Response(
+      chatStreamToNdjson(
+        streamAnthropicApi({
+          apiKey,
+          model: chosen,
+          systemPrompt: systemPrompt + CHAT_TOOL_SYSTEM_APPENDIX,
+          messages: [
+            ...messages.slice(0, -1),
+            { role: "user" as const, content: withContextLocalized(locale, context, last) },
+          ],
+          ...(req.signal ? { signal: req.signal } : {}),
+          tools: true,
+        }),
+      ),
+      {
+        headers: {
+          "content-type": CHAT_STREAM_NDJSON,
+          "x-agent-rails-mode": "anthropic-api",
+          "x-agent-rails-stream": "ndjson",
+        },
+      },
+    );
+    return response;
+  } catch (error) {
+    console.error("[chat] anthropic api error:", error);
+    return new Response(
+      `\n\n⚠️ ${error instanceof Error ? error.message : t("llm.error.anthropicFailed", locale)}`,
+      {
+        headers: {
+          "content-type": "text/plain; charset=utf-8",
+          "x-agent-rails-mode": "anthropic-api",
+        },
+      },
+    );
+  }
 }

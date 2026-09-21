@@ -2,6 +2,7 @@
 
 import { Bot, Loader2, Send, Square } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { CanvasBlueprintCard } from "@/components/chat/canvas-blueprint-card";
 import { Markdown } from "@/components/chat/markdown";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,7 +19,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useChatProviders } from "@/hooks/use-dashboard";
 import { useTranslation } from "@/i18n/locale-provider";
-import type { ChatMessage } from "@/lib/types";
+import { parseChatStreamLine } from "@/lib/chat-stream";
+import type { ChatMessage, ChatToolInvocation } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/stores/app-store";
 
@@ -82,7 +84,13 @@ export function ChatPanel({ className }: { className?: string }) {
 
     setMessages([
       ...history,
-      { id: assistantId, role: "assistant", content: "", timestamp: new Date() },
+      {
+        id: assistantId,
+        role: "assistant",
+        content: "",
+        toolInvocations: [],
+        timestamp: new Date(),
+      },
     ]);
     setInput("");
     setStreaming(true);
@@ -111,21 +119,64 @@ export function ChatPanel({ className }: { className?: string }) {
       }
 
       setMode(res.headers.get("x-agent-rails-mode"));
+      const streamKind = res.headers.get("x-agent-rails-stream");
 
-      const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
-      let buffer = "";
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += value;
-        setMessages((prev) =>
-          prev.map((m) => (m.id === assistantId ? { ...m, content: buffer } : m)),
-        );
-        scrollToBottom();
-      }
+      if (streamKind === "ndjson") {
+        const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+        let buffer = "";
+        let content = "";
+        const tools = new Map<string, ChatToolInvocation>();
 
-      if (!buffer.trim()) {
-        throw new Error(t("chat.error.noText"));
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += value;
+
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
+
+          for (const line of lines) {
+            const chunk = parseChatStreamLine(line);
+            if (!chunk) continue;
+
+            if (chunk.type === "text") {
+              content += chunk.delta;
+            } else if (chunk.type === "tool") {
+              tools.set(chunk.toolCallId, {
+                id: chunk.toolCallId,
+                name: chunk.name,
+                input: chunk.input,
+              });
+            }
+          }
+
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantId ? { ...m, content, toolInvocations: [...tools.values()] } : m,
+            ),
+          );
+          scrollToBottom();
+        }
+
+        if (!content.trim() && tools.size === 0) {
+          throw new Error(t("chat.error.noText"));
+        }
+      } else {
+        const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+        let buffer = "";
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += value;
+          setMessages((prev) =>
+            prev.map((m) => (m.id === assistantId ? { ...m, content: buffer } : m)),
+          );
+          scrollToBottom();
+        }
+
+        if (!buffer.trim()) {
+          throw new Error(t("chat.error.noText"));
+        }
       }
     } catch (error) {
       if ((error as Error).name === "AbortError") return;
@@ -180,11 +231,17 @@ export function ChatPanel({ className }: { className?: string }) {
               >
                 {msg.content ? (
                   <Markdown content={msg.content} />
-                ) : (
+                ) : !msg.toolInvocations?.length ? (
                   <span className="flex items-center gap-2 text-muted-foreground">
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     {t("chat.thinking")}
                   </span>
+                ) : null}
+
+                {msg.toolInvocations?.map((tool) =>
+                  tool.name === "draft_canvas_blueprint" ? (
+                    <CanvasBlueprintCard key={tool.id} input={tool.input} />
+                  ) : null,
                 )}
               </div>
             </div>

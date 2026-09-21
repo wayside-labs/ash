@@ -77,10 +77,22 @@ export interface ApiKeyEntry {
   createdAt: string;
 }
 
+export type ChatToolInvocation = {
+  id: string;
+  name: "draft_canvas_blueprint";
+  input: {
+    title: string;
+    workflowId: string;
+    nodes: Record<string, unknown>[];
+    edges: Record<string, unknown>[];
+  };
+};
+
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
+  toolInvocations?: ChatToolInvocation[];
   timestamp: Date;
 }
 

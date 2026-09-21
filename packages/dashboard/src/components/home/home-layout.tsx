@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/resizable";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useTranslation } from "@/i18n/locale-provider";
+import { getPanelLayoutStorage } from "@/lib/panel-layout-storage";
 import { cn } from "@/lib/utils";
 import { type HomePanelId, useAppStore } from "@/stores/app-store";
 
@@ -55,6 +56,7 @@ export function HomeLayout() {
     id: storageId,
     panelIds: PANEL_IDS,
     onlySaveAfterUserInteractions: true,
+    storage: getPanelLayoutStorage(),
   });
 
   const panelContent: Record<HomePanelId, React.ReactNode> = {

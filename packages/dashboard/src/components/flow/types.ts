@@ -1,3 +1,6 @@
+"use client";
+
+import type { Edge, Node } from "@xyflow/react";
 import type { AgentStatus } from "@/lib/types";
 
 export type FlowNodeKind = "treasury" | "agent" | "action";
@@ -32,4 +35,10 @@ export type FlowNodeData = TreasuryNodeData | AgentNodeData | ActionNodeData;
 export type PaletteDragPayload = {
   type: FlowNodeKind;
   data: FlowNodeData;
+};
+
+/** Canvas blueprint emitted by Chief of Staff in Design Mode. */
+export type AIGraphBlueprint = {
+  nodes: Array<Partial<Node<FlowNodeData>> & Pick<Node<FlowNodeData>, "data">>;
+  edges: Array<Partial<Edge> & Pick<Edge, "source" | "target">>;
 };
