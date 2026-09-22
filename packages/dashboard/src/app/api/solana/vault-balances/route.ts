@@ -9,6 +9,8 @@ const bodySchema = z.object({
   cluster: solanaClusterSchema,
   rpc: z.string().nullable().default(null),
   treasuries: z.array(z.string()).max(50),
+  /** Connected wallet, when there is one: its token accounts come back too. */
+  owner: z.string().nullable().default(null),
 });
 
 export async function POST(req: Request) {
@@ -19,6 +21,6 @@ export async function POST(req: Request) {
       { status: 422 },
     );
   }
-  const { cluster, rpc, treasuries } = parsed.data;
-  return Response.json(await getVaultBalances(cluster, rpc, treasuries));
+  const { cluster, rpc, treasuries, owner } = parsed.data;
+  return Response.json(await getVaultBalances(cluster, rpc, treasuries, owner));
 }

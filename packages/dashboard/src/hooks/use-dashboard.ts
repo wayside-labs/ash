@@ -1,5 +1,7 @@
 "use client";
 
+import { NATIVE_MINT } from "@agent-rails/contract/constants";
+import { knownMint } from "@agent-rails/contract/mints";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { useTranslation } from "@/i18n/locale-provider";
@@ -16,13 +18,14 @@ import type {
   BalanceResult,
   BuiltTransaction,
   ConfirmationResult,
+  OwnerTokenBalance,
   TreasuryView,
   VaultBalance,
   VaultBalances,
   VaultTransferKind,
 } from "@/lib/server/solana";
 import { getConnectedProvider, signAndSendTransaction } from "@/lib/solana";
-import type { Agent, Money, WalletInfo, Workflow } from "@/lib/types";
+import type { Agent, Money, VaultAsset, WalletInfo, Workflow } from "@/lib/types";
 import { useAppStore } from "@/stores/app-store";
 
 const LAMPORTS_PER_SOL = 1_000_000_000;
@@ -178,16 +181,21 @@ export function useSolPrice() {
   });
 }
 
-/** Resolves each treasury's sol_vault PDA and its balance — where the SOL is. */
+/**
+ * Each treasury's vaults: the `sol_vault` PDA and one vault ATA per configured
+ * mint. The connected wallet rides along so the deposit dialog knows what the
+ * owner actually holds of each mint, read on the same clock as the vault it
+ * would be depositing into.
+ */
 export function useVaultBalances(treasuries: (string | null | undefined)[]) {
-  const { cluster, customRpc } = useAppStore();
+  const { cluster, customRpc, walletAddress } = useAppStore();
   const wanted = useMemo(
     () => [...new Set(treasuries.filter((t): t is string => Boolean(t)))].sort(),
     [treasuries],
   );
 
   const query = useQuery({
-    queryKey: ["vault-balances", cluster, customRpc, wanted],
+    queryKey: ["vault-balances", cluster, customRpc, wanted, walletAddress],
     enabled: wanted.length > 0,
     staleTime: 30_000,
     refetchInterval: 30_000,
@@ -195,7 +203,12 @@ export function useVaultBalances(treasuries: (string | null | undefined)[]) {
     queryFn: () =>
       request<VaultBalances>("/api/solana/vault-balances", {
         method: "POST",
-        body: JSON.stringify({ cluster, rpc: customRpc || null, treasuries: wanted }),
+        body: JSON.stringify({
+          cluster,
+          rpc: customRpc || null,
+          treasuries: wanted,
+          owner: walletAddress || null,
+        }),
       }),
   });
 
@@ -219,12 +232,84 @@ export function useVaultBalances(treasuries: (string | null | undefined)[]) {
     return map;
   }, [rows]);
 
+  /** What the connected wallet holds of each mint, keyed by mint. */
+  const ownerTokenByMint = useMemo(() => {
+    const map = new Map<string, OwnerTokenBalance>();
+    for (const row of query.data?.ownerTokens ?? []) map.set(row.mint, row);
+    return map;
+  }, [query.data]);
+
   return {
     ...query,
     byTreasury,
     vaultByTreasury,
+    ownerTokenByMint,
     rentExemptMinimum: query.data?.rentExemptMinimum ?? 0,
   };
+}
+
+/**
+ * Base units to a display number.
+ *
+ * `Number` is fine here and only here: this feeds a formatter, never a transfer
+ * amount. Every transaction is built from the base-unit string the RPC returned.
+ */
+function toHuman(raw: string, decimals: number): number {
+  const value = Number(raw) / 10 ** decimals;
+  return Number.isFinite(value) ? value : 0;
+}
+
+/**
+ * Turns a vault row into the assets the UI renders.
+ *
+ * A dollar-pegged mint is priced 1:1 rather than left blank — the alternative
+ * on a stablecoin is an empty USD line next to a number that already is USD.
+ * Every other token gets `null`, because guessing is worse than saying nothing.
+ */
+function vaultAssets(vault: VaultBalance | undefined, solPriceUsd: number | null): VaultAsset[] {
+  if (!vault) return [];
+  return vault.assets.map((asset) => {
+    const symbol = asset.symbol ?? asset.mint.slice(0, 4);
+    const amount = toHuman(asset.amount, asset.decimals);
+    const money: Money =
+      asset.mint === NATIVE_MINT
+        ? { kind: "chain", sol: amount, usd: solPriceUsd === null ? null : amount * solPriceUsd }
+        : {
+            kind: "token",
+            amount,
+            mint: asset.mint,
+            symbol,
+            decimals: asset.decimals,
+            usd: knownMint(asset.mint)?.stable ? amount : null,
+          };
+    return {
+      mint: asset.mint,
+      symbol,
+      decimals: asset.decimals,
+      raw: asset.amount,
+      amount,
+      money,
+      vault: asset.vault,
+      exists: asset.exists,
+      fundingMode: asset.fundingMode,
+      configured: asset.configured,
+    };
+  });
+}
+
+/**
+ * Which asset a vault leads with.
+ *
+ * A treasury bootstrapped for stablecoin settlement should read as its
+ * stablecoin; SOL is what pays for signatures. Only a mint we know is
+ * dollar-pegged is promoted — an arbitrary SPL token in slot one is not
+ * evidence that it, rather than SOL, is what the operator watches.
+ */
+function primaryAsset(assets: VaultAsset[]): VaultAsset | undefined {
+  return (
+    assets.find((asset) => asset.mint !== NATIVE_MINT && knownMint(asset.mint)?.stable) ??
+    assets.find((asset) => asset.mint === NATIVE_MINT)
+  );
 }
 
 export function useTreasury(address: string | null) {
@@ -270,7 +355,10 @@ function useTreasuryMap(addresses: string[], enabled: boolean) {
 export type VaultTransferInput = {
   kind: VaultTransferKind;
   treasury: string;
-  lamports: bigint;
+  /** The mint being moved; the native sentinel takes the SOL path. */
+  mint: string;
+  /** Base units of `mint` — lamports when native. */
+  amount: bigint;
 };
 
 export type VaultTransferResult = {
@@ -290,7 +378,7 @@ export function useVaultTransfer() {
   const { t } = useTranslation();
 
   return useMutation({
-    mutationFn: async ({ kind, treasury, lamports }: VaultTransferInput) => {
+    mutationFn: async ({ kind, treasury, mint, amount }: VaultTransferInput) => {
       const provider = getConnectedProvider(walletAddress);
       if (!walletAddress || !provider) throw new Error(t("vaultTransfer.error.walletNotConnected"));
 
@@ -302,7 +390,8 @@ export function useVaultTransfer() {
           kind,
           treasury,
           wallet: walletAddress,
-          lamports: lamports.toString(),
+          mint,
+          amount: amount.toString(),
         }),
       });
 
@@ -462,18 +551,37 @@ export function useWorkflows(options: UseWorkflowsOptions = {}) {
             ),
           };
         });
+      const assets = vaultAssets(
+        workflow.treasuryAddress ? vaults.vaultByTreasury.get(workflow.treasuryAddress) : undefined,
+        solPriceUsd,
+      );
+      const primary = primaryAsset(assets);
+      const solMoney = money(
+        workflow.treasuryAddress ? vaults.byTreasury.get(workflow.treasuryAddress) : undefined,
+        workflow.demoBalanceUsd,
+        workflow.demo,
+        solPriceUsd,
+      );
       return {
         ...workflow,
         agents,
-        balance: money(
-          workflow.treasuryAddress ? vaults.byTreasury.get(workflow.treasuryAddress) : undefined,
-          workflow.demoBalanceUsd,
-          workflow.demo,
-          solPriceUsd,
-        ),
+        assets,
+        primaryMint: primary?.mint ?? null,
+        solBalance: solMoney,
+        // A demo row has no chain to read, so it keeps the demo figure whatever
+        // the vault read returned.
+        balance: primary && primary.mint !== NATIVE_MINT ? primary.money : solMoney,
       };
     });
-  }, [state.data, balances.byAddress, vaults.byTreasury, solPriceUsd, treasuryMap, withChain]);
+  }, [
+    state.data,
+    balances.byAddress,
+    vaults.byTreasury,
+    vaults.vaultByTreasury,
+    solPriceUsd,
+    treasuryMap,
+    withChain,
+  ]);
 
   return {
     workflows,
@@ -499,6 +607,8 @@ export function useWallets(): { wallets: WalletInfo[]; isLoading: boolean } {
         address: workflow.treasuryAddress,
         type: "treasury",
         balance: workflow.balance,
+        // Only when the headline is a token: repeating SOL under itself is noise.
+        ...(workflow.balance.kind === "token" ? { secondary: workflow.solBalance } : {}),
         workflowId: workflow.id,
         workflowName: workflow.name,
       });

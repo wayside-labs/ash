@@ -1,7 +1,10 @@
 "use client";
 
+import { NATIVE_MINT } from "@agent-rails/contract/constants";
+import { usdcMintFor } from "@agent-rails/contract/mints";
+import { AmountConversionError, fromBaseUnits, toBaseUnits } from "@agent-rails/contract/units";
 import { AlertTriangle, ArrowDownLeft, ArrowUpRight, ExternalLink, Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -14,24 +17,32 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/toast";
 import { useVaultTransfer, type VaultTransferResult } from "@/hooks/use-dashboard";
+import { intlLocale } from "@/i18n";
 import { useTranslation } from "@/i18n/locale-provider";
-import type { VaultTransferKind } from "@/lib/server/solana";
-import { explorerTxUrl, LAMPORTS_PER_SOL } from "@/lib/solana";
-import { formatSol, truncateAddress } from "@/lib/utils";
+import type { OwnerTokenBalance, VaultTransferKind } from "@/lib/server/solana";
+import { explorerTxUrl } from "@/lib/solana";
+import type { VaultAsset } from "@/lib/types";
+import { cn, formatToken, truncateAddress } from "@/lib/utils";
 import { useAppStore, useBalancesHidden } from "@/stores/app-store";
 
 /**
  * A deposit still has to pay for its own signature, so offering the whole
  * balance as "max" guarantees a failed transaction. 0.01 SOL clears a base fee
  * by three orders of magnitude and survives a busy-network priority bump.
+ *
+ * It applies to the SOL row only: an SPL deposit spends tokens, and the fee
+ * comes out of a lamport balance the amount field never touches.
  */
 const FEE_BUFFER_LAMPORTS = 10_000_000;
 
 export type VaultTransferDialogProps = {
   kind: VaultTransferKind | null;
   treasury: string | null;
-  solVault: string | null;
-  vaultLamports: number | null;
+  /** Every mint this vault holds, native first-or-last as the treasury lists it. */
+  assets: VaultAsset[];
+  /** Mint to open on: the vault's headline asset. */
+  defaultMint: string | null;
+  ownerTokenByMint: Map<string, OwnerTokenBalance>;
   walletLamports: number | null;
   rentExemptMinimum: number;
   onClose: () => void;
@@ -40,55 +51,140 @@ export type VaultTransferDialogProps = {
 export function VaultTransferDialog({
   kind,
   treasury,
-  solVault,
-  vaultLamports,
+  assets,
+  defaultMint,
+  ownerTokenByMint,
   walletLamports,
   rentExemptMinimum,
   onClose,
 }: VaultTransferDialogProps) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const { cluster } = useAppStore();
+  const intl = intlLocale(locale);
   const hidden = useBalancesHidden();
   const transfer = useVaultTransfer();
   const toast = useToast();
   const [amount, setAmount] = useState("");
+  const [mint, setMint] = useState<string | null>(defaultMint);
   const [result, setResult] = useState<VaultTransferResult | null>(null);
 
   const open = kind !== null && treasury !== null;
+  const isDeposit = kind === "deposit";
 
-  // Every open is a fresh transfer; a stale amount or receipt would be a footgun.
+  // Every open is a fresh transfer; a stale amount, mint or receipt is a footgun.
   useEffect(() => {
     if (open) {
       setAmount("");
       setResult(null);
+      setMint(defaultMint);
       transfer.reset();
     }
-  }, [open, transfer.reset]);
+  }, [open, defaultMint, transfer.reset]);
 
-  const isDeposit = kind === "deposit";
-  // Withdraw cannot take the vault below the program's rent-exempt floor, and a
-  // deposit cannot spend the lamports that pay for its own fee.
-  const availableLamports = isDeposit
-    ? Math.max((walletLamports ?? 0) - FEE_BUFFER_LAMPORTS, 0)
-    : Math.max((vaultLamports ?? 0) - rentExemptMinimum, 0);
-  const maxSol = availableLamports / LAMPORTS_PER_SOL;
+  const asset = useMemo(
+    () => assets.find((a) => a.mint === mint) ?? assets.find((a) => a.mint === NATIVE_MINT),
+    [assets, mint],
+  );
 
-  const parsed = Number(amount);
-  const valid = amount.trim() !== "" && Number.isFinite(parsed) && parsed > 0;
-  const overMax = valid && parsed > maxSol;
+  /**
+   * The largest amount this transfer could carry, in base units. Withdraw is
+   * bounded by the vault; deposit by the wallet. The SOL floor is the program's
+   * own rule — `withdraw` refuses to take `sol_vault` below rent exemption — so
+   * subtracting it here is what makes the "max" button honest rather than a
+   * transaction that simulates and fails.
+   */
+  const maxBase = useMemo(() => {
+    if (!asset) return 0n;
+    if (asset.mint === NATIVE_MINT) {
+      const lamports = isDeposit
+        ? Math.max((walletLamports ?? 0) - FEE_BUFFER_LAMPORTS, 0)
+        : Math.max(Number(asset.raw) - rentExemptMinimum, 0);
+      return BigInt(Math.floor(lamports));
+    }
+    if (isDeposit) return BigInt(ownerTokenByMint.get(asset.mint)?.amount ?? "0");
+    return BigInt(asset.raw);
+  }, [asset, isDeposit, walletLamports, rentExemptMinimum, ownerTokenByMint]);
+
+  /**
+   * Parsed with the mint's own decimals rather than a float multiply: "0.1" SOL
+   * through `Number` is not 100000000 lamports, and excess precision denies
+   * instead of quietly rounding into an amount nobody authorized.
+   */
+  const parsed = useMemo(() => {
+    if (!asset || amount.trim() === "") return { base: null as bigint | null, error: null };
+    try {
+      return { base: toBaseUnits(amount.trim(), asset.decimals), error: null };
+    } catch (error) {
+      if (error instanceof AmountConversionError && error.reason === "PRECISION_EXCEEDS_MINT") {
+        return {
+          base: null,
+          error: t("vaultTransfer.error.tooPrecise", {
+            decimals: asset.decimals,
+            symbol: asset.symbol,
+          }),
+        };
+      }
+      return { base: null, error: t("vaultTransfer.error.malformedAmount") };
+    }
+  }, [amount, asset, t]);
+
+  const valid = parsed.base !== null && parsed.base > 0n;
+  const overMax = valid && (parsed.base as bigint) > maxBase;
   const pending = transfer.isPending;
 
+  /**
+   * A deposit the agent path could never spend: a mint the treasury never
+   * added, or one funded by an ADR-014 native allowance from the owner's own
+   * wallet rather than from the vault.
+   *
+   * Withdraw is never gated on either — `withdraw` deliberately ignores
+   * `Treasury.mints` so the owner can always reach funds they can see.
+   */
+  const depositWarning =
+    !isDeposit || !asset
+      ? null
+      : !asset.configured
+        ? t("vaultTransfer.error.mintNotConfigured", { symbol: asset.symbol })
+        : asset.fundingMode !== "isolated-vault"
+          ? t("vaultTransfer.error.mintNativeAllowance", { symbol: asset.symbol })
+          : null;
+
+  /**
+   * Native SOL is warned about but never blocked: `sol_vault` takes
+   * permissionless system transfers whether or not a mint slot was ever added
+   * for it, and the owner can always withdraw again. Only the token path is
+   * refused, which is exactly what the server refuses too.
+   */
+  const depositBlocked = depositWarning !== null && asset?.mint !== NATIVE_MINT;
+
+  const usdcMint = usdcMintFor(cluster);
+  const usdcMissing = usdcMint !== null && !assets.some((a) => a.mint === usdcMint);
+
+  const show = (base: bigint) =>
+    asset
+      ? formatToken(
+          Number(fromBaseUnits(base, asset.decimals)),
+          asset.symbol,
+          asset.decimals,
+          false,
+          intl,
+        )
+      : "—";
+
   async function submit() {
-    if (!valid || overMax || !treasury || !kind) return;
-    // Round-trip through lamports so 0.1 SOL never lands as 99999999.
-    const lamports = BigInt(Math.round(parsed * LAMPORTS_PER_SOL));
+    if (!valid || overMax || depositBlocked || !treasury || !kind || !asset || !parsed.base) return;
     try {
-      const outcome = await transfer.mutateAsync({ kind, treasury, lamports });
+      const outcome = await transfer.mutateAsync({
+        kind,
+        treasury,
+        mint: asset.mint,
+        amount: parsed.base,
+      });
       setResult(outcome);
       toast(
         outcome.status === "confirmed"
           ? t(isDeposit ? "vaultTransfer.toast.deposited" : "vaultTransfer.toast.withdrew", {
-              amount: formatSol(parsed),
+              amount: show(parsed.base),
               signature: truncateAddress(outcome.signature, 6),
             })
           : t("vaultTransfer.toast.pending", {
@@ -111,7 +207,9 @@ export function VaultTransferDialog({
             ) : (
               <ArrowUpRight className="h-4 w-4 text-warning" />
             )}
-            {t(isDeposit ? "vaultTransfer.depositTitle" : "vaultTransfer.withdrawTitle")}
+            {t(isDeposit ? "vaultTransfer.depositTitle" : "vaultTransfer.withdrawTitle", {
+              symbol: asset?.symbol ?? "",
+            })}
           </DialogTitle>
           <DialogDescription>
             {t(
@@ -147,48 +245,88 @@ export function VaultTransferDialog({
           </div>
         ) : (
           <div className="space-y-4">
+            {assets.length > 1 && (
+              <div className="space-y-2">
+                <Label>{t("vaultTransfer.assetLabel")}</Label>
+                <div className="flex flex-wrap gap-2">
+                  {assets.map((candidate) => (
+                    <button
+                      key={candidate.mint}
+                      type="button"
+                      disabled={pending}
+                      onClick={() => {
+                        setMint(candidate.mint);
+                        setAmount("");
+                      }}
+                      className={cn(
+                        "rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
+                        candidate.mint === asset?.mint
+                          ? "border-foreground bg-muted text-foreground"
+                          : "border-border text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {candidate.symbol}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="grid gap-1 rounded-lg border border-border p-3 text-xs">
-              <Row label={t("vaultTransfer.vault")} value={truncateAddress(solVault, 6)} mono />
+              <Row label={t("vaultTransfer.vault")} value={truncateAddress(asset?.vault, 6)} mono />
               <Row
                 label={t("vaultTransfer.vaultBalance")}
                 value={
-                  vaultLamports === null ? "—" : formatSol(vaultLamports / LAMPORTS_PER_SOL, hidden)
+                  asset
+                    ? formatToken(asset.amount, asset.symbol, asset.decimals, hidden, intl)
+                    : "—"
                 }
               />
               <Row
                 label={t(isDeposit ? "vaultTransfer.available" : "vaultTransfer.withdrawable")}
-                value={formatSol(maxSol, hidden)}
+                value={hidden && asset ? formatToken(0, asset.symbol, 0, true) : show(maxBase)}
               />
             </div>
 
+            {usdcMissing && (
+              <p className="rounded-lg border border-dashed border-border p-3 text-xs text-muted-foreground">
+                {t("vaultTransfer.usdcNotConfigured")}{" "}
+                <code className="num text-foreground">
+                  pnpm agent-rails init --mint {truncateAddress(usdcMint, 6)}
+                </code>
+              </p>
+            )}
+
             <div className="space-y-2">
-              <Label htmlFor="vault-transfer-amount">{t("vaultTransfer.amountLabel")}</Label>
+              <Label htmlFor="vault-transfer-amount">
+                {t("vaultTransfer.amountLabel", { symbol: asset?.symbol ?? "" })}
+              </Label>
               <div className="flex gap-2">
                 <Input
                   id="vault-transfer-amount"
-                  type="number"
+                  type="text"
                   inputMode="decimal"
-                  min="0"
-                  step="0.000000001"
                   placeholder="0.0"
                   value={amount}
-                  disabled={pending}
+                  disabled={pending || depositBlocked}
                   onChange={(event) => setAmount(event.target.value)}
                 />
                 <Button
                   type="button"
                   variant="outline"
-                  disabled={pending || maxSol <= 0}
-                  onClick={() => setAmount(String(maxSol))}
+                  disabled={pending || depositBlocked || maxBase <= 0n || !asset}
+                  onClick={() => asset && setAmount(fromBaseUnits(maxBase, asset.decimals))}
                 >
                   {t("vaultTransfer.max")}
                 </Button>
               </div>
+              {parsed.error && <p className="text-xs text-destructive">{parsed.error}</p>}
               {overMax && (
                 <p className="text-xs text-destructive">
-                  {t("vaultTransfer.error.overMax", { max: formatSol(maxSol) })}
+                  {t("vaultTransfer.error.overMax", { max: show(maxBase) })}
                 </p>
               )}
+              {depositWarning && <p className="text-xs text-warning">{depositWarning}</p>}
             </div>
 
             {transfer.error && (
@@ -205,7 +343,7 @@ export function VaultTransferDialog({
             {t(result ? "common.close" : "common.cancel")}
           </Button>
           {!result && (
-            <Button onClick={submit} disabled={pending || !valid || overMax}>
+            <Button onClick={submit} disabled={pending || !valid || overMax || depositBlocked}>
               {pending && <Loader2 className="h-4 w-4 animate-spin" />}
               {pending
                 ? t("vaultTransfer.confirming")

@@ -110,18 +110,29 @@ export default function WalletsPage() {
                     <div className="flex items-center gap-4">
                       <div className="text-right">
                         <p className={`num text-lg font-semibold ${moneyTone(wallet.balance)}`}>
-                          {formatMoney(wallet.balance, hidden)}
+                          {formatMoney(wallet.balance, hidden, intl)}
                         </p>
-                        {wallet.balance.kind === "chain" && wallet.balance.usd !== null && (
-                          <p className="num text-xs text-muted-foreground">
-                            {formatUsd(wallet.balance.usd, intl, hidden)}
+                        {(wallet.balance.kind === "chain" || wallet.balance.kind === "token") &&
+                          wallet.balance.usd !== null && (
+                            <p className="num text-xs text-muted-foreground">
+                              {formatUsd(wallet.balance.usd, intl, hidden)}
+                            </p>
+                          )}
+                        {/* A vault whose headline is a stablecoin still needs SOL
+                            for signatures, so the fee balance keeps its own line. */}
+                        {wallet.secondary && (
+                          <p className="num text-xs text-faint-foreground">
+                            {formatMoney(wallet.secondary, hidden, intl)}{" "}
+                            <span className="text-[11px]">{t("wallets.vaultFeeBalance")}</span>
                           </p>
                         )}
-                        {type === "treasury" && wallet.balance.kind === "chain" && (
-                          <p className="text-[11px] text-faint-foreground">
-                            {t("wallets.solVaultBalance")}
-                          </p>
-                        )}
+                        {type === "treasury" &&
+                          !wallet.secondary &&
+                          wallet.balance.kind === "chain" && (
+                            <p className="text-[11px] text-faint-foreground">
+                              {t("wallets.solVaultBalance")}
+                            </p>
+                          )}
                         {wallet.dailyLimitUsd !== undefined && wallet.dailyLimitUsd > 0 && (
                           <p className="num num-col text-xs text-muted-foreground">
                             {t("common.todayLimit")}:{" "}

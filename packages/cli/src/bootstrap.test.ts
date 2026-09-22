@@ -7,6 +7,7 @@ import {
   buildStages,
   findEventAuthority,
   type MintPlan,
+  mergePolicyMintLimits,
   NATIVE_MINT_ADDRESS,
   policyNeedsUpdate,
   type StepState,
@@ -85,6 +86,7 @@ const NOTHING_DONE: StepState = {
   configuredMints: [],
   policyExists: false,
   policyMints: [],
+  policyLimits: [],
   entryExists: false,
   sessionExists: false,
 };
@@ -95,6 +97,7 @@ function allDone(mints: Address[]): StepState {
     configuredMints: mints,
     policyExists: true,
     policyMints: mints,
+    policyLimits: [],
     entryExists: true,
     sessionExists: true,
   };
@@ -263,10 +266,20 @@ describe("buildStages - with an SPL mint", () => {
    * the only correct move is `update_policy`.
    */
   it("updates an existing policy rather than re-creating it when a mint is added", () => {
+    const tightenedSol = {
+      mint: NATIVE_MINT_ADDRESS,
+      perTxMax: 20_000_000n,
+      shortWindowMax: 45_000_000n,
+      shortWindowSeconds: 3_600,
+      longWindowMax: 60_000_000n,
+      longWindowSeconds: 86_400,
+      lifetimeMax: 1_200_000_000n,
+    };
     const state: StepState = {
       ...allDone([NATIVE_MINT_ADDRESS]),
       configuredMints: [NATIVE_MINT_ADDRESS],
       policyMints: [NATIVE_MINT_ADDRESS],
+      policyLimits: [tightenedSol],
     };
     const stages = buildStages(
       makeInput({
@@ -344,6 +357,32 @@ describe("buildStages - with an SPL mint", () => {
       allDone([NATIVE_MINT_ADDRESS, mockMintKeypair.address]),
     );
     expect(stages).toHaveLength(0);
+  });
+});
+
+describe("mergePolicyMintLimits", () => {
+  it("keeps tightened on-chain limits for mints already on the policy", () => {
+    const tightenedSol = {
+      mint: NATIVE_MINT_ADDRESS,
+      perTxMax: 20_000_000n,
+      shortWindowMax: 45_000_000n,
+      shortWindowSeconds: 3_600,
+      longWindowMax: 60_000_000n,
+      longWindowSeconds: 86_400,
+      lifetimeMax: 1_200_000_000n,
+    };
+    expect(mergePolicyMintLimits([solMint(), usdcMint()], [tightenedSol])).toEqual([
+      tightenedSol,
+      {
+        mint: USDC,
+        perTxMax: TOKEN_LIMITS.perTxMax,
+        shortWindowMax: TOKEN_LIMITS.shortWindowMax,
+        shortWindowSeconds: TOKEN_LIMITS.shortWindowSeconds,
+        longWindowMax: TOKEN_LIMITS.longWindowMax,
+        longWindowSeconds: TOKEN_LIMITS.longWindowSeconds,
+        lifetimeMax: TOKEN_LIMITS.lifetimeMax,
+      },
+    ]);
   });
 });
 

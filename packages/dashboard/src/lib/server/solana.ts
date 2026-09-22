@@ -1,12 +1,17 @@
-import { NATIVE_MINT } from "@agent-rails/contract";
+import { NATIVE_MINT } from "@agent-rails/contract/constants";
+import { knownMintSymbol } from "@agent-rails/contract/mints";
 import {
   AGENT_RAILS_PROGRAM_ADDRESS,
   AGENT_SESSION_DISCRIMINATOR,
+  ASSOCIATED_TOKEN_PROGRAM_ADDRESS,
   decodeAgentSession,
   decodePolicy,
   decodeTreasury,
+  FundingMode,
+  findAssociatedTokenAddress,
   findEventAuthorityPda,
   findSolVaultPda,
+  getWithdrawInstruction,
   getWithdrawInstructionAsync,
   POLICY_DISCRIMINATOR,
 } from "@agent-rails/sdk";
@@ -37,6 +42,9 @@ const CLUSTER_RPC_URLS: Record<SolanaCluster, string> = {
 };
 
 export const LAMPORTS_PER_SOL = 1_000_000_000;
+
+/** Decimals of the native-SOL sentinel, for a treasury that never added a slot for it. */
+const SOL_DECIMALS = 9;
 
 /**
  * A custom RPC is user input reaching a server-side fetch, so it is restricted
@@ -349,12 +357,45 @@ async function readDecimals(rpc: Rpc, mints: string[]): Promise<Record<string, n
   }
 }
 
+/** One asset the treasury holds: a configured mint's vault ATA, or `sol_vault`. */
+export type VaultAssetBalance = {
+  mint: string;
+  /** Ticker when we ship one for this address, else null — the UI truncates. */
+  symbol: string | null;
+  decimals: number;
+  tokenProgram: string;
+  /** The vault ATA, or the `sol_vault` PDA for the native sentinel. */
+  vault: string;
+  /** Base units as a decimal string: a u64 does not survive JSON as a number. */
+  amount: string;
+  /** False when the vault ATA was never created; `amount` is then "0". */
+  exists: boolean;
+  /**
+   * ADR-014. Under `native-allowance` the funds sit in the owner's wallet and
+   * the vault ATA is not where payments are drawn from, so a zero here is
+   * expected rather than a treasury that needs topping up.
+   */
+  fundingMode: "isolated-vault" | "native-allowance";
+  /** True when the owner configured this mint; false for the synthesized SOL row. */
+  configured: boolean;
+};
+
 export type VaultBalance = {
   treasury: string;
   solVault: string;
   lamports: number | null;
   /** On-chain owner, not the address the workflow row claims. Gates withdraw. */
   owner: string | null;
+  /** Every mint the owner configured, plus native SOL, which always exists. */
+  assets: VaultAssetBalance[];
+};
+
+/** What the connected wallet holds of a mint — the deposit dialog's honest "max". */
+export type OwnerTokenBalance = {
+  mint: string;
+  ata: string;
+  amount: string;
+  exists: boolean;
 };
 
 export type VaultBalances = {
@@ -364,24 +405,140 @@ export type VaultBalances = {
    * vault below it, so the UI has to subtract it to offer an honest "max".
    */
   rentExemptMinimum: number;
+  /** Token accounts of the wallet named in the request, for the mints above. */
+  ownerTokens: OwnerTokenBalance[];
 };
+
+type TokenAccountAmounts = Map<string, { amount: string; exists: boolean }>;
+
+/** `getMultipleAccounts` caps at 100 addresses per call. */
+const ACCOUNTS_PER_CALL = 100;
+
+/**
+ * Reads token-account amounts in as few round trips as possible. An address
+ * that holds nothing and an address that was never created are different
+ * states: the first is a vault waiting for a deposit, the second is a vault the
+ * deposit has to open first.
+ */
+async function readTokenAmounts(rpc: Rpc, accounts: string[]): Promise<TokenAccountAmounts> {
+  const out: TokenAccountAmounts = new Map();
+  const unique = [...new Set(accounts)];
+  for (let i = 0; i < unique.length; i += ACCOUNTS_PER_CALL) {
+    const chunk = unique.slice(i, i + ACCOUNTS_PER_CALL);
+    try {
+      const { value } = await rpc
+        .getMultipleAccounts(
+          chunk.map((a) => address(a)),
+          { encoding: "jsonParsed" },
+        )
+        .send();
+      value.forEach((account, index) => {
+        const key = chunk[index];
+        if (!key) return;
+        if (!account) {
+          out.set(key, { amount: "0", exists: false });
+          return;
+        }
+        const parsed = account.data as
+          | { parsed?: { info?: { tokenAmount?: { amount?: string } } } }
+          | undefined;
+        const amount = parsed?.parsed?.info?.tokenAmount?.amount;
+        // An account the RPC could not parse comes back in the base64 array
+        // form. Leaving it out collapses it into the "not created yet" state,
+        // where a deposit prepends an idempotent ATA create that no-ops and a
+        // withdraw offers nothing — both safe. Recording it as an existing
+        // zero balance would instead assert an empty vault on the strength of
+        // a shape we did not recognise.
+        if (typeof amount !== "string") return;
+        out.set(key, { amount, exists: true });
+      });
+    } catch {
+      // A failed chunk leaves its accounts unresolved rather than reporting zero,
+      // which the callers render as "—" instead of an empty vault.
+    }
+  }
+  return out;
+}
+
+type PlannedAsset = Omit<VaultAssetBalance, "amount" | "exists">;
+
+/** The mints a treasury can hold: what the owner configured, plus native SOL. */
+async function planAssets(
+  treasury: Address,
+  solVault: Address,
+  decoded: Awaited<ReturnType<typeof fetchTreasury>>,
+): Promise<PlannedAsset[]> {
+  const configs = decoded ? decoded.mints.slice(0, decoded.mintCount) : [];
+  const assets: PlannedAsset[] = [];
+
+  for (const config of configs) {
+    const fundingMode: VaultAssetBalance["fundingMode"] =
+      config.fundingMode === FundingMode.NativeAllowance ? "native-allowance" : "isolated-vault";
+    if (config.mint === NATIVE_MINT) {
+      assets.push({
+        mint: NATIVE_MINT,
+        symbol: knownMintSymbol(NATIVE_MINT),
+        decimals: config.decimals,
+        tokenProgram: config.tokenProgram,
+        vault: solVault,
+        fundingMode,
+        configured: true,
+      });
+      continue;
+    }
+    const [vaultAta] = await findAssociatedTokenAddress({
+      owner: treasury,
+      mint: address(config.mint),
+      tokenProgram: address(config.tokenProgram),
+    });
+    assets.push({
+      mint: config.mint,
+      symbol: knownMintSymbol(config.mint),
+      decimals: config.decimals,
+      tokenProgram: config.tokenProgram,
+      vault: vaultAta,
+      fundingMode,
+      configured: true,
+    });
+  }
+
+  // `sol_vault` accepts permissionless deposits from the moment the treasury
+  // exists and `withdraw` never consults `Treasury.mints`, so SOL is spendable
+  // whether or not a slot was ever added for it. A treasury bootstrapped with
+  // `init --mint <usdc>` alone would otherwise lose its SOL row entirely.
+  if (!assets.some((a) => a.mint === NATIVE_MINT)) {
+    assets.unshift({
+      mint: NATIVE_MINT,
+      symbol: knownMintSymbol(NATIVE_MINT),
+      decimals: SOL_DECIMALS,
+      tokenProgram: DEFAULT_PUBKEY,
+      vault: solVault,
+      fundingMode: "isolated-vault",
+      configured: false,
+    });
+  }
+
+  return assets;
+}
 
 /**
  * A treasury's own lamports are just its rent — the spendable SOL lives in the
- * `sol_vault` PDA. Showing the former as "the cofre balance" understates the
- * vault by orders of magnitude, so callers resolve the vault explicitly.
+ * `sol_vault` PDA, and every other asset lives in a vault ATA the treasury PDA
+ * owns. Showing the treasury account's balance as "the vault" understates it by
+ * orders of magnitude, so callers resolve each vault explicitly.
  */
 export async function getVaultBalances(
   cluster: SolanaCluster,
   customRpc: string | null,
   treasuries: string[],
+  owner?: string | null,
 ): Promise<VaultBalances> {
   const rpc = rpcFor(cluster, customRpc);
   const unique = [...new Set(treasuries.filter(isLikelyAddress))];
 
-  const [vaults, rentExemptMinimum] = await Promise.all([
+  const [planned, rentExemptMinimum] = await Promise.all([
     Promise.all(
-      unique.map(async (treasury): Promise<VaultBalance> => {
+      unique.map(async (treasury) => {
         try {
           const treasuryPk = address(treasury);
           const [solVault] = await findSolVaultPda({ treasury: treasuryPk });
@@ -391,19 +548,85 @@ export async function getVaultBalances(
           ]);
           return {
             treasury,
-            solVault,
+            solVault: solVault as string,
             lamports: Number(value),
             owner: decoded?.owner ?? null,
+            assets: await planAssets(treasuryPk, solVault, decoded),
           };
         } catch {
-          return { treasury, solVault: "", lamports: null, owner: null };
+          return {
+            treasury,
+            solVault: "",
+            lamports: null,
+            owner: null,
+            assets: [] as PlannedAsset[],
+          };
         }
       }),
     ),
     getRentExemptMinimum(rpc),
   ]);
 
-  return { vaults, rentExemptMinimum };
+  // The wallet's own account for each mint any of these treasuries holds. Read
+  // in the same pass so the deposit dialog never has to open a second request
+  // on a different refresh clock than the vault it is depositing into.
+  const ownerMints = ownerTokenMints(planned);
+  const ownerAtas = isLikelyAddress(owner ?? null)
+    ? await Promise.all(
+        ownerMints.map(async ({ mint, tokenProgram }) => {
+          const [ata] = await findAssociatedTokenAddress({
+            owner: address(owner as string),
+            mint: address(mint),
+            tokenProgram: address(tokenProgram),
+          });
+          return { mint, ata: ata as string };
+        }),
+      )
+    : [];
+
+  const amounts = await readTokenAmounts(rpc, [
+    ...planned.flatMap((v) => v.assets.filter((a) => a.mint !== NATIVE_MINT).map((a) => a.vault)),
+    ...ownerAtas.map((o) => o.ata),
+  ]);
+
+  const vaults: VaultBalance[] = planned.map((vault) => ({
+    treasury: vault.treasury,
+    solVault: vault.solVault,
+    lamports: vault.lamports,
+    owner: vault.owner,
+    assets: vault.assets.map((asset) => {
+      if (asset.mint === NATIVE_MINT) {
+        return {
+          ...asset,
+          amount: vault.lamports === null ? "0" : String(vault.lamports),
+          exists: vault.lamports !== null,
+        };
+      }
+      const read = amounts.get(asset.vault);
+      return { ...asset, amount: read?.amount ?? "0", exists: read?.exists ?? false };
+    }),
+  }));
+
+  const ownerTokens: OwnerTokenBalance[] = ownerAtas.map(({ mint, ata }) => {
+    const read = amounts.get(ata);
+    return { mint, ata, amount: read?.amount ?? "0", exists: read?.exists ?? false };
+  });
+
+  return { vaults, rentExemptMinimum, ownerTokens };
+}
+
+/** Distinct non-native mints across every treasury, with their token program. */
+function ownerTokenMints(
+  planned: { assets: PlannedAsset[] }[],
+): { mint: string; tokenProgram: string }[] {
+  const seen = new Map<string, string>();
+  for (const vault of planned) {
+    for (const asset of vault.assets) {
+      if (asset.mint === NATIVE_MINT) continue;
+      if (!seen.has(asset.mint)) seen.set(asset.mint, asset.tokenProgram);
+    }
+  }
+  return [...seen].map(([mint, tokenProgram]) => ({ mint, tokenProgram }));
 }
 
 /** Constant per cluster in practice, but read rather than hardcoded. */
@@ -476,6 +699,69 @@ function transferSolInstruction(
   };
 }
 
+/**
+ * SPL Token / Token-2022 `TransferChecked` (instruction 12).
+ *
+ * Hand-rolled for the same reason the System transfer above is: ten bytes of
+ * fixed, consensus-stable layout against a dependency whose other ninety per
+ * cent this dashboard never calls. `TransferChecked` rather than `Transfer` so
+ * the mint and its decimals are asserted by the token program — a deposit that
+ * lands a thousandfold off because the decimals were guessed is exactly the
+ * class of mistake nothing downstream would catch.
+ */
+function transferCheckedInstruction(input: {
+  source: Address;
+  mint: Address;
+  destination: Address;
+  authority: Address;
+  amount: bigint;
+  decimals: number;
+  tokenProgram: Address;
+}): Instruction {
+  const data = new Uint8Array(10);
+  data[0] = 12;
+  new DataView(data.buffer).setBigUint64(1, input.amount, true);
+  data[9] = input.decimals;
+  return {
+    programAddress: input.tokenProgram,
+    accounts: [
+      { address: input.source, role: AccountRole.WRITABLE },
+      { address: input.mint, role: AccountRole.READONLY },
+      { address: input.destination, role: AccountRole.WRITABLE },
+      { address: input.authority, role: AccountRole.READONLY_SIGNER },
+    ],
+    data,
+  };
+}
+
+/**
+ * Associated Token Account `CreateIdempotent` (instruction 1).
+ *
+ * Permissionless — anyone may open anyone's associated token account — and
+ * idempotent, so it is safe to prepend whenever the account might be missing
+ * without a read-then-write race deciding whether the transaction lands.
+ */
+function createAtaIdempotentInstruction(input: {
+  payer: Address;
+  owner: Address;
+  mint: Address;
+  ata: Address;
+  tokenProgram: Address;
+}): Instruction {
+  return {
+    programAddress: ASSOCIATED_TOKEN_PROGRAM_ADDRESS,
+    accounts: [
+      { address: input.payer, role: AccountRole.WRITABLE_SIGNER },
+      { address: input.ata, role: AccountRole.WRITABLE },
+      { address: input.owner, role: AccountRole.READONLY },
+      { address: input.mint, role: AccountRole.READONLY },
+      { address: SYSTEM_PROGRAM_ADDRESS, role: AccountRole.READONLY },
+      { address: input.tokenProgram, role: AccountRole.READONLY },
+    ],
+    data: new Uint8Array([1]),
+  };
+}
+
 export type VaultTransferKind = "deposit" | "withdraw";
 
 export type VaultTransferRequest = {
@@ -483,13 +769,17 @@ export type VaultTransferRequest = {
   treasury: string;
   /** The connected wallet: fee payer, and source (deposit) or destination (withdraw). */
   wallet: string;
-  lamports: bigint;
+  /** The mint being moved. The native sentinel takes the `sol_vault` path. */
+  mint: string;
+  /** Base units of `mint` — lamports when native. */
+  amount: bigint;
 };
 
 export type BuiltTransaction = {
   /** Base64 wire transaction with empty signature slots, for the wallet to sign. */
   transaction: string;
-  solVault: string;
+  /** Where the funds land or come from: `sol_vault`, or the mint's vault ATA. */
+  vault: string;
   lastValidBlockHeight: number;
 };
 
@@ -501,29 +791,45 @@ export async function buildVaultTransfer(
   if (!isLikelyAddress(req.treasury) || !isLikelyAddress(req.wallet)) {
     throw new SolanaRequestError("api.error.invalidPayload");
   }
-  if (req.lamports <= 0n) throw new SolanaRequestError("api.error.amountMustBePositive");
+  if (req.mint !== NATIVE_MINT && !isLikelyAddress(req.mint)) {
+    throw new SolanaRequestError("api.error.invalidMint");
+  }
+  if (req.amount <= 0n) throw new SolanaRequestError("api.error.amountMustBePositive");
 
   const rpc = rpcFor(cluster, customRpc);
   const treasuryPk = address(req.treasury);
   const walletPk = address(req.wallet);
   const [solVault] = await findSolVaultPda({ treasury: treasuryPk });
 
-  const instruction =
-    req.kind === "deposit"
-      ? transferSolInstruction(walletPk, solVault, req.lamports)
-      : await buildWithdrawInstruction(rpc, treasuryPk, walletPk, req.lamports);
+  const { instructions, vault } =
+    req.mint === NATIVE_MINT
+      ? {
+          instructions: [
+            req.kind === "deposit"
+              ? transferSolInstruction(walletPk, solVault, req.amount)
+              : await buildSolWithdrawInstruction(rpc, treasuryPk, walletPk, req.amount),
+          ],
+          vault: solVault as string,
+        }
+      : await buildTokenTransfer(rpc, {
+          kind: req.kind,
+          treasury: treasuryPk,
+          wallet: walletPk,
+          mint: address(req.mint),
+          amount: req.amount,
+        });
 
   const { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
   const message = pipe(
     createTransactionMessage({ version: 0 }),
     (m) => setTransactionMessageFeePayer(walletPk, m),
     (m) => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, m),
-    (m) => appendTransactionMessageInstructions([instruction], m),
+    (m) => appendTransactionMessageInstructions(instructions, m),
   );
 
   return {
     transaction: getBase64EncodedWireTransaction(compileTransaction(message)),
-    solVault,
+    vault,
     lastValidBlockHeight: Number(latestBlockhash.lastValidBlockHeight),
   };
 }
@@ -533,7 +839,7 @@ export async function buildVaultTransfer(
  * simulation failure into a sentence the dashboard can render. Pause is
  * deliberately *not* consulted: owner withdrawal keeps working while paused.
  */
-async function buildWithdrawInstruction(
+async function buildSolWithdrawInstruction(
   rpc: Rpc,
   treasuryPk: Address,
   walletPk: Address,
@@ -554,6 +860,196 @@ async function buildWithdrawInstruction(
     program: AGENT_RAILS_PROGRAM_ADDRESS,
     amount,
   });
+}
+
+/** SPL `Mint`: the base layout Token-2022 also starts with. */
+const MINT_ACCOUNT_SIZE = 82;
+const MINT_DECIMALS_OFFSET = 44;
+
+type MintMeta = {
+  tokenProgram: Address;
+  decimals: number;
+  fundingMode: "isolated-vault" | "native-allowance";
+  configured: boolean;
+};
+
+/**
+ * Where a mint's decimals and token program come from.
+ *
+ * The owner-configured `MintConfig` wins, because that is what the payment path
+ * asserts against. Falling back to the mint account matters only for withdraw:
+ * `withdraw` deliberately never consults `Treasury.mints` (see `withdraw.rs`),
+ * so an owner can always reach funds in a vault whose slot was removed — and a
+ * UI that refused to build that transaction would trap them.
+ */
+async function resolveMintMeta(
+  rpc: Rpc,
+  treasury: NonNullable<Awaited<ReturnType<typeof fetchTreasury>>>,
+  mint: Address,
+): Promise<MintMeta> {
+  const config = treasury.mints
+    .slice(0, treasury.mintCount)
+    .find((candidate) => candidate.mint === mint);
+  if (config) {
+    return {
+      tokenProgram: address(config.tokenProgram),
+      decimals: config.decimals,
+      fundingMode:
+        config.fundingMode === FundingMode.NativeAllowance ? "native-allowance" : "isolated-vault",
+      configured: true,
+    };
+  }
+
+  const { value } = await rpc.getAccountInfo(mint, { encoding: "base64" }).send();
+  if (!value) throw new SolanaRequestError("api.error.mintNotFound");
+  const data = new Uint8Array(base64.encode(value.data[0]));
+  const decimals = data.length >= MINT_ACCOUNT_SIZE ? data[MINT_DECIMALS_OFFSET] : undefined;
+  if (decimals === undefined) throw new SolanaRequestError("api.error.invalidMint");
+  return {
+    tokenProgram: value.owner as Address,
+    decimals,
+    fundingMode: "isolated-vault",
+    configured: false,
+  };
+}
+
+/** Whether an account exists on chain — an uncreated ATA is not a zero balance. */
+async function accountExists(rpc: Rpc, account: Address): Promise<boolean> {
+  const { value } = await rpc.getAccountInfo(account, { encoding: "base64" }).send();
+  return value !== null;
+}
+
+async function buildTokenTransfer(
+  rpc: Rpc,
+  input: {
+    kind: VaultTransferKind;
+    treasury: Address;
+    wallet: Address;
+    mint: Address;
+    amount: bigint;
+  },
+): Promise<{ instructions: Instruction[]; vault: string }> {
+  const treasury = await fetchTreasury(rpc, input.treasury);
+  if (!treasury) throw new SolanaRequestError("api.error.treasuryNotFound");
+  if (input.kind === "withdraw" && treasury.owner !== input.wallet) {
+    throw new SolanaRequestError("api.error.notTreasuryOwner");
+  }
+
+  const meta = await resolveMintMeta(rpc, treasury, input.mint);
+  const [vaultAta] = await findAssociatedTokenAddress({
+    owner: input.treasury,
+    mint: input.mint,
+    tokenProgram: meta.tokenProgram,
+  });
+  const [walletAta] = await findAssociatedTokenAddress({
+    owner: input.wallet,
+    mint: input.mint,
+    tokenProgram: meta.tokenProgram,
+  });
+
+  const instructions =
+    input.kind === "deposit"
+      ? await buildTokenDeposit(rpc, input, meta, vaultAta, walletAta)
+      : await buildTokenWithdraw(rpc, input, meta, vaultAta, walletAta);
+
+  return { instructions, vault: vaultAta };
+}
+
+async function buildTokenDeposit(
+  rpc: Rpc,
+  input: { treasury: Address; wallet: Address; mint: Address; amount: bigint },
+  meta: MintMeta,
+  vaultAta: Address,
+  walletAta: Address,
+): Promise<Instruction[]> {
+  // A deposit into a mint the treasury never added is money the agent path
+  // cannot spend: `execute_payment` asserts the `MintConfig`, so the funds
+  // would sit there reachable only by `withdraw`. The owner adds the mint with
+  // `agent-rails init --mint <mint>` first.
+  if (!meta.configured) throw new SolanaRequestError("api.error.mintNotConfigured");
+  // ADR-014: under a native allowance the payment path pulls from the owner's
+  // own wallet, so the vault ATA is not the account that funds anything.
+  if (meta.fundingMode === "native-allowance") {
+    throw new SolanaRequestError("api.error.mintNativeAllowance");
+  }
+
+  const [hasWalletAta, hasVaultAta] = await Promise.all([
+    accountExists(rpc, walletAta),
+    accountExists(rpc, vaultAta),
+  ]);
+  if (!hasWalletAta) throw new SolanaRequestError("api.error.noTokenAccount");
+
+  const instructions: Instruction[] = [];
+  // `add_mint` opens the vault ATA, but a treasury restored from an older setup
+  // — or one whose ATA was closed — would otherwise fail with nothing the user
+  // can act on. Idempotent, so paying for it twice is impossible.
+  if (!hasVaultAta) {
+    instructions.push(
+      createAtaIdempotentInstruction({
+        payer: input.wallet,
+        owner: input.treasury,
+        mint: input.mint,
+        ata: vaultAta,
+        tokenProgram: meta.tokenProgram,
+      }),
+    );
+  }
+  instructions.push(
+    transferCheckedInstruction({
+      source: walletAta,
+      mint: input.mint,
+      destination: vaultAta,
+      authority: input.wallet,
+      amount: input.amount,
+      decimals: meta.decimals,
+      tokenProgram: meta.tokenProgram,
+    }),
+  );
+  return instructions;
+}
+
+/** The owner check happens in `buildTokenTransfer`, before any account is read. */
+async function buildTokenWithdraw(
+  rpc: Rpc,
+  input: { treasury: Address; wallet: Address; mint: Address; amount: bigint },
+  meta: MintMeta,
+  vaultAta: Address,
+  walletAta: Address,
+): Promise<Instruction[]> {
+  const instructions: Instruction[] = [];
+  // `transfer_checked` needs a real token account on the receiving side, and an
+  // owner who has never held this mint does not have one. Opening it here costs
+  // the owner rent once and keeps the program with no account-creation power.
+  if (!(await accountExists(rpc, walletAta))) {
+    instructions.push(
+      createAtaIdempotentInstruction({
+        payer: input.wallet,
+        owner: input.wallet,
+        mint: input.mint,
+        ata: walletAta,
+        tokenProgram: meta.tokenProgram,
+      }),
+    );
+  }
+
+  const [eventAuthority] = await findEventAuthorityPda();
+  // The synchronous builder, deliberately: the async one resolves `sol_vault`
+  // to its PDA when omitted, and on the SPL path that account must be `None`
+  // — which the account-meta factory renders as the program id.
+  instructions.push(
+    getWithdrawInstruction({
+      owner: createNoopSigner(input.wallet),
+      treasury: input.treasury,
+      mint: input.mint,
+      vaultAta,
+      destination: walletAta,
+      tokenProgram: meta.tokenProgram,
+      eventAuthority,
+      program: AGENT_RAILS_PROGRAM_ADDRESS,
+      amount: input.amount,
+    }),
+  );
+  return instructions;
 }
 
 export type ConfirmationResult = {

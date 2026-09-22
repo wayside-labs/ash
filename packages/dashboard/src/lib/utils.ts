@@ -1,3 +1,7 @@
+// Leaf imports, not the package barrel: the barrel reaches `intent-id`, which
+// imports `node:crypto` and cannot be bundled for the browser.
+import { NATIVE_MINT } from "@agent-rails/contract/constants";
+import { knownMintSymbol } from "@agent-rails/contract/mints";
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import type { Money } from "./types";
@@ -42,16 +46,42 @@ export function formatSol(sol: number, hidden = false): string {
 }
 
 /**
- * One renderer for the three states a balance can be in, so no page has to
- * decide on its own what to show when an address was never provisioned.
+ * Renders a token amount with its ticker.
+ *
+ * Two decimals is the reading most amounts want, but a balance small enough to
+ * round to zero there is shown at the mint's full precision instead: "0.00
+ * USDC" next to a live vault reads as empty when it is not.
  */
-export function formatMoney(money: Money, hidden = false): string {
+export function formatToken(
+  amount: number,
+  symbol: string,
+  decimals: number,
+  hidden = false,
+  locale = "en-US",
+): string {
+  if (hidden) return `${HIDDEN_AMOUNT} ${symbol}`;
+  const minor = Math.min(2, decimals);
+  const digits = amount !== 0 && Math.abs(amount) < 10 ** -minor ? decimals : minor;
+  const formatted = amount.toLocaleString(locale, {
+    minimumFractionDigits: Math.min(minor, digits),
+    maximumFractionDigits: digits,
+  });
+  return `${formatted} ${symbol}`;
+}
+
+/**
+ * One renderer for the states a balance can be in, so no page has to decide on
+ * its own what to show when an address was never provisioned.
+ */
+export function formatMoney(money: Money, hidden = false, locale = "en-US"): string {
   if (hidden && money.kind !== "unknown") return HIDDEN_AMOUNT;
   switch (money.kind) {
     case "chain":
       return formatSol(money.sol);
+    case "token":
+      return formatToken(money.amount, money.symbol, money.decimals, false, locale);
     case "demo":
-      return formatUsd(money.usd);
+      return formatUsd(money.usd, locale);
     default:
       return "—";
   }
@@ -63,7 +93,7 @@ export function formatMoney(money: Money, hidden = false): string {
  * is simply the brightest thing in its row.
  */
 export function moneyTone(money: Money): string {
-  if (money.kind === "chain") return "text-foreground";
+  if (money.kind === "chain" || money.kind === "token") return "text-foreground";
   if (money.kind === "demo") return "text-subtle-foreground";
   return "text-faint-foreground";
 }
@@ -87,12 +117,15 @@ export function formatBaseUnits(
   return value.toLocaleString(locale, { maximumFractionDigits: decimals });
 }
 
-const NATIVE_MINT = "So11111111111111111111111111111111111111112";
+export { NATIVE_MINT };
 
-/** Known mints get their ticker; anything else falls back to a short address. */
+/**
+ * Known mints get their ticker; anything else falls back to a short address.
+ * The registry lives in `@agent-rails/contract` so the CLI, the server routes
+ * and this renderer all name the same address the same way.
+ */
 export function mintSymbol(mint: string): string {
-  if (mint === NATIVE_MINT) return "SOL";
-  return truncateAddress(mint, 4);
+  return knownMintSymbol(mint) ?? truncateAddress(mint, 4);
 }
 
 export function formatWindow(seconds: number): string {

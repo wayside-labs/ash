@@ -161,6 +161,17 @@ export async function planBootstrap(input: {
   return { treasury, solVault, policy, session, allowlistEntry, createKey };
 }
 
+/** One mint's limits as stored on a policy account or passed to `create_policy`. */
+export type PolicyMintLimit = {
+  mint: Address;
+  perTxMax: bigint;
+  shortWindowMax: bigint;
+  shortWindowSeconds: number;
+  longWindowMax: bigint;
+  longWindowSeconds: number;
+  lifetimeMax: bigint;
+};
+
 export type StepState = {
   treasuryExists: boolean;
   /** Mints with a ceiling on the treasury. */
@@ -168,6 +179,8 @@ export type StepState = {
   policyExists: boolean;
   /** Mints the live policy carries a limit for. */
   policyMints: Address[];
+  /** Limits already stored on the live policy — used to preserve them on `update_policy`. */
+  policyLimits: PolicyMintLimit[];
   entryExists: boolean;
   sessionExists: boolean;
 };
@@ -203,11 +216,21 @@ export async function readStepState(
   }
 
   const policyMints: Address[] = [];
+  const policyLimits: PolicyMintLimit[] = [];
   if (policyExists) {
     const account = await fetchMaybePolicy(rpc, plan.policy, { commitment: "confirmed" });
     if (account.exists) {
       for (const limit of account.data.mintLimits.slice(0, account.data.mintCount)) {
         policyMints.push(limit.mint);
+        policyLimits.push({
+          mint: limit.mint,
+          perTxMax: limit.perTxMax,
+          shortWindowMax: limit.shortWindowMax,
+          shortWindowSeconds: limit.shortWindowSeconds,
+          longWindowMax: limit.longWindowMax,
+          longWindowSeconds: limit.longWindowSeconds,
+          lifetimeMax: limit.lifetimeMax,
+        });
       }
     }
   }
@@ -217,6 +240,7 @@ export async function readStepState(
     configuredMints,
     policyExists: policyExists === true,
     policyMints,
+    policyLimits,
     entryExists: entryExists === true,
     sessionExists: sessionExists === true,
   };
@@ -228,7 +252,7 @@ export type BootstrapStage = {
   instructions: Instruction[];
 };
 
-function toMintLimit(plan: MintPlan) {
+function toMintLimit(plan: MintPlan): PolicyMintLimit {
   return {
     mint: plan.mint,
     perTxMax: plan.limits.perTxMax,
@@ -238,6 +262,22 @@ function toMintLimit(plan: MintPlan) {
     longWindowSeconds: plan.limits.longWindowSeconds,
     lifetimeMax: plan.limits.lifetimeMax,
   };
+}
+
+/**
+ * Builds the limit set for `update_policy` when a second mint is being added.
+ *
+ * Re-running `init` carries fresh CLI defaults in every `MintPlan`, but the live policy
+ * may already be tighter than those defaults — and the treasury ceiling may be tighter
+ * still. Only mints missing from the policy take their limits from the plan; everything
+ * already covered is copied verbatim from the chain.
+ */
+export function mergePolicyMintLimits(
+  mints: MintPlan[],
+  existing: PolicyMintLimit[],
+): PolicyMintLimit[] {
+  const byMint = new Map(existing.map((limit) => [limit.mint, limit]));
+  return mints.map((plan) => byMint.get(plan.mint) ?? toMintLimit(plan));
 }
 
 function addMintInstruction(
@@ -368,8 +408,11 @@ export function buildStages(
 
   // ---- Policy and allowlist -----------------------------------------------------------
   const stageThree: Instruction[] = [];
+  const policyMintLimits = state.policyExists
+    ? mergePolicyMintLimits(input.mints, state.policyLimits)
+    : input.mints.map(toMintLimit);
   const policyArgs = {
-    mintLimits: input.mints.map(toMintLimit),
+    mintLimits: policyMintLimits,
     destinationMode: DESTINATION_MODE_ALLOWLIST,
     requireMemo: false,
     createDestinationAta: false,
