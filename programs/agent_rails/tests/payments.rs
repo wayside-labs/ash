@@ -380,6 +380,88 @@ fn execute_payment_creates_the_destination_ata_when_the_policy_allows_it() {
     assert_eq!(token_balance(&env, &f.destination_ata), PAYMENT);
 }
 
+/// The sibling of the `allow_any_destination` re-check in `prepare`: a ceiling the owner
+/// lowers has to bite on the next payment, not once the operator gets around to rewriting
+/// the policy. `set_ceiling` deliberately leaves live policies alone, so if the flag is read
+/// only at policy-write time it never bites at all.
+#[test]
+fn a_lowered_ata_ceiling_stops_creation_without_the_operator_touching_the_policy() {
+    let mut env = Env::new();
+    let f = spl_fixture(
+        &mut env,
+        SplConfig {
+            policy_creates_ata: true,
+            precreate_destination_ata: false,
+            ..SplConfig::default()
+        },
+    );
+
+    // Only the ATA flag moves. The policy still says `create_destination_ata = true`.
+    let ix = set_ceiling_ix(
+        &env,
+        &f.treasury.treasury,
+        &f.treasury.owner.pubkey(),
+        f.mint,
+        permissive_ceiling(),
+        true,
+        false,
+    );
+    let owner = f.treasury.owner.insecure_clone();
+    env.execute(ix, &[&owner]).assert_success();
+
+    let intent = intent(&mut env, f.mint, f.destination, PAYMENT);
+    assert_spl_payment_rejected(
+        &mut env,
+        &f,
+        &intent,
+        None,
+        AgentRailsError::DestinationAtaCreationDisabled,
+    );
+}
+
+/// And it bites only where it governs. Unlike `allow_any_destination`, which decides whether
+/// the payment may happen at all, this flag decides whether an account may be *opened* — so
+/// revoking it must not strand a destination that is already holding tokens.
+#[test]
+fn a_lowered_ata_ceiling_still_pays_an_ata_that_is_already_open() {
+    let mut env = Env::new();
+    let f = spl_fixture(
+        &mut env,
+        SplConfig {
+            policy_creates_ata: true,
+            precreate_destination_ata: true,
+            ..SplConfig::default()
+        },
+    );
+
+    let ix = set_ceiling_ix(
+        &env,
+        &f.treasury.treasury,
+        &f.treasury.owner.pubkey(),
+        f.mint,
+        permissive_ceiling(),
+        true,
+        false,
+    );
+    let owner = f.treasury.owner.insecure_clone();
+    env.execute(ix, &[&owner]).assert_success();
+
+    let intent = intent(&mut env, f.mint, f.destination, PAYMENT);
+    let ix = execute_payment_ix(
+        &env,
+        &f.treasury,
+        &f.session,
+        &f.fee_payer.pubkey(),
+        f.token_program,
+        None,
+        &intent,
+    );
+    env.execute(ix, &[&f.fee_payer, &f.session.session_key])
+        .assert_success();
+
+    assert_eq!(token_balance(&env, &f.destination_ata), PAYMENT);
+}
+
 #[test]
 fn execute_payment_pays_a_token_2022_mint() {
     let mut env = Env::new();

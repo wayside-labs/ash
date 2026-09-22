@@ -251,9 +251,10 @@ export type ExecutePaymentAsyncInput<
   /** account is derived from it below and this account itself is never read or written. */
   destinationOwner: Address<TAccountDestinationOwner>;
   /**
-   * token_program)`. Left unchecked here because creating it is gated on
-   * `policy.create_destination_ata`, which `init_if_needed` could not express: it would
-   * create the account during account validation, before the policy has been consulted.
+   * token_program)`. Left unchecked here because creating it is gated on the policy flag
+   * met with the owner's ceiling (`PaymentPlan::create_destination_ata`), which
+   * `init_if_needed` could not express: it would create the account during account
+   * validation, before either has been consulted.
    */
   destinationAta: Address<TAccountDestinationAta>;
   /**
@@ -573,9 +574,10 @@ export type ExecutePaymentInput<
   /** account is derived from it below and this account itself is never read or written. */
   destinationOwner: Address<TAccountDestinationOwner>;
   /**
-   * token_program)`. Left unchecked here because creating it is gated on
-   * `policy.create_destination_ata`, which `init_if_needed` could not express: it would
-   * create the account during account validation, before the policy has been consulted.
+   * token_program)`. Left unchecked here because creating it is gated on the policy flag
+   * met with the owner's ceiling (`PaymentPlan::create_destination_ata`), which
+   * `init_if_needed` could not express: it would create the account during account
+   * validation, before either has been consulted.
    */
   destinationAta: Address<TAccountDestinationAta>;
   /**
@@ -838,9 +840,10 @@ export type ParsedExecutePaymentInstruction<
     /** account is derived from it below and this account itself is never read or written. */
     destinationOwner: TAccountMetas[8];
     /**
-     * token_program)`. Left unchecked here because creating it is gated on
-     * `policy.create_destination_ata`, which `init_if_needed` could not express: it would
-     * create the account during account validation, before the policy has been consulted.
+     * token_program)`. Left unchecked here because creating it is gated on the policy flag
+     * met with the owner's ceiling (`PaymentPlan::create_destination_ata`), which
+     * `init_if_needed` could not express: it would create the account during account
+     * validation, before either has been consulted.
      */
     destinationAta: TAccountMetas[9];
     /**

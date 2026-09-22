@@ -55,6 +55,12 @@ pub struct PaymentPlan {
     counter: agent_rails_policy::SpendCounter,
     /// `sha256(memo)`, or zeros for an empty memo.
     memo_hash: [u8; 32],
+    /// The policy's flag met with the owner's ceiling, so a revoked ceiling stops ATA
+    /// creation immediately instead of at the operator's convenience. The conjunction is
+    /// the whole point: unlike `allow_any_destination`, this flag governs one side effect
+    /// and not the payment, so revoking it must not deny a payment to an ATA that is
+    /// already open.
+    pub create_destination_ata: bool,
 }
 
 /// Steps 1–10 and 13 of spec §5.3. No external effects and no state written.
@@ -211,6 +217,8 @@ pub fn prepare(inputs: PaymentInputs, session: &mut AgentSession) -> Result<Paym
         counter_index,
         counter,
         memo_hash: memo_hash(&intent.memo),
+        create_destination_ata: policy.create_destination_ata
+            && treasury.allow_create_destination_ata,
     })
 }
 

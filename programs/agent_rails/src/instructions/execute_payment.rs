@@ -82,9 +82,10 @@ pub struct ExecutePayment<'info> {
     pub destination_owner: UncheckedAccount<'info>,
 
     /// CHECK: address is derived in the handler from `(destination_owner, mint,
-    /// token_program)`. Left unchecked here because creating it is gated on
-    /// `policy.create_destination_ata`, which `init_if_needed` could not express: it would
-    /// create the account during account validation, before the policy has been consulted.
+    /// token_program)`. Left unchecked here because creating it is gated on the policy flag
+    /// met with the owner's ceiling (`PaymentPlan::create_destination_ata`), which
+    /// `init_if_needed` could not express: it would create the account during account
+    /// validation, before either has been consulted.
     #[account(mut)]
     pub destination_ata: UncheckedAccount<'info>,
 
@@ -186,7 +187,7 @@ pub fn execute_payment_handler(ctx: Context<ExecutePayment>, intent: PaymentInte
 
     if ctx.accounts.destination_ata.data_is_empty() {
         require!(
-            ctx.accounts.policy.create_destination_ata,
+            plan.create_destination_ata,
             AgentRailsError::DestinationAtaCreationDisabled
         );
         associated_token::create_idempotent(CpiContext::new(
