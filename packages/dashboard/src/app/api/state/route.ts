@@ -2,12 +2,19 @@ import { profileSchema, settingsSchema } from "@/lib/schema";
 import { serverT } from "@/lib/server/i18n";
 import { assertSameOrigin } from "@/lib/server/origin";
 import { maskState } from "@/lib/server/present";
+import { stateAccessResponse } from "@/lib/server/state/access";
 import { mutateState, readState, resetState } from "@/lib/server/store";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  return Response.json(maskState(await readState()));
+  try {
+    return Response.json(maskState(await readState()));
+  } catch (error) {
+    const denied = stateAccessResponse(error);
+    if (denied) return denied;
+    throw error;
+  }
 }
 
 /** Singletons (profile, settings) — collections go through /api/state/[resource]. */
@@ -36,11 +43,17 @@ export async function PATCH(req: Request) {
     );
   }
 
-  const { state } = await mutateState((draft) => {
-    if (profile?.success) draft.profile = profile.data;
-    if (settings?.success) draft.settings = settings.data;
-  });
-  return Response.json(maskState(state));
+  try {
+    const { state } = await mutateState((draft) => {
+      if (profile?.success) draft.profile = profile.data;
+      if (settings?.success) draft.settings = settings.data;
+    });
+    return Response.json(maskState(state));
+  } catch (error) {
+    const denied = stateAccessResponse(error);
+    if (denied) return denied;
+    throw error;
+  }
 }
 
 /** Settings → Data → "Restore defaults". */
@@ -48,5 +61,11 @@ export async function DELETE(req: Request) {
   const denied = assertSameOrigin(req);
   if (denied) return denied;
 
-  return Response.json(maskState(await resetState()));
+  try {
+    return Response.json(maskState(await resetState()));
+  } catch (error) {
+    const denied = stateAccessResponse(error);
+    if (denied) return denied;
+    throw error;
+  }
 }
