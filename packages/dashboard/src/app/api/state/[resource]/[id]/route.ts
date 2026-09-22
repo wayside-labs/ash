@@ -1,5 +1,6 @@
 import { isResourceName, RESOURCE_SCHEMAS } from "@/lib/schema";
 import { serverT } from "@/lib/server/i18n";
+import { assertSameOrigin } from "@/lib/server/origin";
 import { maskState, restoreMaskedEnv } from "@/lib/server/present";
 import { mutateState } from "@/lib/server/store";
 
@@ -8,6 +9,9 @@ export const dynamic = "force-dynamic";
 type Params = { params: Promise<{ resource: string; id: string }> };
 
 export async function PATCH(req: Request, { params }: Params) {
+  const denied = assertSameOrigin(req);
+  if (denied) return denied;
+
   const { resource, id } = await params;
   if (!isResourceName(resource)) {
     return Response.json(
@@ -53,7 +57,10 @@ export async function PATCH(req: Request, { params }: Params) {
   return Response.json(maskState(state));
 }
 
-export async function DELETE(_req: Request, { params }: Params) {
+export async function DELETE(req: Request, { params }: Params) {
+  const denied = assertSameOrigin(req);
+  if (denied) return denied;
+
   const { resource, id } = await params;
   if (!isResourceName(resource)) {
     return Response.json(

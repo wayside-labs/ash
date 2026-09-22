@@ -1,5 +1,6 @@
 import { compileRunnerConfig, runnerConfigFilename } from "@/lib/mcp-config";
 import { serverT } from "@/lib/server/i18n";
+import { assertSameOrigin } from "@/lib/server/origin";
 import { readState } from "@/lib/server/store";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +15,9 @@ export const dynamic = "force-dynamic";
  * `claude_desktop_config.json` share — save it under either name.
  */
 export async function GET(req: Request) {
+  const denied = assertSameOrigin(req);
+  if (denied) return denied;
+
   const workflowId = new URL(req.url).searchParams.get("workflowId");
   if (!workflowId) {
     return Response.json({ error: await serverT("api.error.missingWorkflowId") }, { status: 400 });

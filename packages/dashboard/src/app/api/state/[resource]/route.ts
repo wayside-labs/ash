@@ -1,6 +1,8 @@
 import { isResourceName, RESOURCE_SCHEMAS } from "@/lib/schema";
 import { serverT } from "@/lib/server/i18n";
+import { assertSameOrigin } from "@/lib/server/origin";
 import { MASKED_ENV_VALUE, maskState } from "@/lib/server/present";
+import { checkFixedWindow } from "@/lib/server/rate-limit";
 import { mutateState, newId } from "@/lib/server/store";
 
 export const dynamic = "force-dynamic";
@@ -8,6 +10,11 @@ export const dynamic = "force-dynamic";
 type Params = { params: Promise<{ resource: string }> };
 
 export async function POST(req: Request, { params }: Params) {
+  const denied = assertSameOrigin(req);
+  if (denied) return denied;
+  const limited = checkFixedWindow("api");
+  if (limited) return limited;
+
   const { resource } = await params;
   if (!isResourceName(resource)) {
     return Response.json(
