@@ -3,6 +3,7 @@ import { serverT } from "@/lib/server/i18n";
 import { assertSameOrigin } from "@/lib/server/origin";
 import { MASKED_ENV_VALUE, maskState } from "@/lib/server/present";
 import { checkFixedWindow } from "@/lib/server/rate-limit";
+import { stateAccessResponse } from "@/lib/server/state/access";
 import { mutateState, newId } from "@/lib/server/store";
 
 export const dynamic = "force-dynamic";
@@ -38,13 +39,19 @@ export async function POST(req: Request, { params }: Params) {
     );
   }
 
-  const { state } = await mutateState((draft) => {
-    (draft[resource] as unknown[]).push(parsed.data);
-  });
-  return Response.json(
-    { created: maskOne(resource, parsed.data), state: maskState(state) },
-    { status: 201 },
-  );
+  try {
+    const { state } = await mutateState((draft) => {
+      (draft[resource] as unknown[]).push(parsed.data);
+    });
+    return Response.json(
+      { created: maskOne(resource, parsed.data), state: maskState(state) },
+      { status: 201 },
+    );
+  } catch (error) {
+    const denied = stateAccessResponse(error);
+    if (denied) return denied;
+    throw error;
+  }
 }
 
 /** The echo of the created row is a read like any other — same mask applies. */
