@@ -2,39 +2,38 @@
 import { Command, InvalidArgumentError, Option } from "commander";
 import pc from "picocolors";
 import { parsePositiveInt, parseSol } from "./amounts.js";
+import { addGlobalOptions, argParser, DEFAULT_RPC, parseGlobalOptions } from "./cli-options.js";
+import { runCeilingSet } from "./commands/ceiling.js";
+import { runDeposit } from "./commands/deposit.js";
+import { runDestAdd, runDestLs, runDestRm } from "./commands/dest.js";
+import { runDoctor } from "./commands/doctor.js";
 import { runInit } from "./commands/init.js";
+import { runMcpEmit } from "./commands/mcp.js";
+import { runPause, runUnpause } from "./commands/pause.js";
+import { runPolicySet, runPolicyShow } from "./commands/policy.js";
+import {
+  runSessionClose,
+  runSessionCreate,
+  runSessionLs,
+  runSessionRevoke,
+  runSessionShow,
+} from "./commands/session.js";
+import { runStatus } from "./commands/status.js";
+import { runWithdraw } from "./commands/withdraw.js";
 import { CliError, isCliError } from "./errors.js";
 import { Ui } from "./ui.js";
 import { DEFAULT_WALLET_PATH } from "./wallet.js";
-
-const DEFAULT_RPC = "https://api.devnet.solana.com";
-
-/**
- * Commander wraps a thrown `InvalidArgumentError` with the flag name and the usage line,
- * which is strictly better output than anything this CLI would print by hand — so the
- * shared parsers throw `CliError` and it is translated here rather than duplicated.
- */
-function argParser<T>(parse: (value: string) => T) {
-  return (value: string): T => {
-    try {
-      return parse(value);
-    } catch (error) {
-      if (isCliError(error)) throw new InvalidArgumentError(error.message);
-      throw error;
-    }
-  };
-}
 
 const program = new Command();
 
 program
   .name("agent-rails")
-  .description("Guardrails and treasury bootstrap for autonomous Solana payments")
+  .description("Guardrails and treasury operations for autonomous Solana payments")
   .version("0.0.0");
 
 program
   .command("init")
-  .description("Create a devnet treasury, policy, allowlist and session, then print an MCP config")
+  .description("Create a treasury, policy, allowlist and session, then print an MCP config")
   .addOption(new Option("--rpc <url>", "RPC endpoint to bootstrap against").default(DEFAULT_RPC))
   .addOption(
     new Option("--wallet <path>", "Keypair that becomes owner, operator and payer").default(
@@ -53,9 +52,6 @@ program
       "a generated demo address",
     ),
   )
-  // Every SOL amount carries an explicit default description. Commander renders a default
-  // by JSON.stringify-ing it, which throws on a bigint - and lamports in help text would be
-  // unreadable anyway, so the human figure is the better string regardless.
   .addOption(
     new Option("--per-tx <sol>", "Maximum SOL per payment")
       .argParser(argParser((v) => parseSol(v, "--per-tx")))
@@ -86,9 +82,6 @@ program
       .argParser(argParser((v) => parsePositiveInt(v, "--session-ttl")))
       .default(24, "24"),
   )
-  // ---- SPL / Token-2022 --------------------------------------------------------------
-  // Token limits are human-unit strings, not lamports: they are scaled by the mint's own
-  // decimals, which is only known once the mint has been read off the chain.
   .addOption(
     new Option("--mint <address>", "An existing SPL or Token-2022 mint to accept alongside SOL"),
   )
@@ -131,15 +124,11 @@ program
 Examples:
   $ agent-rails init
   $ agent-rails init --rpc http://127.0.0.1:8899 --yes
-  $ agent-rails init --per-tx 0.01 --daily 0.1 --destination <address>
-  $ agent-rails init --dry-run
-  $ agent-rails init --mock-mint                      # SOL + a token you can actually spend
-  $ agent-rails init --mint <usdc-mint> --token-per-tx 5
 `,
   )
   .action(async (options) => {
     const ui = new Ui({ quiet: options.json === true });
-    const exitCode = await runInit(
+    process.exitCode = await runInit(
       {
         rpc: options.rpc,
         wallet: options.wallet,
@@ -168,17 +157,274 @@ Examples:
       },
       ui,
     );
-    process.exitCode = exitCode;
   });
 
-/**
- * One error boundary for the whole CLI.
- *
- * An anticipated failure prints its message and its hint and exits; anything else prints a
- * stack trace. Collapsing the two would make a real bug in this package look like a
- * misconfigured cluster, which is the most expensive kind of wrong message to send a
- * developer at a hackathon.
- */
+function globalAction(
+  runner: (opts: ReturnType<typeof parseGlobalOptions>, ui: Ui) => Promise<number>,
+) {
+  return async (options: Record<string, unknown>) => {
+    const parsed = parseGlobalOptions(options);
+    const ui = new Ui({ quiet: parsed.json });
+    process.exitCode = await runner(parsed, ui);
+  };
+}
+
+addGlobalOptions(
+  program
+    .command("status")
+    .description("Show treasury ceilings, policy limits, sessions, balances, and pause state")
+    .action(globalAction(runStatus)),
+);
+
+addGlobalOptions(
+  program
+    .command("doctor")
+    .description("Preflight checks before demos: program, roles, session, allowlist, MCP")
+    .action(globalAction(runDoctor)),
+);
+
+const mcp = program.command("mcp").description("MCP configuration helpers");
+addGlobalOptions(
+  mcp
+    .command("emit")
+    .description("Reprint claude_desktop_config.snippet.json from manifest + on-chain session")
+    .action(globalAction(runMcpEmit)),
+);
+
+addGlobalOptions(
+  program
+    .command("deposit")
+    .description("Top up the SOL vault to a target (shortfall semantics, same as init)")
+    .addOption(
+      new Option("--amount <sol>", "Target vault balance")
+        .argParser(argParser((v) => parseSol(v, "--amount")))
+        .makeOptionMandatory(),
+    )
+    .action(async (options) => {
+      const parsed = parseGlobalOptions(options);
+      const ui = new Ui({ quiet: parsed.json });
+      process.exitCode = await runDeposit({ ...parsed, amount: options.amount as bigint }, ui);
+    }),
+);
+
+addGlobalOptions(
+  program
+    .command("withdraw")
+    .description("Owner withdraws SOL or SPL from the treasury vault")
+    .addOption(new Option("--amount <amount>", "Human-unit amount").makeOptionMandatory())
+    .addOption(new Option("--to <address>", "Destination wallet").makeOptionMandatory())
+    .addOption(new Option("--mint <mint>", "Mint address or SOL (default: SOL)"))
+    .action(async (options) => {
+      const parsed = parseGlobalOptions(options);
+      const ui = new Ui({ quiet: parsed.json });
+      process.exitCode = await runWithdraw(
+        {
+          ...parsed,
+          amount: options.amount as string,
+          to: options.to as string,
+          ...(typeof options.mint === "string" ? { mint: options.mint } : {}),
+        },
+        ui,
+      );
+    }),
+);
+
+addGlobalOptions(
+  program
+    .command("pause")
+    .description("Pause the treasury (owner or guardian)")
+    .action(globalAction(runPause)),
+);
+
+addGlobalOptions(
+  program
+    .command("unpause")
+    .description("Unpause the treasury (owner only)")
+    .action(globalAction(runUnpause)),
+);
+
+const ceiling = program.command("ceiling").description("Owner ceiling controls");
+addGlobalOptions(
+  ceiling
+    .command("set")
+    .description("Raise or lower the owner ceiling for a mint")
+    .addOption(new Option("--mint <mint>", "Mint address or SOL").default("SOL"))
+    .addOption(
+      new Option("--per-tx <sol>", "Max per payment")
+        .argParser(argParser((v) => parseSol(v, "--per-tx")))
+        .makeOptionMandatory(),
+    )
+    .addOption(
+      new Option("--daily <sol>", "Max per day")
+        .argParser(argParser((v) => parseSol(v, "--daily")))
+        .makeOptionMandatory(),
+    )
+    .addOption(
+      new Option("--lifetime <sol>", "Max lifetime").argParser(
+        argParser((v) => parseSol(v, "--lifetime")),
+      ),
+    )
+    .action(async (options) => {
+      const parsed = parseGlobalOptions(options);
+      const ui = new Ui({ quiet: parsed.json });
+      process.exitCode = await runCeilingSet(
+        {
+          ...parsed,
+          mint: options.mint as string,
+          perTx: options.perTx as bigint,
+          daily: options.daily as bigint,
+          ...(typeof options.lifetime === "bigint" ? { lifetime: options.lifetime } : {}),
+        },
+        ui,
+      );
+    }),
+);
+
+const policy = program.command("policy").description("Operator policy controls");
+addGlobalOptions(
+  policy
+    .command("show")
+    .description("Show human-readable policy limits")
+    .action(globalAction(runPolicyShow)),
+);
+addGlobalOptions(
+  policy
+    .command("set")
+    .description("Rewrite the full PolicyInput (never per-field patch on-chain)")
+    .addOption(
+      new Option("--per-tx <sol>", "Per-payment cap").argParser(
+        argParser((v) => parseSol(v, "--per-tx")),
+      ),
+    )
+    .addOption(
+      new Option("--daily <sol>", "Daily cap").argParser(argParser((v) => parseSol(v, "--daily"))),
+    )
+    .addOption(
+      new Option("--lifetime <sol>", "Lifetime cap").argParser(
+        argParser((v) => parseSol(v, "--lifetime")),
+      ),
+    )
+    .addOption(new Option("--mint <mint>", "Mint to update (default: SOL)"))
+    .action(async (options) => {
+      const parsed = parseGlobalOptions(options);
+      const ui = new Ui({ quiet: parsed.json });
+      process.exitCode = await runPolicySet(
+        {
+          ...parsed,
+          ...(typeof options.perTx === "bigint" ? { perTx: options.perTx } : {}),
+          ...(typeof options.daily === "bigint" ? { daily: options.daily } : {}),
+          ...(typeof options.lifetime === "bigint" ? { lifetime: options.lifetime } : {}),
+          ...(typeof options.mint === "string" ? { mint: options.mint } : {}),
+        },
+        ui,
+      );
+    }),
+);
+
+const dest = program.command("dest").description("Allowlist destinations by label");
+addGlobalOptions(
+  dest
+    .command("add")
+    .description("Add a labeled destination owner")
+    .addOption(new Option("--label <label>", "NFKC-normalized label").makeOptionMandatory())
+    .addOption(new Option("--owner <address>", "Destination wallet owner").makeOptionMandatory())
+    .action(async (options) => {
+      const parsed = parseGlobalOptions(options);
+      const ui = new Ui({ quiet: parsed.json });
+      process.exitCode = await runDestAdd(
+        { ...parsed, label: options.label as string, owner: options.owner as string },
+        ui,
+      );
+    }),
+);
+addGlobalOptions(
+  dest
+    .command("rm")
+    .description("Remove a destination by label")
+    .addOption(new Option("--label <label>", "Label to remove").makeOptionMandatory())
+    .action(async (options) => {
+      const parsed = parseGlobalOptions(options);
+      const ui = new Ui({ quiet: parsed.json });
+      process.exitCode = await runDestRm({ ...parsed, label: options.label as string }, ui);
+    }),
+);
+addGlobalOptions(
+  dest.command("ls").description("List allowlisted destinations").action(globalAction(runDestLs)),
+);
+
+const session = program.command("session").description("Agent session lifecycle");
+addGlobalOptions(
+  session
+    .command("create")
+    .description("Create a session with a new 0600 keypair")
+    .addOption(new Option("--label <label>", "Session label").makeOptionMandatory())
+    .addOption(
+      new Option("--session-ttl <hours>", "Session lifetime")
+        .argParser(argParser((v) => parsePositiveInt(v, "--session-ttl")))
+        .default(24),
+    )
+    .action(async (options) => {
+      const parsed = parseGlobalOptions(options);
+      const ui = new Ui({ quiet: parsed.json });
+      process.exitCode = await runSessionCreate(
+        {
+          ...parsed,
+          label: options.label as string,
+          sessionTtlHours: options.sessionTtl as number,
+        },
+        ui,
+      );
+    }),
+);
+addGlobalOptions(
+  session.command("ls").description("List sessions").action(globalAction(runSessionLs)),
+);
+addGlobalOptions(
+  session
+    .command("show")
+    .description("Show one session")
+    .addOption(new Option("--session <address>", "Session PDA (default: manifest)"))
+    .action(async (options) => {
+      const parsed = parseGlobalOptions(options);
+      const ui = new Ui({ quiet: parsed.json });
+      process.exitCode = await runSessionShow(
+        {
+          ...parsed,
+          ...(typeof options.session === "string" ? { session: options.session } : {}),
+        },
+        ui,
+      );
+    }),
+);
+addGlobalOptions(
+  session
+    .command("revoke")
+    .description("Revoke a session (operator or owner)")
+    .addOption(new Option("--session <address>", "Session PDA").makeOptionMandatory())
+    .action(async (options) => {
+      const parsed = parseGlobalOptions(options);
+      const ui = new Ui({ quiet: parsed.json });
+      process.exitCode = await runSessionRevoke(
+        { ...parsed, session: options.session as string },
+        ui,
+      );
+    }),
+);
+addGlobalOptions(
+  session
+    .command("close")
+    .description("Close a revoked or expired session")
+    .addOption(new Option("--session <address>", "Session PDA").makeOptionMandatory())
+    .action(async (options) => {
+      const parsed = parseGlobalOptions(options);
+      const ui = new Ui({ quiet: parsed.json });
+      process.exitCode = await runSessionClose(
+        { ...parsed, session: options.session as string },
+        ui,
+      );
+    }),
+);
+
 async function main(): Promise<void> {
   try {
     await program.parseAsync(process.argv);
@@ -193,6 +439,11 @@ async function main(): Promise<void> {
         }
       }
       process.exit(error.exitCode);
+    }
+    if (error instanceof InvalidArgumentError) {
+      ui.blank();
+      ui.fail(error.message);
+      process.exit(1);
     }
     ui.blank();
     ui.fail("Unexpected error - this is a bug in agent-rails");

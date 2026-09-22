@@ -1,4 +1,5 @@
 import { MAX_NAME_LEN } from "@agent-rails/contract";
+import type { ReadonlyUint8Array } from "@solana/kit";
 import { CliError } from "./errors.js";
 
 /**
@@ -33,7 +34,8 @@ export function encodeFixedName(value: string, flag: string): Uint8Array {
 }
 
 /** The inverse, for printing a name read back off the chain. */
-export function decodeFixedName(bytes: Uint8Array): string {
-  const end = bytes.indexOf(0);
-  return new TextDecoder().decode(bytes.subarray(0, end === -1 ? bytes.length : end));
+export function decodeFixedName(bytes: Uint8Array | ReadonlyUint8Array): string {
+  const view = Uint8Array.from(bytes);
+  const end = view.indexOf(0);
+  return new TextDecoder().decode(view.subarray(0, end === -1 ? view.length : end));
 }

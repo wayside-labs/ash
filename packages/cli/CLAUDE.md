@@ -1,7 +1,8 @@
 # packages/cli
 
-The operator-facing CLI. `init` bootstraps a treasury, ceiling, policy, allowlist entry and
-session, then emits the MCP config block.
+The operator-facing CLI. `init` bootstraps a treasury; day-2 commands (`status`, `doctor`,
+`deposit`, `policy set`, `session create`, …) share `context.ts`, `chain/read.ts`, and
+`tx/*` builders. Agents pay via MCP only.
 
 ## Rules specific to this package
 
@@ -28,3 +29,12 @@ session, then emits the MCP config block.
   `allow_create_destination_ata` false means the payment path cannot open accounts, so the
   CLI opens the destination's ATA itself with the idempotent ATA instruction.
 - Human output goes to stderr so `--json` keeps stdout a clean pipe.
+- **`policy set` always submits a complete `PolicyInput`.** Read current limits from chain,
+  apply CLI deltas, preflight `policy ≤ ceiling` in `planners/policy.ts`, then
+  `update_policy` (or `create_policy` if absent). Never patch individual fields on-chain.
+- **`deposit` uses the same shortfall semantics as `init`.** Target balance minus current
+  vault balance; zero shortfall is a no-op.
+- **`session create` refuses privileged keys** (owner, operator, guardian) and writes a
+  `0600` keypair under `--out`. It updates the manifest and regenerates the MCP snippet.
+- **`pause` is owner or guardian; `unpause` is owner only.** Withdraw keeps working while
+  paused (program invariant).
