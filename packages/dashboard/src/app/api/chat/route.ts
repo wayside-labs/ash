@@ -10,6 +10,7 @@ import { withContextLocalized } from "@/lib/server/llm/prompt";
 import { anthropicApiKey, resolveProvider } from "@/lib/server/llm/providers";
 import { assertSameOrigin } from "@/lib/server/origin";
 import { acquireSlot, checkFixedWindow } from "@/lib/server/rate-limit";
+import { stateAccessResponse } from "@/lib/server/state/access";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -68,7 +69,16 @@ export async function POST(req: Request) {
     });
   }
 
-  const context = await buildContext(cluster, rpc);
+  // The snapshot is tenant data, unlike the locale and the provider probe
+  // above — an unreadable state is a 401 here, not an empty context.
+  let context: string;
+  try {
+    context = await buildContext(cluster, rpc);
+  } catch (error) {
+    const stateDenied = stateAccessResponse(error);
+    if (stateDenied) return stateDenied;
+    throw error;
+  }
   const systemPrompt = getSystemPrompt(locale);
 
   if (provider === "claude-cli" && isClaudeCliModel(chosen)) {
