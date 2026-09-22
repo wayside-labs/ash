@@ -33,6 +33,12 @@ describe("clusterSlug", () => {
       manifestPath("/out", "http://127.0.0.1:8899"),
     );
   });
+
+  it("names the file after the cluster, under the out dir", () => {
+    expect(manifestPath(".agent-rails", "http://127.0.0.1:8899")).toBe(
+      ".agent-rails/localnet.json",
+    );
+  });
 });
 
 describe("readManifest", () => {

@@ -1,8 +1,5 @@
-import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
-import { createInterface } from "node:readline/promises";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import { AGENT_RAILS_PROGRAM_ADDRESS } from "@agent-rails/client";
 import {
   fromBaseUnits,
@@ -24,10 +21,14 @@ import {
   readStepState,
   type StepState,
 } from "../bootstrap.js";
+import { confirm } from "../confirm.js";
 import { CliError } from "../errors.js";
+import { fundingLine, shortfall } from "../funding.js";
 import { type Manifest, manifestPath, readManifest, writeManifest } from "../manifest.js";
 import { claudeDesktopConfigPath, claudeDesktopSupported, renderMcpConfig } from "../mcp-config.js";
+import { resolveMcpEntry } from "../mcp-entry.js";
 import { encodeFixedName } from "../names.js";
+import { parseAddress } from "../parse.js";
 import {
   assertProgramDeployed,
   connect,
@@ -268,10 +269,10 @@ export async function runInit(options: InitOptions, ui: Ui): Promise<number> {
     ui.field(`${tokenSummary.symbol} per day`, `<= ${tokenSummary.daily}`);
     ui.field(`${tokenSummary.symbol} lifetime`, `<= ${tokenSummary.lifetime}`);
   }
-  ui.field("Vault", fundingLine(options.deposit, vaultBalance, depositShortfall));
+  ui.field("Vault", fundingLine(options.deposit, vaultBalance, depositShortfall, formatSol));
   ui.field(
     "Fee budget",
-    `${fundingLine(options.feeBudget, feePayerBalance, feeBudgetShortfall)} - ~${feeBudgetPayments(options.feeBudget)} payments`,
+    `${fundingLine(options.feeBudget, feePayerBalance, feeBudgetShortfall, formatSol)} - ~${feeBudgetPayments(options.feeBudget)} payments`,
   );
   ui.field("Session expires", new Date(Number(sessionExpiresAt) * 1000).toISOString());
   ui.blank();
@@ -599,14 +600,6 @@ function resolveTokenLimits(options: InitOptions, decimals: number): BootstrapLi
   };
 }
 
-function parseAddress(value: string, flag: string): Address {
-  try {
-    return address(value);
-  } catch (error) {
-    throw new CliError(`${flag} is not a valid Solana address: ${value}`, { cause: error });
-  }
-}
-
 function resolveLimits(options: InitOptions): BootstrapLimits {
   if (options.perTx > options.daily) {
     throw new CliError(
@@ -671,52 +664,11 @@ function stagesRemaining(state: StepState, mintCount: number): number {
   );
 }
 
-/** How much must move for `held` to reach `target`. Never negative. */
-function shortfall(target: bigint, held: bigint): bigint {
-  return held >= target ? 0n : target - held;
-}
-
-function fundingLine(target: bigint, held: bigint, moving: bigint): string {
-  if (moving === 0n) return `${formatSol(held)} (already at or above ${formatSol(target)})`;
-  return `${formatSol(held)} -> ${formatSol(target)} (sending ${formatSol(moving)})`;
-}
-
 function feeBudgetPayments(feeBudget: bigint): number {
   // Each payment pays a signature fee plus rent for its own IntentReceipt PDA, which the
   // fee payer funds. Receipts are reclaimable later via `close_receipt`.
   const perPayment = RECEIPT_RENT_LAMPORTS + 10_000n;
   return Number(feeBudget / perPayment);
-}
-
-/**
- * Locate the built MCP server entry point.
- *
- * Worth searching for rather than assuming: the config names an absolute path, and if that
- * file does not exist Claude Desktop fails at startup with nothing in the UI to say why.
- * Catching it here turns a silent dead end into one line telling the developer to run
- * `pnpm --filter @agent-rails/mcp build`.
- *
- * Checked in order: next to this CLI inside the workspace, then relative to the working
- * directory for someone running from the repository root.
- */
-function resolveMcpEntry(explicit: string | undefined, ui: Ui): string {
-  if (explicit) return expandPath(explicit);
-
-  const here = dirname(fileURLToPath(import.meta.url));
-  const candidates = [
-    resolve(here, "../../mcp/dist/cli.js"),
-    resolve(here, "../mcp/dist/cli.js"),
-    resolve(process.cwd(), "packages/mcp/dist/cli.js"),
-  ];
-
-  const found = candidates.find((candidate) => existsSync(candidate));
-  if (found) return found;
-
-  ui.warn("The MCP server is not built - the config below points at a file that does not exist");
-  ui.info(
-    ui.dim("  Build it with `pnpm --filter @agent-rails/mcp build`, or pass --mcp-entry <path>."),
-  );
-  return candidates[candidates.length - 1] as string;
 }
 
 function shorten(value: string): string {
@@ -725,16 +677,4 @@ function shorten(value: string): string {
 
 function maxBigInt(a: bigint, b: bigint): bigint {
   return a > b ? a : b;
-}
-
-async function confirm(question: string): Promise<boolean> {
-  if (!process.stdin.isTTY) return true;
-  const rl = createInterface({ input: process.stdin, output: process.stderr });
-  try {
-    const answer = await rl.question(`${question} [Y/n] `);
-    const normalized = answer.trim().toLowerCase();
-    return normalized === "" || normalized === "y" || normalized === "yes";
-  } finally {
-    rl.close();
-  }
 }
