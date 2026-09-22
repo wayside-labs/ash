@@ -24,13 +24,13 @@
 # `baseline` is what this build actually costs. §11 fails at +10% over it, which
 # catches a change long before it reaches the design gate.
 
-execute_payment_spl_allowlist     43765  45000  execute_payment (SPL Token, allowlist, no ATA creation)
-execute_payment_spl_any           41572  45000  execute_payment (SPL Token, any destination, no ATA creation)
-execute_payment_sol               32150  35000  execute_payment_sol
+execute_payment_spl_allowlist     43779  45000  execute_payment (SPL Token, allowlist, no ATA creation)
+execute_payment_spl_any           41582  45000  execute_payment (SPL Token, any destination, no ATA creation)
+execute_payment_sol               32166  35000  execute_payment_sol
 # No spec number was ever committed for the ADR-014 CPI path, and this measurement
 # still derives the native PDAs with `find_program_address` rather than taking
 # caller-supplied bumps (the gap ADR-014's Consequences section names). That blocks a
 # *design gate*, not a *baseline*: the +10% band below catches a regression either
 # way, and it replaces the 150k sanity ceiling this path used to sit under — a
 # ceiling 2.2x the real cost would not have caught a doubling.
-execute_payment_native_allowance  66986  none   execute_payment (NativeAllowance, SPL Token, any destination)
+execute_payment_native_allowance  66996  none   execute_payment (NativeAllowance, SPL Token, any destination)
