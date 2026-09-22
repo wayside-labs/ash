@@ -8,6 +8,8 @@ import { buildContext } from "@/lib/server/llm/context";
 import { getDemoReply, getSystemPrompt, transcriptRoleLabel } from "@/lib/server/llm/i18n";
 import { withContextLocalized } from "@/lib/server/llm/prompt";
 import { anthropicApiKey, resolveProvider } from "@/lib/server/llm/providers";
+import { assertSameOrigin } from "@/lib/server/origin";
+import { acquireSlot, checkFixedWindow } from "@/lib/server/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -19,7 +21,11 @@ const requestSchema = z.object({
   rpc: z.string().nullable().default(null),
 });
 
-function textStream(source: AsyncIterable<string>, onError: (e: unknown) => string): Response {
+function textStream(
+  source: AsyncIterable<string>,
+  onError: (e: unknown) => string,
+  onSettled?: () => void,
+): Response {
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
@@ -29,6 +35,7 @@ function textStream(source: AsyncIterable<string>, onError: (e: unknown) => stri
         controller.enqueue(encoder.encode(onError(error)));
       } finally {
         controller.close();
+        onSettled?.();
       }
     },
   });
@@ -38,6 +45,13 @@ function textStream(source: AsyncIterable<string>, onError: (e: unknown) => stri
 }
 
 export async function POST(req: Request) {
+  const denied = assertSameOrigin(req);
+  if (denied) return denied;
+  // Tighter than the generic bucket: this is the most expensive route in the
+  // repository, and the window is only half the defence — see acquireSlot below.
+  const limited = checkFixedWindow("chat", 20);
+  if (limited) return limited;
+
   const parsed = requestSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
     return Response.json({ error: await serverT("api.error.invalidPayload") }, { status: 422 });
@@ -68,6 +82,13 @@ export async function POST(req: Request) {
       transcript ? `${transcript}\n\n${transcriptRoleLabel(locale, "user")}: ${last}` : last,
     );
 
+    // `maxDuration = 120` is per request and caps nothing collectively: without this,
+    // N requests are N live two-minute calls, each one a `claude` process or a paid
+    // stream. Taken immediately before the stream so that nothing which can throw
+    // sits between the acquire and the release.
+    const slot = acquireSlot("chat");
+    if (slot instanceof Response) return slot;
+
     const response = textStream(
       streamClaudeCli({
         prompt,
@@ -77,6 +98,7 @@ export async function POST(req: Request) {
       }),
       (error) =>
         `\n\n⚠️ ${error instanceof Error ? error.message : t("llm.error.claudeCliFailed", locale)}`,
+      slot.release,
     );
     response.headers.set("x-agent-rails-mode", "claude-cli");
     return response;
@@ -88,6 +110,9 @@ export async function POST(req: Request) {
       headers: { "content-type": "text/plain; charset=utf-8", "x-agent-rails-mode": "demo" },
     });
   }
+
+  const slot = acquireSlot("chat");
+  if (slot instanceof Response) return slot;
 
   const response = textStream(
     streamAnthropicApi({
@@ -104,6 +129,7 @@ export async function POST(req: Request) {
       console.error("[chat] anthropic api error:", error);
       return `\n\n⚠️ ${error instanceof Error ? error.message : t("llm.error.anthropicFailed", locale)}`;
     },
+    slot.release,
   );
   response.headers.set("x-agent-rails-mode", "anthropic-api");
   return response;

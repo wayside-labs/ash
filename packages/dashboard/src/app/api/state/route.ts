@@ -1,5 +1,6 @@
 import { profileSchema, settingsSchema } from "@/lib/schema";
 import { serverT } from "@/lib/server/i18n";
+import { assertSameOrigin } from "@/lib/server/origin";
 import { maskState } from "@/lib/server/present";
 import { mutateState, readState, resetState } from "@/lib/server/store";
 
@@ -11,6 +12,9 @@ export async function GET() {
 
 /** Singletons (profile, settings) — collections go through /api/state/[resource]. */
 export async function PATCH(req: Request) {
+  const denied = assertSameOrigin(req);
+  if (denied) return denied;
+
   const body = (await req.json().catch(() => ({}))) as {
     profile?: unknown;
     settings?: unknown;
@@ -40,6 +44,9 @@ export async function PATCH(req: Request) {
 }
 
 /** Settings → Data → "Restore defaults". */
-export async function DELETE() {
+export async function DELETE(req: Request) {
+  const denied = assertSameOrigin(req);
+  if (denied) return denied;
+
   return Response.json(maskState(await resetState()));
 }
