@@ -12,6 +12,10 @@
       "types": "./dist/constants.d.ts",
       "import": "./dist/constants.js"
     },
+    "./defi-intents": {
+      "types": "./dist/defi-intents.d.ts",
+      "import": "./dist/defi-intents.js"
+    },
     "./reason-codes": {
       "types": "./dist/reason-codes.d.ts",
       "import": "./dist/reason-codes.js"

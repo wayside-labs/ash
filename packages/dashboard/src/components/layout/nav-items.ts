@@ -7,6 +7,7 @@ import {
   Gauge,
   Home,
   Key,
+  Layers,
   Settings,
   User,
   Wallet,
@@ -46,6 +47,7 @@ export const navGroupDefs: NavGroupDef[] = [
     labelKey: "nav.money",
     items: [
       { href: "/treasury", labelKey: "nav.treasury", icon: CreditCard },
+      { href: "/defi", labelKey: "nav.defi", icon: Layers, prefetch: false },
       { href: "/limits", labelKey: "nav.limits", icon: Gauge },
       { href: "/wallets", labelKey: "nav.wallets", icon: Wallet },
     ],
