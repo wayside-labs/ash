@@ -1337,9 +1337,10 @@
         {
           "name": "destination_ata",
           "docs": [
-            "token_program)`. Left unchecked here because creating it is gated on",
-            "`policy.create_destination_ata`, which `init_if_needed` could not express: it would",
-            "create the account during account validation, before the policy has been consulted."
+            "token_program)`. Left unchecked here because creating it is gated on the policy flag",
+            "met with the owner's ceiling (`PaymentPlan::create_destination_ata`), which",
+            "`init_if_needed` could not express: it would create the account during account",
+            "validation, before either has been consulted."
           ],
           "writable": true
         },
