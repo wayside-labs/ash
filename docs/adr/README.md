@@ -19,5 +19,8 @@ Each ADR captures one decision from the v1 design session: the context, the opti
 | [013](ADR-013-progressive-security-posture.md) | Progressive security posture with a fixed set of configurable guard-rails | Accepted |
 | [014](ADR-014-hybrid-funding-mode.md) | Hybrid `FundingMode`: isolated vault or native Solana allowance, owner-selected per mint | Accepted |
 | [015](ADR-015-phased-ci-gates.md) | Phased CI gates, with the deferred half of ADR-008 named rather than implied | Accepted |
+| [017](ADR-017-hosted-tenancy-and-client-held-secrets.md) | Hosted dashboard: account/org tenancy, Supabase identity, and client-held secrets | Accepted |
+
+016 is reserved by issue #23 (the per-session ceiling) and lands with it.
 
 Template for new ADRs: `ADR-NNN-short-title.md` with sections **Context**, **Options considered**, **Decision**, **Consequences**.
