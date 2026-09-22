@@ -1,3 +1,4 @@
+import { formatDeFiCatalogForPrompt } from "@agent-rails/contract/defi-intents";
 import type { SolanaCluster } from "@/lib/schema";
 import { LAMPORTS_PER_SOL, readTreasury } from "@/lib/server/solana";
 import { readState } from "@/lib/server/store";
@@ -81,6 +82,8 @@ export async function buildContext(cluster: SolanaCluster, rpc: string | null): 
       `\nMCPs the user enabled for their AGENTS (you have no access to any of them): ${enabledMcps.join(", ")}.`,
     );
   }
+
+  lines.push(`\n${formatDeFiCatalogForPrompt()}`);
 
   return lines.join("\n");
 }

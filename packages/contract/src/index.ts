@@ -2,6 +2,7 @@
 export const AGENT_RAILS_PROGRAM_ID = "4qjD6vSgYa3oBKde3KVzsH8oCcP9BKsirX1xtD5SS6BS" as const;
 
 export * from "./constants.js";
+export * from "./defi-intents.js";
 export * from "./events.js";
 export * from "./intent-id.js";
 export * from "./mcp-tools.js";
