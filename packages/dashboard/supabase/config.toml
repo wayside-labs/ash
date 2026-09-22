@@ -1,0 +1,19 @@
+# Local Supabase CLI config. Apply migrations with:
+#   supabase db push   (linked project)
+#   supabase start && supabase db reset   (local stack)
+project_id = "agent-rails-dashboard"
+
+[api]
+enabled = true
+
+[db]
+major_version = 15
+
+[auth]
+enabled = true
+site_url = "http://127.0.0.1:3000"
+additional_redirect_urls = ["http://127.0.0.1:3000/auth/callback", "http://localhost:3000/auth/callback"]
+
+[auth.external.google]
+enabled = false
+# Enable in the Supabase dashboard for hosted projects; set client_id/secret there.
