@@ -38,3 +38,7 @@ mutants.out.old/
 # would silently swallow the next real document added to it.
 docs/research/agent-orgs-and-defi-mandates.md
 docs/strategy/crypto-worlds-fair-playbook.md
+
+# `vercel link` output: project and org ids belonging to whoever ran it, not a shared
+# setting. The deploy configuration that IS shared lives in packages/dashboard/vercel.json.
+.vercel/
