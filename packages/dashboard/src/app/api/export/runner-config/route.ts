@@ -1,6 +1,7 @@
 import { compileRunnerConfig, runnerConfigFilename } from "@/lib/mcp-config";
 import { serverT } from "@/lib/server/i18n";
 import { assertSameOrigin } from "@/lib/server/origin";
+import { stateAccessResponse } from "@/lib/server/state/access";
 import { readState } from "@/lib/server/store";
 
 export const dynamic = "force-dynamic";
@@ -23,7 +24,14 @@ export async function GET(req: Request) {
     return Response.json({ error: await serverT("api.error.missingWorkflowId") }, { status: 400 });
   }
 
-  const state = await readState();
+  let state: Awaited<ReturnType<typeof readState>>;
+  try {
+    state = await readState();
+  } catch (error) {
+    const denied = stateAccessResponse(error);
+    if (denied) return denied;
+    throw error;
+  }
   const workflow = state.workflows.find((row) => row.id === workflowId);
   if (!workflow) {
     return Response.json({ error: await serverT("api.error.notFound") }, { status: 404 });
