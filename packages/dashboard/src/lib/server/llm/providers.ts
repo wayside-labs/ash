@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { type Locale, t } from "@/i18n";
 import { getDashboardLocale } from "@/lib/server/i18n";
-import { readState } from "@/lib/server/store";
+import { readState, StateAccessError } from "@/lib/server/store";
 import { ANTHROPIC_API_MODELS } from "./anthropic-api";
 
 const run = promisify(execFile);
@@ -39,9 +39,16 @@ async function probeClaudeCli(): Promise<string | null> {
 }
 
 export async function anthropicApiKey(): Promise<string | undefined> {
-  const state = await readState();
-  const stored = state.apiKeys.find((k) => k.provider.toLowerCase() === "anthropic")?.secret;
-  return stored || process.env.ANTHROPIC_API_KEY || undefined;
+  try {
+    const state = await readState();
+    const stored = state.apiKeys.find((k) => k.provider.toLowerCase() === "anthropic")?.secret;
+    return stored || process.env.ANTHROPIC_API_KEY || undefined;
+  } catch (error) {
+    if (error instanceof StateAccessError) {
+      return process.env.ANTHROPIC_API_KEY || undefined;
+    }
+    throw error;
+  }
 }
 
 export async function listProviders(locale?: Locale): Promise<ProviderStatus[]> {
