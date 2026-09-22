@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { ConnectButton } from "@/components/wallet/connect-button";
 import { SolPriceTicker } from "@/components/wallet/sol-price-ticker";
+import { useAuth } from "@/hooks/use-auth";
 import { useTranslation } from "@/i18n/locale-provider";
 import { CLUSTER_LABELS } from "@/lib/solana";
 import type { OperationMode, SolanaCluster } from "@/lib/types";
@@ -27,12 +28,12 @@ export function Header() {
   const {
     cluster,
     operationMode,
-    googleEmail,
     sidebarCollapsed,
     setCluster,
     setOperationMode,
     setSidebarCollapsed,
   } = useAppStore();
+  const { email: authEmail } = useAuth();
   const { t } = useTranslation();
 
   return (
@@ -77,8 +78,8 @@ export function Header() {
           </SelectContent>
         </Select>
 
-        {googleEmail && (
-          <span className="hidden text-xs text-muted-foreground xl:inline">{googleEmail}</span>
+        {authEmail && (
+          <span className="hidden text-xs text-muted-foreground xl:inline">{authEmail}</span>
         )}
 
         <span className="hidden h-8 w-px bg-border sm:block" />
