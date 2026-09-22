@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { assertSameOrigin } from "./origin";
 
 const ALLOWED = "http://localhost:3000";
@@ -7,8 +7,10 @@ function request(headers: Record<string, string>): Request {
   return new Request("http://localhost:3000/api/state", { method: "PATCH", headers });
 }
 
+// NODE_ENV is typed read-only by Next's ambient declarations, and vitest's
+// stubEnv is the seam built for exactly that.
 afterEach(() => {
-  process.env.NODE_ENV = "test";
+  vi.unstubAllEnvs();
   delete process.env.ALLOWED_ORIGINS;
 });
 
@@ -57,7 +59,7 @@ describe("assertSameOrigin", () => {
   });
 
   it("drops the localhost defaults in production", () => {
-    process.env.NODE_ENV = "production";
+    vi.stubEnv("NODE_ENV", "production");
     process.env.ALLOWED_ORIGINS = "https://rails.example";
     expect(assertSameOrigin(request({ origin: ALLOWED, host: "localhost:3000" }))?.status).toBe(
       403,
@@ -65,7 +67,7 @@ describe("assertSameOrigin", () => {
   });
 
   it("denies everything when production declares no allowlist at all", () => {
-    process.env.NODE_ENV = "production";
+    vi.stubEnv("NODE_ENV", "production");
     expect(assertSameOrigin(request({ origin: ALLOWED, host: "localhost:3000" }))?.status).toBe(
       403,
     );

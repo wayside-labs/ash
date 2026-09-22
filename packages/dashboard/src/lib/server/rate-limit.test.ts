@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { acquireSlot, checkFixedWindow, resetLimits } from "./rate-limit";
 
 afterEach(resetLimits);
@@ -12,11 +12,18 @@ describe("checkFixedWindow", () => {
     expect(denied?.headers.get("retry-after")).toBeTruthy();
   });
 
-  it("opens a new window once the old one has elapsed", async () => {
-    expect(checkFixedWindow("k", 1, 1)).toBeNull();
-    expect(checkFixedWindow("k", 1, 1)?.status).toBe(429);
-    await new Promise((resolve) => setTimeout(resolve, 3));
-    expect(checkFixedWindow("k", 1, 1)).toBeNull();
+  // Fake timers rather than a real sleep: the window is read off Date.now(), so a
+  // millisecond-wide window races the two calls that are meant to share it.
+  it("opens a new window once the old one has elapsed", () => {
+    vi.useFakeTimers();
+    try {
+      expect(checkFixedWindow("k", 1, 1000)).toBeNull();
+      expect(checkFixedWindow("k", 1, 1000)?.status).toBe(429);
+      vi.advanceTimersByTime(1001);
+      expect(checkFixedWindow("k", 1, 1000)).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("counts each key separately", () => {
