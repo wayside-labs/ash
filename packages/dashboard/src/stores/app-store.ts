@@ -19,7 +19,6 @@ interface AppState {
   operationMode: OperationMode;
   walletAddress: string | null;
   walletName: string | null;
-  googleEmail: string | null;
   sidebarCollapsed: boolean;
   selectedModel: string;
   /** UI language — persisted so i18n does not wait on /api/state. */
@@ -37,7 +36,6 @@ interface AppState {
   setCustomRpc: (rpc: string) => void;
   setOperationMode: (mode: OperationMode) => void;
   setWallet: (address: string | null, name?: string | null) => void;
-  setGoogleEmail: (email: string | null) => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
   setSelectedModel: (model: string) => void;
   setLocale: (locale: Locale) => void;
@@ -56,7 +54,6 @@ export const useAppStore = create<AppState>()(
       operationMode: "native",
       walletAddress: null,
       walletName: null,
-      googleEmail: null,
       // Closed by default: below lg the sidebar is an overlay drawer.
       sidebarCollapsed: true,
       // Empty means "let the server pick the best available provider".
@@ -71,7 +68,6 @@ export const useAppStore = create<AppState>()(
       setCustomRpc: (customRpc) => set({ customRpc }),
       setOperationMode: (operationMode) => set({ operationMode }),
       setWallet: (walletAddress, walletName = null) => set({ walletAddress, walletName }),
-      setGoogleEmail: (googleEmail) => set({ googleEmail }),
       setSidebarCollapsed: (sidebarCollapsed) => set({ sidebarCollapsed }),
       setSelectedModel: (selectedModel) => set({ selectedModel }),
       setLocale: (locale) => set({ locale }),
@@ -105,7 +101,6 @@ export const useAppStore = create<AppState>()(
         operationMode: state.operationMode,
         selectedModel: state.selectedModel,
         locale: state.locale,
-        googleEmail: state.googleEmail,
         balancesHidden: state.balancesHidden,
         homeLayout: state.homeLayout,
       }),
