@@ -2,7 +2,7 @@
 
 import { Info, LogOut } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/components/ui/toast";
 import { ConnectButton } from "@/components/wallet/connect-button";
+import { WalletSetupPrompt } from "@/components/wallet/wallet-setup-prompt";
 import { useAuth } from "@/hooks/use-auth";
 import { useTranslation } from "@/i18n/locale-provider";
 import { truncateAddress } from "@/lib/utils";
@@ -39,6 +40,8 @@ export default function AccountPage() {
   const { t } = useTranslation();
   const { walletAddress, walletName, setWallet } = useAppStore();
   const { configured, email, loading, signedIn, signOut } = useAuth();
+  // Lifted so the post-login offer can open this page's picker directly.
+  const [pickerOpen, setPickerOpen] = useState(false);
   const toast = useToast();
 
   return (
@@ -46,6 +49,7 @@ export default function AccountPage() {
       <Suspense fallback={null}>
         <AuthErrorToast />
       </Suspense>
+      <WalletSetupPrompt onConnect={() => setPickerOpen(true)} />
       <PageHeader title={t("account.title")} description={t("account.description")} />
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -76,7 +80,7 @@ export default function AccountPage() {
             ) : (
               <div className="space-y-3">
                 <p className="text-sm text-muted-foreground">{t("account.noWalletHint")}</p>
-                <ConnectButton />
+                <ConnectButton pickerOpen={pickerOpen} onPickerOpenChange={setPickerOpen} />
               </div>
             )}
           </CardContent>

@@ -17,11 +17,24 @@ import { getWalletProvider, WALLETS, type WalletId } from "@/lib/solana";
 import { useAppStore } from "@/stores/app-store";
 import { WalletBalance } from "./wallet-balance";
 
-export function ConnectButton() {
+/**
+ * The picker is uncontrolled by default. `pickerOpen` exists so the post-login
+ * offer (ADR-018) can hand the user straight to this list instead of telling
+ * them to go find the button in the header.
+ */
+export function ConnectButton({
+  pickerOpen,
+  onPickerOpenChange,
+}: {
+  pickerOpen?: boolean;
+  onPickerOpenChange?: (open: boolean) => void;
+} = {}) {
   const { walletAddress, setWallet } = useAppStore();
   const { t } = useTranslation();
   const [connecting, setConnecting] = useState<WalletId | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const dialogOpen = pickerOpen ?? uncontrolledOpen;
+  const setDialogOpen = onPickerOpenChange ?? setUncontrolledOpen;
   const [installed, setInstalled] = useState<Record<string, boolean>>({});
   const toast = useToast();
 
@@ -105,7 +118,7 @@ export function ConnectButton() {
         setConnecting(null);
       }
     },
-    [setWallet, toast, t],
+    [setWallet, toast, t, setDialogOpen],
   );
 
   const disconnect = useCallback(async () => {
