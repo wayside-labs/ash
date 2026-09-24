@@ -45,6 +45,18 @@ export type InjectedWallet = {
   disconnect: () => Promise<void>;
   on?: (event: string, handler: (...args: unknown[]) => void) => void;
   removeListener?: (event: string, handler: (...args: unknown[]) => void) => void;
+  /**
+   * Raw message signer, which is what lets an injected provider be handed to
+   * Supabase's `signInWithWeb3` directly instead of being re-wrapped.
+   *
+   * `solana:signIn` (SIWS) is deliberately not declared: its input and output
+   * types belong to the wallet standard, and mirroring them here would drag
+   * those definitions into a module that otherwise knows nothing about them.
+   * Supabase reaches for `signIn` at runtime when the extension exposes it, and
+   * falls back to this one -- the type only has to not lie about what we
+   * promise.
+   */
+  signMessage?: (message: Uint8Array, encoding?: string) => Promise<Uint8Array> | undefined;
   /** Phantom-compatible RPC surface; the only signing entry point that takes wire bytes. */
   request?: (args: { method: string; params?: unknown }) => Promise<unknown>;
   signAndSendTransaction?: (transaction: unknown) => Promise<unknown>;
