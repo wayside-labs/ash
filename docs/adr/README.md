@@ -21,6 +21,7 @@ Each ADR captures one decision from the v1 design session: the context, the opti
 | [015](ADR-015-phased-ci-gates.md) | Phased CI gates, with the deferred half of ADR-008 named rather than implied | Accepted |
 | [017](ADR-017-hosted-tenancy-and-client-held-secrets.md) | Hosted dashboard: account/org tenancy, Supabase identity, and client-held secrets | Accepted |
 | [018](ADR-018-in-browser-wallet-generation.md) | In-browser wallet generation, shown once and never held | Accepted |
+| [019](ADR-019-self-hosted-platform.md) | Self-hosted platform on an Oracle Cloud VM, replacing Vercel and managed Supabase | Proposed |
 
 016 is reserved by issue #23 (the per-session ceiling) and lands with it.
 
