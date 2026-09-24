@@ -1,0 +1,21 @@
+# Upload list for `vercel deploy` run from the repository root. The dashboard's
+# Root Directory is packages/dashboard, but the whole workspace has to travel:
+# pnpm resolves `workspace:*` against the root lockfile, and the build does
+# `cd ../..` to reach it.
+#
+# What is excluded is what the build regenerates or never reads. `target/` alone
+# is 11G of Rust artifacts against ~100M for everything else.
+
+target/
+node_modules/
+.git/
+.turbo/
+dist/
+coverage/
+mutants.out/
+mutants.out.old/
+.surfpool/
+test-ledger/
+.anchor/
+.next/
+*.tsbuildinfo

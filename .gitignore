@@ -42,3 +42,6 @@ docs/strategy/crypto-worlds-fair-playbook.md
 # `vercel link` output: project and org ids belonging to whoever ran it, not a shared
 # setting. The deploy configuration that IS shared lives in packages/dashboard/vercel.json.
 .vercel/
+
+# `supabase link` scratch: project ref and cached version probes, per-developer.
+**/supabase/.temp/
