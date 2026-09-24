@@ -57,10 +57,10 @@ sem IP público; VNIC da A1 → editar → **IP público reservado existente**.
 
 ---
 
-## 2. Conta Oracle ⏳
+## 2. Conta Oracle ✅ / ⏳
 
-- ⏳ MFA do dono da tenancy.
-- ⏳ **Alarme de gasto:** *Billing & Cost Management → Budgets*, US$ 1, alerta em 1% de gasto
+- ✅ MFA do dono da tenancy.
+- ✅ **Alarme de gasto:** *Billing & Cost Management → Budgets*, US$ 1, alerta em 1% de gasto
   real. É o que torna qualquer engano visível no mesmo dia.
 - ⏳ **Segundo administrador (Ronaldo).** Ninguém compartilha o login do dono.
   1. *Identity & Security → Domains → Default domain → Users → Create user*, com o e-mail dele.
@@ -77,7 +77,7 @@ pessoas; no servidor só existem chaves públicas.
 | Usuário | Quem | sudo | Estado |
 |---|---|---|---|
 | `ubuntu` | padrão da imagem; hoje a chave de automação usada pelo assistente do Lucas | sim | ✅ |
-| `ronaldo` | Ronaldo, chave publicada em `github.com/0xcf02.keys` | sim | ⏳ aguarda ele confirmar a chave |
+| `ronaldo` | Ronaldo, chave publicada em `github.com/0xcf02.keys` (`SHA256:uc7Gv1Rz…K7qk`) | sim | ✅ criado em 24/09; ⏳ primeiro login dele |
 | `lucas` | Lucas, chave própria | sim | ⏳ |
 | `deploy` | serviços e deploys — nunca uma pessoa | **não** | ⏳ criado com a etapa 1 |
 
