@@ -1,7 +1,7 @@
 "use client";
 
 import { LogOut, Wallet } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -34,6 +34,51 @@ export function ConnectButton() {
     const timer = setTimeout(detect, 500);
     return () => clearTimeout(timer);
   }, []);
+
+  // A reload drops the store but not the extension's authorisation, so without
+  // this the header offers "connect" while the wallet is still trusted -- and a
+  // workflow created in that window is written with no on-chain owner at all.
+  //
+  // `onlyIfTrusted` never prompts: it resolves when the origin is still
+  // authorised and rejects otherwise. Guarded by a ref rather than by
+  // `walletAddress` so that disconnecting does not immediately reconnect.
+  const eagerAttempted = useRef(false);
+  useEffect(() => {
+    if (eagerAttempted.current) return;
+    eagerAttempted.current = true;
+    let cancelled = false;
+
+    const restore = async (): Promise<boolean> => {
+      for (const { id, name } of WALLETS) {
+        const provider = getWalletProvider(id);
+        if (!provider) continue;
+        try {
+          const response = await provider.connect({ onlyIfTrusted: true });
+          const key = response?.publicKey ?? provider.publicKey;
+          if (key) {
+            if (!cancelled) setWallet(key.toBase58(), name);
+            return true;
+          }
+        } catch {
+          // Not trusted for this origin, or revoked. Try the next wallet.
+        }
+      }
+      return false;
+    };
+
+    // Extensions inject late, so this retries once on the same schedule as the
+    // detection above.
+    const run = async () => {
+      if (await restore()) return;
+      await new Promise<void>((resolve) => setTimeout(() => resolve(), 500));
+      if (!cancelled) await restore();
+    };
+    void run();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [setWallet]);
 
   const connect = useCallback(
     async (id: WalletId, name: string, site: string) => {

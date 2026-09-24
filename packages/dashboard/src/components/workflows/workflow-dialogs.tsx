@@ -24,6 +24,7 @@ import { useCreateResource, useUpdateResource } from "@/hooks/use-dashboard";
 import { useTranslation } from "@/i18n/locale-provider";
 import { addressSchema } from "@/lib/schema";
 import type { Agent, Workflow } from "@/lib/types";
+import { truncateAddress } from "@/lib/utils";
 import { useAppStore } from "@/stores/app-store";
 
 const ICONS = ["🏪", "📈", "🏭", "🤖", "🛰️", "🧪", "🚚", "💼"];
@@ -151,6 +152,17 @@ export function CreateWorkflowDialog({
                 : t("workflowDialogs.createWorkflow.treasuryHint")}
             </p>
           </div>
+
+          {/* The owner is taken from the connected wallet at submit time and is
+              never editable here, so it has to be visible: a null written in
+              silence is the failure this line exists to prevent. */}
+          <p className="text-xs text-muted-foreground">
+            {walletAddress
+              ? t("workflowDialogs.createWorkflow.ownerConnected", {
+                  address: truncateAddress(walletAddress),
+                })
+              : t("workflowDialogs.createWorkflow.ownerMissing")}
+          </p>
         </div>
 
         <div className="flex justify-end gap-2">

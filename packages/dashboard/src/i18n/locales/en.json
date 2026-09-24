@@ -144,6 +144,8 @@
   "workflowDialogs.createWorkflow.treasuryLabel": "On-chain treasury (optional)",
   "workflowDialogs.createWorkflow.treasuryPlaceholder": "Address of an existing treasury",
   "workflowDialogs.createWorkflow.treasuryHint": "Create one with pnpm agent-rails init and paste the address here so the dashboard reads real balance and limits.",
+  "workflowDialogs.createWorkflow.ownerConnected": "On-chain owner: {address}",
+  "workflowDialogs.createWorkflow.ownerMissing": "No wallet connected — this workflow is saved without an on-chain owner.",
   "workflowDialogs.createWorkflow.submit": "Create workflow",
   "workflowDialogs.createWorkflow.created": "Workflow \"{name}\" created.",
   "workflowDialogs.editWorkflow.title": "Edit workflow",
