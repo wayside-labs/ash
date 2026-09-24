@@ -1,21 +1,22 @@
 import type { User } from "@supabase/supabase-js";
+import { resolveIdentity } from "@/lib/auth/identity";
 import { seedPostgresOrg } from "@/lib/server/state/seed-postgres";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-function googleSubject(user: User): string {
-  const identity = user.identities?.find((row) => row.provider === "google");
-  const sub = identity?.identity_data?.sub;
-  if (typeof sub === "string" && sub.length > 0) return sub;
-  return user.id;
-}
-
 /**
- * First Google sign-in: mint account → identity → org → membership → profile/settings.
- * Runs under the service role because RLS deliberately blocks user-session inserts
- * on those tables (ADR-017, tenancy.sql bootstrap comment).
+ * First sign-in through either door: mint account → identity → org → membership
+ * → profile/settings. Runs under the service role because RLS deliberately
+ * blocks user-session inserts on those tables (ADR-017, tenancy.sql bootstrap
+ * comment).
+ *
+ * Idempotent on `identities.auth_user_id`, which is what lets the Google
+ * callback and the wallet sign-in route both call it without coordinating.
  */
 export async function ensureAccountForUser(user: User): Promise<string> {
   const admin = createAdminClient();
+  // Resolved before anything is written: an unrecognised provider must fail
+  // here, not halfway through the chain with an orphan account row.
+  const identity = resolveIdentity(user);
 
   const { data: existing, error: lookupError } = await admin
     .from("identities")
@@ -39,8 +40,8 @@ export async function ensureAccountForUser(user: User): Promise<string> {
   const { error: identityError } = await admin.from("identities").insert({
     account_id: account.id,
     auth_user_id: user.id,
-    provider: "google",
-    subject: googleSubject(user),
+    provider: identity.provider,
+    subject: identity.subject,
   });
   if (identityError) throw identityError;
 
@@ -58,12 +59,10 @@ export async function ensureAccountForUser(user: User): Promise<string> {
   });
   if (membershipError) throw membershipError;
 
-  const displayName = user.user_metadata?.full_name ?? user.email?.split("@")[0] ?? "User";
-
   const { error: profileError } = await admin.from("profiles").insert({
     account_id: account.id,
-    display_name: displayName,
-    email: user.email ?? "",
+    display_name: identity.displayName,
+    email: identity.email,
   });
   if (profileError) throw profileError;
 

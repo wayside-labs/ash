@@ -537,5 +537,7 @@
   "createWallet.fileHeader": "Agent Rails — frase de recuperação. Quem ler isto é dono da carteira.",
   "createWallet.fileAddress": "Endereço:",
   "createWallet.filePath": "Caminho de derivação:",
-  "createWallet.fileWarning": "Tire este arquivo da pasta de downloads e apague o original. Nunca cole estas palavras num site."
+  "createWallet.fileWarning": "Tire este arquivo da pasta de downloads e apague o original. Nunca cole estas palavras num site.",
+  "account.signInWithWallet": "Entrar com {name}",
+  "account.walletSignInHint": "Uma conta de carteira não tem e-mail — o endereço é a identidade."
 }

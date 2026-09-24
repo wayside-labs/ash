@@ -4,6 +4,7 @@ import { Info, LogOut } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
+import { WalletSignInButton } from "@/components/auth/wallet-sign-in-button";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,7 +40,7 @@ function AuthErrorToast() {
 export default function AccountPage() {
   const { t } = useTranslation();
   const { walletAddress, walletName, setWallet } = useAppStore();
-  const { configured, email, loading, signedIn, signOut } = useAuth();
+  const { configured, label, loading, signedIn, signOut } = useAuth();
   // Lifted so the post-login offer can open this page's picker directly.
   const [pickerOpen, setPickerOpen] = useState(false);
   const toast = useToast();
@@ -102,7 +103,7 @@ export default function AccountPage() {
               <div className="space-y-3">
                 <div>
                   <p className="text-xs text-muted-foreground">{t("account.signedInAs")}</p>
-                  <p className="text-sm">{email}</p>
+                  <p className="text-sm">{label}</p>
                 </div>
                 <Button
                   variant="outline"
@@ -120,6 +121,8 @@ export default function AccountPage() {
               <div className="space-y-3">
                 <p className="text-sm text-muted-foreground">{t("account.signInHint")}</p>
                 <GoogleSignInButton />
+                <WalletSignInButton />
+                <p className="text-xs text-muted-foreground">{t("account.walletSignInHint")}</p>
               </div>
             )}
             <Separator />

@@ -1,19 +1,39 @@
-# Local Supabase CLI config. Apply migrations with:
-#   supabase db push   (linked project)
-#   supabase start && supabase db reset   (local stack)
+# Supabase config for the linked project. `supabase config push` applies exactly what this
+# file declares and leaves everything else alone, so what is written here is the intended
+# hosted state -- not a local-development template. Preview any change with
+# `supabase config diff` before pushing: a non-interactive push proceeds by default, and a
+# stale value here silently overwrites a real setting.
+#
+# Migrations are separate: `supabase db push`.
 project_id = "agent-rails-dashboard"
 
 [api]
 enabled = true
 
 [db]
-major_version = 15
+# Matches the linked project. The CLI template ships 15; declaring the wrong number here is
+# how a push ends up arguing with the hosted database.
+major_version = 17
 
 [auth]
 enabled = true
-site_url = "http://127.0.0.1:3000"
-additional_redirect_urls = ["http://127.0.0.1:3000/auth/callback", "http://localhost:3000/auth/callback"]
+# The fallback Supabase redirects to when a client sends no `redirectTo`. Production, because
+# that is the deployment this project backs; local development is covered by the list below,
+# and `use-auth.ts` always sends an explicit `redirectTo` anyway.
+site_url = "https://agent-rails-virid.vercel.app"
+additional_redirect_urls = [
+  "https://agent-rails-virid.vercel.app/auth/callback",
+  "http://localhost:3000/auth/callback",
+  "http://127.0.0.1:3000/auth/callback",
+]
 
-[auth.external.google]
-enabled = false
-# Enable in the Supabase dashboard for hosted projects; set client_id/secret there.
+# `[auth.external.google]` is deliberately absent. The CLI's schema requires `client_id`
+# alongside `enabled`, and the OAuth secret is not in this repository -- declaring the block
+# would either fail validation or overwrite the live credentials with blanks. What this file
+# does not declare, `config push` leaves untouched, so Google stays configured where it was
+# configured: in the hosted project.
+
+# Second entry point (ADR-017): a wallet signs a statement and becomes an identity of its own,
+# with no email attached. `signInWithWeb3` in the browser is the client half.
+[auth.web3.solana]
+enabled = true

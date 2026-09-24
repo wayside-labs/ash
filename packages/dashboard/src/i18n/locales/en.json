@@ -537,5 +537,7 @@
   "createWallet.fileHeader": "Agent Rails — recovery phrase. Anyone who reads this owns the wallet.",
   "createWallet.fileAddress": "Address:",
   "createWallet.filePath": "Derivation path:",
-  "createWallet.fileWarning": "Move this file off your downloads folder and delete the original. Never paste these words into a website."
+  "createWallet.fileWarning": "Move this file off your downloads folder and delete the original. Never paste these words into a website.",
+  "account.signInWithWallet": "Sign in with {name}",
+  "account.walletSignInHint": "A wallet account carries no email — the address is the identity."
 }
