@@ -144,6 +144,8 @@
   "workflowDialogs.createWorkflow.treasuryLabel": "Tesouraria on-chain (opcional)",
   "workflowDialogs.createWorkflow.treasuryPlaceholder": "Endereço de uma tesouraria existente",
   "workflowDialogs.createWorkflow.treasuryHint": "Crie uma com pnpm agent-rails init e cole o endereço aqui para o painel ler saldo e limites reais.",
+  "workflowDialogs.createWorkflow.ownerConnected": "Dono on-chain: {address}",
+  "workflowDialogs.createWorkflow.ownerMissing": "Nenhuma carteira conectada — o workflow é salvo sem dono on-chain.",
   "workflowDialogs.createWorkflow.submit": "Criar workflow",
   "workflowDialogs.createWorkflow.created": "Workflow \"{name}\" criado.",
   "workflowDialogs.editWorkflow.title": "Editar workflow",
