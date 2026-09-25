@@ -21,10 +21,15 @@
     "codegen:check": "pnpm codegen && git diff --exit-code packages/client/src/generated",
     "coverage": "turbo run coverage",
     "dashboard": "pnpm --filter @agent-rails/dashboard dev",
-    "dashboard:build": "pnpm --filter @agent-rails/dashboard build"
+    "dashboard:build": "pnpm --filter @agent-rails/dashboard build",
+    "changeset": "changeset",
+    "version-packages": "changeset version && pnpm install --lockfile-only",
+    "release": "pnpm build && changeset publish"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.0.0",
+    "@changesets/changelog-github": "^1.0.1",
+    "@changesets/cli": "^3.0.3",
     "lefthook": "^2.1.14",
     "turbo": "^2.5.0",
     "typescript": "^5.9.2"

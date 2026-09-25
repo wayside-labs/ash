@@ -1,7 +1,31 @@
 {
   "name": "@agent-rails/client",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
+  "description": "Codama-generated @solana/kit client for the Agent Rails Solana program.",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/wayside-labs/agent-rails",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wayside-labs/agent-rails.git",
+    "directory": "packages/client"
+  },
+  "bugs": {
+    "url": "https://github.com/wayside-labs/agent-rails/issues"
+  },
+  "keywords": [
+    "solana",
+    "ai-agents",
+    "payments",
+    "guardrails",
+    "anchor",
+    "mcp"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=22"
+  },
   "type": "module",
   "exports": {
     ".": {

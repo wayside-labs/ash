@@ -1,0 +1,69 @@
+name: Release
+
+# ADR-011, the package half: Changesets accumulates one line per user-visible change, and
+# merging the "Version Packages" pull request this workflow opens is the act that releases.
+#
+# Publishing is deliberately inert until `NPM_TOKEN` exists. Everything below runs, the
+# version pull request is opened and updated, and the publish step reports that it is
+# disabled — so the machinery is exercised on every merge long before it can push a package
+# that nobody can unpublish. ADR-011 §"Implementation status" says when that key goes in.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    name: version or publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      # A release candidate that does not build is not a release candidate. The full TS
+      # gate runs here rather than being inherited from the pull request that merged,
+      # because the version bump itself edits every manifest it touches.
+      - run: scripts/verify.sh ts
+        env:
+          VERIFY_STRICT: 1
+
+      - id: publish_enabled
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -n "$NPM_TOKEN" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::NPM_TOKEN is not set — versioning only, nothing will be published."
+          fi
+
+      - uses: changesets/action@e0145edc7d9d8679003495b11f87bd8ef63c0cba # v1.5.3
+        id: changesets
+        with:
+          version: pnpm run version-packages
+          publish: ${{ steps.publish_enabled.outputs.enabled == 'true' && 'pnpm run release' || '' }}
+          commit: "chore(release): version packages"
+          title: "chore(release): version packages"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
