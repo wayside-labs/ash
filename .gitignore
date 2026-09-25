@@ -20,6 +20,10 @@ dist/
 # Surfpool simnet logs from the E2E harness
 .surfpool/
 
+# Playwright's own scratch: the isolated AGENT_RAILS_HOME the UI suite writes to,
+# plus traces and screenshots from failed runs.
+packages/dashboard/.playwright/
+
 # Personal Claude Code overrides; .claude/settings.json is the shared one.
 .claude/settings.local.json
 
