@@ -2,6 +2,7 @@ import { AGENT_RAILS_PROGRAM_ADDRESS, fetchMaybeTreasury } from "@agent-rails/cl
 import { loadDestinationIndex } from "@agent-rails/sdk";
 import { formatSol } from "../amounts.js";
 import { readTreasurySnapshot } from "../chain/read.js";
+import { readUpgradeAuthority } from "../chain/upgrade-authority.js";
 import type { GlobalCliOptions } from "../cli-options.js";
 import { loadContext } from "../context.js";
 import { mcpEntryExists } from "../mcp-entry.js";
@@ -20,6 +21,29 @@ export async function runDoctor(options: GlobalCliOptions, ui: Ui): Promise<numb
     const ctx = await loadContext(options);
     await assertProgramDeployed(ctx.rpc, AGENT_RAILS_PROGRAM_ADDRESS, rpcUrl);
     checks.push({ name: "Program deployed", ok: true, detail: AGENT_RAILS_PROGRAM_ADDRESS });
+
+    // ADR-011's headline claim, and the only one a user is told to check on-chain before
+    // deciding how much to put behind this. Reported, never asserted: at `0.x` a single key
+    // is the documented state, so the check passes and says whose key it is.
+    const upgrade = await readUpgradeAuthority(ctx.rpc, AGENT_RAILS_PROGRAM_ADDRESS);
+    checks.push({
+      name: "Upgrade authority",
+      ok: true,
+      detail:
+        upgrade.kind === "none"
+          ? "renounced — nobody can replace this program"
+          : upgrade.kind === "not-upgradeable"
+            ? "not deployed with the upgradeable loader"
+            : upgrade.authority === ctx.wallet.address
+              ? `${upgrade.authority} (this wallet)`
+              : upgrade.authority,
+      hint:
+        upgrade.kind === "key"
+          ? upgrade.authority === ctx.wallet.address
+            ? "This wallet can replace the program under every treasury. Keep it off CI."
+            : "A single key can replace the program. ADR-011 moves this to a multisig before mainnet."
+          : undefined,
+    });
 
     const roles = walletRoles(
       ctx.wallet.address,
