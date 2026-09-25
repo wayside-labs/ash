@@ -98,7 +98,14 @@ export default function TreasuryPage() {
             // the program is the only authority on who may withdraw.
             const isOwner = Boolean(walletAddress) && vault?.owner === walletAddress;
             return (
-              <Card key={workflow.id}>
+              // Keyed by treasury rather than by workflow id, so the UI suite
+              // can address the card whose vault it stubbed.
+              <Card
+                key={workflow.id}
+                {...(workflow.treasuryAddress
+                  ? { "data-testid": `vault-${workflow.treasuryAddress}` }
+                  : {})}
+              >
                 <CardHeader>
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex min-w-0 items-center gap-2">

@@ -87,7 +87,9 @@ export default function AgentsPage() {
               </h2>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {workflow.agents.map((agent) => (
-                  <div key={agent.id} className="space-y-2">
+                  // The id is the handle the UI suite grabs a card by; a name
+                  // match would find the heading and the settings sheet too.
+                  <div key={agent.id} data-testid={`agent-${agent.id}`} className="space-y-2">
                     <AgentCard
                       agent={agent}
                       className="w-full"
