@@ -67,3 +67,24 @@ describe("resolveMint", () => {
     expect(() => resolveMint([CEILINGS[1] as MintCeilingView], "SOL")).toThrow(/native SOL/);
   });
 });
+
+describe("resolveMint with manifest aliases", () => {
+  // `init --mock-mint` records `MOCK`, and the chain has no ticker to match it against:
+  // the ceiling's symbol is the first four characters of the address. Without the alias
+  // the name `init` printed is not a name `pay` accepts.
+  const aliases = { MOCK: String(USDC) };
+
+  it("resolves a name the manifest recorded", () => {
+    expect(resolveMint(CEILINGS, "MOCK", aliases).mint).toBe(USDC);
+    expect(resolveMint(CEILINGS, "mock", aliases).mint).toBe(USDC);
+  });
+
+  it("says so when the alias names a mint this treasury dropped", () => {
+    const withoutUsdc = [CEILINGS[0] as MintCeilingView];
+    expect(() => resolveMint(withoutUsdc, "MOCK", aliases)).toThrow(/does not accept/);
+  });
+
+  it("still prefers SOL over an alias that shadows it", () => {
+    expect(resolveMint(CEILINGS, "SOL", { SOL: String(USDC) }).decimals).toBe(9);
+  });
+});

@@ -52,14 +52,36 @@ export type PayOptions = GlobalCliOptions & {
   allowRawAddress?: boolean;
 };
 
-/** `SOL`, a configured symbol, or a mint address — resolved against the treasury's list. */
-export function resolveMint(ceilings: MintCeilingView[], ref: string | undefined): MintCeilingView {
+/**
+ * `SOL`, a name the operator gave a mint, or a mint address.
+ *
+ * `aliases` is what `init` recorded — the same `SYMBOL:address` map the MCP server is
+ * handed, so a mint is addressable by the same name from the CLI and from the agent. The
+ * chain itself stores no ticker: a symbol read off a ceiling is the first four characters
+ * of the address, which is a rendering aid and not a name anybody chose.
+ */
+export function resolveMint(
+  ceilings: MintCeilingView[],
+  ref: string | undefined,
+  aliases: Record<string, string> = {},
+): MintCeilingView {
   const wanted = (ref ?? "SOL").trim();
   const native = ceilings.find((entry) => entry.mint === address(NATIVE_MINT));
 
   if (wanted.toUpperCase() === "SOL") {
     if (!native) throw new CliError("This treasury has no native SOL mint configured");
     return native;
+  }
+
+  const aliased = Object.entries(aliases).find(
+    ([symbol]) => symbol.toUpperCase() === wanted.toUpperCase(),
+  )?.[1];
+  if (aliased) {
+    const byAlias = ceilings.find((entry) => entry.mint === aliased);
+    if (byAlias) return byAlias;
+    throw new CliError(`${wanted} names ${aliased}, which this treasury does not accept`, {
+      hint: "The manifest is from another treasury, or the mint was removed.",
+    });
   }
 
   const bySymbol = ceilings.find((entry) => entry.symbol.toUpperCase() === wanted.toUpperCase());
@@ -132,7 +154,11 @@ export async function runPay(options: PayOptions, ui: Ui): Promise<number> {
   const feePayerPath = options.feePayerKeypair ?? ctx.manifest?.feePayerKeypairPath;
   const feePayer = feePayerPath ? await loadWallet(feePayerPath) : sessionKey;
 
-  const mint = resolveMint(snapshot.ceilings, options.mint);
+  const aliases =
+    ctx.manifest?.tokenSymbol && ctx.manifest.tokenMint
+      ? { [ctx.manifest.tokenSymbol]: ctx.manifest.tokenMint }
+      : {};
+  const mint = resolveMint(snapshot.ceilings, options.mint, aliases);
 
   let amount: bigint;
   try {
