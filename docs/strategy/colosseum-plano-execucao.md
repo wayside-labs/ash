@@ -86,7 +86,7 @@ Elegibilidade: 18+, projeto novo, captação abaixo de US$ 3 mi. Todos ok.
 |---|---|---|---|
 | F1 | USDC ponta a ponta | `api/solana/vault-transfer/route.ts` só aceita lamports — adicionar SPL/ATA. Leitura por mint via `vault-balances` (que já existe) | 0xcf02 (escrita) / Lucas (leitura) |
 | F2a | Leitor de `IntentReceipt` + `verifyAuditChain` em TS espelhando `crates/agent-rails-policy/src/audit.rs`, com os vetores fixos do Rust como teste compartilhado | `packages/sdk` | 0xcf02 |
-| F2b | Tabela de histórico + export CSV/JSON | `packages/dashboard` | Lucas |
+| F2b | Histórico + export CSV/JSON — **Metrics Phase B** (`docs/product/metrics-page.md`; Phase A em `/metrics` via #63) | `packages/dashboard` | 0xcf02 |
 | F3 | CLI de operador: `pay`, `policy set`, `pause`, `audit export`, `session revoke` — hoje só existe `init` | `packages/cli` | 0xcf02 |
 | F4 | `scripts/demo.sh` reprodutível, com assinaturas devnet públicas | — | 0xcf02 |
 

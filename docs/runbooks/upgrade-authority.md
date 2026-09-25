@@ -5,9 +5,16 @@
 One transaction, no code change. What it buys: the `DEVNET_KEYPAIR` repository secret stops
 being able to replace the program.
 
-**State on 2026-09-25 — not yet done.** The authority is still
-`5eznzq18xdeVaagEkyo7DYb8v12mAWmYcz6AdWTnH8JQ`, which is also the CI secret. Run step 3 to find
-out whether that is still true when you read this.
+**Done on 2026-09-25.** Upgrade authority is now
+`F2zW3818bfDpAapLo9Z9mgfttYjkkK23JAnkpnWNcSmP`, held offline at
+`~/.config/solana/agent-rails-upgrade.json` (never in the repo or in GitHub secrets). The CI key
+`5eznzq18xdeVaagEkyo7DYb8v12mAWmYcz6AdWTnH8JQ` still pays for smokes only — run step 3 with
+`devnet-ci-keypair.json` and confirm the line does **not** say `(this wallet)`.
+
+> **Why not `Fg1TX…`?** That address is the operator's Phantom wallet on devnet — no keypair file
+> was available on disk, and ADR-020 requires the checked transfer (both keys sign). A dedicated
+> offline key was generated instead. To move authority to Phantom later, export the wallet to a
+> local keypair file and run another `set-upgrade-authority` from the current holder.
 
 > An agent cannot run any of this, and should not try. `.claude/hooks/guard.sh` denies the
 > transfer command outright, for the reason that matters: nothing in CI sits between it and a

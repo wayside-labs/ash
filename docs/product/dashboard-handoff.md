@@ -8,7 +8,8 @@
 > O plano descrito abaixo foi executado. O que mudou:
 >
 > - **Program em devnet.** `4qjD6vSgYa3oBKde3KVzsH8oCcP9BKsirX1xtD5SS6BS` está
->   deployado, authority `5eznzq18xdeVaagEkyo7DYb8v12mAWmYcz6AdWTnH8JQ`. Antes não
+>   deployado. A upgrade authority saiu do segredo de CI em 2026-09-25 (ADR-020) — confira
+>   com `pnpm agent-rails doctor --rpc https://api.devnet.solana.com`. Antes não
 >   estava em rede nenhuma, o que tornava impossível qualquer leitura real — e o
 >   handoff original não registrava isso.
 > - **`lib/mock-data.ts` não existe mais.** O estado vive em
