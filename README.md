@@ -24,8 +24,21 @@ Every claim below is one you can check on-chain, which is the point of writing t
 | `1.0.0` | `None` — renounced | mainnet | The program cannot be changed by anyone, including us. Post-audit. |
 | `2.x` | new program id | mainnet | Migration is opt-in, with `migrate_treasury` tooling; the `1.0.0` program keeps running. |
 
-`agent-rails doctor` reports the authority actually set on the deployed program, so the
-first column is verifiable rather than promised.
+```
+$ agent-rails doctor --rpc https://api.devnet.solana.com
+✔ Upgrade authority   <the key currently set on the deployed program>
+```
+
+That line is read out of the loader's `ProgramData` account, so the first column above is
+verifiable rather than promised — and if it ever prints the wallet you are running the
+command with, it says so.
+
+The rule that key follows is ADR-020: it is held by a person, offline, and it is **never** the
+`DEVNET_KEYPAIR` secret CI uses to pay for the release smoke. A repository secret that can also
+replace the program puts two powers several orders of magnitude apart behind one credential.
+Run the command above to see which key is actually set — that is the point of printing it
+rather than writing it down here. It is still a single key either way, which is what the `0.x`
+row is admitting.
 
 ### Verifying what is deployed
 
