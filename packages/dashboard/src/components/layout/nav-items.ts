@@ -3,6 +3,7 @@ import {
   Bot,
   Brain,
   Cable,
+  ChartNoAxesColumn,
   CreditCard,
   Gauge,
   Home,
@@ -45,6 +46,8 @@ export const navGroupDefs: NavGroupDef[] = [
   {
     labelKey: "nav.money",
     items: [
+      // First in the group: it is the page that sends the reader to the other three.
+      { href: "/metrics", labelKey: "nav.metrics", icon: ChartNoAxesColumn },
       { href: "/treasury", labelKey: "nav.treasury", icon: CreditCard },
       { href: "/limits", labelKey: "nav.limits", icon: Gauge },
       { href: "/wallets", labelKey: "nav.wallets", icon: Wallet },

@@ -13,6 +13,7 @@ import {
   findSolVaultPda,
   getWithdrawInstruction,
   getWithdrawInstructionAsync,
+  loadDestinationIndex,
   POLICY_DISCRIMINATOR,
 } from "@agent-rails/sdk";
 import {
@@ -151,6 +152,15 @@ export type SessionView = {
   expiresAt: number;
   revoked: boolean;
   seq: string;
+  /**
+   * Head of the session's audit hash chain (spec §6), hex.
+   *
+   * Read but not verified here: verifying means replaying `PaymentExecuted`
+   * through `next_audit_head` and comparing the terminus, which needs event
+   * history. Showing the recorded head is still worth doing — it is the value a
+   * replay will be checked against.
+   */
+  auditHead: string;
   spend: {
     mint: string;
     shortSpent: string;
@@ -161,6 +171,13 @@ export type SessionView = {
 };
 
 const base64 = getBase64Encoder();
+
+/** Fixed-width byte field to lowercase hex, for the audit head. */
+function hex(bytes: ArrayLike<number>): string {
+  return Array.from(Uint8Array.from(bytes))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
 
 function decodeName(bytes: ArrayLike<number>): string {
   return new TextDecoder().decode(Uint8Array.from(bytes)).replace(/\0+$/, "");
@@ -315,6 +332,7 @@ async function readSessions(rpc: Rpc, treasury: Address): Promise<SessionView[]>
       expiresAt: Number(decoded.expiresAt),
       revoked: decoded.revoked,
       seq: decoded.seq.toString(),
+      auditHead: hex(decoded.auditHead),
       spend: decoded.spend
         .filter((s) => s.mint !== DEFAULT_PUBKEY)
         .map((s) => ({
@@ -326,6 +344,43 @@ async function readSessions(rpc: Rpc, treasury: Address): Promise<SessionView[]>
         })),
     };
   });
+}
+
+/**
+ * Every allowlist entry for a policy — the roster behind the Metrics page's
+ * destination list.
+ *
+ * Wraps the SDK's reader rather than reimplementing the memcmp, and lives here
+ * rather than in the route so `rpcFor`'s custom-RPC allowlist stays the only way
+ * this process opens a connection.
+ */
+export type DestinationEntryView = {
+  label: string;
+  normalizedLabel: string;
+  owner: string;
+  entry: string;
+  /** Base units; "0" means this destination has no override of its own. */
+  perTxMaxOverride: string;
+};
+
+export async function readDestinations(
+  cluster: SolanaCluster,
+  customRpc: string | null,
+  policy: string,
+): Promise<DestinationEntryView[]> {
+  if (!isLikelyAddress(policy)) return [];
+  const rpc = rpcFor(cluster, customRpc);
+  const index = await loadDestinationIndex({
+    rpc: rpc as Parameters<typeof loadDestinationIndex>[0]["rpc"],
+    policy: address(policy),
+  });
+  return index.entries.map((entry) => ({
+    label: entry.label,
+    normalizedLabel: entry.normalizedLabel,
+    owner: entry.owner,
+    entry: entry.entry,
+    perTxMaxOverride: entry.perTxMaxOverride.toString(),
+  }));
 }
 
 /**

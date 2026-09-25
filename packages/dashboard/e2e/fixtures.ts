@@ -147,6 +147,7 @@ function treasuryView(chain: ChainState) {
         expiresAt: Math.floor(Date.now() / 1000) + 86_400,
         revoked: false,
         seq: "3",
+        auditHead: "9c4e17bb5af2408da6013e7cd1a50000000000000000000000000000000000ab",
         spend: [
           {
             mint: ADDR.nativeMint,
@@ -251,6 +252,137 @@ export async function stubChain(
   });
 
   return stub;
+}
+
+/**
+ * Fulfils every `/api/metrics/*` call in the browser.
+ *
+ * `stubChain` routes the `/api/solana/` glob and nothing else, so a page calling
+ * `/api/metrics/summary` would sail past it, reach the real route handler and open
+ * a connection to devnet — exactly what `playwright.config.ts` exists to prevent.
+ * Any spec that visits `/metrics` needs this as well as `stubChain`.
+ *
+ * The payload is folded from the same stubbed treasury `stubChain` serves, so the
+ * two cannot drift into describing different vaults.
+ */
+export async function stubMetrics(page: Page, chain: ChainStub): Promise<void> {
+  await page.route("**/api/metrics/**", async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    chain.calls.push({ url: url.pathname, method: request.method(), body: null });
+
+    const json = (payload: unknown, status = 200) =>
+      route.fulfill({ status, contentType: "application/json", body: JSON.stringify(payload) });
+
+    if (url.pathname === "/api/metrics/summary") {
+      return json(metricsSummary(chain.state, url.searchParams.get("period") ?? "short-window"));
+    }
+    if (url.pathname === "/api/metrics/destinations") {
+      return json({
+        contacts: [
+          {
+            label: "Acme Hosting",
+            normalizedLabel: "acme hosting",
+            owner: ADDR.wallet,
+            entry: ADDR.agentSession,
+            policy: ADDR.solVault,
+            perTxMaxOverrideRaw: "0",
+            paid: null,
+            demo: false,
+          },
+        ],
+      });
+    }
+    return json({ error: `unstubbed metrics route: ${url.pathname}` }, 500);
+  });
+}
+
+/** The fold's output for the stubbed treasury, per period. */
+function metricsSummary(chain: ChainState, period: string) {
+  // The stubbed session has spent the same amount in all three buckets, so every
+  // period reads the same figure. A test that needs them to differ overrides this.
+  const spent = "125000000";
+  const windowFor = (window: string) =>
+    window === "short" ? 86_400 : window === "long" ? 604_800 : null;
+  const maxFor = (window: string) =>
+    window === "short" ? "500000000" : window === "long" ? "2000000000" : "15000000000";
+  const ceilingFor = (window: string) =>
+    window === "short" ? "1000000000" : window === "long" ? "5000000000" : "30000000000";
+
+  return {
+    asOf: new Date().toISOString(),
+    cluster: "devnet",
+    scope: { workflowId: null, agentId: null, mint: null },
+    period: {
+      kind: period,
+      seconds: period === "session-life" ? null : period === "long-window" ? 604_800 : 86_400,
+      startedAt: period === "short-window" ? Math.floor(Date.now() / 1000) - 3600 : null,
+    },
+    holdings: {
+      assets: [
+        {
+          raw: String(chain.solVaultLamports),
+          mint: ADDR.nativeMint,
+          decimals: 9,
+          symbol: "SOL",
+          usd: (chain.solVaultLamports / 1_000_000_000) * 150,
+        },
+        {
+          raw: chain.usdcVaultAmount,
+          mint: ADDR.usdcDevnet,
+          decimals: 6,
+          symbol: "USDC",
+          usd: Number(chain.usdcVaultAmount) / 1_000_000,
+        },
+      ],
+      usd:
+        (chain.solVaultLamports / 1_000_000_000) * 150 + Number(chain.usdcVaultAmount) / 1_000_000,
+      partial: false,
+      excluded: 0,
+    },
+    spend: {
+      byMint: [
+        {
+          raw: spent,
+          mint: ADDR.nativeMint,
+          decimals: 9,
+          symbol: "SOL",
+          usd: (Number(spent) / 1_000_000_000) * 150,
+        },
+      ],
+      usd: (Number(spent) / 1_000_000_000) * 150,
+      exactness: "counter",
+    },
+    payments: { count: 3, lifetimeOnly: true, exactness: "counter" },
+    denials: { count: null, byReason: {}, exactness: "unavailable" },
+    headroom: ["short", "long", "lifetime"].map((window) => ({
+      mint: ADDR.nativeMint,
+      decimals: 9,
+      symbol: "SOL",
+      policy: ADDR.solVault,
+      policyName: "default",
+      window,
+      windowSeconds: windowFor(window),
+      spentRaw: "125000000",
+      policyMaxRaw: maxFor(window),
+      ceilingRaw: ceilingFor(window),
+      unlimited: false,
+    })),
+    policies: [{ address: ADDR.solVault, name: "default", destinationMode: 1, requireMemo: false }],
+    price: { usd: 150, change24h: 1.5, source: "coingecko", asOf: new Date().toISOString() },
+    integrity: [
+      {
+        session: ADDR.agentSession,
+        label: "payer",
+        seq: "3",
+        auditHead: "9c4e17bb5af2408da6013e7cd1a50000000000000000000000000000000000ab",
+        verifiedThroughSeq: null,
+        revoked: false,
+        expiresAt: Math.floor(Date.now() / 1000) + 86_400,
+      },
+    ],
+    unreadable: [],
+  };
 }
 
 /**

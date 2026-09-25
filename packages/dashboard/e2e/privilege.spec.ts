@@ -1,4 +1,12 @@
-import { createOnChainWorkflow, expect, stubChain, stubWallet, t, test } from "./fixtures";
+import {
+  createOnChainWorkflow,
+  expect,
+  stubChain,
+  stubMetrics,
+  stubWallet,
+  t,
+  test,
+} from "./fixtures";
 
 /**
  * The UI half of the privilege split. `src/lib/server/privileged-surface.test.ts`
@@ -12,15 +20,22 @@ const READ_ONLY_CHAIN_ROUTES = new Set([
   "/api/solana/treasury",
   "/api/solana/price",
   "/api/solana/rpc-health",
+  // Metrics is read-only end to end — it has no write path at all, not even the
+  // owner's own withdraw that /treasury offers.
+  "/api/metrics/summary",
+  "/api/metrics/destinations",
 ]);
 
 test.describe("privilege boundaries", () => {
   test("browsing the money pages issues no chain write", async ({ page, baseURL }) => {
     await createOnChainWorkflow(baseURL as string);
     const chain = await stubChain(page);
+    // `stubChain` routes the `/api/solana/` glob only, so /metrics would otherwise
+    // reach the real handler and open a connection to devnet.
+    await stubMetrics(page, chain);
     await stubWallet(page);
 
-    for (const path of ["/treasury", "/limits", "/wallets", "/agents"]) {
+    for (const path of ["/metrics", "/treasury", "/limits", "/wallets", "/agents"]) {
       await page.goto(path);
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     }
@@ -48,6 +63,25 @@ test.describe("privilege boundaries", () => {
     const labels = await page.getByRole("button").allInnerTexts();
     for (const label of labels) {
       expect(label.toLowerCase()).not.toMatch(/save|apply|raise|update|set /);
+    }
+  });
+
+  test("metrics reports limits and offers no control over them", async ({ page, baseURL }) => {
+    await createOnChainWorkflow(baseURL as string);
+    const chain = await stubChain(page);
+    await stubMetrics(page, chain);
+    await stubWallet(page);
+
+    await page.goto("/metrics");
+    await expect(page.getByRole("heading", { level: 1, name: t("metrics.title") })).toBeVisible();
+
+    // Unlike /treasury, this page has no write at all — not even the owner's
+    // withdraw. So no button here may read as an action on funds or on a limit.
+    const labels = await page.getByRole("button").allInnerTexts();
+    for (const label of labels) {
+      expect(label.toLowerCase()).not.toMatch(
+        /save|apply|raise|update|set |withdraw|deposit|pause|revoke|reclaim/,
+      );
     }
   });
 
