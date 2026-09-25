@@ -38,3 +38,20 @@ The operator-facing CLI. `init` bootstraps a treasury; day-2 commands (`status`,
   `0600` keypair under `--out`. It updates the manifest and regenerates the MCP snippet.
 - **`pause` is owner or guardian; `unpause` is owner only.** Withdraw keeps working while
   paused (program invariant).
+- **`guardian`, `roles` and `mint rm` are owner-only, and that is the point.** They change
+  the *shape* of a treasury rather than a limit inside it. An operator who could appoint a
+  guardian would choose who holds the kill switch; one who could delist a mint would strand
+  a policy that prices it.
+- **`pay` is not a privileged shortcut.** It signs with the session keypair `init` wrote, so
+  every ceiling, window and allowlist entry applies exactly as it does to the agent — which
+  is what makes it usable as a demo and as the release smoke. An operator moving money
+  outside the policy uses `withdraw`, which is owner-only. Never give `pay` a path that
+  signs with the owner key.
+- **`pay` derives the intent id, never draws one.** `deriveIntentId` over
+  `{session, destination, mint, amount, reference}` is what makes a retry collide with its
+  own receipt instead of paying twice (ADR-004). An `indeterminate` outcome exits 75 and
+  tells the operator to look the intent up — it must never suggest retrying.
+- **`audit export` reads receipts, not an index we keep.** The rows are accounts the program
+  wrote, and the chain is replayed against `AgentSession.audit_head`, so neither the
+  operator nor this CLI has to be trusted. `close receipt` deletes a link: the exporter
+  reports how many were reclaimed rather than reporting the resulting mismatch as tampering.
