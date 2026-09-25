@@ -166,6 +166,10 @@ Depois, no navegador: aba Conta → Entrar com Google.
 
 **`maxDuration = 120` na rota de chat, contra um plano hobby.** O build não reclamou, mas a Vercel também não confirma quando trunca. Ainda **não verificado** com um stream real de mais de 60s. Se o chat cortar no meio, é aqui.
 
+**Um `.env.local` velho faz o deploy falhar dizendo "Not authorized".** O `vercel link` escreve um `VERCEL_OIDC_TOKEN` nesse arquivo, na raiz do repositório. Quando ele expira, a CLI o prefere ao login do keyring e o deploy morre — enquanto `vercel whoami` continua respondendo normalmente, que é o que torna o diagnóstico lento. Apague o arquivo; ele é regenerado por `vercel link` ou `vercel env pull` quando fizer falta.
+
+**Fixe a versão da CLI ao automatizar.** `npx vercel@latest` já quebrou aqui com `No matching version found for @vercel/elysia@10.0.0` numa release nova. Num script isso aparece como deploy que não aconteceu, sem erro visível se a saída estiver filtrada.
+
 **O provedor `claude-cli` nunca vai estar disponível.** `providers.ts` faz `execFile("claude", ["--version"])` e não há binário numa função Vercel; o probe sempre devolve `null`. Em produção a única via paga é a `ANTHROPIC_API_KEY`.
 
 **O build do dashboard não é cacheado pelo turbo.** `turbo.json` declara `outputs: ["dist/**"]` e o Next escreve em `.next/**`; o próprio turbo avisa (`no output files found for task @agent-rails/dashboard#build`). Consertável com um override por pacote; ainda não feito.
