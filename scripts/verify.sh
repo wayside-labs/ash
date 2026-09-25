@@ -12,6 +12,7 @@
 #   scripts/verify.sh kani     bounded model checking of the policy crate
 #   scripts/verify.sh mutants  mutation testing of the policy crate (nightly gate)
 #   scripts/verify.sh e2e      Surfpool end-to-end suite (nightly gate)
+#   scripts/verify.sh ui       Playwright suite for the dashboard (nightly gate)
 #
 # The integration tests deploy compiled programs, so a fresh checkout with an
 # empty target/ needs `cargo build-sbf` (or `anchor build`) once before the rust
@@ -158,6 +159,30 @@ if [[ $group == e2e ]]; then
   fi
 fi
 
+# Not part of `all`: it builds the dashboard and drives a browser, which is minutes, not
+# seconds. Layer 4 of the pyramid for the dashboard — the chain is stubbed at the network
+# boundary and the store is redirected, so it needs no validator and no cluster.
+if [[ $group == ui ]]; then
+  if [[ ! -d packages/dashboard/node_modules/@playwright/test ]]; then
+    printf '\n\033[1m▸ ui (playwright)\033[0m\n'
+    printf '\033[33mskipped: @playwright/test is not installed\033[0m\n'
+    printf '  pnpm install\n'
+    note_skip "ui (playwright)"
+  elif browser_dir=$(pnpm --filter @agent-rails/dashboard exec playwright install --dry-run chromium 2>/dev/null |
+    sed -n 's/^  Install location: *//p' | head -1) && [[ -z $browser_dir || ! -d $browser_dir ]]; then
+    # `--dry-run` reports where the pinned build *would* live and exits 0 either way, so the
+    # directory is the only thing that answers "is it actually downloaded".
+    printf '\n\033[1m▸ ui (playwright)\033[0m\n'
+    printf '\033[33mskipped: the chromium build playwright pins is not downloaded\033[0m\n'
+    printf '  pnpm --filter @agent-rails/dashboard exec playwright install --with-deps chromium\n'
+    note_skip "ui (playwright)"
+  else
+    # The dashboard imports the workspace packages by their built output, so the
+    # suite's own `next build` needs them present first.
+    run "ui (playwright)" pnpm turbo run test:e2e --filter @agent-rails/dashboard
+  fi
+fi
+
 if [[ $group == all || $group == ts ]]; then
   run "pnpm lint" pnpm lint
   run "pnpm typecheck" pnpm typecheck
@@ -170,8 +195,8 @@ if [[ $group == all || $group == ts ]]; then
   run "coverage (sdk >=85%)" pnpm coverage
 fi
 
-if [[ $group != all && $group != rust && $group != ts && $group != kani && $group != mutants && $group != e2e ]]; then
-  echo "usage: scripts/verify.sh [all|rust|ts|kani|mutants|e2e]" >&2
+if [[ $group != all && $group != rust && $group != ts && $group != kani && $group != mutants && $group != e2e && $group != ui ]]; then
+  echo "usage: scripts/verify.sh [all|rust|ts|kani|mutants|e2e|ui]" >&2
   exit 2
 fi
 
