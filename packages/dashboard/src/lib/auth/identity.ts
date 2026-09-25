@@ -60,12 +60,19 @@ export function resolveIdentity(user: User): ResolvedIdentity {
   }
 
   const web3 = identities.find((row) => isWeb3Provider(row.provider));
+  const identityData = asRecord(web3?.identity_data);
   const metadata = asRecord(user.user_metadata);
+  // Observed order, most authoritative first. GoTrue puts the address under
+  // `custom_claims` on the identity row and mirrors it into user_metadata; the
+  // flat `address` spellings are kept because earlier releases used them.
+  // `web3.id` is deliberately last and deliberately filtered: it reads
+  // `web3:solana:<address>`, which is not an address and must not become one.
   const address = firstAddress(
-    web3 ? asRecord(web3.identity_data).address : undefined,
-    web3?.id,
-    metadata.address,
+    asRecord(identityData.custom_claims).address,
+    identityData.address,
     asRecord(metadata.custom_claims).address,
+    metadata.address,
+    web3?.id,
   );
 
   if (web3 || address) {

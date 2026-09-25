@@ -122,6 +122,56 @@ describe("resolveIdentity — wallet", () => {
   });
 });
 
+/**
+ * Captured from a real `POST /auth/v1/token?grant_type=web3` against the hosted
+ * project on 2026-09-24, not written from the docs. The address lives under
+ * `custom_claims` and `identity.id` reads `web3:solana:<address>` -- a resolver
+ * that took the id would key the account on a string that is not an address.
+ */
+describe("resolveIdentity — the shape GoTrue actually returns", () => {
+  const LIVE = user({
+    id: "2713f5df-6dd6-4f70-885f-d175d8981217",
+    email: "",
+    app_metadata: { provider: "web3", providers: ["web3"] },
+    user_metadata: {
+      custom_claims: {
+        address: ADDRESS,
+        chain: "solana",
+        domain: "agent-rails-virid.vercel.app",
+        network: "",
+        statement: "Sign in to Agent Rails.",
+      },
+      email_verified: false,
+      phone_verified: false,
+      sub: `web3:solana:${ADDRESS}`,
+    },
+    identities: [
+      identity(
+        "web3",
+        {
+          custom_claims: { address: ADDRESS, chain: "solana" },
+          email_verified: false,
+          sub: `web3:solana:${ADDRESS}`,
+        },
+        `web3:solana:${ADDRESS}`,
+      ),
+    ],
+  });
+
+  it("keys the identity on the address, not on `web3:solana:…`", () => {
+    expect(resolveIdentity(LIVE)).toEqual({
+      provider: "wallet",
+      subject: ADDRESS,
+      displayName: "7xKX…gAsU",
+      email: "",
+    });
+  });
+
+  it("an empty email string does not become the display name", () => {
+    expect(resolveIdentity(LIVE).displayName).not.toBe("");
+  });
+});
+
 describe("resolveIdentity — neither", () => {
   it("refuses a provider it does not model", () => {
     expect(() =>
