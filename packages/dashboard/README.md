@@ -68,6 +68,10 @@ Rows without a treasury address show `—` rather than borrowing a number.
 The CLI wins by default: it needs no key and adds no per-token cost. Pick a
 specific model in the chat footer to override.
 
+If you previously saw **Demo** while Claude Code was installed, an old persisted
+choice may be stuck — open the chat footer and switch the model to Sonnet (or any
+non-demo option); the UI now auto-promotes when a real provider is detected.
+
 ### Using a subscription instead of an API key
 
 `claude-cli` spawns the locally installed Claude Code in headless mode
