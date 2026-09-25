@@ -1,0 +1,204 @@
+name: Release tag
+
+# ADR-011, the program half. A tag is a claim about what is deployed, and this workflow is
+# what makes the claim checkable: it builds the program with the pinned toolchain, hashes
+# the artifact, hashes what devnet is actually running, and attaches both to the release
+# alongside the toolchain the digest depends on.
+#
+# The smoke leg is the other half of ADR-015's deferred "devnet smoke on release tags" row.
+# It pays on a real cluster, in SOL and in an SPL mint, because every other layer of the
+# pyramid executes instructions without one.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      smoke:
+        description: "Run the devnet smoke as well"
+        type: boolean
+        default: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  program:
+    name: program hash
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    outputs:
+      sha256: ${{ steps.hash.outputs.sha256 }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # One pinned Agave version for the whole repository, declared in idl.yml and read
+      # back out of it here: the digest below is a statement about a toolchain, so two
+      # workflows disagreeing about which one would make it meaningless.
+      - id: versions
+        run: |
+          agave=$(sed -n 's/^  AGAVE_VERSION: \(.*\)$/\1/p' .github/workflows/idl.yml)
+          test -n "$agave" || { echo "AGAVE_VERSION missing from .github/workflows/idl.yml"; exit 1; }
+          echo "agave=$agave" >> "$GITHUB_OUTPUT"
+
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: solana-cache
+        with:
+          path: ~/.local/share/solana
+          key: solana-${{ steps.versions.outputs.agave }}
+
+      - if: steps.solana-cache.outputs.cache-hit != 'true'
+        run: sh -c "$(curl -sSfL https://release.anza.xyz/v${{ steps.versions.outputs.agave }}/install)"
+
+      - run: echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
+
+      - id: hash
+        run: |
+          set -euo pipefail
+          scripts/program-hash.sh build
+          sha256=$(cut -d' ' -f1 target/deploy/agent_rails.so.sha256)
+          echo "sha256=$sha256" >> "$GITHUB_OUTPUT"
+          echo "### Program hash" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          cat target/deploy/agent_rails.build-info.json >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      # Reported, never enforced: a tag cut before the deploy legitimately differs from
+      # what devnet is running, and failing the release for that would train people to
+      # ignore the check. The number is published so a reader can decide for themselves.
+      - name: compare with devnet
+        continue-on-error: true
+        run: |
+          deployed=$(scripts/program-hash.sh onchain devnet)
+          built=$(cut -d' ' -f1 target/deploy/agent_rails.so.sha256)
+          {
+            echo "### Deployed on devnet"
+            echo ""
+            echo "| | sha256 |"
+            echo "|---|---|"
+            echo "| built from this tag | \`$built\` |"
+            echo "| running on devnet | \`$deployed\` |"
+            [ "$built" = "$deployed" ] && echo "" && echo "They match." || true
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: program
+          path: |
+            target/deploy/agent_rails.so
+            target/deploy/agent_rails.so.sha256
+            target/deploy/agent_rails.build-info.json
+          retention-days: 90
+
+  smoke:
+    name: devnet smoke
+    needs: program
+    if: github.event_name == 'push' || inputs.smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - id: versions
+        run: |
+          agave=$(sed -n 's/^  AGAVE_VERSION: \(.*\)$/\1/p' .github/workflows/idl.yml)
+          echo "agave=$agave" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: solana-cache
+        with:
+          path: ~/.local/share/solana
+          key: solana-${{ steps.versions.outputs.agave }}
+
+      - if: steps.solana-cache.outputs.cache-hit != 'true'
+        run: sh -c "$(curl -sSfL https://release.anza.xyz/v${{ steps.versions.outputs.agave }}/install)"
+
+      - run: echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+
+      # Written with a restrictive umask, never echoed, never passed as an argument, and
+      # removed in a step that always runs — the same handling as the e2e workflow.
+      - name: devnet smoke
+        env:
+          DEVNET_KEYPAIR: ${{ secrets.DEVNET_KEYPAIR }}
+        run: |
+          set -euo pipefail
+          if [ -z "$DEVNET_KEYPAIR" ]; then
+            echo "::error::DEVNET_KEYPAIR is not set; the release cannot claim a devnet smoke."
+            exit 1
+          fi
+          umask 077
+          printf '%s' "$DEVNET_KEYPAIR" > "$RUNNER_TEMP/devnet.json"
+          scripts/devnet-smoke.sh --wallet "$RUNNER_TEMP/devnet.json" --out "$RUNNER_TEMP/smoke" \
+            | tee "$RUNNER_TEMP/smoke.md"
+          cat "$RUNNER_TEMP/smoke.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: shred the devnet keypair
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/devnet.json" "$RUNNER_TEMP/smoke"
+
+  release:
+    name: github release
+    needs: [program, smoke]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        with:
+          name: program
+          path: artifacts
+
+      - name: publish the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHA256: ${{ needs.program.outputs.sha256 }}
+        run: |
+          set -euo pipefail
+          program_id=$(sed -n 's/^declare_id!("\(.*\)");/\1/p' programs/agent_rails/src/lib.rs)
+          notes=$(mktemp)
+          cat > "$notes" <<NOTES
+          **Unaudited, devnet only.** The upgrade authority is not renounced; see the trust
+          phases in the README before putting funds behind this.
+
+          | | |
+          |---|---|
+          | program id | \`$program_id\` |
+          | sha256 of the built program | \`$SHA256\` |
+
+          Reproduce the digest:
+
+          \`\`\`bash
+          git checkout ${{ github.ref_name }}
+          scripts/program-hash.sh build      # prints the same sha256, given the pinned toolchain
+          scripts/program-hash.sh compare    # and compares it with what devnet is running
+          \`\`\`
+
+          \`agent_rails.build-info.json\` records the Agave, Anchor and Rust versions the
+          digest depends on. The build is toolchain-pinned, not container-hermetic — ADR-011
+          says what that leaves open.
+          NOTES
+          gh release create "${{ github.ref_name }}" \
+            --title "${{ github.ref_name }}" \
+            --notes-file "$notes" \
+            --prerelease \
+            artifacts/agent_rails.so \
+            artifacts/agent_rails.so.sha256 \
+            artifacts/agent_rails.build-info.json

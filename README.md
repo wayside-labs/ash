@@ -10,8 +10,48 @@ instruction that the program refuses unless every rule holds. The agent's key au
 a payment; it never authorizes a limit.
 
 > **Status: `0.x`, unaudited, devnet only.** No professional audit has been done and the
-> upgrade authority is not yet renounced. ADR-011 sets out the phases to `1.0.0`. Do not
-> put funds you care about behind this.
+> upgrade authority is not yet renounced. Do not put funds you care about behind this.
+
+## Trust phases
+
+Every claim below is one you can check on-chain, which is the point of writing them down
+(ADR-011). The row in bold is where the project is today.
+
+| Phase | Upgrade authority | Networks | What it means for you |
+|---|---|---|---|
+| **`0.x` — now** | **a single developer key** | **devnet only** | **Whoever holds that key can replace the program under your vault. Unaudited. Treat any balance as spendable by the maintainer.** |
+| `1.0.0-beta` | Squads 3-of-5, ≥1 external security signer, time lock, ≥72 h public notice | mainnet, with TVL guidance | No single person can ship an upgrade, and you get notice before one lands. |
+| `1.0.0` | `None` — renounced | mainnet | The program cannot be changed by anyone, including us. Post-audit. |
+| `2.x` | new program id | mainnet | Migration is opt-in, with `migrate_treasury` tooling; the `1.0.0` program keeps running. |
+
+`agent-rails doctor` reports the authority actually set on the deployed program, so the
+first column is verifiable rather than promised.
+
+### Verifying what is deployed
+
+Every release tag carries the SBF artifact, its SHA-256 and the toolchain that produced it:
+
+```bash
+scripts/program-hash.sh build      # hash what this tree builds
+scripts/program-hash.sh onchain    # hash what devnet is running
+scripts/program-hash.sh compare    # and say whether they agree
+```
+
+The digest is toolchain-pinned, not container-hermetic: it reproduces for anyone on the
+same commit with the pinned Agave and Rust versions, and it is not yet a
+`solana-verify` image build. ADR-011 records why and what would change that.
+
+### Installing
+
+Nothing is on npm yet. The packages are versioned and ready to publish, and the release
+workflow runs on every merge with publishing switched off — deliberately, until the trust
+phase above is worth a package that cannot be unpublished. Until then:
+
+```bash
+git clone https://github.com/wayside-labs/agent-rails && cd agent-rails
+pnpm install && pnpm build
+pnpm agent-rails init --rpc https://api.devnet.solana.com
+```
 
 ## Why it is shaped this way
 

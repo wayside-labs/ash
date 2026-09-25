@@ -1,7 +1,31 @@
 {
   "name": "@agent-rails/contract",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
+  "description": "Schemas, reason codes and event types shared by every Agent Rails surface.",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/wayside-labs/agent-rails",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wayside-labs/agent-rails.git",
+    "directory": "packages/contract"
+  },
+  "bugs": {
+    "url": "https://github.com/wayside-labs/agent-rails/issues"
+  },
+  "keywords": [
+    "solana",
+    "ai-agents",
+    "payments",
+    "guardrails",
+    "anchor",
+    "mcp"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=22"
+  },
   "type": "module",
   "exports": {
     ".": {
