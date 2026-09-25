@@ -42,10 +42,19 @@ mechanism, because until a release has actually run, a governance ADR is a promi
   `@agent-rails/e2e` ignored — one is an application, the other a test suite. Five packages
   carry `0.1.0`, `publishConfig.access: public`, Apache-2.0 and a `repository.directory`.
 - **Release workflow** (`.github/workflows/release.yml`): runs the TypeScript gate under
-  `VERIFY_STRICT=1`, then opens and maintains the version pull request. **Publishing is
-  inert**: the step is generated only when `NPM_TOKEN` exists, and it does not. This is the
-  deliberate order — exercise the machinery on every merge, publish later. A package version
-  cannot be unpublished, and the trust phase is not yet worth one.
+  `VERIFY_STRICT=1` on every merge to `main`. Two steps past that are behind their own
+  credentials, and neither is set:
+  - **Publishing** needs `NPM_TOKEN`. This is the deliberate order — exercise the machinery
+    on every merge, publish later. A package version cannot be unpublished, and the trust
+    phase is not yet worth one.
+  - **The version pull request** needs `RELEASE_TOKEN`. The first run of this workflow
+    found out why: `GITHUB_TOKEN` may not open a pull request unless the repository setting
+    *"Allow GitHub Actions to create and approve pull requests"* is on, and that setting
+    lifts both halves at once. `main` requires one approving review and `enforce_admins` is
+    false, so a workflow permitted to approve pull requests is a workflow that can satisfy
+    the review requirement by itself. A release convenience is not worth handing the review
+    gate to anything that can be made to run a job. Until a scoped token exists, the bump is
+    `pnpm version-packages` and an ordinary pull request.
 - **Verifiable program hash** (ADR-015's deferred row): `scripts/program-hash.sh`, one
   script used by both the developer and `.github/workflows/release-tag.yml`, so a local
   check and a release cannot disagree about what is being hashed. A tag attaches the `.so`,
