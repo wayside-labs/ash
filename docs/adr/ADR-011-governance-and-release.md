@@ -68,6 +68,16 @@ mechanism, because until a release has actually run, a governance ADR is a promi
   first phase row says so in the terms a user cares about.
 - Points 3, 6 and 7 — audit, `CODEOWNERS`/`GOVERNANCE.md`, incident runbook — are untouched.
 
+**First run, 2026-09-25, devnet.** The script was run end to end before the workflow was
+wired to it, against the CI key. It bootstrapped treasury `8bhePT5sbBypQwJJBhAyw9xPikN77eoxrf47dXnVTN8d`,
+paid 0.001 SOL and 1 MOCK to the demo destination, had a payment of 1 SOL refused by the
+program with `EXCEEDS_PER_TX_MAX`, and replayed the two-link audit chain to the head the
+session account reports — `c23e64fe23540d965792de3718af73d2e9a0df93a46c19b33e3a37782db21262`.
+That SPL payment is the first time `execute_payment` has run against a real cluster;
+everything before it executed in LiteSVM or on a surfnet. The run also found the thing a
+CI-only first run would have found at the worst moment: the public endpoint answers 429
+under burst, so the resumable steps retry and the legs are spaced.
+
 **Smoke scope.** The SPL leg pays with a mock 6-decimal mint created by
 `agent-rails init --mock-mint`, not with Circle's devnet USDC. Nobody but Circle can mint the
 latter and its faucet is not scriptable, so a USDC leg would be a smoke that depends on a
