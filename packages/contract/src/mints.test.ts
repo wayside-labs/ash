@@ -7,7 +7,9 @@ import {
   USDC_DECIMALS,
   USDC_MINT_DEVNET,
   USDC_MINT_MAINNET,
+  USDT_MINT_MAINNET,
   usdcMintFor,
+  usdtMintFor,
 } from "./mints.js";
 
 describe("known mints", () => {
@@ -49,5 +51,24 @@ describe("isNativeMint", () => {
   it("only matches the sentinel", () => {
     expect(isNativeMint(NATIVE_MINT)).toBe(true);
     expect(isNativeMint(USDC_MINT_DEVNET)).toBe(false);
+  });
+});
+
+describe("usdtMintFor", () => {
+  it("answers for mainnet", () => {
+    expect(usdtMintFor("mainnet-beta")).toBe(USDT_MINT_MAINNET);
+    expect(knownMintSymbol(USDT_MINT_MAINNET)).toBe("USDT");
+  });
+
+  // Tether issues no devnet or testnet token. Returning some other address would have the
+  // UI offer a deposit into a mint account that does not exist.
+  it("answers null everywhere else", () => {
+    expect(usdtMintFor("devnet")).toBeNull();
+    expect(usdtMintFor("testnet")).toBeNull();
+  });
+
+  it("uses six decimals, like USDC", () => {
+    expect(knownMint(USDT_MINT_MAINNET)?.decimals).toBe(6);
+    expect(knownMint(USDT_MINT_MAINNET)?.stable).toBe(true);
   });
 });

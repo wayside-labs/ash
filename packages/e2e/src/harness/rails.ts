@@ -26,6 +26,7 @@ import {
   signTransactionMessageWithSigners,
 } from "@solana/kit";
 import { PROGRAM_ID } from "./surfnet.js";
+import { findAta, setTokenAccount, TOKEN_PROGRAM, USDC_DECIMALS, USDC_DEVNET } from "./token.js";
 
 /** The sentinel mint that selects the `execute_payment_sol` path (program constants.rs). */
 export const NATIVE_MINT = address("So11111111111111111111111111111111111111112");
@@ -183,23 +184,36 @@ export type RailsFixture = {
   sessionKey: KeyPairSigner;
   destination: KeyPairSigner;
   allowlistEntry: Address;
+  /** Present when the fixture was set up with `usdc: true`. */
+  usdc?: {
+    mint: Address;
+    decimals: number;
+    vaultAta: Address;
+    destinationAta: Address;
+  };
 };
 
 /**
  * Stand up a treasury, a native-SOL ceiling, a policy, an allowlist entry and a session.
  *
- * The SOL path is chosen over SPL deliberately: `execute_payment_sol` needs no mint, no
- * associated token accounts and no token program, which removes about two thirds of the
- * setup without removing any of the machinery under test. Idempotency, the receipt PDA,
- * the audit chain and the confirmation handling are identical on both paths — spec §10
- * budgets them separately only for compute.
+ * SOL is the default because `execute_payment_sol` needs no mint, no associated token
+ * accounts and no token program: two thirds less setup for the same machinery, since
+ * idempotency, the receipt PDA, the audit chain and the confirmation handling are identical
+ * on both paths and spec §10 separates them only on compute.
+ *
+ * `usdc: true` adds the token path on top, in Circle's actual devnet USDC — the fork
+ * already has that mint, so the SPL leg is not a payment in a token the harness invented.
  */
 export async function setupRails(
   rpcUrl: string,
   owner: KeyPairSigner,
-  options?: { perTxMax?: bigint },
+  options?: { perTxMax?: bigint; usdc?: boolean; usdcVaultAmount?: bigint },
 ): Promise<RailsFixture> {
   const perTxMax = options?.perTxMax ?? 1_000_000_000n;
+  const withUsdc = options?.usdc ?? false;
+  // Base units. 1000 USDC in the vault, and a per-payment ceiling of 100.
+  const usdcPerTx = 100_000_000n;
+  const usdcVaultAmount = options?.usdcVaultAmount ?? 1_000_000_000n;
   const createKey = await generateKeyPairSigner();
   const sessionKey = await generateKeyPairSigner();
   const destination = await generateKeyPairSigner();
@@ -246,6 +260,36 @@ export async function setupRails(
     }),
   ]);
 
+  const usdcVaultAta = withUsdc ? await findAta(treasury, USDC_DEVNET) : undefined;
+  if (withUsdc && usdcVaultAta) {
+    // The vault ATA is created by this instruction's own CPI, which is why funding it has
+    // to come after — and why `add_mint` is what the CLI insists on running before a
+    // policy that prices the mint.
+    //
+    // `vault_ata` and `token_program` are optional in the IDL because the native path omits
+    // both; on the SPL path the handler refuses without them (`TokenProgramMismatch`), so a
+    // token mint has to name the account its CPI is about to create.
+    await sendIx(rpcUrl, owner, [
+      getAddMintInstruction({
+        owner,
+        treasury,
+        eventAuthority,
+        program: programAddress,
+        mint: USDC_DEVNET,
+        vaultAta: usdcVaultAta,
+        tokenProgram: TOKEN_PROGRAM,
+        ceiling: {
+          maxPerTx: usdcPerTx,
+          maxShortWindow: usdcPerTx * 10n,
+          maxLongWindow: usdcPerTx * 100n,
+          maxLifetime: usdcPerTx * 1000n,
+          minShortWindowSeconds: 60,
+          minLongWindowSeconds: 120,
+        },
+      }),
+    ]);
+  }
+
   await sendIx(rpcUrl, owner, [
     getCreatePolicyInstruction({
       operator: owner,
@@ -265,6 +309,19 @@ export async function setupRails(
             longWindowSeconds: 120,
             lifetimeMax: perTxMax * 1000n,
           },
+          ...(withUsdc
+            ? [
+                {
+                  mint: USDC_DEVNET,
+                  perTxMax: usdcPerTx,
+                  shortWindowMax: usdcPerTx * 10n,
+                  shortWindowSeconds: 60,
+                  longWindowMax: usdcPerTx * 100n,
+                  longWindowSeconds: 120,
+                  lifetimeMax: usdcPerTx * 1000n,
+                },
+              ]
+            : []),
         ],
         destinationMode: 1,
         requireMemo: false,
@@ -304,6 +361,20 @@ export async function setupRails(
     }),
   ]);
 
+  let usdc: RailsFixture["usdc"];
+  if (withUsdc && usdcVaultAta) {
+    const vaultAta = usdcVaultAta;
+    const destinationAta = await findAta(destination.address, USDC_DEVNET);
+    // The vault gets a balance the treasury never deposited, and the destination gets an
+    // account it never opened. Both are cheatcodes rather than instructions because the
+    // policy is created with `createDestinationAta: false` — the payment path must not be
+    // able to open accounts, so the payee's has to exist beforehand — and because nobody
+    // but Circle can mint the token being paid.
+    await setTokenAccount(rpcUrl, treasury, USDC_DEVNET, usdcVaultAmount);
+    await setTokenAccount(rpcUrl, destination.address, USDC_DEVNET, 0n);
+    usdc = { mint: USDC_DEVNET, decimals: USDC_DECIMALS, vaultAta, destinationAta };
+  }
+
   return {
     owner,
     treasury,
@@ -314,5 +385,8 @@ export async function setupRails(
     sessionKey,
     destination,
     allowlistEntry,
+    ...(usdc ? { usdc } : {}),
   };
 }
+
+export { TOKEN_PROGRAM, USDC_DEVNET };

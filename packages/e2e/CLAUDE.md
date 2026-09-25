@@ -55,13 +55,28 @@ A surfnet owns its ledger, so the program can simply be placed where the program
 lives. No keypair enters the repository and no deploy command runs — which also means
 `.claude/hooks/guard.sh` needs no exception for this suite.
 
+## The SPL leg pays in the real token
+
+`spl-payment.e2e.test.ts` uses Circle's **actual devnet USDC mint**, not one the harness
+created. The surfnet forks devnet, so that mint is already there with its real decimals: the
+program reads six from the account Circle deployed, and a decimals bug would show up here
+rather than against a stand-in the harness chose to make convenient.
+
+What is faked is only the balances. Nobody but Circle can mint that token, so
+`surfnet_setTokenAccount` writes the vault's account and opens the destination's — the same
+move `install-program.ts` makes for the loader, and for the same reason: a surfnet owns its
+ledger. The destination's account has to exist beforehand because the policy is created with
+`createDestinationAta: false`; the payment path must not be able to open accounts.
+
+The SOL argument — that the two paths differ only in compute (spec §10) — is right about the
+policy engine and wrong about everything the token path adds on top: two associated token
+accounts, a mint whose decimals the program reads, and a CPI into a token program that can
+fail in ways the native path has no equivalent of.
+
 ## Scope, and what it is not
 
-SOL path only. `execute_payment_sol` needs no mint, no ATAs and no token program, which cuts
-most of the setup while leaving idempotency, the receipt, the audit chain and the
-confirmation handling identical — spec §10 separates the two paths on compute, not on logic.
-An SPL leg is the obvious next addition.
-
 Not real devnet. The surfnet *forks* devnet, so uncreated accounts are fetched from the real
-cluster, but the program runs locally. Deploying to devnet proper needs 7.10 SOL for
-programdata against the 5 SOL the CI key holds — see ADR-015's devnet-smoke row.
+cluster, but the program runs locally. The program **is** deployed on devnet now, and
+`scripts/devnet-smoke.sh` pays against it on every release tag — that is where a payment
+meets a real cluster, and this suite is where it meets one that can be made to misbehave on
+demand.
