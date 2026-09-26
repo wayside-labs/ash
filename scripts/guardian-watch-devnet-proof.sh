@@ -94,6 +94,13 @@ solana-keygen new -o "$GUARDIAN_KP" --no-bip39-passphrase --force >/dev/null 2>&
 
 GUARDIAN_ADDR=$(solana-keygen pubkey "$GUARDIAN_KP")
 
+step "Funding guardian key for pause tx fees"
+retrying solana transfer "$GUARDIAN_ADDR" 0.005 \
+  --from "$WALLET" \
+  --url "$RPC" \
+  --allow-unfunded-recipient \
+  --fee-payer "$WALLET" >/dev/null || die "could not fund guardian key"
+
 step "Bootstrapping treasury on $RPC"
 init_json=$(
   retrying $CLI init \
