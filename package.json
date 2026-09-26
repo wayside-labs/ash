@@ -20,6 +20,8 @@
     "idl:sync": "pnpm idl:build && pnpm codegen && pnpm build",
     "codegen:check": "pnpm codegen && git diff --exit-code packages/client/src/generated",
     "coverage": "turbo run coverage",
+    "guardian-watch": "node --experimental-strip-types scripts/guardian-watch.ts",
+    "test:guardian-watch": "node --experimental-strip-types --test scripts/guardian-roll-window.test.ts",
     "dashboard": "pnpm --filter @agent-rails/dashboard dev",
     "dashboard:build": "pnpm --filter @agent-rails/dashboard build",
     "changeset": "changeset",
