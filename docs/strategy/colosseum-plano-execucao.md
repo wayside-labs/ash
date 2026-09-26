@@ -199,8 +199,9 @@ Fecho: *"The agent never held the money. It only ever held a receipt."*
 Reproduzível com `scripts/demo.sh --wallet <keypair>` — mesmas superfícies do usuário
 (`init`, `pay`, `policy set`) e assinaturas devnet no relatório Markdown.
 
-Gravar em **build de produção**, nunca `next dev` — o dashboard não tem teste
-automatizado e `next build` não roda no CI.
+Gravar em **build de produção**, nunca `next dev`. O CI roda `next build` no job
+`typescript` e o gate noturno `scripts/verify.sh ui` (Playwright em produção); o runbook
+`docs/runbooks/dashboard-smoke.md` cobre o passe manual antes de gravar.
 
 ## Regras de negócio a registrar em ADR
 
@@ -236,6 +237,17 @@ minuto · deck 10 slides · README como produto · 2 estranhos entenderam em 30s
 **Higiene:** `VERIFY_STRICT=1 scripts/verify.sh` verde · smoke test manual executado ·
 nenhuma promessa no README sem código atrás · licença e linha open-source/comercial
 explícitas · zona proibida anotada no `CONTRIBUTING`.
+
+### HIG-01 — checklist (release engineer)
+
+- [x] `CONTRIBUTING.md` — zona proibida para PR de agente (programa, policy, generated, layout snapshot, payment path, `vault-transfer`)
+- [x] README como produto + tabela open-source vs hospedado + link para declaração pré-14/09
+- [x] `docs/strategy/colosseum-pre-hackathon-declaration.md` — texto para o formulário
+- [x] `docs/runbooks/dashboard-smoke.md` — 10 passos manuais
+- [x] CI: `pnpm turbo run build --filter @agent-rails/dashboard` no job `typescript` (fontes via `@fontsource`, sem fetch ao Google no build)
+- [ ] `VERIFY_STRICT=1 scripts/verify.sh all` verde localmente (rodar na máquina com registry npm padrão — mirror sem audit endpoint falha em `pnpm audit`; kani/mutants/e2e são nightly)
+- [x] Smoke automatizado: `VERIFY_STRICT=1 scripts/verify.sh ui` (45 testes, incl. `e2e/smoke.spec.ts`)
+- [ ] Smoke manual assinado por humano na tabela do runbook antes de gravar a demo
 
 ## Aberto
 

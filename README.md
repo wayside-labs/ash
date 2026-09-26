@@ -1,13 +1,13 @@
 # Agent Rails
 
-A guardrail and treasury framework that lets autonomous AI agents make on-chain Solana
-payments without ever holding unbounded funds.
+**The on-chain spend control plane for AI agents** — capped, auditable, retry-safe.
 
-An owner deposits into a program-owned vault and defines policy — per-transaction,
-windowed and lifetime limits, destination allowlists, mint allowlists — then issues
-time-boxed sessions to agents. An agent pays through a single `execute_payment`
-instruction that the program refuses unless every rule holds. The agent's key authorizes
-a payment; it never authorizes a limit.
+Agent Rails is a guardrail and treasury framework that lets autonomous AI agents make on-chain
+Solana payments without ever holding unbounded funds. Operators deposit into a program-owned
+vault, set per-transaction and windowed limits, destination and mint allowlists, and issue
+time-boxed sessions; agents pay through a single `execute_payment` instruction the program
+refuses unless every rule holds. The agent's key authorizes a payment; it never authorizes a
+limit.
 
 > **Status: `0.x`, unaudited, devnet only.** No professional audit has been done and the
 > upgrade authority is not yet renounced. Do not put funds you care about behind this.
@@ -180,10 +180,25 @@ CI runs all of the above plus `cargo deny`, gitleaks and semgrep on every pull r
 | `docs/spec/accounts-and-instructions.md` | Byte-level account and instruction layouts |
 | `docs/adr/` | Decisions, immutable once recorded; `README.md` there is the index |
 | `docs/runbooks/reference-agent.md` | In-house devnet agent — MCP, cron, metrics until 12/10 |
+| `docs/runbooks/dashboard-smoke.md` | Ten-step manual smoke before demo recording |
 | `docs/runbooks/alert-webhooks.md` | Denial + headroom webhooks (`AGENT_RAILS_ALERT_WEBHOOK_URL`, `pnpm alert-watch`) |
+| `docs/strategy/colosseum-pre-hackathon-declaration.md` | Copy for the Colosseum pre-existing work field |
 
 Several directories carry their own `CLAUDE.md` with rules scoped to that subtree.
 
+## Open source vs hosted
+
+| Open source (this repo) | Commercial (hosted control plane) |
+|---|---|
+| Anchor program, policy crate, IDL | Multi-tenant dashboard, auth, billing |
+| `@agent-rails/sdk`, `@agent-rails/mcp`, CLI | Alert routing, guardian-as-a-service ops |
+| Vercel AI adapter, contract schemas | SLA-backed RPC and support |
+
+Protocol fees are **zero bps** by design (ADR in `docs/adr/`). Revenue is per governed
+treasury on the hosted plane, not per seat. See `docs/strategy/colosseum-plano-execucao.md`
+for pricing sketches used in the Colosseum deck.
+
 ## License
 
-Apache-2.0.
+Apache-2.0. See `CONTRIBUTING.md` for the agent no-go zones and the local gate
+(`VERIFY_STRICT=1 scripts/verify.sh`).
