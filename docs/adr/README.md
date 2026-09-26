@@ -22,6 +22,7 @@ Each ADR captures one decision from the v1 design session: the context, the opti
 | [017](ADR-017-hosted-tenancy-and-client-held-secrets.md) | Hosted dashboard: account/org tenancy, Supabase identity, and client-held secrets | Accepted |
 | [018](ADR-018-in-browser-wallet-generation.md) | In-browser wallet generation, shown once and never held | Accepted |
 | [020](ADR-020-upgrade-authority-off-ci.md) | The upgrade authority leaves CI: a separate offline key, held by a person | Accepted |
+| [021](ADR-021-operator-surfaces-cli-and-dashboard.md) | Operator surfaces: CLI and dashboard, never MCP; wave 1 session lifecycle | Accepted |
 
 016 is reserved by issue #23 (the per-session ceiling) and lands with it. 019 is reserved by
 pull request #54 (self-hosting on a VM) and lands with it.

@@ -1,3 +1,5 @@
+import { buildCreateSessionInstruction } from "@agent-rails/cli/tx/session";
+import { MAX_SESSION_TTL_SECONDS, MIN_WINDOW_SECONDS } from "@agent-rails/contract";
 import { NATIVE_MINT } from "@agent-rails/contract/constants";
 import { knownMintSymbol } from "@agent-rails/contract/mints";
 import {
@@ -8,8 +10,11 @@ import {
   decodePolicy,
   decodeTreasury,
   FundingMode,
+  fetchMaybeAgentSession,
   findAssociatedTokenAddress,
   findEventAuthorityPda,
+  findPolicyPda,
+  findSessionPda,
   findSolVaultPda,
   getWithdrawInstruction,
   getWithdrawInstructionAsync,
@@ -35,6 +40,7 @@ import {
   setTransactionMessageLifetimeUsingBlockhash,
 } from "@solana/kit";
 import { isLikelyAddress, type SolanaCluster } from "@/lib/schema";
+import { encodeFixedName } from "@/lib/server/fixed-name";
 
 const CLUSTER_RPC_URLS: Record<SolanaCluster, string> = {
   devnet: "https://api.devnet.solana.com",
@@ -1107,6 +1113,29 @@ async function buildTokenWithdraw(
   return instructions;
 }
 
+export type CreateSessionRequest = {
+  treasury: string;
+  /** Operator or owner — fee payer and `create_session` authority. */
+  wallet: string;
+  /** Public session key generated in the browser; the private half never reaches here. */
+  sessionKey: string;
+  label: string;
+  /** Policy PDA; when omitted the first on-chain policy or the `default` PDA is used. */
+  policy?: string | null;
+  /** Hours until expiry; defaults to 24, same as the CLI. */
+  sessionTtlHours: number;
+};
+
+export type CreateSessionResult = {
+  session: string;
+  sessionKey: string;
+  policy: string;
+  /** Absent when the session already exists and is live — nothing to sign. */
+  transaction?: string;
+  lastValidBlockHeight?: number;
+  alreadyOnChain?: boolean;
+};
+
 export type ConfirmationResult = {
   signature: string;
   status: "confirmed" | "failed" | "timeout";
@@ -1115,6 +1144,128 @@ export type ConfirmationResult = {
 
 const CONFIRM_TIMEOUT_MS = 30_000;
 const CONFIRM_POLL_MS = 1_000;
+
+function requireOperatorOrOwner(
+  wallet: Address,
+  treasury: NonNullable<Awaited<ReturnType<typeof fetchTreasury>>>,
+): void {
+  if (wallet !== treasury.owner && wallet !== treasury.operator) {
+    throw new SolanaRequestError("api.error.notOperatorOrOwner");
+  }
+}
+
+function assertSessionKeySafe(
+  sessionKey: Address,
+  treasury: NonNullable<Awaited<ReturnType<typeof fetchTreasury>>>,
+): void {
+  if (sessionKey === treasury.owner || sessionKey === treasury.operator) {
+    throw new SolanaRequestError("api.error.privilegedSessionKey");
+  }
+  for (const guardian of treasury.guardians.slice(0, treasury.guardianCount)) {
+    if (sessionKey === guardian) throw new SolanaRequestError("api.error.privilegedSessionKey");
+  }
+}
+
+function resolveExpiry(hours: number): bigint {
+  const seconds = hours * 3_600;
+  if (seconds > MAX_SESSION_TTL_SECONDS) {
+    throw new SolanaRequestError("api.error.sessionTtlTooLong");
+  }
+  if (seconds < MIN_WINDOW_SECONDS) {
+    throw new SolanaRequestError("api.error.sessionTtlTooShort");
+  }
+  return BigInt(Math.floor(Date.now() / 1000) + seconds);
+}
+
+async function resolvePolicyAddress(
+  rpc: Rpc,
+  treasuryPk: Address,
+  explicit?: string | null,
+): Promise<Address> {
+  if (explicit) {
+    if (!isLikelyAddress(explicit)) throw new SolanaRequestError("api.error.invalidPayload");
+    return address(explicit);
+  }
+
+  const policies = await readPolicies(rpc, treasuryPk);
+  const [onlyPolicy] = policies;
+  if (onlyPolicy) return address(onlyPolicy.address);
+  if (policies.length > 1) throw new SolanaRequestError("api.error.policyRequired");
+
+  const [policy] = await findPolicyPda({
+    treasury: treasuryPk,
+    name: encodeFixedName("default"),
+  });
+  return policy;
+}
+
+/**
+ * Builds an unsigned `create_session` for the connected operator/owner wallet.
+ * The session private key is generated client-side and never sent here.
+ */
+export async function buildCreateSession(
+  cluster: SolanaCluster,
+  customRpc: string | null,
+  req: CreateSessionRequest,
+): Promise<CreateSessionResult> {
+  if (
+    !isLikelyAddress(req.treasury) ||
+    !isLikelyAddress(req.wallet) ||
+    !isLikelyAddress(req.sessionKey)
+  ) {
+    throw new SolanaRequestError("api.error.invalidPayload");
+  }
+
+  const rpc = rpcFor(cluster, customRpc);
+  const treasuryPk = address(req.treasury);
+  const walletPk = address(req.wallet);
+  const sessionKeyPk = address(req.sessionKey);
+
+  const treasury = await fetchTreasury(rpc, treasuryPk);
+  if (!treasury) throw new SolanaRequestError("api.error.treasuryNotFound");
+  requireOperatorOrOwner(walletPk, treasury);
+  assertSessionKeySafe(sessionKeyPk, treasury);
+
+  const policy = await resolvePolicyAddress(rpc, treasuryPk, req.policy);
+  const expiresAt = resolveExpiry(req.sessionTtlHours);
+  const [session] = await findSessionPda({ treasury: treasuryPk, sessionKey: sessionKeyPk });
+
+  const existing = await fetchMaybeAgentSession(rpc, session, { commitment: "confirmed" });
+  if (existing.exists && !existing.data.revoked) {
+    return {
+      session: session as string,
+      sessionKey: sessionKeyPk as string,
+      policy: policy as string,
+      alreadyOnChain: true,
+    };
+  }
+
+  const instruction = await buildCreateSessionInstruction({
+    operator: createNoopSigner(walletPk),
+    treasury: treasuryPk,
+    policy,
+    session,
+    sessionKey: sessionKeyPk,
+    label: req.label,
+    expiresAt,
+  });
+
+  const { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
+  const message = pipe(
+    createTransactionMessage({ version: 0 }),
+    (m) => setTransactionMessageFeePayer(walletPk, m),
+    (m) => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, m),
+    (m) => appendTransactionMessageInstructions([instruction], m),
+  );
+
+  return {
+    session: session as string,
+    sessionKey: sessionKeyPk as string,
+    policy: policy as string,
+    transaction: getBase64EncodedWireTransaction(compileTransaction(message)),
+    lastValidBlockHeight: Number(latestBlockhash.lastValidBlockHeight),
+  };
+}
 
 /**
  * The wallet submits through its own RPC, so all we hold afterwards is a

@@ -238,6 +238,14 @@ export async function stubChain(
           vault: ADDR.solVault,
           lastValidBlockHeight: 1,
         });
+      case "/api/solana/create-session":
+        return json({
+          session: ADDR.agentSession,
+          sessionKey: "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+          policy: ADDR.solVault,
+          transaction: Buffer.from("stub-create-session").toString("base64"),
+          lastValidBlockHeight: 1,
+        });
       case "/api/solana/confirm":
         return json({
           signature: STUB_SIGNATURE,
