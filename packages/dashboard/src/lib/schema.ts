@@ -134,10 +134,19 @@ export const profileSchema = z.object({
   email: z.string().default(""),
 });
 
+const alertWebhookUrlSchema = z
+  .string()
+  .default("")
+  .refine((value) => value === "" || z.url().safeParse(value).success, {
+    message: "invalid webhook URL",
+  });
+
 export const settingsSchema = z.object({
   language: z.enum(["pt-BR", "en"]).default("en"),
   emailNotifications: z.boolean().default(false),
   limitAlerts: z.boolean().default(true),
+  /** Generic HTTPS webhook for payment_denied and headroom_low alerts (Slack incoming URLs work). */
+  alertWebhookUrl: alertWebhookUrlSchema,
 });
 
 export const dashboardStateSchema = z.object({
@@ -154,6 +163,7 @@ export const dashboardStateSchema = z.object({
     language: "en",
     emailNotifications: false,
     limitAlerts: true,
+    alertWebhookUrl: "",
   }),
 });
 

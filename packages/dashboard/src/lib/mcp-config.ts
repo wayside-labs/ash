@@ -63,6 +63,7 @@ export function compileRunnerConfig(
   workflow: StoredWorkflow,
   agents: StoredAgent[],
   mcps: StoredMcp[],
+  options?: { alertWebhookUrl?: string },
 ): CompiledRunnerConfig {
   const workflowAgents = agents.filter((agent) => agent.workflowId === workflow.id);
   const mcpServers: Record<string, McpServerConfig> = {};
@@ -79,6 +80,11 @@ export function compileRunnerConfig(
     const env = Object.fromEntries(
       Object.entries(mcp.env).filter(([, value]) => value !== ""),
     ) as Record<string, string>;
+
+    const alertUrl = options?.alertWebhookUrl?.trim();
+    if (alertUrl && mcp.command.trim().includes("agent-rails-mcp")) {
+      env.AGENT_RAILS_ALERT_WEBHOOK_URL = alertUrl;
+    }
 
     mcpServers[uniqueKey(mcpServerKey(mcp.name), mcpServers)] = {
       command: mcp.command.trim(),

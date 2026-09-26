@@ -1,5 +1,6 @@
 // Re-export the generated client for convenience.
 export * from "@agent-rails/client";
+export { type PostAlertWebhookResult, postAlertWebhook } from "./alert-webhook.js";
 export {
   AUDIT_PREIMAGE_LEN,
   type AuditChainVerification,

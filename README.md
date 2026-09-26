@@ -180,6 +180,7 @@ CI runs all of the above plus `cargo deny`, gitleaks and semgrep on every pull r
 | `docs/spec/accounts-and-instructions.md` | Byte-level account and instruction layouts |
 | `docs/adr/` | Decisions, immutable once recorded; `README.md` there is the index |
 | `docs/runbooks/reference-agent.md` | In-house devnet agent — MCP, cron, metrics until 12/10 |
+| `docs/runbooks/alert-webhooks.md` | Denial + headroom webhooks (`AGENT_RAILS_ALERT_WEBHOOK_URL`, `pnpm alert-watch`) |
 
 Several directories carry their own `CLAUDE.md` with rules scoped to that subtree.
 
