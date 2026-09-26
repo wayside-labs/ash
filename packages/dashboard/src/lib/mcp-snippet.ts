@@ -8,6 +8,7 @@ export type McpSnippetInput = {
   /** Where the operator saved the downloaded session keypair. */
   signerKeypairPath: string;
   sinkPath?: string;
+  alertWebhookUrl?: string;
   serverEntry?: string;
   serverName?: string;
   mintAliases?: Record<string, string>;
@@ -29,6 +30,9 @@ export function buildMcpSnippet(input: McpSnippetInput): string {
           AGENT_RAILS_SESSION: input.session,
           AGENT_RAILS_SIGNER: input.signerKeypairPath,
           ...(input.sinkPath ? { AGENT_RAILS_SINK: input.sinkPath } : {}),
+          ...(input.alertWebhookUrl
+            ? { AGENT_RAILS_ALERT_WEBHOOK_URL: input.alertWebhookUrl }
+            : {}),
           ...(aliases ? { AGENT_RAILS_MINT_ALIASES: aliases } : {}),
         },
       },

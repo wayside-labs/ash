@@ -115,6 +115,7 @@ export type SettingsRow = {
   language: string;
   email_notifications: boolean;
   limit_alerts: boolean;
+  alert_webhook_url: string;
 };
 
 function num(value: number | string | null | undefined): number | null {
@@ -347,12 +348,18 @@ export function profileToRow(profile: Profile, accountId: string): ProfileRow {
 
 export function settingsFromRow(row: SettingsRow | null): Settings {
   if (!row) {
-    return { language: "en", emailNotifications: false, limitAlerts: true };
+    return {
+      language: "en",
+      emailNotifications: false,
+      limitAlerts: true,
+      alertWebhookUrl: "",
+    };
   }
   return {
     language: row.language as Settings["language"],
     emailNotifications: row.email_notifications,
     limitAlerts: row.limit_alerts,
+    alertWebhookUrl: row.alert_webhook_url ?? "",
   };
 }
 
@@ -362,6 +369,7 @@ export function settingsToRow(settings: Settings, accountId: string): SettingsRo
     language: settings.language,
     email_notifications: settings.emailNotifications,
     limit_alerts: settings.limitAlerts,
+    alert_webhook_url: settings.alertWebhookUrl,
   };
 }
 

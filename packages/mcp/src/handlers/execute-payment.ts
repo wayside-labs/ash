@@ -11,6 +11,7 @@ import {
   precheckReceipt,
   runPolicyHooks,
 } from "@agent-rails/sdk";
+import { notifyPaymentDeniedWebhook } from "../alert-webhook.js";
 import type { ServerContext } from "../context.js";
 import { type PreparedPayment, preparePayment } from "./prepare.js";
 
@@ -67,6 +68,12 @@ export async function handleExecutePayment(
   if (!parsed.success) {
     // Unknown keys land here too. A caller trying to pass `treasury` or `session` is not
     // making a typo; those stopped being parameters for a reason.
+    notifyPaymentDeniedWebhook(context, {
+      session: String(context.bound.session),
+      intent: UNKNOWN_INTENT,
+      reason_code: "INVALID_REQUEST",
+      source: "schema",
+    });
     return {
       outcome: "denied",
       intent_id: UNKNOWN_INTENT,
@@ -84,7 +91,7 @@ export async function handleExecutePayment(
   try {
     release = context.governor.acquire();
   } catch (error) {
-    return denialResponse(error, UNKNOWN_INTENT, "");
+    return denialResponse(context, error, UNKNOWN_INTENT, "");
   }
 
   try {
@@ -115,6 +122,12 @@ export async function handleExecutePayment(
     // `dry-run-first`: satisfied only by a dry run of *this* payment, since the intent id
     // is derived from the payment itself.
     if (prepared.requirements.has("dry-run-first") && !context.dryRuns.has(prepared.intentIdHex)) {
+      notifyPaymentDeniedWebhook(context, {
+        session: String(context.bound.session),
+        intent: prepared.intentIdHex,
+        reason_code: "DRY_RUN_REQUIRED",
+        source: "governor",
+      });
       return {
         outcome: "denied",
         intent_id: prepared.intentIdHex,
@@ -247,16 +260,27 @@ export async function handleExecutePayment(
       };
     }
 
-    return denialResponse(error, intentId, receipt);
+    return denialResponse(context, error, intentId, receipt);
   } finally {
     release?.();
   }
 }
 
-function denialResponse(error: unknown, intentId: string, receipt: string): ExecutePaymentResponse {
+function denialResponse(
+  context: ServerContext,
+  error: unknown,
+  intentId: string,
+  receipt: string,
+): ExecutePaymentResponse {
   if (!isAgentRailsError(error)) {
     throw error;
   }
+  notifyPaymentDeniedWebhook(context, {
+    session: String(context.bound.session),
+    intent: error.intentId ?? intentId,
+    reason_code: error.reasonCode,
+    source: error.source ?? "program",
+  });
   return {
     outcome: error.outcome,
     intent_id: error.intentId ?? intentId,
