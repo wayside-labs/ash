@@ -23,7 +23,8 @@ Agent Rails is a guardrail and treasury framework that lets autonomous AI agents
 - Human-in-the-loop approvals, timelocked policy loosening, signed-intent/relayer mode (all reserved in state for v1.1).
 - Token-2022 mints with `TransferHook` or `ConfidentialTransfer` extensions.
 - Native Python signing. Python is MCP-first in v1.
-- A hosted service or a web dashboard.
+- A turnkey hosted SaaS with billing (the `packages/dashboard` operator UI exists for
+  local and self-hosted use; ADR-017 covers tenancy, not commercial packaging).
 
 ---
 
@@ -55,8 +56,8 @@ flowchart LR
   end
 
   subgraph Observability
-    IDX["@agent-rails/indexer<br/>verifyChain"]
-    CLI[agent-rails CLI]
+    IDX["Indexer package<br/>(planned)"]
+    CLI[agent-rails CLI<br/>audit export]
   end
 
   OWN -->|create_treasury, add_mint,<br/>set_ceiling, withdraw, pause, unpause| PRG
@@ -75,19 +76,24 @@ flowchart LR
 
 ### Components
 
+Shipped paths are what exist under this monorepo today. Rows marked **planned** are
+design targets from ADR-009 and the roadmap below; they are not missing directories
+you should expect to clone.
+
 | Component | Location | Responsibility |
 |---|---|---|
 | `agent_rails` program | `programs/agent_rails` | Account validation, PDA custody, CPI to token programs, event emission. Thin: delegates all policy decisions to the policy crate. |
 | `agent-rails-policy` crate | `crates/agent-rails-policy` | Pure, `#![no_std]`-compatible, `#![forbid(unsafe_code)]` policy arithmetic: window rollover, limit checks, ceiling partial order, audit hash. Property-tested, fuzzed, model-checked. |
-| `agent-rails-client` crate | `crates/agent-rails-client` | Codama-generated Rust client for relayers and indexers. |
+| `agent-rails-client` crate | **planned** (`crates/agent-rails-client`) | Codama-generated Rust client for relayers and indexers. |
 | `@agent-rails/contract` | `packages/contract` | Zod schemas for MCP tools, reason codes, event types; JSON Schema export. Single source of truth for every off-chain surface. |
 | `@agent-rails/client` | `packages/client` | Codama-generated `@solana/kit` client. No hand-written code. |
-| `@agent-rails/sdk` | `packages/sdk` | Kit plugin (`client.use(agentRails(...))`): `Signer` interface, `PaymentIntent` builder, decimals conversion, preflight simulation, `PolicyHook`s, error mapping. |
+| `@agent-rails/sdk` | `packages/sdk` | Kit plugin (`client.use(agentRails(...))`): `Signer` interface, `PaymentIntent` builder, decimals conversion, preflight simulation, `PolicyHook`s, error mapping; `verifyAuditChain` and receipt reads. |
 | `@agent-rails/mcp` | `packages/mcp` | MCP server core with stdio transport (v1) and Streamable HTTP (v1.1). Agent-facing tools only. |
-| `@agent-rails/indexer` | `packages/indexer` | Pluggable `EventSource` (polling, Yellowstone) and `Sink` (SQLite, Postgres); `verifyChain`. |
-| `agent-rails` CLI | `packages/cli` | Owner / operator / guardian commands, `init` bootstrap, `audit`, `doctor`. |
-| Adapters | `packages/adapters/*` | Thin in-process wrappers exposing the contract as LangChain, Vercel AI SDK, and OpenAI Agents tools. |
-| Python package | `python/agent_rails` | MCP client wrapper plus LangChain / CrewAI / pydantic-ai tool wrappers. |
+| `@agent-rails/indexer` | **planned** (`packages/indexer`) | Pluggable `EventSource` (polling, Yellowstone) and `Sink` (SQLite, Postgres); long-retention `verifyChain`. **Today:** CLI `audit export --verify`, SDK `verifyAuditChain`, dashboard metrics history via RPC log walk (windowed). |
+| `agent-rails` CLI | `packages/cli` | Owner / operator / guardian commands, `init` bootstrap, `audit export`, `doctor`, day-2 operator commands. |
+| `@agent-rails/dashboard` | `packages/dashboard` | Chat-first operator UI; privileged writes allowlisted per ADR-021. |
+| Adapters | **planned** (`packages/adapters/*`) | Thin in-process wrappers (LangChain, Vercel AI SDK, OpenAI Agents). **Today:** call `@agent-rails/mcp` or `@agent-rails/sdk` directly. |
+| Python package | **planned** (`python/agent_rails`) | MCP client wrapper plus LangChain / CrewAI / pydantic-ai tool wrappers (ADR-009). |
 
 ---
 
@@ -284,8 +290,8 @@ The receipt only refuses a retry that carries the *same* `intent_id`, so where t
 - A retry of the same payment therefore collides on the same receipt by construction. Changing any payment parameter yields a different id — correct, because that is a different payment, bounded by the window and lifetime limits rather than by idempotency.
 - `execute_payment` `init`s `IntentReceipt` at `["receipt", session, intent_id]`. Duplicate → account-creation failure → no transfer.
 - `PaymentIntent.expires_at` is mandatory, short, and **server-authored** (90 s default, program max 1 h), so the replay window is not something a caller chooses.
-- Receipts answer "did it land?" authoritatively: `get_payment_status(intent_id)` reads the PDA first and falls back to the indexer if closed. The SDK prechecks the receipt before building, so a retry of a settled payment costs nothing.
-- `close_receipt` is permissionless after `expires_at + RECEIPT_GRACE_SECONDS`; rent returns to the `fee_payer` recorded in the receipt. A derived id is stable indefinitely, so beyond that window a precheck must consult the indexer, not the PDA alone.
+- Receipts answer "did it land?" authoritatively: `get_payment_status(intent_id)` reads the PDA first and, once the receipt account is closed, falls back to indexed or replayed history (CLI `audit export`, future `@agent-rails/indexer`). The SDK prechecks the receipt before building, so a retry of a settled payment costs nothing.
+- `close_receipt` is permissionless after `expires_at + RECEIPT_GRACE_SECONDS`; rent returns to the `fee_payer` recorded in the receipt. A derived id is stable indefinitely, so beyond that window a precheck must consult event history, not the PDA alone.
 - In v1.1 signed-intent mode, the same `intent_id` doubles as the replay nonce because the Ed25519 signature covers it.
 
 ### Outcomes
@@ -307,9 +313,9 @@ Classification follows what a failure *proves*, not where it was raised: a prefl
 
 - **Events.** One versioned `AgentRailsEvent` enum emitted via `emit_cpi!` (inner-instruction data, not truncatable logs). Every payment-related variant carries `treasury`, `session`, `seq`, and `audit_head`.
 - **Hash chain.** `AgentSession.seq` increments per executed payment; `audit_head = sha256(DOMAIN ‖ prev_head ‖ seq ‖ intent_id ‖ mint ‖ destination_owner ‖ amount ‖ slot)`. 40 bytes of state, one `hashv` syscall, no new write locks (the session is already writable per payment).
-- **Verifiability.** `@agent-rails/indexer verifyChain <session>` recomputes the chain from indexed events and compares to on-chain `audit_head`. Dropped or forged entries are detectable; `seq` gaps are detectable without hashing.
+- **Verifiability.** `verifyAuditChain` in `@agent-rails/sdk` (and the policy crate in Rust) recomputes the chain from `PaymentExecuted` events and compares to on-chain `audit_head`. CLI `agent-rails audit export --verify` does the same for operators. A dedicated `@agent-rails/indexer` package (planned) would persist events past RPC retention; dropped or forged entries are detectable either way; `seq` gaps are detectable without hashing.
 - **Denials.** Policy violations caught in preflight never reach the chain; the SDK/MCP server logs `PaymentDenied { reason_code, intent }` to a structured JSON sink using the same schema, so one downstream pipeline sees both outcomes.
-- **Human view.** CLI `agent-rails audit <treasury>` prints the verified log; SQLite queries documented; no dashboard in v1.
+- **Human view.** CLI `audit export`, JSONL sinks, and the dashboard `/metrics` page (best-effort history plus exact counters from session state).
 
 ---
 
@@ -393,9 +399,9 @@ agent-rails/
 │   ├── agent-rails-policy/          # pure policy core
 │   └── agent-rails-client/          # Codama Rust client
 ├── packages/
-│   ├── contract/  client/  sdk/  mcp/  indexer/  cli/
-│   └── adapters/{langchain,ai-sdk,openai-agents}/
-├── python/agent_rails/
+│   ├── contract/  client/  sdk/  mcp/  cli/  dashboard/
+│   └── (planned) indexer/  adapters/{langchain,ai-sdk,openai-agents}/
+├── (planned) python/agent_rails/
 ├── trident-tests/
 ├── examples/
 ├── audits/
@@ -406,11 +412,13 @@ agent-rails/
 
 ## 14. Roadmap
 
-**v1.0** — everything above: native vault, roles, policy engine, receipts, hash chain, stdio MCP, SDK + adapters, indexer, CLI `init`/`audit`/`doctor`, full test pyramid, devnet then mainnet-beta.
+**v1.0 (shipped in repo)** — native vault, roles, policy engine, receipts, hash chain, stdio MCP, SDK, CLI operator surface, operator dashboard, full test pyramid layers 1–2 and 4–5, devnet.
+
+**v1.0 (still open)** — framework adapters (`packages/adapters/*`), `@agent-rails/indexer`, Python MCP wrapper, mainnet-beta after audit and trust phase.
 
 **v1.1** — timelocked loosening with guardian veto (`PendingChange`, `recovery_destination`); signed-intent mode + reference relayer; Streamable HTTP MCP with `SessionResolver`; `approval_threshold` (human-in-the-loop) and `cooldown_seconds`; `request_limit_increase` tool; frozen `1.0.0` program.
 
-**v2** — pluggable vault backends (Squads spending-limit adapter, custom adapters); TradFi adapters consuming the same signed `PaymentIntent` (brokerage/banking APIs); native Python client via Codama; dashboard (community or core).
+**v2** — pluggable vault backends (Squads spending-limit adapter, custom adapters); TradFi adapters consuming the same signed `PaymentIntent` (brokerage/banking APIs); native Python client via Codama.
 
 ---
 

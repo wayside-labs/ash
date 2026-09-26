@@ -169,11 +169,13 @@ a ceiling that was never set.
 The app is dark-only — `<html className="dark">` is hardcoded and there is no
 light palette yet.
 
-## Not implemented yet
+## Deferred
 
-Deposit/withdraw transactions, treasury creation from the UI (use the CLI), and
-email/Google auth. Each of those says so in the UI instead of showing a button
-that does nothing.
+Treasury bootstrap from zero in the browser (`create_treasury`, policy, first mint)
+and email/Google auth. Deposit and withdraw for SOL and SPL mints already run
+through `/treasury` and agent settings (`vault-transfer` + wallet sign +
+`/api/solana/confirm`). Until wave 2 (ADR-021), point new treasuries at
+`pnpm agent-rails init` and paste the address into a workflow.
 
 RAG, Harness and Integrations were removed outright rather than shipped as
 labels: none had backend infrastructure behind it, and a nav entry reads as a

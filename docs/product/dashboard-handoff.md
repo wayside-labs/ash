@@ -65,10 +65,10 @@
 >   dentro do navegador e `AGENT_RAILS_HOME` é redirecionado, então a suíte nunca
 >   toca o `~/.agent-rails` do operador. As regras estão em
 >   `packages/dashboard/CLAUDE.md`.
-> - **`privileged-surface.test.ts`**: o split de privilégio virou mecânico. O
->   dashboard só pode importar `getWithdrawInstruction`; qualquer outro builder de
->   instrução do programa quebra o vitest. Ligar um botão "subir o limite" aqui
->   passou a exigir editar essa lista, que é o ponto.
+> - **`privileged-surface.test.ts`**: o split é MCP versus superfícies de operador
+>   (ADR-021), não CLI versus dashboard. O dashboard só importa builders na
+>   allowlist (`withdraw`, `create_session` na wave 1); qualquer outro builder do
+>   programa quebra o vitest até a lista e o ADR serem atualizados de propósito.
 > - **Dois bugs encontrados pela suíte e ainda abertos**: o default de workflow do
 >   `CreateAgentDialog` nunca se aplica (o `useState` lê a lista antes da query
 >   resolver, e o botão nasce desabilitado); e no Node 26 o SSR de `/` loga

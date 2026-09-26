@@ -196,7 +196,7 @@ O Crypto World's Fair organiza prêmios em **8 trilhas de ecossistema** + **prê
 | **Demo USDC/SPL end-to-end polida** | Médio | Garantir init com mint real devnet, vídeo mostrando token path (hoje E2E é SOL-only). |
 | **Audit chain visível** | Médio | CLI `audit` ou painel no dashboard lendo `audit_head` / eventos — indexer lite sem Postgres. |
 | **Integração narrativa x402** | Médio | Posicionar como stack complementar: x402 paga **APIs inbound**; Agent Rails guarda **outbound treasury**. Adapter HTTP opcional, não reescrita. |
-| **Dashboard: deposit / withdraw / create treasury** | Médio-alto | Itens já listados como “not implemented” no README do dashboard — desbloqueiam demo sem CLI. |
+| **Dashboard: bootstrap treasury from zero** | Médio | Deposit/withdraw SPL+SOL já estão no dashboard; `create_treasury` no browser continua ADR-021 wave 2 — demo segue com `agent-rails init`. |
 | **Deploy devnet público + endereço fixo** | Médio | Program id conhecido, faucet script, reduce friction para judges. |
 | **Adapter LangChain ou Vercel AI SDK** | Médio | Um pacote fino em `packages/adapters/*` — ARCHITECTURE promete; um adapter basta para hackathon. |
 | **Case study vertical** | Baixo código | Ex.: “agente paga OpenAI/Anthropic/hosting” com allowlist labels — config + conteúdo. |
