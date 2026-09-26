@@ -22,12 +22,13 @@ agent-rails/
     ├── mcp/                     # stdio MCP server exposing agent-facing payment tools
     ├── cli/                     # operator surface: `init` bootstrap plus day-2 treasury/policy/session commands
     ├── dashboard/               # Next.js operator dashboard (hosted tenancy, ADR-017)
+    ├── adapters/vercel-ai/      # @agent-rails/adapter-vercel-ai — Vercel AI SDK tools (ADR-009)
     └── e2e/                     # Surfpool end-to-end suite (test pyramid layer 5, nightly)
 ```
 
 The critical architectural split: **`programs/agent_rails` is thin** (Anchor handlers, account validation, CPI to SPL Token/Token-2022/System). **All policy arithmetic and the audit hash chain live in `crates/agent-rails-policy`**, which has no Solana dependency, is `#![forbid(unsafe_code)]`, uses `checked_*` arithmetic everywhere, and is property-tested/fuzzed/model-checked independently of any SVM. When changing spend-limit logic, window rollover, the ceiling partial order, or the audit hash, the change almost always belongs in the policy crate, not in the program.
 
-On the TS side, `@agent-rails/contract` is the compatibility anchor that every other package (client, sdk, mcp, cli, dashboard) imports schemas/reason-codes/events from — it's the single source of truth for tool schemas and event shapes across MCP transports and adapters.
+On the TS side, `@agent-rails/contract` is the compatibility anchor that every other package (client, sdk, mcp, cli, dashboard, adapters) imports schemas/reason-codes/events from — it's the single source of truth for tool schemas and event shapes across MCP transports and adapters.
 
 **`packages/cli` and `packages/mcp` are the two halves of the privilege split**, and which package a command lands in *is* the enforcement. Everything privileged — ceilings, policy writes, sessions, allowlist edits, pause/unpause, withdraw — is reachable only from the CLI and the dashboard; the MCP server exposes payment tools alone. A command that raises a limit is correct in `packages/cli/src/commands/` and a bug in `packages/mcp/src/tools/`. The CLI keeps its own `CLAUDE.md` with the rules that follow from that.
 

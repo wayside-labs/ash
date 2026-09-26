@@ -140,7 +140,12 @@ packages/contract/          Zod schemas, reason codes, event types
 packages/client/            Codama-generated @solana/kit client
 packages/sdk/               PaymentIntent builder, preflight, signing, error mapping
 packages/mcp/               stdio MCP server exposing the agent-facing payment tools
+packages/adapters/vercel-ai/  Vercel AI SDK tools for AGENT_TOOL_NAMES (see package README)
 ```
+
+For Cursor or Claude Desktop, use the stdio MCP server (`examples/agent-rails-mcp.cursor.json`).
+For Vercel AI SDK apps (`generateText`, agents), use `@agent-rails/adapter-vercel-ai` — schemas
+from `@agent-rails/contract`, handlers wired to your MCP logic or SDK.
 
 The split is the design: the program stays thin, and all policy arithmetic lives in a crate
 with no Solana dependency, `#![forbid(unsafe_code)]`, `checked_*` arithmetic throughout, and
