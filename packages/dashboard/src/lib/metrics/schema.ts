@@ -226,3 +226,17 @@ export const paymentRecordViewSchema = paymentRecordSchema.extend({
   demo: z.boolean().default(false),
 });
 export type PaymentRecordView = z.infer<typeof paymentRecordViewSchema>;
+
+export const paymentHistorySchema = z.object({
+  records: z.array(paymentRecordViewSchema),
+  /** False whenever the walk hit retention or the page limit. */
+  complete: z.boolean(),
+  /** The oldest slot the walk actually reached, for the banner's wording. */
+  oldestSlot: z.string().nullable(),
+  truncatedBy: z.enum(["retention", "limit", "rpc-error"]).nullable(),
+  /** Signature cursor for the next page. */
+  before: z.string().nullable(),
+  /** session address → seq verified through, when the replay matched the on-chain head. */
+  verifiedThrough: z.record(z.string(), z.string().nullable()).optional(),
+});
+export type PaymentHistory = z.infer<typeof paymentHistorySchema>;

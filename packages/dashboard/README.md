@@ -54,6 +54,16 @@ pnpm agent-rails init --rpc https://api.devnet.solana.com --yes
 
 Rows without a treasury address show `—` rather than borrowing a number.
 
+### Metrics payment history (Phase B)
+
+`/metrics` §5 replays `PaymentExecuted` events from transaction logs via
+`GET /api/metrics/history` — a signature walk on each session PDA, not an
+indexer. Public RPCs retain logs for days (not months), so the ledger is always
+**best-effort and windowed**: the completeness banner names the oldest slot the
+walk reached, and headline payment counts from on-chain `seq` may exceed the rows
+shown. CSV/JSON export uses the same `paymentRecordSchema` columns as the MCP/CLI
+sink (`GET /api/metrics/history/export`).
+
 ## Chat
 
 `GET /api/chat/providers` reports what this machine can run the chat on.

@@ -2,7 +2,7 @@
 
 import { ChartNoAxesColumn, Loader2, RefreshCw } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { DestinationList } from "@/components/metrics/destination-list";
 import { HeadroomPanel } from "@/components/metrics/headroom-panel";
 import { IntegrityPanel } from "@/components/metrics/integrity-panel";
@@ -16,10 +16,17 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 import { useWorkflows } from "@/hooks/use-dashboard";
-import { resolveScope, useDestinationContacts, useMetricsSummary } from "@/hooks/use-metrics";
+import {
+  resolveAllSessions,
+  resolveScope,
+  useDestinationContacts,
+  useExportPaymentHistory,
+  useMetricsSummary,
+  usePaymentHistory,
+} from "@/hooks/use-metrics";
 import { useTranslation } from "@/i18n/locale-provider";
-import { MOCK_PAYMENTS } from "@/lib/metrics/mock";
 import { type MetricsPeriod, type MetricsScope, metricsPeriodSchema } from "@/lib/metrics/schema";
 import { useAppStore } from "@/stores/app-store";
 
@@ -36,6 +43,7 @@ import { useAppStore } from "@/stores/app-store";
  */
 export default function MetricsPage() {
   const { t } = useTranslation();
+  const toast = useToast();
   const router = useRouter();
   const params = useSearchParams();
   const { cluster } = useAppStore();
@@ -70,9 +78,18 @@ export default function MetricsPage() {
     () => resolveScope(workflows, scope),
     [workflows, scope],
   );
+  const historySessions = useMemo(() => resolveAllSessions(workflows, scope), [workflows, scope]);
+  const [historyBefore, setHistoryBefore] = useState<string | null>(null);
 
   const summaryQuery = useMetricsSummary({ treasuries, sessions, period, scope });
   const summary = summaryQuery.data;
+  const historyQuery = usePaymentHistory({
+    treasuries,
+    sessions: historySessions,
+    scope,
+    before: historyBefore,
+  });
+  const exportHistory = useExportPaymentHistory();
 
   // The roster belongs to a policy, and Phase A reads the first one in scope.
   // A treasury with several policies is rare enough that guessing would be worse
@@ -202,8 +219,46 @@ export default function MetricsPage() {
                 />
               </div>
               <ValuationCard summary={summary} />
-              <PaymentsTable payments={MOCK_PAYMENTS} />
-              <IntegrityPanel summary={summary} />
+              <PaymentsTable
+                history={historyQuery.data}
+                knownCount={
+                  summary.payments.exactness === "counter" ? summary.payments.count : null
+                }
+                demo={false}
+                isLoading={historyQuery.isLoading}
+                isError={historyQuery.isError}
+                onLoadMore={
+                  historyQuery.data?.complete
+                    ? undefined
+                    : () => setHistoryBefore(historyQuery.data?.before ?? null)
+                }
+                exporting={exportHistory.isPending}
+                onExport={async (format) => {
+                  try {
+                    const result = await exportHistory.mutateAsync({
+                      treasuries,
+                      sessions: historySessions,
+                      scope,
+                      format,
+                    });
+                    toast(
+                      result.complete
+                        ? t("metrics.payments.exported", { count: result.count })
+                        : t("metrics.payments.exportedIncomplete", { count: result.count }),
+                    );
+                  } catch (error) {
+                    toast(
+                      error instanceof Error ? error.message : t("api.error.historyUnavailable"),
+                      "error",
+                    );
+                  }
+                }}
+              />
+              <IntegrityPanel
+                summary={summary}
+                history={historyQuery.data?.records}
+                verifiedThrough={historyQuery.data?.verifiedThrough}
+              />
             </>
           ) : (
             <div className="flex items-center gap-2 py-12 text-sm text-muted-foreground">

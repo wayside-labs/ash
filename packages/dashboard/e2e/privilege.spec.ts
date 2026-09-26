@@ -24,6 +24,8 @@ const READ_ONLY_CHAIN_ROUTES = new Set([
   // owner's own withdraw that /treasury offers.
   "/api/metrics/summary",
   "/api/metrics/destinations",
+  "/api/metrics/history",
+  "/api/metrics/history/export",
 ]);
 
 test.describe("privilege boundaries", () => {
