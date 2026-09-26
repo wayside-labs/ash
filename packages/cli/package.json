@@ -31,8 +31,7 @@
     "agent-rails": "./dist/cli.js"
   },
   "exports": {
-    ".": "./dist/cli.js",
-    "./tx/session": "./src/tx/session.ts"
+    ".": "./dist/cli.js"
   },
   "files": [
     "dist"

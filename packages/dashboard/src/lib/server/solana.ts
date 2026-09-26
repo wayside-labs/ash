@@ -1,5 +1,8 @@
-import { buildCreateSessionInstruction } from "@agent-rails/cli/tx/session";
-import { MAX_SESSION_TTL_SECONDS, MIN_WINDOW_SECONDS } from "@agent-rails/contract";
+import {
+  AUTH_MODE_DIRECT_SIGNER,
+  MAX_SESSION_TTL_SECONDS,
+  MIN_WINDOW_SECONDS,
+} from "@agent-rails/contract";
 import { NATIVE_MINT } from "@agent-rails/contract/constants";
 import { knownMintSymbol } from "@agent-rails/contract/mints";
 import {
@@ -16,6 +19,7 @@ import {
   findPolicyPda,
   findSessionPda,
   findSolVaultPda,
+  getCreateSessionInstruction,
   getWithdrawInstruction,
   getWithdrawInstructionAsync,
   loadDestinationIndex,
@@ -1240,14 +1244,18 @@ export async function buildCreateSession(
     };
   }
 
-  const instruction = await buildCreateSessionInstruction({
+  const [eventAuthority] = await findEventAuthorityPda();
+  const instruction = getCreateSessionInstruction({
     operator: createNoopSigner(walletPk),
     treasury: treasuryPk,
     policy,
     session,
     sessionKey: sessionKeyPk,
-    label: req.label,
+    eventAuthority,
+    program: AGENT_RAILS_PROGRAM_ADDRESS,
+    label: encodeFixedName(req.label),
     expiresAt,
+    authMode: AUTH_MODE_DIRECT_SIGNER,
   });
 
   const { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
