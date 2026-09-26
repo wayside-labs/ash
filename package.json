@@ -24,6 +24,7 @@
     "test:guardian-watch": "node --experimental-strip-types --test scripts/guardian-roll-window.test.ts",
     "dashboard": "pnpm --filter @agent-rails/dashboard dev",
     "dashboard:build": "pnpm --filter @agent-rails/dashboard build",
+    "alert-watch": "node --experimental-strip-types scripts/alert-watch.ts",
     "changeset": "changeset",
     "version-packages": "changeset version && pnpm install --lockfile-only",
     "release": "pnpm build && changeset publish"

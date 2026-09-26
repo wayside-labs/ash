@@ -48,6 +48,10 @@
       "types": "./dist/events.d.ts",
       "import": "./dist/events.js"
     },
+    "./alerts": {
+      "types": "./dist/alerts.d.ts",
+      "import": "./dist/alerts.js"
+    },
     "./payment-build": {
       "types": "./dist/payment-build.d.ts",
       "import": "./dist/payment-build.js"

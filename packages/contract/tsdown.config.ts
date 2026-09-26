@@ -11,6 +11,7 @@ export default defineConfig({
     "src/security.ts",
     "src/reason-codes.ts",
     "src/events.ts",
+    "src/alerts.ts",
     "src/payment-build.ts",
     "src/mcp-tools.ts",
   ],
