@@ -72,15 +72,7 @@ step "Generating guardian keypair"
 solana-keygen new -o "$GUARDIAN_KP" --no-bip39-passphrase --force >/dev/null 2>&1 ||
   die "could not write guardian keypair (need solana-keygen)"
 
-GUARDIAN_ADDR=$(
-  node --input-type=module -e "
-    import { readFileSync } from 'node:fs';
-    import { createKeyPairSignerFromBytes } from '@solana/kit';
-    const bytes = Uint8Array.from(JSON.parse(readFileSync(process.argv[1], 'utf8')));
-    const s = await createKeyPairSignerFromBytes(bytes);
-    process.stdout.write(s.address);
-  " "$GUARDIAN_KP"
-)
+GUARDIAN_ADDR=$(solana-keygen pubkey "$GUARDIAN_KP")
 
 step "Bootstrapping treasury on $RPC"
 init_json=$(
