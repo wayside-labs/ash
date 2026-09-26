@@ -56,6 +56,7 @@ jobs:
       - name: guardian-watch devnet proof
         env:
           DEVNET_KEYPAIR: ${{ secrets.DEVNET_KEYPAIR }}
+          RPC: ${{ secrets.DEVNET_RPC }}
         run: |
           set -euo pipefail
           if [ -z "$DEVNET_KEYPAIR" ]; then

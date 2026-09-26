@@ -55,6 +55,26 @@ umask 077
 GUARDIAN_KP="$OUT/guardian-keypair.json"
 step() { printf '\n\033[1m▸ %s\033[0m\n' "$1" >&2; }
 
+retrying() {
+  local attempt=1
+  local out
+  while :; do
+    if out=$("$@" 2>&1); then
+      printf '%s' "$out"
+      return 0
+    fi
+    if [[ $attempt -ge 5 ]] || ! grep -q "429\|rate\|Too Many Requests" <<<"$out"; then
+      printf '%s' "$out" >&2
+      return 1
+    fi
+    printf '\033[33m  rate-limited, retrying in 12s (%d/5)\033[0m\n' "$attempt" >&2
+    sleep 12
+    attempt=$((attempt + 1))
+  done
+}
+
+breathe() { sleep 8; }
+
 jq_field() {
   node -e '
     let raw = "";
@@ -76,7 +96,7 @@ GUARDIAN_ADDR=$(solana-keygen pubkey "$GUARDIAN_KP")
 
 step "Bootstrapping treasury on $RPC"
 init_json=$(
-  $CLI init \
+  retrying $CLI init \
     --rpc "$RPC" \
     --wallet "$WALLET" \
     --out "$OUT" \
@@ -96,14 +116,16 @@ destination_label=$(printf '%s' "$init_json" | jq_field manifest.destinationLabe
 session=$(printf '%s' "$init_json" | jq_field manifest.session)
 [[ -n $treasury && -n $policy && -n $destination_label ]] || die "init manifest incomplete"
 
+breathe
 step "Adding guardian $GUARDIAN_ADDR"
-$CLI guardian add "$GUARDIAN_ADDR" \
+retrying $CLI guardian add "$GUARDIAN_ADDR" \
   --rpc "$RPC" \
   --wallet "$WALLET" \
   --out "$OUT" \
   --yes \
   --json >/dev/null || die "guardian add failed"
 
+breathe
 step "Spending toward short-window limit (two payments)"
 $CLI pay \
   --rpc "$RPC" \
@@ -116,7 +138,7 @@ $CLI pay \
   --yes \
   --json >/dev/null || die "first pay failed"
 
-sleep 5
+breathe
 
 $CLI pay \
   --rpc "$RPC" \
@@ -129,6 +151,7 @@ $CLI pay \
   --yes \
   --json >/dev/null || die "second pay failed"
 
+breathe
 step "Running guardian watcher (expect pause)"
 watch_out=$(pnpm guardian-watch \
   --rpc "$RPC" \
@@ -141,9 +164,10 @@ printf '%s\n' "$watch_out" >&2
 pause_sig=$(printf '%s' "$watch_out" | sed -n 's/.*pause confirmed: \([^ ]*\).*/\1/p')
 [[ -n $pause_sig ]] || die "no pause signature in watcher output"
 
+breathe
 step "Owner withdraw while paused"
 withdraw_json=$(
-  $CLI withdraw \
+  retrying $CLI withdraw \
     --rpc "$RPC" \
     --wallet "$WALLET" \
     --out "$OUT" \
@@ -155,8 +179,10 @@ withdraw_json=$(
 withdraw_sig=$(printf '%s' "$withdraw_json" | jq_field signature)
 [[ -n $withdraw_sig ]] || die "withdraw did not return a signature"
 
+breathe
 step "Cleanup: unpause"
-$CLI unpause --rpc "$RPC" --wallet "$WALLET" --out "$OUT" --yes --json >/dev/null || die "unpause failed"
+retrying $CLI unpause --rpc "$RPC" --wallet "$WALLET" --out "$OUT" --yes --json >/dev/null ||
+  die "unpause failed"
 
 cat <<REPORT
 ### Guardian watch devnet proof
