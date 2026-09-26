@@ -24,7 +24,7 @@ solana-keygen new -o guardian-keypair.json --no-bip39-passphrase
 As **owner**:
 
 ```bash
-pnpm agent-rails guardian add --address "$(solana address -k guardian-keypair.json)" \
+pnpm agent-rails guardian add "$(solana address -k guardian-keypair.json)" \
   --wallet <owner> --out <manifest-dir> --yes
 ```
 

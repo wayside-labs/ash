@@ -97,11 +97,10 @@ session=$(printf '%s' "$init_json" | jq_field manifest.session)
 [[ -n $treasury && -n $policy && -n $destination_label ]] || die "init manifest incomplete"
 
 step "Adding guardian $GUARDIAN_ADDR"
-$CLI guardian add \
+$CLI guardian add "$GUARDIAN_ADDR" \
   --rpc "$RPC" \
   --wallet "$WALLET" \
   --out "$OUT" \
-  --address "$GUARDIAN_ADDR" \
   --yes \
   --json >/dev/null || die "guardian add failed"
 

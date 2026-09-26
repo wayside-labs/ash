@@ -42,8 +42,7 @@ Never commit `*keypair*.json`.
 ### 2.2 Opt-in on-chain
 
 ```bash
-pnpm agent-rails guardian add \
-  --address "$(solana address -k guardian-keypair.json)" \
+pnpm agent-rails guardian add "$(solana address -k guardian-keypair.json)" \
   --wallet <owner-keypair> \
   --out <manifest-dir> \
   --treasury <treasury> \
