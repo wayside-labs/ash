@@ -160,13 +160,19 @@ $CLI pay \
 
 breathe
 step "Running guardian watcher (expect pause)"
+set +e
 watch_out=$(pnpm guardian-watch \
   --rpc "$RPC" \
   --treasury "$treasury" \
   --policy "$policy" \
   --guardian-keypair "$GUARDIAN_KP" \
   --threshold-bps 8000 \
-  --once 2>&1) || die "guardian-watch failed: $watch_out"
+  --once 2>&1)
+watch_exit=$?
+set -e
+if [[ $watch_exit -ne 0 && $watch_exit -ne 2 ]]; then
+  die "guardian-watch failed: $watch_out"
+fi
 printf '%s\n' "$watch_out" >&2
 pause_sig=$(printf '%s' "$watch_out" | sed -n 's/.*pause confirmed: \([^ ]*\).*/\1/p')
 [[ -n $pause_sig ]] || die "no pause signature in watcher output"
