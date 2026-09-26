@@ -1,10 +1,10 @@
 import { buildHeadroomLowAlert, buildPaymentDeniedAlert } from "@agent-rails/contract/alerts";
 import { describe, expect, it, vi } from "vitest";
-import { postAlertWebhook } from "./alert-webhook.js";
+import { type AlertWebhookFetch, postAlertWebhook } from "./alert-webhook.js";
 
 describe("postAlertWebhook", () => {
   it("POSTs JSON with payment_denied payload", async () => {
-    const fetchImpl = vi.fn(async () => new Response("", { status: 200 }));
+    const fetchImpl = vi.fn<AlertWebhookFetch>(async () => new Response("", { status: 200 }));
     const payload = buildPaymentDeniedAlert({
       ts: "2026-09-26T12:00:00.000Z",
       treasury: "CzMHCrWhbCqVMDTNDriaMAcJ1mS5LLKGKGKpTLtHnGTW",
@@ -19,14 +19,14 @@ describe("postAlertWebhook", () => {
 
     expect(result).toEqual({ ok: true, status: 200 });
     expect(fetchImpl).toHaveBeenCalledOnce();
-    const [, init] = fetchImpl.mock.calls[0] as [string, RequestInit];
-    expect(init.method).toBe("POST");
-    expect(init.headers).toEqual({ "Content-Type": "application/json" });
-    expect(JSON.parse(String(init.body))).toEqual(payload);
+    const init = fetchImpl.mock.calls[0]?.[1];
+    expect(init?.method).toBe("POST");
+    expect(init?.headers).toEqual({ "Content-Type": "application/json" });
+    expect(JSON.parse(String(init?.body))).toEqual(payload);
   });
 
   it("POSTs JSON with headroom_low payload", async () => {
-    const fetchImpl = vi.fn(async () => new Response("ok", { status: 200 }));
+    const fetchImpl = vi.fn<AlertWebhookFetch>(async () => new Response("ok", { status: 200 }));
     const payload = buildHeadroomLowAlert({
       headroom: {
         treasury: "CzMHCrWhbCqVMDTNDriaMAcJ1mS5LLKGKGKpTLtHnGTW",
@@ -42,7 +42,7 @@ describe("postAlertWebhook", () => {
     });
 
     await postAlertWebhook("https://hooks.slack.com/services/T/B/x", payload, fetchImpl);
-    const [, init] = fetchImpl.mock.calls[0] as [string, RequestInit];
-    expect(JSON.parse(String(init.body)).kind).toBe("headroom_low");
+    const init = fetchImpl.mock.calls[0]?.[1];
+    expect(JSON.parse(String(init?.body)).kind).toBe("headroom_low");
   });
 });

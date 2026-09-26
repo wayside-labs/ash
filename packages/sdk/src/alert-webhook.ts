@@ -1,6 +1,6 @@
 import { type AlertWebhookPayload, alertWebhookPayloadSchema } from "@agent-rails/contract/alerts";
 
-export type AlertWebhookFetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+export type AlertWebhookFetch = (input: string, init?: RequestInit) => Promise<Response>;
 
 export type PostAlertWebhookResult =
   | { ok: true; status: number }
