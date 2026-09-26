@@ -10,7 +10,7 @@ async function createTreasuryWorkflow(page: import("@playwright/test").Page): Pr
   await page.locator("#wf-name").fill("Treasury Ops");
   await page.locator("#wf-treasury").fill("2xbbqA1KvP7znHHk59tCbyN85cyHTy5hcwpQnwTKGc1i");
   await page.getByRole("button", { name: t("workflowDialogs.createWorkflow.submit") }).click();
-  await expect(page.getByText("Treasury Ops")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Treasury Ops" })).toBeVisible();
   return chain;
 }
 
