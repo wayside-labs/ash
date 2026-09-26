@@ -87,6 +87,30 @@ The wallet needs roughly 0.05 SOL on devnet (rent and deposits are not recoverab
 written under `--out` are session and fee-payer keypairs for a throwaway treasury — keep them
 `0600` and delete the directory when you are done.
 
+### Reference agent (devnet traction)
+
+An **in-house** agent pays a registered devnet destination on a loop until **2026-10-12** so
+pitch metrics are on-chain verifiable. This is manufactured traction under our own policy —
+say that explicitly in the video.
+
+| | |
+|---|---|
+| Treasury | [`BTE45zKpHiWMTwaPmShaUBq2cnA6XUc8KhgxnufSnz3w`](https://explorer.solana.com/address/BTE45zKpHiWMTwaPmShaUBq2cnA6XUc8KhgxnufSnz3w?cluster=devnet) |
+| Program | [`4qjD6vSgYa3oBKde3KVzsH8oCcP9BKsirX1xtD5SS6BS`](https://explorer.solana.com/address/4qjD6vSgYa3oBKde3KVzsH8oCcP9BKsirX1xtD5SS6BS?cluster=devnet) |
+| Policy (`dashboard-demo`) | [`H4HU1sPoevCGqHeFQiyW5Q8NVmQgAb1DyZgP2LSzwMPE`](https://explorer.solana.com/address/H4HU1sPoevCGqHeFQiyW5Q8NVmQgAb1DyZgP2LSzwMPE?cluster=devnet) |
+| Destination `demo` | [`3tvQknH6RHfnssAGgC64z7KkejwrQ3USftxosmoimX4z`](https://explorer.solana.com/address/3tvQknH6RHfnssAGgC64z7KkejwrQ3USftxosmoimX4z?cluster=devnet) |
+
+```bash
+# loop running via scripts/reference-agent.sh loop (or cron) — see docs/runbooks/reference-agent.md
+scripts/reference-agent.sh metrics   # audit export --verify + sink counts
+```
+
+Deck target (update before recording): **2,100 payments settled, 31 denied by policy, 0
+double-spends** — refresh with `agent-rails audit export --verify` and the sink JSONL at
+`~/.agent-rails/reference-agent/payments.jsonl`.
+
+Full setup: [`docs/runbooks/reference-agent.md`](docs/runbooks/reference-agent.md).
+
 ## Why it is shaped this way
 
 **Loosening flows downhill only.** The owner sets ceilings, an operator sets policy that
@@ -150,6 +174,7 @@ CI runs all of the above plus `cargo deny`, gitleaks and semgrep on every pull r
 | `ARCHITECTURE.md` | The design baseline — roles, payment flow, account model, policy engine, audit chain, MCP surface, test pyramid |
 | `docs/spec/accounts-and-instructions.md` | Byte-level account and instruction layouts |
 | `docs/adr/` | Decisions, immutable once recorded; `README.md` there is the index |
+| `docs/runbooks/reference-agent.md` | In-house devnet agent — MCP, cron, metrics until 12/10 |
 
 Several directories carry their own `CLAUDE.md` with rules scoped to that subtree.
 
