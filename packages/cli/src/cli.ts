@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import { Command, InvalidArgumentError, Option } from "commander";
 import pc from "picocolors";
-import { parsePositiveInt, parseSol } from "./amounts.js";
+import { parseNonNegativeInt, parsePositiveInt, parseSol } from "./amounts.js";
 import { addGlobalOptions, argParser, DEFAULT_RPC, parseGlobalOptions } from "./cli-options.js";
 import {
   runGuardianAdd,
@@ -588,6 +588,12 @@ addGlobalOptions(
         "Accept a raw address for --to; refused on-chain under an allowlist policy",
       ).default(false),
     )
+    .addOption(
+      new Option(
+        "--confirm-timeout <ms>",
+        "How long to wait for confirmation; 0 reports indeterminate after broadcast",
+      ).argParser(argParser((v) => parseNonNegativeInt(v, "--confirm-timeout"))),
+    )
     .action(async (options) => {
       const parsed = parseGlobalOptions(options);
       const ui = new Ui({ quiet: parsed.json });
@@ -606,6 +612,9 @@ addGlobalOptions(
             : {}),
           expiresIn: options.expiresIn as number,
           allowRawAddress: options.allowRawAddress as boolean,
+          ...(options.confirmTimeout !== undefined
+            ? { confirmTimeoutMs: options.confirmTimeout as number }
+            : {}),
         },
         ui,
       );

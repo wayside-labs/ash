@@ -3,6 +3,7 @@
 import { Bot, Loader2, Send, Square } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Markdown } from "@/components/chat/markdown";
+import { reconcileSelectedModel, selectableProviders } from "@/components/chat/model-selection";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -27,7 +28,8 @@ export function ChatPanel({ className }: { className?: string }) {
   const { selectedModel, setSelectedModel, cluster, customRpc } = useAppStore();
   const providers = useChatProviders();
   const available = (providers.data?.providers ?? []).filter((p) => p.available);
-  const activeProvider = available.find((p) => p.models.some((m) => m.id === selectedModel));
+  const selectable = selectableProviders(available);
+  const activeProvider = selectable.find((p) => p.models.some((m) => m.id === selectedModel));
 
   const welcome = useMemo<ChatMessage>(
     () => ({
@@ -41,10 +43,9 @@ export function ChatPanel({ className }: { className?: string }) {
 
   useEffect(() => {
     if (available.length === 0) return;
-    if (activeProvider) return;
-    const fallback = available[0]?.models[0]?.id;
-    if (fallback) setSelectedModel(fallback);
-  }, [available, activeProvider, setSelectedModel]);
+    const next = reconcileSelectedModel(selectedModel, available);
+    if (next && next !== selectedModel) setSelectedModel(next);
+  }, [available, selectedModel, setSelectedModel]);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -230,7 +231,7 @@ export function ChatPanel({ className }: { className?: string }) {
               <SelectValue placeholder={t("chat.modelDetecting")} />
             </SelectTrigger>
             <SelectContent>
-              {available.map((provider) => (
+              {selectable.map((provider) => (
                 <SelectGroup key={provider.id}>
                   <SelectLabel className="text-[10px] uppercase tracking-[0.12em]">
                     {provider.label}

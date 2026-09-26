@@ -50,6 +50,8 @@ export type PayOptions = GlobalCliOptions & {
   feePayerKeypair?: string;
   expiresIn?: number;
   allowRawAddress?: boolean;
+  /** Overrides the SDK confirmation wait. `0` forces an `indeterminate` outcome after broadcast. */
+  confirmTimeoutMs?: number;
 };
 
 /**
@@ -249,6 +251,14 @@ export async function runPay(options: PayOptions, ui: Ui): Promise<number> {
       lastValidBlockHeight,
       session,
       intentId,
+      ...(options.confirmTimeoutMs !== undefined
+        ? {
+            confirmTimeoutMs: options.confirmTimeoutMs,
+            // A zero timeout is for demos: surface `indeterminate` instead of resolving
+            // the receipt and reporting `settled`.
+            ...(options.confirmTimeoutMs === 0 ? { resolveAttempts: 0 } : {}),
+          }
+        : {}),
     });
     ui.succeed("Payment settled", executed.signature);
 
@@ -287,6 +297,7 @@ export async function runPay(options: PayOptions, ui: Ui): Promise<number> {
           reason_code: error.reasonCode,
           intent_id: intentIdHex,
           message: error.message,
+          ...(error.signature ? { signature: error.signature } : {}),
         })}\n`,
       );
     }

@@ -66,6 +66,27 @@ pnpm install && pnpm build
 pnpm agent-rails init --rpc https://api.devnet.solana.com
 ```
 
+### Devnet demo
+
+`scripts/demo.sh` reproduces the three proofs from the Colosseum pitch on public devnet and
+prints a Markdown report with explorer links:
+
+1. **Prompt injection** — six MCP agent tools, no `withdraw`.
+2. **Indeterminate retry** — `pay --confirm-timeout 0` times out confirmation, the SDK reports
+   `indeterminate`, a retry on the same reference is refused on-chain (no double-spend).
+3. **Operator lowers the ceiling** — `policy set` tightens the daily limit, the next payment
+   is denied with a stable reason code.
+
+```bash
+pnpm build
+scripts/demo.sh --wallet ~/.config/solana/id.json
+```
+
+The wallet needs roughly 0.05 SOL on devnet (rent and deposits are not recoverable without
+`close treasury`). The script fails with a clear message if the balance is too low. Keys
+written under `--out` are session and fee-payer keypairs for a throwaway treasury — keep them
+`0600` and delete the directory when you are done.
+
 ## Why it is shaped this way
 
 **Loosening flows downhill only.** The owner sets ceilings, an operator sets policy that
