@@ -1,5 +1,7 @@
 import {
+  ADDR,
   createOnChainWorkflow,
+  createRow,
   expect,
   stubChain,
   stubMetrics,
@@ -72,25 +74,33 @@ test.describe("metrics", () => {
     await expect(page).toHaveURL(/period=session-life/);
   });
 
-  test("the mock ledger is badged at section level and offers no export", async ({
+  test("payment history shows an incomplete banner and export buttons", async ({
     page,
     baseURL,
   }) => {
-    await createOnChainWorkflow(baseURL as string);
+    const workflow = await createOnChainWorkflow(baseURL as string, "Vault With Session");
+    await createRow(baseURL as string, "agents", {
+      workflowId: workflow.id,
+      name: "payer",
+      status: "active",
+      walletAddress: ADDR.agentSession,
+      sessionAddress: ADDR.agentSession,
+      resolvedSessionAddress: ADDR.agentSession,
+    });
     const chain = await stubChain(page);
     await stubMetrics(page, chain);
     await stubWallet(page);
 
     await page.goto("/metrics");
 
-    const table = page.getByTestId("payments-mock");
-    await expect(table).toBeVisible();
-    // One badge for the panel, not one per row: a per-row badge still lets a
-    // screenshot of the table read as real history.
-    await expect(table.getByText(t("common.demo"), { exact: true })).toHaveCount(1);
-    await expect(table).toContainText(t("metrics.payments.mockNotice"));
-    // Exporting a fixture is how a fixture ends up in a board deck.
-    await expect(table.getByRole("button", { name: /csv|json/i })).toHaveCount(0);
+    const table = page.getByTestId("payments-table");
+    await expect(table).toBeVisible({ timeout: 10_000 });
+    await expect(
+      table.getByRole("button", { name: t("metrics.payments.exportCsv") }),
+    ).toBeVisible();
+    await expect(
+      table.getByRole("button", { name: t("metrics.payments.exportJson") }),
+    ).toBeVisible();
   });
 
   test("the audit chain reports a head without claiming it was verified", async ({

@@ -3,7 +3,7 @@
 **Created:** 2026-09-25
 **Package:** `packages/dashboard` (`@agent-rails/dashboard`)
 **Route:** `/metrics` · **Nav group:** `nav.money`
-**Status:** Phase A implemented (2026-09-25). Phases B and C not started.
+**Status:** Phase A implemented (2026-09-25). Phase B implemented (2026-09-25). Phase C not started.
 
 > **Amended 2026-09-25, after Phase A landed.** Three things the implementation
 > needed that §F did not anticipate, now folded into it: `policies[]` on the

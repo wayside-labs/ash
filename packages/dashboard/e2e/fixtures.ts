@@ -293,6 +293,52 @@ export async function stubMetrics(page: Page, chain: ChainStub): Promise<void> {
         ],
       });
     }
+    if (url.pathname === "/api/metrics/history") {
+      return json({
+        records: [
+          {
+            ts: new Date().toISOString(),
+            treasury: ADDR.treasury,
+            session: ADDR.agentSession,
+            policy: ADDR.solVault,
+            intent: "9c4e17bb5af2408da6013e7cd1a50001",
+            outcome: "settled",
+            destination: ADDR.wallet,
+            destination_label: "Acme Hosting",
+            mint: ADDR.nativeMint,
+            amount: "125000000",
+            signature: "demo01",
+            decimals: 9,
+            symbol: "SOL",
+            workflow_id: null,
+            agent_id: null,
+            agent_name: "payer",
+            demo: false,
+          },
+        ],
+        complete: false,
+        oldestSlot: "302118004",
+        truncatedBy: "retention",
+        before: null,
+        verifiedThrough: { [ADDR.agentSession]: null },
+      });
+    }
+    if (url.pathname === "/api/metrics/history/export") {
+      const format = url.searchParams.get("format") ?? "csv";
+      const body =
+        format === "json"
+          ? '[{"intent":"9c4e17bb5af2408da6013e7cd1a50001","outcome":"settled"}]'
+          : '"ts","treasury","session","policy","intent","outcome"\n';
+      return route.fulfill({
+        status: 200,
+        headers: {
+          "Content-Type": format === "json" ? "application/json" : "text/csv",
+          "X-Metrics-Records": "1",
+          "X-Metrics-Complete": "false",
+        },
+        body,
+      });
+    }
     return json({ error: `unstubbed metrics route: ${url.pathname}` }, 500);
   });
 }

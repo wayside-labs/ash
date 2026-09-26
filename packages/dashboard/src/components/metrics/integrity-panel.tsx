@@ -1,25 +1,36 @@
 "use client";
 
 import { CircleDashed, ShieldCheck } from "lucide-react";
+import { useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTranslation } from "@/i18n/locale-provider";
-import type { MetricsSummary } from "@/lib/metrics/schema";
+import { denialsFromHistory } from "@/lib/metrics/history-aggregate";
+import type { MetricsSummary, PaymentRecordView } from "@/lib/metrics/schema";
 import { truncateAddress } from "@/lib/utils";
 
 /**
- * §6 — the audit chain, as far as Phase A can honestly report it.
- *
- * `seq` and `audit_head` are read straight off `AgentSession`, so they are exact.
- * Verification is not done here: it means replaying every `PaymentExecuted`
- * through `next_audit_head` and comparing the terminus, which needs event history.
- * So each row says "not verified" rather than showing a tick — a recorded head an
- * operator has not checked is not a verified chain, and a green mark that means
- * "we read a field" would be the most misleading thing on the page.
+ * §6 — the audit chain and program-level refusals replayed from history.
  */
-export function IntegrityPanel({ summary }: { summary: MetricsSummary }) {
+export function IntegrityPanel({
+  summary,
+  history,
+  verifiedThrough = {},
+}: {
+  summary: MetricsSummary;
+  history?: PaymentRecordView[];
+  verifiedThrough?: Record<string, string | null>;
+}) {
   const { t } = useTranslation();
   const rows = summary.integrity;
+  const refusals = useMemo(
+    () => (history ? denialsFromHistory(history) : { count: 0, byReason: {} }),
+    [history],
+  );
+
+  const topReasons = Object.entries(refusals.byReason)
+    .sort((left, right) => right[1] - left[1])
+    .slice(0, 6);
 
   return (
     <Card>
@@ -29,44 +40,62 @@ export function IntegrityPanel({ summary }: { summary: MetricsSummary }) {
           {t("metrics.integrity.title")}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-4">
         {rows.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("metrics.integrity.empty")}</p>
         ) : (
           <ul className="space-y-2" data-testid="integrity-rows">
-            {rows.map((row) => (
-              <li
-                key={row.session}
-                className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border/60 pb-2 last:border-0 last:pb-0"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm">
-                    {row.label || truncateAddress(row.session, 6)}
-                    {row.revoked && (
-                      <Badge variant="outline" className="ml-2 text-[10px]">
-                        {t("common.revoked")}
-                      </Badge>
+            {rows.map((row) => {
+              const verified = verifiedThrough[row.session];
+              return (
+                <li
+                  key={row.session}
+                  className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border/60 pb-2 last:border-0 last:pb-0"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm">
+                      {row.label || truncateAddress(row.session, 6)}
+                      {row.revoked && (
+                        <Badge variant="outline" className="ml-2 text-[10px]">
+                          {t("common.revoked")}
+                        </Badge>
+                      )}
+                    </p>
+                    <p className="num text-[11px] text-faint-foreground">
+                      {t("metrics.integrity.seq", { seq: row.seq })} ·{" "}
+                      {t("metrics.integrity.head", { head: truncateAddress(row.auditHead, 8) })}
+                    </p>
+                  </div>
+                  <span className="flex shrink-0 items-center gap-1 text-[11px] text-faint-foreground">
+                    {verified === undefined || verified === null ? (
+                      <>
+                        <CircleDashed className="h-3 w-3" aria-hidden />
+                        {t("metrics.integrity.notVerified")}
+                      </>
+                    ) : (
+                      t("metrics.integrity.verified", { seq: verified })
                     )}
-                  </p>
-                  <p className="num text-[11px] text-faint-foreground">
-                    {t("metrics.integrity.seq", { seq: row.seq })} ·{" "}
-                    {t("metrics.integrity.head", { head: truncateAddress(row.auditHead, 8) })}
-                  </p>
-                </div>
-                <span className="flex shrink-0 items-center gap-1 text-[11px] text-faint-foreground">
-                  {row.verifiedThroughSeq === null ? (
-                    <>
-                      <CircleDashed className="h-3 w-3" aria-hidden />
-                      {t("metrics.integrity.notVerified")}
-                    </>
-                  ) : (
-                    t("metrics.integrity.verified", { seq: row.verifiedThroughSeq })
-                  )}
-                </span>
-              </li>
-            ))}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         )}
+
+        {topReasons.length > 0 && (
+          <div className="space-y-2" data-testid="integrity-refusals">
+            <p className="text-xs font-medium">{t("metrics.integrity.refusedByReason")}</p>
+            <ul className="space-y-1 text-xs text-muted-foreground">
+              {topReasons.map(([reason, count]) => (
+                <li key={reason} className="flex justify-between gap-2">
+                  <span className="num">{reason}</span>
+                  <span className="num">{count}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <p className="text-[11px] text-muted-foreground">{t("metrics.integrity.explain")}</p>
       </CardContent>
     </Card>
