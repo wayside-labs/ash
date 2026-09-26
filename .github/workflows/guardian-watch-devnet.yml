@@ -1,0 +1,74 @@
+name: guardian-watch devnet proof
+
+# P1-01 stop condition: pause + owner withdraw while paused on devnet.
+# Uses the same DEVNET_KEYPAIR secret as release smoke / e2e preflight.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "scripts/guardian-watch*.ts"
+      - "scripts/guardian-watch*.sh"
+      - "scripts/guardian-roll-window*.ts"
+      - ".github/workflows/guardian-watch-devnet.yml"
+
+concurrency:
+  group: guardian-watch-devnet-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  proof:
+    name: devnet proof
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - id: versions
+        run: |
+          agave=$(sed -n 's/^  AGAVE_VERSION: \(.*\)$/\1/p' .github/workflows/idl.yml)
+          echo "agave=$agave" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: solana-cache
+        with:
+          path: ~/.local/share/solana
+          key: solana-${{ steps.versions.outputs.agave }}
+
+      - if: steps.solana-cache.outputs.cache-hit != 'true'
+        run: sh -c "$(curl -sSfL https://release.anza.xyz/v${{ steps.versions.outputs.agave }}/install)"
+
+      - run: echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @agent-rails/cli... build
+      - run: pnpm test:guardian-watch
+
+      - name: guardian-watch devnet proof
+        env:
+          DEVNET_KEYPAIR: ${{ secrets.DEVNET_KEYPAIR }}
+          RPC: ${{ secrets.DEVNET_RPC }}
+        run: |
+          set -euo pipefail
+          if [ -z "$DEVNET_KEYPAIR" ]; then
+            echo "::warning::DEVNET_KEYPAIR is not set; skipping devnet proof."
+            exit 0
+          fi
+          umask 077
+          printf '%s' "$DEVNET_KEYPAIR" > "$RUNNER_TEMP/devnet.json"
+          scripts/guardian-watch-devnet-proof.sh --wallet "$RUNNER_TEMP/devnet.json" \
+            --out "$RUNNER_TEMP/guardian-proof" | tee "$RUNNER_TEMP/proof.md"
+          cat "$RUNNER_TEMP/proof.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: shred the devnet keypair
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/devnet.json" "$RUNNER_TEMP/guardian-proof"

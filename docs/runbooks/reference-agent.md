@@ -219,8 +219,9 @@ pnpm agent-rails policy set \
 
 Then run `tick` — the next payment should return `denied` with a stable reason code on-chain.
 
-**Pause (guardian / owner kill switch):** F5 Guardian-as-a-Service is not wired yet. For the
-video, pause manually:
+**Pause (guardian / owner kill switch):** automatic path via
+[`docs/runbooks/guardian-watch.md`](guardian-watch.md) and `pnpm guardian-watch` (add a
+guardian key first). Manual override:
 
 ```bash
 pnpm agent-rails pause \

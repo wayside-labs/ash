@@ -1,6 +1,6 @@
 /**
  * Port of `roll_window` in `crates/agent-rails-policy/src/engine.rs`.
- * Shared by `alert-watch.ts` and guardian-watch (P1-01).
+ * Shared by `alert-watch.ts`, `guardian-watch.ts`, and `guardian-roll-window.test.ts`.
  */
 
 const I64_MAX = (1n << 63n) - 1n;

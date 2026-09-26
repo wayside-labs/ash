@@ -9,6 +9,9 @@
 # Proof 2 — indeterminate retry without double-spend: confirmation times out, retry refused.
 # Proof 3 — operator lowers the daily ceiling; the next payment is denied on-chain.
 #
+# Optional kill-switch narrative (not run here): guardian spend watcher → on-chain pause,
+# owner withdraw still works — see docs/runbooks/guardian-watch.md and `pnpm guardian-watch`.
+#
 # Closing line: "The agent never held the money. It only ever held a receipt."
 #
 # Cost: roughly 0.05 SOL per run (rent + deposits), none of it recoverable without
