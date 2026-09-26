@@ -15,6 +15,7 @@ asked for the ADR instead.
 scripts/verify.sh          # everything CI runs, in the same order
 scripts/verify.sh ui       # the dashboard's Playwright suite
 scripts/verify.sh e2e      # surfpool, needs a built .so
+scripts/demo.sh --wallet <keypair>   # Colosseum three-proof devnet demo (~0.05 SOL)
 ```
 
 `VERIFY_STRICT=1` turns a loud skip into a failure, which is what CI sets. A green local run

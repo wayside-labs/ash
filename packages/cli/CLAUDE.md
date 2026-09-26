@@ -6,9 +6,10 @@ The operator-facing CLI. `init` bootstraps a treasury; day-2 commands (`status`,
 
 ## Rules specific to this package
 
-- **This is the operator surface, not the agent surface.** Privileged commands belong here
-  precisely because they must never appear in `packages/mcp/src/tools/`. Adding a command
-  that raises a limit is correct here and a bug there.
+- **This is an operator surface, not the agent surface.** Privileged commands belong here and
+  in `packages/dashboard` (ADR-021), precisely because they must never appear in
+  `packages/mcp/src/tools/`. Adding a command that raises a limit is correct here and a bug
+  there. The CLI is the scriptable half; the dashboard is the visual half.
 - **Funding is a shortfall against a target, never a transfer.** Every `init` must be safe to
   re-run: the chain is read to decide which steps remain, and balances are topped up to
   `--deposit` / `--fee-budget` rather than moved unconditionally.
@@ -51,6 +52,8 @@ The operator-facing CLI. `init` bootstraps a treasury; day-2 commands (`status`,
   `{session, destination, mint, amount, reference}` is what makes a retry collide with its
   own receipt instead of paying twice (ADR-004). An `indeterminate` outcome exits 75 and
   tells the operator to look the intent up — it must never suggest retrying.
+- **`pay --confirm-timeout 0`** is for demos only: broadcast then surface `indeterminate`
+  without resolving the receipt (`resolveAttempts: 0`). Normal pays keep the SDK default.
 - **`audit export` reads receipts, not an index we keep.** The rows are accounts the program
   wrote, and the chain is replayed against `AgentSession.audit_head`, so neither the
   operator nor this CLI has to be trusted. `close receipt` deletes a link: the exporter
