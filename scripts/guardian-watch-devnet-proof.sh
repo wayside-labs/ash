@@ -121,6 +121,7 @@ treasury=$(printf '%s' "$init_json" | jq_field manifest.treasury)
 policy=$(printf '%s' "$init_json" | jq_field manifest.policy)
 destination_label=$(printf '%s' "$init_json" | jq_field manifest.destinationLabel)
 session=$(printf '%s' "$init_json" | jq_field manifest.session)
+owner_addr=$(solana-keygen pubkey "$WALLET")
 [[ -n $treasury && -n $policy && -n $destination_label ]] || die "init manifest incomplete"
 
 breathe
@@ -185,6 +186,7 @@ withdraw_json=$(
     --wallet "$WALLET" \
     --out "$OUT" \
     --amount 0.001 \
+    --to "$owner_addr" \
     --mint SOL \
     --yes \
     --json

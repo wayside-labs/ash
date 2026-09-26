@@ -121,7 +121,7 @@ Use a throwaway treasury (`scripts/demo.sh`, `agent-rails init`, or
 5. **Owner withdraw** — must succeed:
 
    ```bash
-   pnpm agent-rails withdraw --amount 0.001 --wallet <owner> --out <dir> --yes
+   pnpm agent-rails withdraw --amount 0.001 --to <owner-pubkey> --wallet <owner> --out <dir> --yes
    ```
 
 6. **Recovery** — `unpause` (owner), optional `guardian rm`.
