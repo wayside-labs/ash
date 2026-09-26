@@ -1,17 +1,22 @@
 # packages/dashboard
 
-The hosted operator surface (ADR-017). It reads the chain, and writes to it in exactly one
-place: the owner moving funds in and out of their own vault.
+The hosted operator surface (ADR-017, ADR-021). It reads the chain and submits transactions
+the connected wallet is allowed to sign — starting with owner vault transfer and operator
+session lifecycle (wave 1).
 
 ## Rules specific to this package
 
-- **This is the operator surface's read half, plus `withdraw`.** Ceilings, policy, sessions,
-  allowlists and pause belong to `packages/cli`. `src/lib/server/privileged-surface.test.ts`
-  enumerates the instruction builders this tree may import and fails on any other — adding a
-  "raise the limit" button here means editing that list, which is the point.
-- **The program decides who may withdraw, not the workflow row.** The button is gated on the
-  *on-chain* `owner` returned by `/api/solana/vault-balances`, never on the address the
-  dashboard stored when the workflow was created.
+- **This is an operator surface, not the agent surface.** Privileged instructions belong here
+  and in `packages/cli`, never in `packages/mcp`. `src/lib/server/privileged-surface.test.ts`
+  allowlists which instruction builders this tree may import; expanding it is deliberate and
+  ADR-backed.
+- **MCP must not escalate.** Chat tools stay read-only. Session creation in the dashboard is
+  for humans with an operator/owner wallet connected, not for the model.
+- **Session keys are client-held.** Generate in the browser, deliver via download + MCP snippet.
+  Never persist a session private key in `dashboard.json`, Supabase, or API responses.
+- **The program decides who may act, not the workflow row.** Withdraw is gated on the
+  *on-chain* owner from `/api/solana/vault-balances`. Session create is gated on operator or
+  owner from the treasury account, same as CLI.
 - **Every mutating route calls `assertSameOrigin` itself.** `route-guard.test.ts` enumerates
   the routes and fails on one that forgot; a `middleware.ts` would not hold for the handler
   tests, which call `POST(new Request(...))` directly.
@@ -20,6 +25,14 @@ place: the owner moving funds in and out of their own vault.
 - Two storage backends behind one switch: Supabase when the public env vars are set,
   `~/.agent-rails/dashboard.json` otherwise. The JSON branch cannot work on serverless — see
   `docs/runbooks/deploy-vercel.md`.
+
+### Wave 1 scope (ADR-021)
+
+- Import/sync on-chain `AgentSession` into agent cards (`sessionAddress`, `walletAddress`).
+- `POST /api/solana/create-session` — build unsigned tx; browser signs; confirm.
+- Post-create modal: download keypair + copy MCP config.
+- Full treasury bootstrap wizard is **out of scope** until after 2026-10-10; point at CLI
+  `init` when `treasuryAddress` is missing.
 
 ## Tests
 

@@ -33,3 +33,11 @@ Tool contract (identical across transports and adapters, defined in `@agent-rail
 - A prompt-injected agent has no tool that loosens its own constraints.
 - HTTP mode inherits hardening obligations (TLS, auth, rate limits) when it ships in v1.1.
 - v1.1 adds `request_limit_increase(reason)`, which only emits an off-chain event.
+
+## Amendment (ADR-021)
+
+The sentence *"Operator actions live in the CLI"* in the Decision section meant **operator
+actions do not live in MCP**. Privileged instructions (`create_session`, `update_policy`,
+`withdraw`, and the rest) are available on **operator surfaces** — `packages/cli` and
+`packages/dashboard` — under the same on-chain role checks. The MCP tool contract above is
+unchanged: those instructions remain absent from every agent transport.

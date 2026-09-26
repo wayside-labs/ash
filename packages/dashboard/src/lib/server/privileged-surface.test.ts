@@ -3,25 +3,26 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 /**
- * The dashboard is the operator surface's *read* half plus exactly one write:
- * the owner moving funds in and out of their own vault. Everything that
- * loosens a constraint — ceilings, policy, sessions, allowlists, pause — lives
- * in `packages/cli`, and that split is enforced by convention rather than by
- * the type system (CLAUDE.md, ADR-002).
+ * The privilege split is MCP versus operator surfaces, not CLI versus dashboard
+ * (ADR-021). MCP never reaches privileged builders; CLI and dashboard may, under
+ * the same on-chain role checks.
  *
- * This is the convention made mechanical. Importing a privileged instruction
- * builder here fails the suite, so wiring "raise the daily limit" into a React
- * page takes a deliberate edit to this list and the argument that goes with it.
+ * This test is the allowlist made mechanical. Importing a builder outside
+ * `ALLOWED` fails the suite, so wiring a new on-chain action into a React page
+ * takes a deliberate edit here and the ADR that goes with it.
  *
- * `withdraw` is the deliberate exception: it is owner-only in the program, the
- * dashboard offers it only when the *on-chain* owner matches the connected
- * wallet, and it keeps working while paused — which is the point of the
- * kill-switch semantics, not a hole in them.
+ * Wave 1 adds session create; wave 2+ may add policy, allowlist, pause. Each
+ * expansion is explicit. Payment instructions stay forbidden — they belong to
+ * the session key via MCP, not to a tab the operator has open.
  */
 
 const SRC = join(import.meta.dirname, "../..");
 
-const ALLOWED = new Set(["getWithdrawInstruction", "getWithdrawInstructionAsync"]);
+const ALLOWED = new Set([
+  "getWithdrawInstruction",
+  "getWithdrawInstructionAsync",
+  "getCreateSessionInstruction",
+]);
 
 /**
  * Every instruction the program exposes that a lower-privileged caller must not
@@ -38,7 +39,6 @@ const FORBIDDEN = [
   "getClosePolicyInstruction",
   "getAddAllowlistEntryInstruction",
   "getRemoveAllowlistEntryInstruction",
-  "getCreateSessionInstruction",
   "getRevokeSessionInstruction",
   "getCloseSessionInstruction",
   "getSetRolesInstruction",

@@ -30,6 +30,9 @@
   "bin": {
     "agent-rails": "./dist/cli.js"
   },
+  "exports": {
+    ".": "./dist/cli.js"
+  },
   "files": [
     "dist"
   ],
