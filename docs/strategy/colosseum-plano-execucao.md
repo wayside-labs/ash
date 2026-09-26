@@ -95,7 +95,7 @@ Elegibilidade: 18+, projeto novo, captação abaixo de US$ 3 mi. Todos ok.
 | | Entrega | Dono |
 |---|---|---|
 | F5 | Guardian-as-a-Service mínimo: watcher que chama `pause` ao quebrar regra | 0xcf02 |
-| F6 | Adapter Vercel AI SDK (~200 linhas) + snippet Cursor | 0xcf02 |
+| F6 | Adapter Vercel AI SDK (`@agent-rails/adapter-vercel-ai`) + snippet Cursor | 0xcf02 — **feito** |
 | F8 | Alertas em negação e em 80% do teto (webhook genérico + Slack) | Lucas |
 
 ### Cortes explícitos
