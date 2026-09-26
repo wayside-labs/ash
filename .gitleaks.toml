@@ -24,3 +24,18 @@ regexes = [
   '''^ceiling\.above50$''',
   '''^ceiling\.above80$''',
 ]
+
+# Public devnet addresses in create-session test fixtures. `generic-api-key` matches
+# `sessionKey: "<base58>"` when entropy clears the threshold; these are not credentials.
+[[allowlists]]
+description = "Solana pubkeys in dashboard create-session tests, not credentials"
+condition = "AND"
+paths = [
+  '''packages/dashboard/src/app/api/solana/create-session/route\.test\.ts''',
+  '''packages/dashboard/e2e/fixtures\.ts''',
+]
+regexTarget = "secret"
+regexes = [
+  '''^9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM$''',
+  '''^5LwWtPdEvVUSbYCTv5zvhP9gkt3nKANLGkvD2xa6jvvD$''',
+]

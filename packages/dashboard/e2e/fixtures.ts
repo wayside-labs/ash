@@ -241,7 +241,7 @@ export async function stubChain(
       case "/api/solana/create-session":
         return json({
           session: ADDR.agentSession,
-          sessionKey: ADDR.wallet,
+          sessionKey: ADDR.agentSession,
           policy: ADDR.solVault,
           transaction: Buffer.from("stub-create-session").toString("base64"),
           lastValidBlockHeight: 1,

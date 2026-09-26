@@ -107,9 +107,6 @@ importers:
 
   packages/dashboard:
     dependencies:
-      '@agent-rails/cli':
-        specifier: workspace:*
-        version: link:../cli
       '@agent-rails/contract':
         specifier: workspace:*
         version: link:../contract

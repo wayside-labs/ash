@@ -35,7 +35,7 @@ describe("POST /api/solana/create-session", () => {
   it("returns a built transaction for a valid request", async () => {
     mockBuild.mockResolvedValueOnce({
       session: "7v5FqEj8DaCbvJPEqpUtZXKyLBtrHuxhG2tWayTaJd4C",
-      sessionKey: "5LwWtPdEvVUSbYCTv5zvhP9gkt3nKANLGkvD2xa6jvvD",
+      sessionKey: "11111111111111111111111111111111",
       policy: "4Qg14cZWVLPXeFFrcaD9cFZEdLX44M4AWfxdHwSiVYeF",
       transaction: "AQID",
       lastValidBlockHeight: 42,
@@ -50,7 +50,7 @@ describe("POST /api/solana/create-session", () => {
           rpc: null,
           treasury: "2xbbqA1KvP7znHHk59tCbyN85cyHTy5hcwpQnwTKGc1i",
           wallet: "5LwWtPdEvVUSbYCTv5zvhP9gkt3nKANLGkvD2xa6jvvD",
-          sessionKey: "5LwWtPdEvVUSbYCTv5zvhP9gkt3nKANLGkvD2xa6jvvD",
+          sessionKey: "11111111111111111111111111111111",
           label: "Suite Bot",
         }),
       }),
@@ -75,7 +75,7 @@ describe("POST /api/solana/create-session", () => {
           rpc: null,
           treasury: "2xbbqA1KvP7znHHk59tCbyN85cyHTy5hcwpQnwTKGc1i",
           wallet: "5LwWtPdEvVUSbYCTv5zvhP9gkt3nKANLGkvD2xa6jvvD",
-          sessionKey: "5LwWtPdEvVUSbYCTv5zvhP9gkt3nKANLGkvD2xa6jvvD",
+          sessionKey: "11111111111111111111111111111111",
           label: "Suite Bot",
         }),
       }),
