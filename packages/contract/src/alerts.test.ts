@@ -16,6 +16,9 @@ describe("alert payloads", () => {
       source: "hook",
     });
     expect(payload.kind).toBe("payment_denied");
+    if (payload.kind !== "payment_denied") {
+      throw new Error("expected payment_denied");
+    }
     expect(payload.denial.reason_code).toBe("HOOK_DENIED");
   });
 });
