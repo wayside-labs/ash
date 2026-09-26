@@ -40,6 +40,9 @@ describe("alert webhook payloads", () => {
       },
     });
     expect(payload.kind).toBe("headroom_low");
+    if (payload.kind !== "headroom_low") {
+      throw new Error("expected headroom_low");
+    }
     expect(payload.headroom.headroom_bps).toBeLessThan(payload.headroom.headroom_threshold_bps);
   });
 });
