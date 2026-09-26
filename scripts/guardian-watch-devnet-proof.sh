@@ -43,6 +43,8 @@ die() {
 [[ -n $WALLET ]] || die "--wallet is required"
 [[ -f $WALLET ]] || die "no keypair at $WALLET"
 [[ -f packages/cli/dist/cli.js ]] || die "build the CLI: pnpm --filter @agent-rails/cli build"
+[[ -f packages/client/dist/index.js ]] || die "build the client: pnpm --filter @agent-rails/client build"
+[[ -f packages/sdk/dist/index.js ]] || die "build the SDK: pnpm --filter @agent-rails/sdk build"
 
 if [[ -z $OUT ]]; then
   OUT=$(mktemp -d -t agent-rails-guardian.XXXXXX) || die "could not create work directory"
