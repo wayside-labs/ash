@@ -76,7 +76,10 @@ describe("the dashboard's on-chain write surface", () => {
   for (const builder of FORBIDDEN) {
     it(`never reaches for ${builder}`, () => {
       const offenders = files.filter((file) => readFileSync(file, "utf8").includes(builder));
-      expect(offenders, `${builder} is privileged; it belongs in packages/cli`).toEqual([]);
+      expect(
+        offenders,
+        `${builder} is privileged; MCP must not reach it (ADR-007). Operator surfaces use an explicit allowlist (ADR-021).`,
+      ).toEqual([]);
     });
   }
 

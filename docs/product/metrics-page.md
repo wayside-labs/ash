@@ -992,8 +992,9 @@ section level, not per row, or a screenshot of the page reads as real history.
 Period selector offers the three real buckets; `Custom` is disabled with its
 tooltip. Ships independently of anything upstream.
 
-**Phase B — real history and export.** Blocked on upstream F2a (`IntentReceipt`
-reader, `verifyAuditChain`) and F2b (history table + export). Adds
+**Phase B — real history and export.** F2a (`IntentReceipt` reader,
+`verifyAuditChain` in `packages/sdk`) is done; remaining work is F2b (history
+table + export). Adds
 `lib/metrics/history.ts`, the two history routes, §5 for real, §6's "verified
 through seq N" and the refused-by-reason histogram, and unlocks `Custom` periods
 plus period-scoped versions of §1's Spent/Payments and §3's amounts. The
@@ -1141,7 +1142,7 @@ tested without a cluster.
 | Needed | Blocks | Notes |
 |---|---|---|
 | Nothing | Phase A | A is self-contained in `packages/dashboard`. Start now. |
-| F2a — `IntentReceipt` reader + `verifyAuditChain` in TS | §6 verification | Phase A renders `seq` + `auditHead` without it. |
+| F2a — `IntentReceipt` reader + `verifyAuditChain` in TS | §6 verification | **Done** in `packages/sdk`; wire into §6 when Phase B starts. |
 | F2b — payment history reader + export | §5, `Custom` periods | If F2b lands as an SDK reader, `lib/metrics/history.ts` shrinks to a mapper and Phase B drops ~5h. **Worth agreeing the boundary before B starts.** |
 | Decision: does `PaymentRecordView` stay in the dashboard or move to `@agent-rails/contract`? | Phase B shape | Recommendation: stays in the dashboard. Contract gates MCP transport compatibility and should not carry UI view types. |
 | Decision: is `goals` a `/api/state` resource, or dropped? | Phase C | Recommendation: `/api/state`, off-chain, never an instruction. Keeps the privilege split true by construction. |

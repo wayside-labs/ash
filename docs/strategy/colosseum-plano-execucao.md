@@ -84,9 +84,9 @@ Elegibilidade: 18+, projeto novo, captação abaixo de US$ 3 mi. Todos ok.
 
 | | Entrega | Onde toca | Dono |
 |---|---|---|---|
-| F1 | USDC ponta a ponta | `api/solana/vault-transfer/route.ts` só aceita lamports — adicionar SPL/ATA. Leitura por mint via `vault-balances` (que já existe) | 0xcf02 (escrita) / Lucas (leitura) |
+| F1 | USDC ponta a ponta | `vault-transfer` aceita SOL e SPL (`mint` + ATA). Leitura por mint via `vault-balances` | 0xcf02 — **feito** (escrita) / Lucas (leitura) |
 | F2a | Leitor de `IntentReceipt` + `verifyAuditChain` em TS espelhando `crates/agent-rails-policy/src/audit.rs`, com os vetores fixos do Rust como teste compartilhado | `packages/sdk` | 0xcf02 — **feito** |
-| F2b | Histórico + export CSV/JSON — **Metrics Phase B** (`docs/product/metrics-page.md`; Phase A em `/metrics` via #63) | `packages/dashboard` | 0xcf02 |
+| F2b | Histórico + export CSV/JSON — **Metrics Phase B** (`docs/product/metrics-page.md`; Phase A em `/metrics` via #63) | `packages/dashboard` | 0xcf02 — **feito** |
 | F3 | CLI de operador: `pay`, `policy set`, `pause`, `audit export`, `session revoke` — hoje só existe `init` | `packages/cli` | 0xcf02 — **feito** |
 | F4 | `scripts/demo.sh` reprodutível, com assinaturas devnet públicas | `scripts/demo.sh`, `scripts/demo-retry.mjs` | 0xcf02 — **feito** |
 
@@ -143,8 +143,8 @@ Regra do dia: **código até as 18h, narrativa depois.** Outreach diário às 9h
 | | Data | 0xcf02 | Lucas / Bernardo |
 |---|---|---|---|
 | D-18 | 22/09 seg | Travar wedge e one-liner EN | Bernardo: copy da landing **antes** do código; 20 contatos frios; inscrever no office hours. Abrir as 8 issues |
-| D-17 | 23/09 ter | F1 — escrita SPL/ATA no `vault-transfer` | Lucas: issues 1 e 3 |
-| D-16 | 24/09 qua | F2a — `IntentReceipt` + `verifyAuditChain` | Lucas: issue 2 |
+| D-17 | 23/09 ter | F1 — escrita SPL/ATA no `vault-transfer` (**feito**) | Lucas: issues 1 e 3 |
+| D-16 | 24/09 qua | F2a — `IntentReceipt` + `verifyAuditChain` (**feito**) | Lucas: issue 2 |
 | D-15 | 25/09 qui | Fechar o tipo do recibo e abrir a issue 4 | Lucas: issues 4 e 5 |
 | D-14 | 26/09 sex | F3a — `pay`, `policy set`, `pause` | **Ligar o agente de referência** (ver Tração) |
 | D-13 | 27/09 sáb | F3b + F4 | Lucas: issue 6 |
