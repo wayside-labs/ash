@@ -1,4 +1,8 @@
 @import "tailwindcss";
+@import "@fontsource/inter/latin-400.css";
+@import "@fontsource/inter/latin-500.css";
+@import "@fontsource/inter/latin-600.css";
+@import "@fontsource/jetbrains-mono/latin-400.css";
 
 /*
  * Two things this palette encodes that a default dark theme does not:
@@ -13,6 +17,11 @@
  * Every value below was checked with a WCAG contrast pass against
  * --color-card (#0f0f12): marks clear 3:1, text clears 4.5:1.
  */
+:root {
+  --font-inter: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono-face: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
+}
+
 @theme {
   /* Surfaces — page, card, raised, input/hover */
   --color-background: #08080a;
