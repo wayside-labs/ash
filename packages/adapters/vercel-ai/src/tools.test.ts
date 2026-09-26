@@ -74,7 +74,7 @@ describe("Vercel AI SDK adapter", () => {
         mint_ref: "USDC",
         reference: "inv-42",
       },
-      { toolCallId: "tc-1", messages: [] },
+      { toolCallId: "tc-1", messages: [], context: {} },
     );
 
     expect(result).toMatchObject({

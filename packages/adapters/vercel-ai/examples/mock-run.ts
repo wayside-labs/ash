@@ -44,7 +44,7 @@ const dryRun = await check.execute(
     mint_ref: "USDC",
     reference: "demo-invoice-1",
   },
-  { toolCallId: "mock-1", messages: [] },
+  { toolCallId: "mock-1", messages: [], context: {} },
 );
 
 console.log(JSON.stringify({ dryRun }, null, 2));
