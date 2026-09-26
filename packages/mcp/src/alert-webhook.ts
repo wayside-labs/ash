@@ -1,7 +1,7 @@
 import type { DecisionSource } from "@agent-rails/contract";
 import { buildPaymentDeniedAlert, type PaymentDeniedAlert } from "@agent-rails/contract/alerts";
 import { postAlertWebhook } from "@agent-rails/sdk";
-import type { ServerContext } from "../context.js";
+import type { ServerContext } from "./context.js";
 
 /** Fire-and-forget denial alert when `AGENT_RAILS_ALERT_WEBHOOK_URL` is configured. */
 export function notifyPaymentDeniedWebhook(
