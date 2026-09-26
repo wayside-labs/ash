@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "agent-rails": {
+      "command": "npx",
+      "args": ["-y", "@agent-rails/mcp"],
+      "env": {
+        "AGENT_RAILS_RPC": "https://api.devnet.solana.com",
+        "AGENT_RAILS_SESSION": "<paste-session-pda-from-agent-rails-init>",
+        "AGENT_RAILS_SIGNER": "~/.agent-rails/session.json"
+      }
+    }
+  }
+}

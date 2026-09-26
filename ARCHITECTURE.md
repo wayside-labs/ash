@@ -92,7 +92,8 @@ you should expect to clone.
 | `@agent-rails/indexer` | **planned** (`packages/indexer`) | Pluggable `EventSource` (polling, Yellowstone) and `Sink` (SQLite, Postgres); long-retention `verifyChain`. **Today:** CLI `audit export --verify`, SDK `verifyAuditChain`, dashboard metrics history via RPC log walk (windowed). |
 | `agent-rails` CLI | `packages/cli` | Owner / operator / guardian commands, `init` bootstrap, `audit export`, `doctor`, day-2 operator commands. |
 | `@agent-rails/dashboard` | `packages/dashboard` | Chat-first operator UI; privileged writes allowlisted per ADR-021. |
-| Adapters | **planned** (`packages/adapters/*`) | Thin in-process wrappers (LangChain, Vercel AI SDK, OpenAI Agents). **Today:** call `@agent-rails/mcp` or `@agent-rails/sdk` directly. |
+| `@agent-rails/adapter-vercel-ai` | `packages/adapters/vercel-ai` | Vercel AI SDK `tool()` wiring for `AGENT_TOOL_NAMES`; schemas from `@agent-rails/contract`, handlers injected (ADR-009). |
+| Other framework adapters | **planned** (`packages/adapters/{langchain,openai-agents}`) | Same thin pattern as the Vercel package. **Today:** MCP stdio or `@agent-rails/adapter-vercel-ai`. |
 | Python package | **planned** (`python/agent_rails`) | MCP client wrapper plus LangChain / CrewAI / pydantic-ai tool wrappers (ADR-009). |
 
 ---
@@ -400,7 +401,8 @@ agent-rails/
 │   └── agent-rails-client/          # Codama Rust client
 ├── packages/
 │   ├── contract/  client/  sdk/  mcp/  cli/  dashboard/
-│   └── (planned) indexer/  adapters/{langchain,ai-sdk,openai-agents}/
+│   ├── adapters/vercel-ai/   # @agent-rails/adapter-vercel-ai (shipped)
+│   └── (planned) indexer/  adapters/{langchain,openai-agents}/
 ├── (planned) python/agent_rails/
 ├── trident-tests/
 ├── examples/
@@ -412,9 +414,9 @@ agent-rails/
 
 ## 14. Roadmap
 
-**v1.0 (shipped in repo)** — native vault, roles, policy engine, receipts, hash chain, stdio MCP, SDK, CLI operator surface, operator dashboard, full test pyramid layers 1–2 and 4–5, devnet.
+**v1.0 (shipped in repo)** — native vault, roles, policy engine, receipts, hash chain, stdio MCP, SDK, Vercel AI SDK adapter, CLI operator surface, operator dashboard, full test pyramid layers 1–2 and 4–5, devnet.
 
-**v1.0 (still open)** — framework adapters (`packages/adapters/*`), `@agent-rails/indexer`, Python MCP wrapper, mainnet-beta after audit and trust phase.
+**v1.0 (still open)** — LangChain / OpenAI Agents adapters, `@agent-rails/indexer`, Python MCP wrapper, mainnet-beta after audit and trust phase.
 
 **v1.1** — timelocked loosening with guardian veto (`PendingChange`, `recovery_destination`); signed-intent mode + reference relayer; Streamable HTTP MCP with `SessionResolver`; `approval_threshold` (human-in-the-loop) and `cooldown_seconds`; `request_limit_increase` tool; frozen `1.0.0` program.
 

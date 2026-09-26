@@ -79,6 +79,10 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Production build of the dashboard on every PR. Fonts ship via @fontsource in the
+      # lockfile so this does not reach Google at compile time; the step still catches
+      # Next/webpack regressions that vitest cannot see.
+      - run: pnpm turbo run build --filter @agent-rails/dashboard
       # lint, typecheck, test, codegen:check and pnpm audit. codegen:check is the
       # enforcement behind "never hand-edit packages/client/src/generated": it
       # regenerates from the committed IDL and fails on any difference, which no

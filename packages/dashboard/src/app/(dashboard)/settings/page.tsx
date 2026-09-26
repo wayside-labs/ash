@@ -41,6 +41,11 @@ export default function SettingsPage() {
   const [rpcInput, setRpcInput] = useState(customRpc);
   useEffect(() => setRpcInput(customRpc), [customRpc]);
 
+  const [webhookInput, setWebhookInput] = useState("");
+  useEffect(() => {
+    setWebhookInput(data?.settings?.alertWebhookUrl ?? "");
+  }, [data?.settings?.alertWebhookUrl]);
+
   const settings = data?.settings;
 
   const patch = async (partial: Record<string, unknown>) => {
@@ -177,6 +182,21 @@ export default function SettingsPage() {
                     onCheckedChange={(checked) => patch({ limitAlerts: checked })}
                     aria-label={t("settings.limitAlerts")}
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="alert-webhook">{t("settings.alertWebhookUrl")}</Label>
+                  <Input
+                    id="alert-webhook"
+                    type="url"
+                    placeholder="https://hooks.slack.com/services/…"
+                    value={webhookInput}
+                    onChange={(e) => setWebhookInput(e.target.value)}
+                    onBlur={() => patch({ alertWebhookUrl: webhookInput.trim() })}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {t("settings.alertWebhookUrlDescription")}
+                  </p>
                 </div>
 
                 <div className="flex items-center justify-between opacity-60">

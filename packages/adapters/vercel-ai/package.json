@@ -1,0 +1,54 @@
+{
+  "name": "@agent-rails/adapter-vercel-ai",
+  "version": "0.1.0",
+  "description": "Vercel AI SDK tools for the Agent Rails agent surface (ADR-009).",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/wayside-labs/agent-rails",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wayside-labs/agent-rails.git",
+    "directory": "packages/adapters/vercel-ai"
+  },
+  "bugs": {
+    "url": "https://github.com/wayside-labs/agent-rails/issues"
+  },
+  "keywords": [
+    "solana",
+    "ai-agents",
+    "payments",
+    "vercel-ai-sdk",
+    "guardrails"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@agent-rails/contract": "workspace:*",
+    "ai": "^7.0.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsdown": "^0.15.0",
+    "tsx": "^4.0.0",
+    "vitest": "^4.0.0"
+  }
+}
