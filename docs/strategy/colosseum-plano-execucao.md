@@ -4,6 +4,10 @@ Recorte executável. Posicionamento, regras de negócio, preços, roteiro de ví
 deck vivem no documento completo:
 <https://claude.ai/code/artifact/86d56290-183d-4018-836e-d9b4666d6ded>
 
+**Relatório de implementação (prompts `texto.txt`, PRs #65–#73):**
+[colosseum-implementation-report.md](./colosseum-implementation-report.md) ·
+[tabela resumida](./colosseum-prompt-status.md)
+
 **Prazo real: 12/10.** Meta interna: **10/10**, com dois dias de margem deliberada.
 
 **Reposicionamento:** de "guardrail framework for agent payments on Solana" para
@@ -245,7 +249,7 @@ explícitas · zona proibida anotada no `CONTRIBUTING`.
 - [x] `docs/strategy/colosseum-pre-hackathon-declaration.md` — texto para o formulário
 - [x] `docs/runbooks/dashboard-smoke.md` — 10 passos manuais
 - [x] CI: `pnpm turbo run build --filter @agent-rails/dashboard` no job `typescript` (fontes via `@fontsource`, sem fetch ao Google no build)
-- [ ] `VERIFY_STRICT=1 scripts/verify.sh all` verde localmente (rodar na máquina com registry npm padrão — mirror sem audit endpoint falha em `pnpm audit`; kani/mutants/e2e são nightly)
+- [x] `VERIFY_STRICT=1 scripts/verify.sh all` verde localmente (2026-09-26: rust + kani + ts OK; `pnpm audit` exige registry npmjs — npmmirror não tem endpoint; `mutants`/`e2e` ficam fora de `all`)
 - [x] Smoke automatizado: `VERIFY_STRICT=1 scripts/verify.sh ui` (45 testes, incl. `e2e/smoke.spec.ts`)
 - [ ] Smoke manual assinado por humano na tabela do runbook antes de gravar a demo
 
