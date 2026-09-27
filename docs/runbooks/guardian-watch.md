@@ -149,7 +149,32 @@ Record explorer links for pause and withdraw signatures in demo notes.
 
 ---
 
-## 7. Out of scope (v1)
+## 7. CI devnet proof (`guardian-watch-devnet.yml`)
+
+The workflow runs `scripts/guardian-watch-devnet-proof.sh` with the repository secret
+`DEVNET_KEYPAIR` (same pubkey as `devnet-ci-keypair.json` in the upgrade-authority runbook:
+`5eznzq18xdeVaagEkyo7DYb8v12mAWmYcz6AdWTnH8JQ`). The proof funds a throwaway guardian key
+(~0.005 SOL) before `pause`.
+
+| Symptom in CI | Fix |
+|---|---|
+| `insufficient funds for spend (0.005 SOL)` | Top up the secret wallet on devnet (faucet or transfer from a funded key). |
+| Faucet rate-limited | Retry later, use another RPC, or `solana transfer <pubkey> 0.1 --url devnet` from a funded operator wallet. |
+
+```bash
+# After balance ≥ 0.05 SOL on the CI pubkey:
+gh workflow run guardian-watch-devnet.yml --repo wayside-labs/agent-rails
+```
+
+Balance check (no secret needed):
+
+```bash
+solana balance 5eznzq18xdeVaagEkyo7DYb8v12mAWmYcz6AdWTnH8JQ --url devnet
+```
+
+---
+
+## 8. Out of scope (v1)
 
 - Hosted multi-tenant service, org-tree cascade pause, or dashboard alerting.
 - Custody of owner/operator keys — **guardian only**.
