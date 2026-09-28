@@ -1,4 +1,5 @@
 import type { StoredAgent, StoredMcp, StoredWorkflow } from "@/lib/schema";
+import { appliesToAgent } from "@/lib/scope";
 
 /**
  * The `mcpServers` map both `.mcp.json` and `claude_desktop_config.json` use.
@@ -35,43 +36,37 @@ export function mcpServerKey(name: string): string {
 }
 
 /**
- * Global MCPs reach every workflow. Scoped ones match by the free-text
- * `scopeName` the scope pages write: a workflow name, or the name of an agent
- * that belongs to this workflow.
+ * The rails server is launched several ways: the `agent-rails-mcp` bin, `npx @agent-rails/mcp`,
+ * or `node` pointed at a checkout's `packages/mcp` build (what `mcp-snippet.ts` writes).
+ * Matching on `command` alone missed the last two, and their denials never reached the webhook.
  */
-export function appliesToWorkflow(
-  mcp: StoredMcp,
-  workflow: StoredWorkflow,
-  agents: StoredAgent[],
-): boolean {
+const AGENT_RAILS_MCP_LAUNCH = /agent-rails-mcp|@agent-rails\/mcp|packages[\\/]mcp[\\/]/;
+
+export function isAgentRailsMcp(mcp: Pick<StoredMcp, "command" | "args">): boolean {
+  return [mcp.command, ...mcp.args].some((part) => AGENT_RAILS_MCP_LAUNCH.test(part));
+}
+
+/** Workflow-level export: global + workflow-scoped MCPs only (never another agent's MCP). */
+export function appliesToWorkflowExport(mcp: StoredMcp, workflow: StoredWorkflow): boolean {
   switch (mcp.scope) {
     case "global":
       return true;
     case "workflow":
       return mcp.scopeName === workflow.name;
     case "agent":
-      return agents.some((agent) => agent.name === mcp.scopeName);
+      return false;
   }
 }
 
-/**
- * Compiles the MCPs a workflow's agents run with into a runner config. Only
- * `enabled` rows are considered — the toggle on /mcps is the switch that
- * decides what ends up in the agent's environment.
- */
-export function compileRunnerConfig(
-  workflow: StoredWorkflow,
-  agents: StoredAgent[],
+function compileMcpServers(
   mcps: StoredMcp[],
   options?: { alertWebhookUrl?: string },
 ): CompiledRunnerConfig {
-  const workflowAgents = agents.filter((agent) => agent.workflowId === workflow.id);
   const mcpServers: Record<string, McpServerConfig> = {};
   const skipped: string[] = [];
 
   for (const mcp of mcps) {
     if (!mcp.enabled) continue;
-    if (!appliesToWorkflow(mcp, workflow, workflowAgents)) continue;
     if (!mcp.command.trim()) {
       skipped.push(mcp.name);
       continue;
@@ -82,7 +77,7 @@ export function compileRunnerConfig(
     ) as Record<string, string>;
 
     const alertUrl = options?.alertWebhookUrl?.trim();
-    if (alertUrl && mcp.command.trim().includes("agent-rails-mcp")) {
+    if (alertUrl && isAgentRailsMcp(mcp)) {
       env.AGENT_RAILS_ALERT_WEBHOOK_URL = alertUrl;
     }
 
@@ -96,6 +91,33 @@ export function compileRunnerConfig(
   return { config: { mcpServers }, skipped };
 }
 
+/**
+ * Compiles MCPs for a single agent (global + workflow + that agent's scope).
+ * Use this for runner downloads so a scout never inherits the builder's payment MCP.
+ */
+export function compileRunnerConfigForAgent(
+  agent: StoredAgent,
+  workflow: StoredWorkflow,
+  mcps: StoredMcp[],
+  options?: { alertWebhookUrl?: string },
+): CompiledRunnerConfig {
+  const inScope = mcps.filter((mcp) => appliesToAgent(mcp, agent, workflow));
+  return compileMcpServers(inScope, options);
+}
+
+/**
+ * Compiles shared MCPs for a workflow (global + workflow scope). Agent-scoped
+ * servers are omitted — export per agent for role-specific MCP sets.
+ */
+export function compileRunnerConfig(
+  workflow: StoredWorkflow,
+  mcps: StoredMcp[],
+  options?: { alertWebhookUrl?: string },
+): CompiledRunnerConfig {
+  const inScope = mcps.filter((mcp) => appliesToWorkflowExport(mcp, workflow));
+  return compileMcpServers(inScope, options);
+}
+
 /** Two MCPs may share a display name; the config map cannot share a key. */
 function uniqueKey(base: string, taken: Record<string, unknown>): string {
   if (!Object.hasOwn(taken, base)) return base;
@@ -104,7 +126,8 @@ function uniqueKey(base: string, taken: Record<string, unknown>): string {
   return `${base}-${n}`;
 }
 
-export function runnerConfigFilename(workflowName: string): string {
+export function runnerConfigFilename(workflowName: string, agentName?: string): string {
   const slug = mcpServerKey(workflowName);
-  return `${slug}.mcp.json`;
+  if (!agentName?.trim()) return `${slug}.mcp.json`;
+  return `${slug}-${mcpServerKey(agentName)}.mcp.json`;
 }

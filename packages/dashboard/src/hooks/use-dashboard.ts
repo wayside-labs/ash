@@ -92,12 +92,17 @@ export function useDeleteResource(resource: ResourceName) {
  * so it goes straight from the network to the user's disk. The counts come back
  * in headers so the toast can say what was compiled.
  */
+export type RunnerExportTarget = {
+  workflow: { id: string; name: string };
+  agent?: { id: string; name: string };
+};
+
 export function useExportRunnerConfig() {
   return useMutation({
-    mutationFn: async (workflow: { id: string; name: string }) => {
-      const res = await fetch(
-        `/api/export/runner-config?workflowId=${encodeURIComponent(workflow.id)}`,
-      );
+    mutationFn: async ({ workflow, agent }: RunnerExportTarget) => {
+      const params = new URLSearchParams({ workflowId: workflow.id });
+      if (agent) params.set("agentId", agent.id);
+      const res = await fetch(`/api/export/runner-config?${params.toString()}`);
       if (!res.ok) {
         const body = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(body.error ?? `${res.status} ${res.statusText}`);
@@ -108,7 +113,7 @@ export function useExportRunnerConfig() {
       const url = URL.createObjectURL(await res.blob());
       const a = document.createElement("a");
       a.href = url;
-      a.download = runnerConfigFilename(workflow.name);
+      a.download = runnerConfigFilename(workflow.name, agent?.name);
       a.click();
       URL.revokeObjectURL(url);
 

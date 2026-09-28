@@ -1,0 +1,29 @@
+{
+  "$comment": "Statement of intent for review. No tool reads this file; the commands in README.md apply it.",
+  "template": "earn-bounty-hunter",
+  "cluster": "devnet",
+  "policyName": "earn-builder",
+  "destinationMode": "allowlist",
+  "limits": [
+    {
+      "mint": "SOL",
+      "perTx": "0.05",
+      "daily": "0.2",
+      "lifetime": "1"
+    }
+  ],
+  "destinations": [
+    { "label": "rpc-credits", "owner": "<RPC_VENDOR_WALLET>" },
+    { "label": "inference", "owner": "<INFERENCE_VENDOR_WALLET>" },
+    { "label": "hosting", "owner": "<HOSTING_VENDOR_WALLET>" }
+  ],
+  "session": {
+    "labelPattern": "earn-<bounty-slug>",
+    "ttlHours": 72,
+    "onePerBounty": true
+  },
+  "mcp": {
+    "AGENT_RAILS_SECURITY": "balanced"
+  },
+  "referencePattern": "<bounty-slug>/<vendor>/<invoice-or-period>"
+}

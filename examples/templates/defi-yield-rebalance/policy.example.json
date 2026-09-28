@@ -1,0 +1,40 @@
+{
+  "$comment": "Statement of intent for review. No tool reads this file; the commands in README.md apply it.",
+  "template": "defi-yield-rebalance",
+  "cluster": "devnet",
+  "policyName": "yield-usdc",
+  "destinationMode": "allowlist",
+  "limits": [
+    {
+      "mint": "<MOCK_USDC_MINT>",
+      "symbol": "USDC",
+      "decimals": 6,
+      "perTx": "100",
+      "daily": "200",
+      "lifetime": "1000"
+    },
+    {
+      "mint": "SOL",
+      "perTx": "0.000001",
+      "daily": "0.000001",
+      "lifetime": "0.000001",
+      "$comment": "Near zero: the executor never pays SOL, and init requires a SOL limit."
+    }
+  ],
+  "destinations": [
+    { "label": "desk-kamino", "owner": "<KAMINO_DESK_WALLET>", "venue": "kamino-lend" },
+    { "label": "desk-save", "owner": "<SAVE_DESK_WALLET>", "venue": "save" }
+  ],
+  "session": {
+    "labelPattern": "rebal-<proposal-id>",
+    "ttlHours": 2,
+    "createdAfterApproval": true
+  },
+  "mcp": {
+    "AGENT_RAILS_SECURITY": "strict",
+    "AGENT_RAILS_MAX_PAYMENTS_PER_MINUTE": "2"
+  },
+  "guardian": { "window": "short", "thresholdBps": 5000 },
+  "scout": { "venues": ["kamino-lend", "save"], "symbols": ["USDC"], "minTvlUsd": 1000000 },
+  "referencePattern": "rebal-<proposal-id>/<step>"
+}

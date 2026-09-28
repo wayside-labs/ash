@@ -40,6 +40,11 @@ export type McpServerConfig = {
   sinkPath?: string;
   /** HTTPS webhook for `payment_denied` alerts (generic URL or Slack incoming webhook). */
   alertWebhookUrl?: string;
+  /**
+   * When `readonly`, registers check/list/status tools only — no `execute_payment`.
+   * Useful for planner agents that must simulate spend without signing.
+   */
+  toolsMode: "full" | "readonly";
 };
 
 export type McpRuntime = {
@@ -139,6 +144,7 @@ export function loadConfigFromEnv(env: NodeJS.ProcessEnv = process.env): McpServ
     securityPreset: parsePreset(env.AGENT_RAILS_SECURITY),
     securityOverrides: parseSecurityOverrides(env),
     mintAliases: parseAliases(env.AGENT_RAILS_MINT_ALIASES),
+    toolsMode: "full",
   };
   if (remoteSignerUrl && remoteSignerAddress) {
     config.remoteSigner = {
@@ -158,6 +164,16 @@ export function loadConfigFromEnv(env: NodeJS.ProcessEnv = process.env): McpServ
   const alertWebhook = env.AGENT_RAILS_ALERT_WEBHOOK_URL?.trim();
   if (alertWebhook) {
     config.alertWebhookUrl = alertWebhook;
+  }
+  const toolsRaw = env.AGENT_RAILS_TOOLS?.trim().toLowerCase();
+  if (toolsRaw === "readonly" || toolsRaw === "read-only") {
+    config.toolsMode = "readonly";
+  } else if (toolsRaw === "full" || toolsRaw === undefined || toolsRaw === "") {
+    config.toolsMode = "full";
+  } else {
+    throw new Error(
+      `AGENT_RAILS_TOOLS must be "full" or "readonly"; got ${JSON.stringify(toolsRaw)}`,
+    );
   }
   return config;
 }

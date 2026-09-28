@@ -1,6 +1,6 @@
 import { fromBaseUnits, NATIVE_MINT } from "@agent-rails/contract";
 import { address } from "@solana/kit";
-import { formatSol } from "../amounts.js";
+import { formatSol, parseHumanAmount, SOL_DECIMALS } from "../amounts.js";
 import { readTreasurySnapshot } from "../chain/read.js";
 import type { GlobalCliOptions } from "../cli-options.js";
 import { loadContext } from "../context.js";
@@ -13,9 +13,9 @@ import type { Ui } from "../ui.js";
 
 export type CeilingSetOptions = GlobalCliOptions & {
   mint: string;
-  perTx: bigint;
-  daily: bigint;
-  lifetime?: bigint;
+  perTx: string;
+  daily: string;
+  lifetime?: string;
 };
 
 export async function runCeilingSet(options: CeilingSetOptions, ui: Ui): Promise<number> {
@@ -32,12 +32,16 @@ export async function runCeilingSet(options: CeilingSetOptions, ui: Ui): Promise
     });
   }
 
-  const daily = options.daily;
-  const lifetime = options.lifetime ?? daily * 30n;
+  const decimals = isSol ? SOL_DECIMALS : (mintConfig?.decimals ?? 0);
+  const perTx = parseHumanAmount(options.perTx, decimals, "--per-tx");
+  const daily = parseHumanAmount(options.daily, decimals, "--daily");
+  const lifetime = options.lifetime
+    ? parseHumanAmount(options.lifetime, decimals, "--lifetime")
+    : daily * 30n;
   const formatAmount = (value: bigint) =>
     isSol ? formatSol(value) : fromBaseUnits(value, mintConfig?.decimals ?? 0);
   const ceiling = {
-    maxPerTx: options.perTx,
+    maxPerTx: perTx,
     maxShortWindow: daily,
     maxLongWindow: daily,
     maxLifetime: lifetime,
@@ -56,7 +60,7 @@ export async function runCeilingSet(options: CeilingSetOptions, ui: Ui): Promise
 
   ui.heading("Set ceiling");
   ui.field("Mint", mint);
-  ui.field("Max / tx", formatAmount(options.perTx));
+  ui.field("Max / tx", formatAmount(perTx));
   ui.field("Max / day", formatAmount(daily));
   ui.field("Max lifetime", formatAmount(lifetime));
 

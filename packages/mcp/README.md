@@ -28,6 +28,7 @@ on-chain state before anything is signed.
 | `AGENT_RAILS_MAX_PAYMENTS_PER_MINUTE` | no | Overrides the preset's velocity cap |
 | `AGENT_RAILS_MAX_CONCURRENT` | no | Overrides payments in flight at once |
 | `AGENT_RAILS_SINK` | no | JSONL path for the operator's payment record |
+| `AGENT_RAILS_TOOLS` | no | `full` (default) or `readonly`: registers the four reads and `check_payment`, never `execute_payment`. The process still needs a signer — `check_payment` simulates a signed transaction — so readonly narrows what the model can call, not what the host holds |
 
 \* Either a local keypair or a remote signer. With a remote signer the private key never
 enters the process that parses tool arguments.

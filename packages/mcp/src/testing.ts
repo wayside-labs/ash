@@ -41,6 +41,7 @@ export function testConfig(overrides: Partial<McpServerConfig> = {}): McpServerC
       },
     },
     mintAliases: { SOL: NATIVE_MINT_ADDRESS },
+    toolsMode: "full",
     ...overrides,
   };
 }

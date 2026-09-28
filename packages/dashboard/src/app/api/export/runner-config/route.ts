@@ -1,4 +1,8 @@
-import { compileRunnerConfig, runnerConfigFilename } from "@/lib/mcp-config";
+import {
+  compileRunnerConfig,
+  compileRunnerConfigForAgent,
+  runnerConfigFilename,
+} from "@/lib/mcp-config";
 import { serverT } from "@/lib/server/i18n";
 import { assertSameOrigin } from "@/lib/server/origin";
 import { stateAccessResponse } from "@/lib/server/state/access";
@@ -20,6 +24,7 @@ export async function GET(req: Request) {
   if (denied) return denied;
 
   const workflowId = new URL(req.url).searchParams.get("workflowId");
+  const agentId = new URL(req.url).searchParams.get("agentId");
   if (!workflowId) {
     return Response.json({ error: await serverT("api.error.missingWorkflowId") }, { status: 400 });
   }
@@ -37,14 +42,23 @@ export async function GET(req: Request) {
     return Response.json({ error: await serverT("api.error.notFound") }, { status: 404 });
   }
 
-  const { config, skipped } = compileRunnerConfig(workflow, state.agents, state.mcps, {
-    alertWebhookUrl: state.settings.alertWebhookUrl,
-  });
+  const agent = agentId ? state.agents.find((row) => row.id === agentId) : undefined;
+  if (agentId && (!agent || agent.workflowId !== workflow.id)) {
+    return Response.json({ error: await serverT("api.error.notFound") }, { status: 404 });
+  }
+
+  const { config, skipped } = agent
+    ? compileRunnerConfigForAgent(agent, workflow, state.mcps, {
+        alertWebhookUrl: state.settings.alertWebhookUrl,
+      })
+    : compileRunnerConfig(workflow, state.mcps, {
+        alertWebhookUrl: state.settings.alertWebhookUrl,
+      });
 
   return new Response(`${JSON.stringify(config, null, 2)}\n`, {
     headers: {
       "Content-Type": "application/json; charset=utf-8",
-      "Content-Disposition": `attachment; filename="${runnerConfigFilename(workflow.name)}"`,
+      "Content-Disposition": `attachment; filename="${runnerConfigFilename(workflow.name, agent?.name)}"`,
       "Cache-Control": "no-store",
       // Counts the client needs for its toast. The body carries secrets, so the
       // page reads it as an opaque blob and never parses it back into state.

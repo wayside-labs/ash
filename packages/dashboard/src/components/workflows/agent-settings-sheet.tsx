@@ -5,6 +5,7 @@ import {
   ArrowUpRight,
   Brain,
   Cable,
+  Download,
   ExternalLink,
   Gauge,
   Loader2,
@@ -37,12 +38,14 @@ import { CeilingMeter } from "@/components/viz/ceiling-meter";
 import {
   useDashboardState,
   useDeleteResource,
+  useExportRunnerConfig,
   useUpdateResource,
   useWorkflows,
 } from "@/hooks/use-dashboard";
 import { intlLocale } from "@/i18n";
 import { useTranslation } from "@/i18n/locale-provider";
 import { isPayingAgent } from "@/lib/agent-wallet";
+import { runnerConfigFilename } from "@/lib/mcp-config";
 import { isLikelyAddress } from "@/lib/schema";
 import { appliesToAgent, scopeBadgeLabel } from "@/lib/scope";
 import type { VaultTransferKind } from "@/lib/server/solana";
@@ -76,6 +79,7 @@ export function AgentSettingsSheet({
   const removeAgent = useDeleteResource("agents");
   const updateMcp = useUpdateResource("mcps");
   const updateSkill = useUpdateResource("skills");
+  const exportRunner = useExportRunnerConfig();
   const toast = useToast();
   const intl = intlLocale(locale);
 
@@ -496,16 +500,53 @@ export function AgentSettingsSheet({
               </TabsContent>
 
               <TabsContent value="mcps" className="space-y-4">
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-sm text-muted-foreground">
                     {t("agentSettings.mcps.description")}
                   </p>
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href="/mcps">
-                      <Cable className="h-3.5 w-3.5" />
-                      {t("agentSettings.manage")}
-                    </Link>
-                  </Button>
+                  <div className="flex shrink-0 gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={exportRunner.isPending}
+                      onClick={async () => {
+                        try {
+                          const { servers, skipped } = await exportRunner.mutateAsync({
+                            workflow: { id: workflow.id, name: workflow.name },
+                            agent: { id: agent.id, name: agent.name },
+                          });
+                          if (servers === 0) {
+                            toast(t("agentSettings.exportRunnerNothing"), "error");
+                            return;
+                          }
+                          const skippedNote =
+                            skipped > 0
+                              ? ` ${t("workflowRow.exportedSkipped", { count: skipped })}`
+                              : "";
+                          toast(
+                            t("agentSettings.exportRunnerDone", {
+                              count: servers,
+                              file: runnerConfigFilename(workflow.name, agent.name),
+                            }) + skippedNote,
+                          );
+                        } catch (error) {
+                          toast(
+                            error instanceof Error ? error.message : t("common.failedToExport"),
+                            "error",
+                          );
+                        }
+                      }}
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      {t("agentSettings.exportRunner")}
+                    </Button>
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href="/mcps">
+                        <Cable className="h-3.5 w-3.5" />
+                        {t("agentSettings.manage")}
+                      </Link>
+                    </Button>
+                  </div>
                 </div>
                 {state.isLoading ? (
                   <LoaderRow label={t("common.loading")} />
