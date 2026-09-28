@@ -11,7 +11,7 @@ expensive: cron fires twice after a host restart and buys twice; a config edit t
 `500`; the key leaks and the whole balance goes with it. Here:
 
 - **Double fire** — the period (`2026-W40`) is part of the payment `reference`, so both runs
-  derive the same intent id. The script looks the receipt up before sending and finds it; even
+  derive the same intent id. `agent-rails pay` looks the receipt up before sending and finds it; even
   without that check, the program refuses a second receipt for the same intent.
 - **Fat finger** — a per-payment and daily cap the cron's key cannot change. `AMOUNT=500`
   is denied on-chain and alerted.

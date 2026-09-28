@@ -3,6 +3,7 @@ import {
   AmountConversionError,
   deriveIntentId,
   intentIdToHex,
+  SDK_REASON_CODES,
   toBaseUnits,
 } from "@agent-rails/contract";
 import { NATIVE_MINT } from "@agent-rails/contract/constants";
@@ -11,6 +12,7 @@ import {
   executePayment,
   isAgentRailsError,
   loadDestinationIndex,
+  precheckReceipt,
   resolveDestination,
 } from "@agent-rails/sdk";
 import { type Address, address } from "@solana/kit";
@@ -214,6 +216,30 @@ export async function runPay(options: PayOptions, ui: Ui): Promise<number> {
         `${JSON.stringify({
           outcome: "dry-run",
           intent_id: intentIdHex,
+          destination: destination.owner,
+          mint: mint.mint,
+          amount: amount.toString(),
+        })}\n`,
+      );
+    }
+    return 0;
+  }
+
+  const precheck = await precheckReceipt({
+    rpc: ctx.rpc as Parameters<typeof precheckReceipt>[0]["rpc"],
+    session,
+    intentId,
+  });
+  if (precheck.settled) {
+    ui.succeed("Payment already settled", precheck.receipt);
+    if (options.json) {
+      process.stdout.write(
+        `${JSON.stringify({
+          outcome: "settled",
+          already_settled: true,
+          reason_code: SDK_REASON_CODES.DUPLICATE_INTENT,
+          intent_id: intentIdHex,
+          receipt: precheck.receipt,
           destination: destination.owner,
           mint: mint.mint,
           amount: amount.toString(),

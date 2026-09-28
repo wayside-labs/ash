@@ -47,11 +47,13 @@ because each move looks locally optimal. Here:
 | Executor | [`agents/executor.md`](agents/executor.md) | [`mcp/executor.cursor.json`](mcp/executor.cursor.json) | Yes, desk labels only |
 | Guardian | `scripts/guardian-watch.ts` | — | Pause only |
 
-**Why the planner does not get `check_payment`.** It would be useful for the planner to
-dry-run its own proposal. But the MCP server has no read-only mode — a process that can call
-`agent_rails_check_payment` can call `agent_rails_execute_payment` — so the planner would
-become a second executor. The executor dry-runs every step instead, and stops on the first
-denial.
+**Should the planner get `check_payment`?** Optionally. With `AGENT_RAILS_TOOLS=readonly` the
+rails MCP registers the reads and `agent_rails_check_payment` but not
+`agent_rails_execute_payment`, so the planner can dry-run its own proposal without being able to
+send it. The process still loads the session key — simulation signs — so run a readonly planner
+only on a host you would trust with that key, bound to the same short session. The default here
+is stricter: the planner has no rails MCP, and the executor dry-runs every step, stopping on the
+first denial.
 
 ## Desk wallets, not venue addresses
 

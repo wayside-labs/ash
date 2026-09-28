@@ -4,8 +4,9 @@ import type { Agent, Workflow } from "@/lib/types";
 /** Whether a scoped MCP, skill, or document applies to this agent. */
 export function appliesToAgent(
   item: { scope: Scope; scopeName: string | null },
-  agent: Agent,
-  workflow: Workflow,
+  // Only the names decide scope, so the stored rows and the presented ones both qualify.
+  agent: Pick<Agent, "name">,
+  workflow: Pick<Workflow, "name">,
 ): boolean {
   switch (item.scope) {
     case "global":

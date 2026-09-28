@@ -79,6 +79,7 @@ function createContext(overrides: Partial<McpServerConfig> = {}): ServerContext 
     securityPreset: "balanced",
     securityOverrides: E2E_SECURITY_OVERRIDES,
     mintAliases: { SOL: "So11111111111111111111111111111111111111112" },
+    toolsMode: "full",
     ...overrides,
   };
 
@@ -137,6 +138,7 @@ function createContextConfigStub(): McpServerConfig {
     securityPreset: "balanced",
     securityOverrides: E2E_SECURITY_OVERRIDES,
     mintAliases: { SOL: "So11111111111111111111111111111111111111112" },
+    toolsMode: "full",
   };
 }
 

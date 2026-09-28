@@ -63,7 +63,7 @@ export function WorkflowRow({ workflow, onAddAgent }: WorkflowRowProps) {
    */
   const handleExport = async () => {
     try {
-      const { servers, skipped } = await exportConfig.mutateAsync(workflow);
+      const { servers, skipped } = await exportConfig.mutateAsync({ workflow });
       if (servers === 0) {
         toast(t("workflowRow.exportedNothing"), "error");
         return;

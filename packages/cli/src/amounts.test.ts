@@ -1,6 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { formatSol, parsePositiveInt, parseSol } from "./amounts.js";
+import { formatSol, parseHumanAmount, parsePositiveInt, parseSol } from "./amounts.js";
 import { CliError } from "./errors.js";
+
+describe("parseHumanAmount", () => {
+  it("uses mint decimals (USDC 6)", () => {
+    expect(parseHumanAmount("5", 6, "--per-tx")).toBe(5_000_000n);
+    expect(parseHumanAmount("0.5", 6, "--per-tx")).toBe(500_000n);
+  });
+
+  it("differs from parseSol by exactly the decimal gap on a 6-decimal mint", () => {
+    expect(parseSol("5", "--per-tx") / parseHumanAmount("5", 6, "--per-tx")).toBe(1000n);
+  });
+
+  it("rejects more fractional digits than the mint has", () => {
+    expect(() => parseHumanAmount("0.0000001", 6, "--per-tx")).toThrow(CliError);
+  });
+
+  it("rejects zero and malformed input", () => {
+    expect(() => parseHumanAmount("0", 6, "--daily")).toThrow(CliError);
+    expect(() => parseHumanAmount("-1", 6, "--daily")).toThrow(CliError);
+  });
+});
 
 describe("parseSol", () => {
   it("converts whole and fractional SOL to lamports", () => {

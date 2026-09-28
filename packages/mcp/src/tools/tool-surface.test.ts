@@ -1,6 +1,6 @@
 import { AGENT_TOOL_NAMES, FORBIDDEN_TOOL_PATTERNS } from "@agent-rails/contract";
 import { describe, expect, it } from "vitest";
-import { REGISTERED_TOOL_NAMES, TOOL_DEFINITIONS } from "./index.js";
+import { REGISTERED_TOOL_NAMES, TOOL_DEFINITIONS, toolsForMode } from "./index.js";
 
 /**
  * The agent surface is enforced by convention (ADR-007). This makes it mechanical.
@@ -32,5 +32,18 @@ describe("agent tool surface", () => {
     for (const tool of TOOL_DEFINITIONS) {
       expect(tool.description.length).toBeGreaterThan(40);
     }
+  });
+
+  it("readonly mode registers no tool that moves funds", () => {
+    const names = toolsForMode("readonly").map((tool) => tool.name);
+    expect(names).not.toContain("agent_rails_execute_payment");
+    expect(names).toContain("agent_rails_check_payment");
+    expect(names.every((name) => (AGENT_TOOL_NAMES as readonly string[]).includes(name))).toBe(
+      true,
+    );
+  });
+
+  it("full mode registers the whole contract surface", () => {
+    expect(toolsForMode("full").map((tool) => tool.name)).toEqual([...REGISTERED_TOOL_NAMES]);
   });
 });

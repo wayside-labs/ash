@@ -98,4 +98,18 @@ describe("loadConfigFromEnv", () => {
       /AGENT_RAILS_SECURITY must be one of/,
     );
   });
+
+  it("defaults AGENT_RAILS_TOOLS to full and accepts readonly", () => {
+    expect(loadConfigFromEnv(baseEnv).toolsMode).toBe("full");
+    expect(loadConfigFromEnv({ ...baseEnv, AGENT_RAILS_TOOLS: "readonly" }).toolsMode).toBe(
+      "readonly",
+    );
+  });
+
+  // A typo must not fall back to `full`: the operator asked for less privilege.
+  it("rejects an unknown AGENT_RAILS_TOOLS value", () => {
+    expect(() => loadConfigFromEnv({ ...baseEnv, AGENT_RAILS_TOOLS: "read_only" })).toThrow(
+      /AGENT_RAILS_TOOLS must be/,
+    );
+  });
 });

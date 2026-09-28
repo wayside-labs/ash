@@ -1,10 +1,11 @@
 import { fetchMaybePolicy } from "@agent-rails/client";
 import { fromBaseUnits, NATIVE_MINT } from "@agent-rails/contract";
 import { address } from "@solana/kit";
-import { SOL_DECIMALS } from "../amounts.js";
+import { parseHumanAmount, SOL_DECIMALS } from "../amounts.js";
 import { readTreasurySnapshot } from "../chain/read.js";
 import type { GlobalCliOptions } from "../cli-options.js";
 import { loadContext } from "../context.js";
+import { CliError } from "../errors.js";
 import { decodeFixedName } from "../names.js";
 import { parseAddress } from "../parse.js";
 import {
@@ -56,9 +57,9 @@ export async function runPolicyShow(options: PolicyShowOptions, ui: Ui): Promise
 }
 
 export type PolicySetOptions = GlobalCliOptions & {
-  perTx?: bigint;
-  daily?: bigint;
-  lifetime?: bigint;
+  perTx?: string;
+  daily?: string;
+  lifetime?: string;
   mint?: string;
 };
 
@@ -94,11 +95,31 @@ export async function runPolicySet(options: PolicySetOptions, ui: Ui): Promise<n
       : parseAddress(options.mint, "--mint")
     : address(NATIVE_MINT);
 
+  const ceiling = snapshot.ceilings.find((c) => c.mint === targetMint);
+  const isSol = targetMint === address(NATIVE_MINT);
+  // Parsing a token limit needs that mint's decimals. Guessing them is the bug this replaced:
+  // a 9-decimal guess on a 6-decimal mint writes a limit a thousand times too large.
+  if (!isSol && !ceiling) {
+    throw new CliError(`Mint ${targetMint} is not configured on this treasury`, {
+      hint: "The owner adds the mint and its ceiling first; a policy cannot price an unknown mint.",
+    });
+  }
+  const decimals = isSol ? SOL_DECIMALS : (ceiling?.decimals ?? SOL_DECIMALS);
+
   const updated = currentLimits.map((limit) => {
     if (limit.mint !== targetMint) return limit;
-    const daily = options.daily ?? limit.longWindowMax;
-    const perTx = options.perTx ?? limit.perTxMax;
-    const lifetime = options.lifetime ?? limit.lifetimeMax;
+    const daily =
+      options.daily !== undefined
+        ? parseHumanAmount(options.daily, decimals, "--daily")
+        : limit.longWindowMax;
+    const perTx =
+      options.perTx !== undefined
+        ? parseHumanAmount(options.perTx, decimals, "--per-tx")
+        : limit.perTxMax;
+    const lifetime =
+      options.lifetime !== undefined
+        ? parseHumanAmount(options.lifetime, decimals, "--lifetime")
+        : limit.lifetimeMax;
     return applyLimitDelta(limit, {
       perTxMax: perTx,
       shortWindowMax: daily,
@@ -132,8 +153,6 @@ export async function runPolicySet(options: PolicySetOptions, ui: Ui): Promise<n
 
   ui.heading("Update policy");
   const limit = updated.find((l) => l.mint === targetMint);
-  const ceiling = snapshot.ceilings.find((c) => c.mint === targetMint);
-  const decimals = ceiling?.decimals ?? SOL_DECIMALS;
   ui.field("Mint", targetMint);
   if (limit) {
     ui.field("Per tx", fromBaseUnits(limit.perTxMax, decimals));

@@ -149,31 +149,27 @@ receipt_exists() {
 }
 
 cmd_tick() {
-  local reference plan intent_id out code outcome reason
+  local reference out code outcome reason intent_id already
   reference="${REFERENCE_PREFIX}/$(period_key)"
 
-  plan=$(pay --reference "$reference" --dry-run) || die "dry run failed — run it by hand without --json"
-  intent_id=$(printf '%s' "$plan" | json_field intent_id)
-  [[ -n $intent_id ]] || die "dry run returned no intent id"
-
-  # Checked before sending, not inferred from a denial afterwards: a replayed intent is
-  # refused when its receipt is created, and that refusal does not carry a reason code that
-  # says "already settled".
-  if receipt_exists "$intent_id"; then
-    record already-settled "$reference" "{\"intent_id\":\"${intent_id}\"}"
-    printf 'already settled %s (%s)\n' "$reference" "$intent_id"
-    return 0
-  fi
-
+  # `pay` looks the receipt up before sending, so a second tick in the same period comes
+  # back `settled` with `already_settled: true` and sends nothing.
   out=$(pay --reference "$reference")
   code=$?
   [[ -n $out ]] || die "pay produced no output (exit $code) — run it by hand without --json"
   outcome=$(printf '%s' "$out" | json_field outcome)
   reason=$(printf '%s' "$out" | json_field reason_code)
+  intent_id=$(printf '%s' "$out" | json_field intent_id)
+  already=$(printf '%s' "$out" | json_field already_settled)
 
   if [[ $outcome == "settled" ]]; then
-    record settled "$reference" "$out"
-    printf 'settled %s: %s to %s\n' "$reference" "$AMOUNT" "$DESTINATION"
+    if [[ $already == "true" ]]; then
+      record already-settled "$reference" "$out"
+      printf 'already settled %s (%s)\n' "$reference" "$intent_id"
+    else
+      record settled "$reference" "$out"
+      printf 'settled %s: %s to %s\n' "$reference" "$AMOUNT" "$DESTINATION"
+    fi
     return 0
   fi
 
@@ -185,8 +181,10 @@ cmd_tick() {
     die "indeterminate $reference — not retrying; the next tick in this period is safe" 75
   fi
 
-  # A concurrent run may have settled this period between the lookup and the send.
-  if receipt_exists "$intent_id"; then
+  # A concurrent tick can settle this period between `pay`'s lookup and its send. The loser
+  # is refused when the receipt is created, and that refusal carries no "already settled"
+  # reason code — so ask the receipts instead of trusting the denial.
+  if [[ -n $intent_id ]] && receipt_exists "$intent_id"; then
     record already-settled "$reference" "$out"
     printf 'already settled %s (%s)\n' "$reference" "$intent_id"
     return 0

@@ -9,6 +9,7 @@ import {
   mcpListDestinationsSchema,
 } from "@agent-rails/contract";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServerConfig } from "../config.js";
 import type { ServerContext } from "../context.js";
 import { handleCheckPayment } from "../handlers/check-payment.js";
 import { handleExecutePayment } from "../handlers/execute-payment.js";
@@ -92,8 +93,28 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
 /** Names actually registered, for the CI assertion against the committed contract. */
 export const REGISTERED_TOOL_NAMES: readonly string[] = TOOL_DEFINITIONS.map((tool) => tool.name);
 
+/**
+ * What `AGENT_RAILS_TOOLS=readonly` registers. An allowlist rather than "everything but
+ * execute": a write tool added later stays out of readonly mode until someone puts it here.
+ */
+export const READONLY_TOOL_NAMES: ReadonlySet<AgentToolName> = new Set<AgentToolName>([
+  "agent_rails_get_session",
+  "agent_rails_get_policy",
+  "agent_rails_list_destinations",
+  "agent_rails_get_payment_status",
+  "agent_rails_check_payment",
+]);
+
+export function toolsForMode(mode: McpServerConfig["toolsMode"]): ToolDefinition[] {
+  return mode === "readonly"
+    ? TOOL_DEFINITIONS.filter((tool) => READONLY_TOOL_NAMES.has(tool.name))
+    : TOOL_DEFINITIONS;
+}
+
 export function registerTools(server: McpServer, context: ServerContext): void {
-  for (const tool of TOOL_DEFINITIONS) {
+  const tools = toolsForMode(context.runtime.config.toolsMode);
+
+  for (const tool of tools) {
     server.registerTool(
       tool.name,
       { description: tool.description, inputSchema: tool.inputSchema },

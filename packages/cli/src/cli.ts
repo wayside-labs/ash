@@ -265,20 +265,18 @@ addGlobalOptions(
     .description("Raise or lower the owner ceiling for a mint")
     .addOption(new Option("--mint <mint>", "Mint address or SOL").default("SOL"))
     .addOption(
-      new Option("--per-tx <sol>", "Max per payment")
-        .argParser(argParser((v) => parseSol(v, "--per-tx")))
-        .makeOptionMandatory(),
+      new Option(
+        "--per-tx <amount>",
+        "Max per payment in human units for the mint",
+      ).makeOptionMandatory(),
     )
     .addOption(
-      new Option("--daily <sol>", "Max per day")
-        .argParser(argParser((v) => parseSol(v, "--daily")))
-        .makeOptionMandatory(),
+      new Option(
+        "--daily <amount>",
+        "Max per day in human units for the mint",
+      ).makeOptionMandatory(),
     )
-    .addOption(
-      new Option("--lifetime <sol>", "Max lifetime").argParser(
-        argParser((v) => parseSol(v, "--lifetime")),
-      ),
-    )
+    .addOption(new Option("--lifetime <amount>", "Max lifetime in human units for the mint"))
     .action(async (options) => {
       const parsed = parseGlobalOptions(options);
       const ui = new Ui({ quiet: parsed.json });
@@ -286,9 +284,9 @@ addGlobalOptions(
         {
           ...parsed,
           mint: options.mint as string,
-          perTx: options.perTx as bigint,
-          daily: options.daily as bigint,
-          ...(typeof options.lifetime === "bigint" ? { lifetime: options.lifetime } : {}),
+          perTx: options.perTx as string,
+          daily: options.daily as string,
+          ...(typeof options.lifetime === "string" ? { lifetime: options.lifetime } : {}),
         },
         ui,
       );
@@ -306,19 +304,9 @@ addGlobalOptions(
   policy
     .command("set")
     .description("Rewrite the full PolicyInput (never per-field patch on-chain)")
-    .addOption(
-      new Option("--per-tx <sol>", "Per-payment cap").argParser(
-        argParser((v) => parseSol(v, "--per-tx")),
-      ),
-    )
-    .addOption(
-      new Option("--daily <sol>", "Daily cap").argParser(argParser((v) => parseSol(v, "--daily"))),
-    )
-    .addOption(
-      new Option("--lifetime <sol>", "Lifetime cap").argParser(
-        argParser((v) => parseSol(v, "--lifetime")),
-      ),
-    )
+    .addOption(new Option("--per-tx <amount>", "Per-payment cap in human units for --mint"))
+    .addOption(new Option("--daily <amount>", "Daily cap in human units for --mint"))
+    .addOption(new Option("--lifetime <amount>", "Lifetime cap in human units for --mint"))
     .addOption(new Option("--mint <mint>", "Mint to update (default: SOL)"))
     .action(async (options) => {
       const parsed = parseGlobalOptions(options);
@@ -326,9 +314,9 @@ addGlobalOptions(
       process.exitCode = await runPolicySet(
         {
           ...parsed,
-          ...(typeof options.perTx === "bigint" ? { perTx: options.perTx } : {}),
-          ...(typeof options.daily === "bigint" ? { daily: options.daily } : {}),
-          ...(typeof options.lifetime === "bigint" ? { lifetime: options.lifetime } : {}),
+          ...(typeof options.perTx === "string" ? { perTx: options.perTx } : {}),
+          ...(typeof options.daily === "string" ? { daily: options.daily } : {}),
+          ...(typeof options.lifetime === "string" ? { lifetime: options.lifetime } : {}),
           ...(typeof options.mint === "string" ? { mint: options.mint } : {}),
         },
         ui,

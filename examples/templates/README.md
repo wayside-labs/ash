@@ -40,10 +40,10 @@ Devnet first, all three. Nothing here is a mainnet promise; see the trust phases
 
 Every template keeps to the same three rules:
 
-1. **Only the role that pays gets `agent-rails-mcp`.** Scouts, researchers and planners run
-   with read-only MCPs (fetch, search) or none. The MCP server has no read-only mode, so an
-   agent that can call `check_payment` can also call `execute_payment` — the split is by
-   *which process has the config*, not by which tools the model is told to use.
+1. **Only the role that pays gets `agent-rails-mcp` with `AGENT_RAILS_TOOLS=full`.** Scouts and
+   planners use fetch/search MCPs, or `AGENT_RAILS_TOOLS=readonly` on the rails MCP (check/list
+   only). Download runner config **per agent** from the dashboard agent settings MCP tab, not
+   the workflow row (shared export omits agent-scoped servers).
 2. **Every privileged step is a command a person runs.** Ceilings, policy, allowlist entries
    and sessions come from the CLI or the dashboard. No template asks an agent to widen its
    own limits, and none ships a tool that could (`AGENT_TOOL_NAMES` in
@@ -77,17 +77,13 @@ Every template keeps to the same three rules:
 | 6. Kill switch | `scripts/guardian-watch.ts` | [`docs/runbooks/guardian-watch.md`](../../docs/runbooks/guardian-watch.md) |
 | 7. Alerts | `AGENT_RAILS_ALERT_WEBHOOK_URL`, `pnpm alert-watch` | [`docs/runbooks/alert-webhooks.md`](../../docs/runbooks/alert-webhooks.md) |
 
-**Token units.** `init --token-per-tx / --token-daily / --token-lifetime` scale by the mint's
-own decimals. `policy set` and `ceiling set` currently parse every amount as SOL (9 decimals)
-even with `--mint`, so on a 6-decimal USDC mint `--per-tx 5` means 5,000 USDC, not 5. The
-ceiling preflight usually refuses it, but do not rely on that: set token limits at `init`,
-or divide by 1,000 and confirm with `pnpm agent-rails policy show` before signing anything.
+**Token units.** `init --token-per-tx / --token-daily / --token-lifetime`, `policy set`, and
+`ceiling set` all parse amounts in **human units for the mint** (`--per-tx 5` on USDC is 5
+USDC). Confirm with `pnpm agent-rails policy show` before signing.
 
-**Dashboard export is per workflow.** `compileRunnerConfig` collects every enabled MCP in
-scope for *any* agent in the workflow into one file, so an `agent`-scoped rails MCP still
-lands in the scout's config if the scout shares the workflow. Until the export is per
-agent, use the template's per-role `mcp/*.cursor.json` files, or put the paying role in its
-own workflow.
+**Dashboard export.** The workflow row downloads **shared** MCPs (global + workflow scope).
+Per-role rails MCPs: agent settings → MCP tab → **Download .mcp.json**, or the template's
+`mcp/*.cursor.json` files.
 
 `policy.example.json` in each template is a statement of intent for a reviewer: no tool reads
 it. The commands in each README are what apply it.
