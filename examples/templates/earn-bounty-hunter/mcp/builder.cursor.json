@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "agent-rails": {
+      "command": "npx",
+      "args": ["-y", "@agent-rails/mcp"],
+      "env": {
+        "AGENT_RAILS_RPC": "https://api.devnet.solana.com",
+        "AGENT_RAILS_SESSION": "<session PDA from `session create --label earn-<bounty-slug>`>",
+        "AGENT_RAILS_SIGNER": "~/.agent-rails/earn/<label>-session-keypair.json",
+        "AGENT_RAILS_FEE_PAYER": "~/.agent-rails/earn/fee-payer-keypair.json",
+        "AGENT_RAILS_SECURITY": "balanced",
+        "AGENT_RAILS_SINK": "~/.agent-rails/earn/payments.jsonl",
+        "AGENT_RAILS_ALERT_WEBHOOK_URL": "<optional: https webhook for payment_denied>"
+      }
+    }
+  }
+}

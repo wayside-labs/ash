@@ -1,0 +1,33 @@
+{
+  "$comment": "Statement of intent for review. No tool reads this file; the commands in README.md apply it.",
+  "template": "dca-sol",
+  "cluster": "devnet",
+  "policyName": "dca-usdc",
+  "destinationMode": "allowlist",
+  "limits": [
+    {
+      "mint": "<MOCK_USDC_MINT>",
+      "decimals": 6,
+      "perTx": "5",
+      "daily": "5",
+      "lifetime": "260"
+    },
+    {
+      "mint": "SOL",
+      "perTx": "0.000001",
+      "daily": "0.000001",
+      "lifetime": "0.000001",
+      "$comment": "Near zero: the cron never pays SOL, and init requires a SOL limit."
+    }
+  ],
+  "destinations": [{ "label": "dca-desk", "owner": "<DESK_WALLET>" }],
+  "session": {
+    "label": "dca",
+    "ttlHours": 8760
+  },
+  "schedule": {
+    "cadence": "weekly",
+    "amount": "5",
+    "referencePattern": "dca-usdc/<ISO week>"
+  }
+}

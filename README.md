@@ -182,6 +182,7 @@ CI runs all of the above plus `cargo deny`, gitleaks and semgrep on every pull r
 | `docs/runbooks/reference-agent.md` | In-house devnet agent — MCP, cron, metrics until 12/10 |
 | `docs/runbooks/dashboard-smoke.md` | Ten-step manual smoke before demo recording |
 | `docs/runbooks/alert-webhooks.md` | Denial + headroom webhooks (`AGENT_RAILS_ALERT_WEBHOOK_URL`, `pnpm alert-watch`) |
+| `examples/templates/README.md` | Starter templates — Earn bounty hunter, DCA, capped yield rebalance — and which role gets the rails MCP |
 | `docs/strategy/colosseum-pre-hackathon-declaration.md` | Copy for the Colosseum pre-existing work field |
 
 Several directories carry their own `CLAUDE.md` with rules scoped to that subtree.
