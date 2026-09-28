@@ -1,158 +1,121 @@
-# Runbook — a plataforma própria na Oracle Cloud
+# Runbook — a plataforma própria na VPS
 
-**Escopo:** o servidor da ADR-019 — dashboard e, na etapa 2, o Supabase self-hosted, numa VM
-Always Free da Oracle Cloud. Enquanto a etapa 1 não vira, a produção continua em
+**Escopo:** o servidor da ADR-019 — dashboard e, na etapa 2, o Supabase self-hosted, numa VPS
+paga da Hostinger. Enquanto a etapa 1 não vira, a produção continua em
 [`deploy-vercel.md`](deploy-vercel.md).
 
-**Estado em 2026-09-24 — VM de apoio endurecida; VM principal aguardando capacidade.**
+**Estado em 2026-09-28 — VPS contratada, endurecida e vazia.**
 
 | | |
 |---|---|
-| Tenancy | conta Oracle Cloud do Lucas, home region **São Paulo** (`sa-saopaulo-1`) — permanente |
-| VCN | `vcn-20260924-1730`, sub-rede pública `subnet-20260924-1730` |
-| IP | **reservado** (sobrevive à troca de máquina); o endereço não fica no repositório — peça a um sócio |
-| VM de apoio ✅ | `agent-rails-02`, `VM.Standard.E2.1.Micro`, x86, 1/8 OCPU, 1 GB, Ubuntu 22.04 |
-| VM principal ⏳ | `VM.Standard.A1.Flex`, arm64, 4 OCPU / 24 GB, Ubuntu 24.04 — *out of capacity* em 24/09 |
+| Provedor | Hostinger, plano **KVM 2**, cobrado em reais, conta do Lucas |
+| Máquina | x86_64, 2 vCPU AMD EPYC 9354P, 7,8 GiB RAM, ~97 GB NVMe, **Ubuntu 22.04**, hostname `agent-rails` |
+| Onde | **costa leste dos EUA** — medido da máquina: 14 ms até `us-east-1`, ~120 ms até `sa-east-1` |
+| IP | fixo do plano; **o endereço não fica no repositório** — peça a um sócio |
 
 O endereço fica fora do repositório porque o repositório vai ser aberto para os avaliadores do
 hackathon, e um IP de servidor publicado é um alvo a mais sem nenhum ganho para quem lê.
 
----
-
-## 0. Leia isto antes de tudo: a micro não é o servidor
-
-A micro existe para rodar um processo Node de longa duração — o agente de referência do plano
-de execução — e para o time aprender a máquina enquanto a A1 não sai. **Ela não roda o build do
-Next nem o Supabase.** Um `next build` do workspace em 1 GB e 1/8 de OCPU troca para swap e não
-termina em tempo útil; o Supabase self-hosted sozinho pede mais memória do que ela tem.
-
-A micro é **x86** e a A1 é **arm64**: nada compilado numa roda na outra.
+A primeira versão deste runbook era para uma VM Always Free da Oracle. Ela foi abandonada — o
+porquê está na ADR-019. A conta Oracle e a VM de apoio `agent-rails-02` serão encerradas.
 
 ---
 
-## 1. Conseguir a A1 ⏳
+## 1. Painel da Hostinger ✅ / ⏳
 
-O Always Free só existe na home region, e São Paulo tem um único domínio de disponibilidade.
-Trocar de região não resolve; insistir resolve.
-
-1. **Compute → Instâncias → Criar instância**, nome `agent-rails-a1`.
-2. **Imagem e forma → Editar**: imagem Canonical Ubuntu **24.04**; forma **Ampere →
-   `VM.Standard.A1.Flex`**, abrir a setinha ▸ e pôr **4 OCPUs / 24 GB**.
-3. **Rede: selecionar a VCN existente** (`vcn-20260924-1730`) e a sub-rede pública. Não criar
-   outra: o Always Free tem teto de VCNs, e as regras de firewall valem por sub-rede.
-4. Chaves SSH públicas: as mesmas da §3.
-5. **Volume de inicialização: 100 GB.** O teto grátis é 200 GB *somando todas as VMs*; a micro
-   já ocupa ~100.
-6. **Salvar como pilha** (`agent-rails-a1`). Cada tentativa passa a ser *Pilhas →
-   agent-rails-a1 → Aplicar*. A falha não cria nem cobra nada.
-
-Madrugada e início da manhã têm mais chance. Se em dois dias não sair: (a) automatizar as
-tentativas pela OCI CLI, com um usuário IAM restrito a compute; ou (b) converter a conta para
-*Pay As You Go*, que continua gratuita dentro dos limites Always Free e, por relato da
-comunidade — não por garantia da Oracle —, destrava a capacidade. (b) só com o alarme da §2
-ligado e com acordo dos dois sócios.
-
-Quando a A1 subir, o IP reservado passa para ela: VNIC da micro → *Endereços IP* → editar →
-sem IP público; VNIC da A1 → editar → **IP público reservado existente**.
+- ⏳ MFA do dono da conta.
+- ⏳ **Segundo administrador (Ronaldo)** pelo compartilhamento de conta do painel, com login e
+  MFA próprios. Ninguém compartilha o login do dono.
+- O **console de recuperação** do painel não passa pelo SSH: é a volta se o acesso por chave
+  se perder. Como o login de `root` por SSH está desligado, o terminal web do painel pode não
+  funcionar — conte com o console de recuperação, não com ele.
 
 ---
 
-## 2. Conta Oracle ✅ / ⏳
-
-- ✅ MFA do dono da tenancy.
-- ✅ **Alarme de gasto:** *Billing & Cost Management → Budgets*, US$ 1, alerta em 1% de gasto
-  real. É o que torna qualquer engano visível no mesmo dia.
-- ⏳ **Segundo administrador (Ronaldo).** Ninguém compartilha o login do dono.
-  1. *Identity & Security → Domains → Default domain → Users → Create user*, com o e-mail dele.
-  2. *Groups → Administrators → Add user to group*.
-  3. Ele recebe o convite, define a senha e configura o próprio MFA.
-
----
-
-## 3. Acesso SSH ✅ / ⏳
+## 2. Acesso SSH ✅
 
 Regra: **uma pessoa, um usuário, uma chave própria.** Nenhuma chave privada é copiada entre
 pessoas; no servidor só existem chaves públicas.
 
 | Usuário | Quem | sudo | Estado |
 |---|---|---|---|
-| `ubuntu` | padrão da imagem; hoje a chave de automação usada pelo assistente do Lucas | sim | ✅ |
-| `ronaldo` | Ronaldo, chave publicada em `github.com/0xcf02.keys` (`SHA256:uc7Gv1Rz…K7qk`) | sim | ✅ criado em 24/09; ⏳ primeiro login dele |
-| `lucas` | Lucas, chave própria | sim | ⏳ |
+| `root` | — | — | **login por SSH desligado** |
+| `lucas` | Lucas, chave própria (`SHA256:ulEjKtRT…fWok`) | sim, sem senha | ✅ 28/09 |
+| `ronaldo` | Ronaldo, chave de `github.com/0xcf02.keys` (`SHA256:uc7Gv1Rz…K7qk`) | sim, sem senha | ✅ 28/09; ⏳ primeiro login dele |
 | `deploy` | serviços e deploys — nunca uma pessoa | **não** | ⏳ criado com a etapa 1 |
+
+Os dois usuários pessoais estão no grupo `docker` e não têm senha (`passwd -l`): o login é só
+por chave, e `NOPASSWD` no sudo evita criar uma senha só para ele.
 
 Criar um usuário pessoal (feito por quem já tem sudo):
 
 ```bash
-sudo adduser --disabled-password --gecos "" ronaldo
-sudo usermod -aG sudo ronaldo
-echo "ronaldo ALL=(ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/90-ronaldo >/dev/null
-sudo install -d -m 700 -o ronaldo -g ronaldo /home/ronaldo/.ssh
-curl -fsS https://github.com/0xcf02.keys | sudo tee /home/ronaldo/.ssh/authorized_keys >/dev/null
-sudo chown ronaldo:ronaldo /home/ronaldo/.ssh/authorized_keys && sudo chmod 600 /home/ronaldo/.ssh/authorized_keys
+sudo useradd -m -s /bin/bash fulano
+sudo usermod -aG sudo,docker fulano
+sudo passwd -l fulano
+sudo install -d -m 700 -o fulano -g fulano /home/fulano/.ssh
+curl -fsS https://github.com/<usuario-github>.keys | sudo tee /home/fulano/.ssh/authorized_keys >/dev/null
+sudo chown fulano:fulano /home/fulano/.ssh/authorized_keys && sudo chmod 600 /home/fulano/.ssh/authorized_keys
+echo "fulano ALL=(ALL) NOPASSWD:ALL" | sudo tee -a /etc/sudoers.d/90-agent-rails >/dev/null && sudo visudo -c
 ```
 
-`NOPASSWD` porque os usuários não têm senha (login só por chave): com senha exigida no sudo,
-seria preciso criar e guardar uma senha só para isso.
+E acrescentar o nome em `AllowUsers` (§3) — sem isso o sshd recusa a pessoa mesmo com a chave
+certa.
 
 No computador de cada um, uma entrada em `~/.ssh/config`:
 
 ```
 Host agent-rails-vps
-    HostName <IP reservado>
+    HostName <IP da VPS>
     User <seu usuário>
     IdentityFile ~/.ssh/<sua chave>
     IdentitiesOnly yes
 ```
 
 `IdentitiesOnly yes` não é enfeite: sem ele o cliente oferece todas as chaves do diretório, o
-servidor corta em `MaxAuthTries 3` e o fail2ban (§4) bane o seu próprio IP.
+servidor corta em `MaxAuthTries 3` e o fail2ban (§3) bane o seu próprio IP.
 
-**No Windows (Git Bash), não use `ControlMaster`.** O OpenSSH de lá falha no repasse do socket
-(`mm_send_fd: Broken pipe`). E agrupe comandos numa conexão só: em 24/09, uma rajada de
-conexões seguidas rendeu ~5 min de timeout sem o pacote sequer chegar ao servidor — o log do
-sshd não registrou nada. É um bloqueio no caminho, não o fail2ban.
+**Agrupe comandos numa conexão só.** A Hostinger corta rajadas de conexões SSH seguidas — já
+aconteceu na outra VPS do time. No Windows (Git Bash), não use `ControlMaster`: o OpenSSH de lá
+falha no repasse do socket (`mm_send_fd: Broken pipe`). E, se estiver numa VPN, é ela o primeiro
+suspeito de um SSH lento ou que não conecta.
 
 ---
 
-## 4. Endurecimento da VM ✅
+## 3. Endurecimento ✅
 
-Feito na micro em 24/09; a A1 recebe o mesmo.
+Feito em 28/09, nesta ordem — os usuários pessoais foram criados e **testados** antes de o root
+ser desligado; inverter a ordem é como se tranca alguém para fora.
 
 | Item | Como | Por quê |
 |---|---|---|
-| SSH | `/etc/ssh/sshd_config.d/00-hardening.conf`: `PermitRootLogin no`, `PasswordAuthentication no`, `KbdInteractiveAuthentication no`, `MaxAuthTries 3`, `X11Forwarding no` | O nome `00-` é o ponto: no sshd **o primeiro valor lido vale**, e o drop-in do cloud-init (`60-cloudimg-settings.conf`) viria antes com outro nome. Validar com `sudo sshd -t` antes de `systemctl reload ssh`. |
-| fail2ban | `/etc/fail2ban/jail.local`: jail `sshd`, `backend = auto`, `logpath = /var/log/auth.log`, 5 falhas em 10 min → 1 h | No Ubuntu o serviço é `ssh.service`. Com `backend = systemd`, o filtro casa com `sshd.service`, que não existe: o fail2ban fica "ativo" e não vê nada. Conferir com `sudo fail2ban-regex /var/log/auth.log /etc/fail2ban/filter.d/sshd.conf` — tem de haver *matched*. |
-| Swap | `/swapfile` 2 GB, `vm.swappiness=10`, no `fstab` | 1 GB sem swap trava em qualquer pico. (`mkswap -q` não existe no 22.04.) |
-| Atualizações | `unattended-upgrades` ligado (padrão da imagem); `full-upgrade` + reboot aplicados | O reboot da micro leva ~5 min. Não fique martelando a porta enquanto isso. |
-| Runtime | Node 22 (NodeSource), pnpm 10.6.5 via corepack, git | As versões que o `package.json` da raiz exige. |
+| SSH | `/etc/ssh/sshd_config.d/00-hardening.conf`: `PermitRootLogin no`, `PasswordAuthentication no`, `KbdInteractiveAuthentication no`, `AllowUsers lucas ronaldo`, `MaxAuthTries 3`, `X11Forwarding no` | O nome `00-` é o ponto: no sshd **o primeiro valor lido vale**, e a imagem traz `50-cloud-init.conf` e `60-cloudimg-settings.conf`. Validar com `sudo sshd -t` e conferir o efetivo com `sudo sshd -T` antes de `systemctl reload ssh`. Testado de fora: root e senha recusados. |
+| Firewall | `ufw`: nega entrada por padrão, libera só `22/tcp` | — |
+| fail2ban | `/etc/fail2ban/jail.d/sshd.local`: `backend = systemd`, `journalmatch = _COMM=sshd + _COMM=sshd-session`, 5 falhas em 10 min → 1 h | O filtro padrão procura a unidade `sshd.service`, que no Ubuntu se chama `ssh.service`, e o OpenSSH ≥ 9.8 ainda loga como `sshd-session`: sem o `journalmatch`, o fail2ban fica "ativo" e não vê nada. |
+| Swap | `/swapfile` 2 GB, `vm.swappiness=10`, no `fstab` | Folga para picos de build. |
+| Atualizações | `apt upgrade` aplicado; `unattended-upgrades` ligado | — |
+| Docker | Docker CE + Compose do repositório oficial; `/etc/docker/daemon.json` com `"ip": "127.0.0.1"` e log `json-file` 10 MB × 3 | O Docker abre portas **por fora do `ufw`**: na outra VPS do time, o Kong do Supabase respondia na 8000/8443 para a internet com o `ufw` liberando só a 22. Com `ip` em `127.0.0.1`, `-p 8000:8000` só escuta local — testado. Expor ao mundo passa a exigir escrever o endereço, e o caminho certo é o proxy. |
+| Runtime | Node 22 (NodeSource), corepack ligado | Dentro do repositório o corepack usa o pnpm do `packageManager` (10.6.5) — testado. Fora dele, o pnpm global é outra versão; não importa. |
 
-Um scanner da internet bateu na porta 22 minutos depois de o IP existir. É o normal, e é por
-isso que esta seção vem antes de qualquer serviço.
+Os scripts usados vivem fora do repositório; esta tabela é a fonte do que foi feito.
 
 ---
 
-## 5. Firewall: são duas camadas ⏳
+## 4. Abrir HTTP/HTTPS ⏳
 
-Hoje só a 22 está aberta. Para servir HTTP/HTTPS é preciso abrir **nos dois lugares**:
-
-1. **Security List** da sub-rede: *ingress* TCP 80 e 443 de `0.0.0.0/0`.
-2. **iptables da própria imagem**, que termina em `REJECT`. A regra nova entra *antes* do
-   REJECT e é persistida:
+Hoje só a 22 está aberta. Para o proxy:
 
 ```bash
-sudo iptables -I INPUT 5 -p tcp -m state --state NEW -m multiport --dports 80,443 -j ACCEPT
-sudo netfilter-persistent save
+sudo ufw allow 80,443/tcp
 ```
 
-Abrir só a Security List é o erro clássico: a porta continua fechada e nada no painel explica
-por quê.
+Só o Caddy escuta em 80/443. Nenhum container publica porta para fora (§3, Docker).
 
 ---
 
-## 6. Etapa 1 — dashboard na A1 ⏳
+## 5. Etapa 1 — dashboard na VPS ⏳
 
-Pré-requisitos: A1 de pé, domínio decidido, ADR-019 aceita.
+Pré-requisitos: domínio decidido, ADR-019 aceita.
 
 1. Usuário `deploy`; código em `/srv/agent-rails` com acesso de leitura ao repositório por
    **deploy key somente leitura** gerada no servidor e cadastrada por um admin do repo.
@@ -167,20 +130,38 @@ Pré-requisitos: A1 de pé, domínio decidido, ADR-019 aceita.
 6. No Supabase: Redirect URL `https://<domínio>/auth/callback`.
 7. Conferir com os três `curl` da §5 do `deploy-vercel.md`, trocando `U`. Só então apontar o DNS.
 
+**Latência:** a VPS está nos EUA e o Supabase gerenciado em São Paulo; cada chamada do servidor
+ao banco paga ~120 ms de ida e volta. Medir o tempo das páginas autenticadas antes de apontar o
+DNS — se ficar ruim, a resposta é a etapa 2 ou mudar a VPS de data center, não otimizar código.
+
 **Rollback:** apontar o DNS de volta. A Vercel continua de pé até a etapa 1 estar estável.
 
-## 7. Etapa 2 — Supabase na A1 ⏳
+---
+
+## 6. Etapa 2 — Supabase na VPS ⏳
 
 Não agendar antes de verificar:
 
-- imagens arm64 de todos os serviços do Compose self-hosted;
+- memória: com a etapa 1 e os serviços de vendas rodando, sobrarem **3 GB** — o Supabase
+  self-hosted usa ~1,3 GB medido na outra VPS do time;
 - versão do Auth self-hosted com o provider **Web3/Solana** (o `signInWithWeb3` da ADR-017);
-- **backup noturno fora da VM** (`pg_dump` para Object Storage) funcionando e **restaurado uma
-  vez** — sem isso, o gerenciado era mais seguro.
+- **backup noturno fora da VPS** (`pg_dump` para um storage externo) funcionando e
+  **restaurado uma vez** — sem isso, o gerenciado era mais seguro. O backup do plano da
+  Hostinger não substitui este.
 
 Migração: `pg_dump` do projeto gerenciado → `pg_restore` local → providers Google e Web3
 reconfigurados → redirect do Google Cloud apontando para o callback do Auth próprio → troca de
 `NEXT_PUBLIC_SUPABASE_URL` e das chaves → rebuild (as `NEXT_PUBLIC_*` são inlinadas no build).
+O Kong do Compose publica em `127.0.0.1`, e o Caddy repassa o subdomínio da API para ele.
+
+---
+
+## 7. Dividindo a máquina com os serviços de vendas
+
+Site, blog e disparo de e-mail do time rodam na mesma VPS, num projeto Compose próprio e com
+usuário de serviço próprio — nunca dentro de `/srv/agent-rails` nem como `deploy`. Separar numa
+segunda VPS quando a memória apertar ou antes de o produto guardar algo que um cliente chamaria
+de produção (ADR-019, *Consequences*).
 
 ---
 
