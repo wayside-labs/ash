@@ -4,6 +4,10 @@ Recorte executável. Posicionamento, regras de negócio, preços, roteiro de ví
 deck vivem no documento completo:
 <https://claude.ai/code/artifact/86d56290-183d-4018-836e-d9b4666d6ded>
 
+**Relatório de implementação (prompts `texto.txt`, PRs #65–#73):**
+[colosseum-implementation-report.md](./colosseum-implementation-report.md) ·
+[tabela resumida](./colosseum-prompt-status.md)
+
 **Prazo real: 12/10.** Meta interna: **10/10**, com dois dias de margem deliberada.
 
 **Reposicionamento:** de "guardrail framework for agent payments on Solana" para
@@ -84,29 +88,26 @@ Elegibilidade: 18+, projeto novo, captação abaixo de US$ 3 mi. Todos ok.
 
 | | Entrega | Onde toca | Dono |
 |---|---|---|---|
-| F1 | USDC ponta a ponta | `api/solana/vault-transfer/route.ts` só aceita lamports — adicionar SPL/ATA. Leitura por mint via `vault-balances` (que já existe) | 0xcf02 (escrita) / Lucas (leitura) |
-| F2a | Leitor de `IntentReceipt` + `verifyAuditChain` em TS espelhando `crates/agent-rails-policy/src/audit.rs`, com os vetores fixos do Rust como teste compartilhado | `packages/sdk` | 0xcf02 |
-| F2b | Tabela de histórico + export CSV/JSON | `packages/dashboard` | Lucas |
-| F3 | CLI de operador: `pay`, `policy set`, `pause`, `audit export`, `session revoke` — hoje só existe `init` | `packages/cli` | 0xcf02 |
-| F4 | `scripts/demo.sh` reprodutível, com assinaturas devnet públicas | — | 0xcf02 |
-
-F2a é a maior lacuna real do repositório: a cadeia de auditoria existe em Rust e não
-tem nenhum leitor em TypeScript.
+| F1 | USDC ponta a ponta | `vault-transfer` aceita SOL e SPL (`mint` + ATA). Leitura por mint via `vault-balances` | 0xcf02 — **feito** (escrita) / Lucas (leitura) |
+| F2a | Leitor de `IntentReceipt` + `verifyAuditChain` em TS espelhando `crates/agent-rails-policy/src/audit.rs`, com os vetores fixos do Rust como teste compartilhado | `packages/sdk` | 0xcf02 — **feito** |
+| F2b | Histórico + export CSV/JSON — **Metrics Phase B** (`docs/product/metrics-page.md`; Phase A em `/metrics` via #63) | `packages/dashboard` | 0xcf02 — **feito** |
+| F3 | CLI de operador: `pay`, `policy set`, `pause`, `audit export`, `session revoke` — hoje só existe `init` | `packages/cli` | 0xcf02 — **feito** |
+| F4 | `scripts/demo.sh` reprodutível, com assinaturas devnet públicas | `scripts/demo.sh`, `scripts/demo-retry.mjs` | 0xcf02 — **feito** |
 
 ### P1
 
 | | Entrega | Dono |
 |---|---|---|
-| F5 | Guardian-as-a-Service mínimo: watcher que chama `pause` ao quebrar regra | 0xcf02 |
-| F6 | Adapter Vercel AI SDK (~200 linhas) + snippet Cursor | 0xcf02 |
-| F7 | Landing + waitlist + **"Try on devnet" sem cadastro** | Lucas |
-| F8 | Alertas em negação e em 80% do teto (webhook genérico + Slack) | Lucas |
-
-**"Try on devnet"**: um botão que provisiona uma tesouraria de demonstração no
-navegador — sessão em cookie, zero auth, zero billing, zero tenancy. O visitante
-reproduz a injeção de prompt sozinho e sai com o link do explorer.
+| F5 | Guardian-as-a-Service mínimo: watcher que chama `pause` ao quebrar regra | 0xcf02 — **feito** |
+| F6 | Adapter Vercel AI SDK (`@agent-rails/adapter-vercel-ai`) + snippet Cursor | 0xcf02 — **feito** |
+| F8 | Alertas em negação e em 80% da janela da policy (`alert-webhook` + `alert-watch`) | Lucas / 0xcf02 — **feito** |
 
 ### Cortes explícitos
+
+**F7 — landing, waitlist e "Try on devnet" sem cadastro: cortado.** O fluxo real é
+`agent-rails init` + MCP no Cursor/Claude Desktop + dashboard com tesouraria colada.
+Provisionar tesouraria no browser sem auth é outro produto; não entra no escopo de
+12/10.
 
 **SaaS hospedado (auth, tenancy, billing) fica para depois de 12/10.** Primeiros 10
 clientes: link de Stripe e onboarding manual.
@@ -122,14 +123,15 @@ cross-chain.
 
 ## Issues delegáveis (baixo risco, agente-codáveis)
 
-1. Landing + waitlist, projeto Vercel separado — fora do repo
-2. `viz/ceiling-meter.tsx` em tempo real — um arquivo, UI pura
-3. Saldos por mint na tesouraria — **só leitura**, via `api/solana/vault-balances`
-4. Tabela de histórico de pagamentos — UI contra um tipo fixo entregue antes
-5. Export CSV/JSON no cliente, a partir de um array pronto
-6. Enviador de webhook para alertas, dado o shape do evento
-7. Passada de i18n e copy no dashboard
-8. Smoke test manual do dashboard, 10 passos, escrito
+1. `viz/ceiling-meter.tsx` em tempo real — um arquivo, UI pura
+2. Saldos por mint na tesouraria — **só leitura**, via `api/solana/vault-balances`
+3. Tabela de histórico de pagamentos — UI contra um tipo fixo entregue antes
+4. Export CSV/JSON no cliente, a partir de um array pronto
+5. Enviador de webhook para alertas, dado o shape do evento
+6. Passada de i18n e copy no dashboard
+7. Smoke test manual do dashboard, 10 passos, escrito
+
+(Landing + waitlist saíram com o corte do F7.)
 
 **Zona proibida para PR de agente** — anotar no `CONTRIBUTING`: `programs/`,
 `crates/`, `packages/client/src/generated/`, `tests/layout.rs`, o caminho de
@@ -145,8 +147,8 @@ Regra do dia: **código até as 18h, narrativa depois.** Outreach diário às 9h
 | | Data | 0xcf02 | Lucas / Bernardo |
 |---|---|---|---|
 | D-18 | 22/09 seg | Travar wedge e one-liner EN | Bernardo: copy da landing **antes** do código; 20 contatos frios; inscrever no office hours. Abrir as 8 issues |
-| D-17 | 23/09 ter | F1 — escrita SPL/ATA no `vault-transfer` | Lucas: issues 1 e 3 |
-| D-16 | 24/09 qua | F2a — `IntentReceipt` + `verifyAuditChain` | Lucas: issue 2 |
+| D-17 | 23/09 ter | F1 — escrita SPL/ATA no `vault-transfer` (**feito**) | Lucas: issues 1 e 3 |
+| D-16 | 24/09 qua | F2a — `IntentReceipt` + `verifyAuditChain` (**feito**) | Lucas: issue 2 |
 | D-15 | 25/09 qui | Fechar o tipo do recibo e abrir a issue 4 | Lucas: issues 4 e 5 |
 | D-14 | 26/09 sex | F3a — `pay`, `policy set`, `pause` | **Ligar o agente de referência** (ver Tração) |
 | D-13 | 27/09 sáb | F3b + F4 | Lucas: issue 6 |
@@ -157,8 +159,8 @@ Regra do dia: **código até as 18h, narrativa depois.** Outreach diário às 9h
 | | Data | 0xcf02 | Lucas / Bernardo |
 |---|---|---|---|
 | D-11 | 29/09 ter | F5 — Guardian-as-a-Service | Bernardo: follow-up do outreach |
-| D-10 | 30/09 qua | F6 — adapter + snippet Cursor | Lucas: "Try on devnet" |
-| D-9 | 01/10 qui | Revisão de PRs, integração | **Landing no ar.** Divulgar |
+| D-10 | 30/09 qua | F6 — adapter + snippet Cursor | Lucas: termos de uso + privacidade (adiantado) |
+| D-9 | 01/10 qui | Revisão de PRs, integração | Bernardo: outreach + deck |
 | D-8 | 02/10 sex | F8 — ligar os alertas | Bernardo: deck v1 (10 slides) |
 | D-7 | 03/10 sáb | **Office hours do Colosseum** — deck v1 + demo crua. Anotar objeções literalmente | |
 | D-6 | 04/10 dom | Reescrever o deck contra as objeções | Lucas: termos de uso + privacidade |
@@ -186,7 +188,6 @@ Sem rede de design partners. Então a tração é gerada por vocês:
    *"this is our own agent, under our own policy, for two weeks."*
 2. **10 conversas de descoberta gravadas** (Bernardo). Marcar *conversa*, não venda —
    taxa de resposta muito maior que pedido de LOI.
-3. **Waitlist** — consequência do "Try on devnet", não causa.
 
 ## As três provas (roteiro da demo)
 
@@ -199,8 +200,12 @@ Sem rede de design partners. Então a tração é gerada por vocês:
 
 Fecho: *"The agent never held the money. It only ever held a receipt."*
 
-Gravar em **build de produção**, nunca `next dev` — o dashboard não tem teste
-automatizado e `next build` não roda no CI.
+Reproduzível com `scripts/demo.sh --wallet <keypair>` — mesmas superfícies do usuário
+(`init`, `pay`, `policy set`) e assinaturas devnet no relatório Markdown.
+
+Gravar em **build de produção**, nunca `next dev`. O CI roda `next build` no job
+`typescript` e o gate noturno `scripts/verify.sh ui` (Playwright em produção); o runbook
+`docs/runbooks/dashboard-smoke.md` cobre o passe manual antes de gravar.
 
 ## Regras de negócio a registrar em ADR
 
@@ -222,13 +227,13 @@ partir de US$ 40k/ano. Detalhe e unit economics no documento linkado acima.
 
 **Produto:** USDC ponta a ponta · histórico com cadeia verificada em TS · export ·
 CLI de operador completo · guardian pausando por anomalia com o owner ainda sacando ·
-`scripts/demo.sh` reproduz do zero · "Try on devnet" público.
+`scripts/demo.sh` reproduz do zero.
 
-**Negócio:** wedge e ICP em uma frase · planos publicados na landing · unit economics
-com payback · TAM bottom-up com fonte em cada número · as 10 regras em ADR.
+**Negócio:** wedge e ICP em uma frase · unit economics com payback · TAM bottom-up
+com fonte em cada número · as 10 regras em ADR.
 
 **Tração:** agente de referência rodando desde D-14 com número público · 10 conversas
-gravadas · waitlist com número real · assinaturas devnet no README · office hours 2×.
+gravadas · assinaturas devnet no README · office hours 2×.
 
 **Apresentação:** pitch 3 min EN legendado · demo 3 min sem terminal no primeiro
 minuto · deck 10 slides · README como produto · 2 estranhos entenderam em 30s.
@@ -236,6 +241,17 @@ minuto · deck 10 slides · README como produto · 2 estranhos entenderam em 30s
 **Higiene:** `VERIFY_STRICT=1 scripts/verify.sh` verde · smoke test manual executado ·
 nenhuma promessa no README sem código atrás · licença e linha open-source/comercial
 explícitas · zona proibida anotada no `CONTRIBUTING`.
+
+### HIG-01 — checklist (release engineer)
+
+- [x] `CONTRIBUTING.md` — zona proibida para PR de agente (programa, policy, generated, layout snapshot, payment path, `vault-transfer`)
+- [x] README como produto + tabela open-source vs hospedado + link para declaração pré-14/09
+- [x] `docs/strategy/colosseum-pre-hackathon-declaration.md` — texto para o formulário
+- [x] `docs/runbooks/dashboard-smoke.md` — 10 passos manuais
+- [x] CI: `pnpm turbo run build --filter @agent-rails/dashboard` no job `typescript` (fontes via `@fontsource`, sem fetch ao Google no build)
+- [x] `VERIFY_STRICT=1 scripts/verify.sh all` verde localmente (2026-09-26: rust + kani + ts OK; `pnpm audit` exige registry npmjs — npmmirror não tem endpoint; `mutants`/`e2e` ficam fora de `all`)
+- [x] Smoke automatizado: `VERIFY_STRICT=1 scripts/verify.sh ui` (45 testes, incl. `e2e/smoke.spec.ts`)
+- [ ] Smoke manual assinado por humano na tabela do runbook antes de gravar a demo
 
 ## Aberto
 

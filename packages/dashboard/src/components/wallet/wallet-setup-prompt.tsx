@@ -27,7 +27,7 @@ import { CreateWalletDialog } from "./create-wallet-dialog";
  */
 export function WalletSetupPrompt({ onConnect }: { onConnect: () => void }) {
   const { t } = useTranslation();
-  const { signedIn, loading } = useAuth();
+  const { signedIn, loading, walletAddress: authWallet } = useAuth();
   const { walletAddress, walletPromptDismissed, dismissWalletPrompt, hasHydrated } = useAppStore();
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -36,8 +36,10 @@ export function WalletSetupPrompt({ onConnect }: { onConnect: () => void }) {
   // who dismissed it long ago.
   useEffect(() => {
     if (!hasHydrated || loading) return;
-    if (signedIn && !walletAddress && !walletPromptDismissed) setOpen(true);
-  }, [hasHydrated, loading, signedIn, walletAddress, walletPromptDismissed]);
+    // `authWallet` is set when the session itself came from a wallet: that user
+    // already answered this question by signing in.
+    if (signedIn && !walletAddress && !authWallet && !walletPromptDismissed) setOpen(true);
+  }, [hasHydrated, loading, signedIn, walletAddress, authWallet, walletPromptDismissed]);
 
   const dismiss = () => {
     dismissWalletPrompt();

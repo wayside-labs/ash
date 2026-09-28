@@ -38,6 +38,14 @@ export function parsePositiveInt(value: string, flag: string): number {
   return parsed;
 }
 
+export function parseNonNegativeInt(value: string, flag: string): number {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    throw new CliError(`${flag} must be a non-negative integer, got "${value}"`);
+  }
+  return parsed;
+}
+
 /** Lamports as SOL, trimmed of trailing zeros — for display only, never for arithmetic. */
 export function formatSol(base: bigint): string {
   const whole = base / LAMPORTS_PER_SOL;

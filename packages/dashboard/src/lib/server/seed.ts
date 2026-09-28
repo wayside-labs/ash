@@ -260,7 +260,7 @@ export function seedState(): DashboardState {
     apiKeys: [],
     integrations: [],
     profile: { displayName: "", company: "", bio: "", email: "" },
-    settings: { language: "en", emailNotifications: false, limitAlerts: true },
+    settings: { language: "en", emailNotifications: false, limitAlerts: true, alertWebhookUrl: "" },
   };
 }
 

@@ -16,6 +16,7 @@ import type { MaskedState } from "@/lib/server/present";
 import type { SolPrice } from "@/lib/server/price";
 import type {
   BalanceResult,
+  CreateSessionResult as BuiltCreateSession,
   BuiltTransaction,
   ConfirmationResult,
   OwnerTokenBalance,
@@ -372,6 +373,80 @@ export type VaultTransferResult = {
  * in the extension — so the browser never needs an RPC of its own and the
  * custom-RPC allowlist stays enforceable.
  */
+export type CreateSessionInput = {
+  treasury: string;
+  label: string;
+  sessionKey: string;
+  policy?: string | null;
+  sessionTtlHours?: number;
+};
+
+export type CreateSessionMutationResult = {
+  built: BuiltCreateSession;
+  signature: string | null;
+  status: ConfirmationResult["status"] | "skipped";
+};
+
+/**
+ * Generate the session key in the browser, build on the server, sign in the
+ * wallet, confirm on the server — same choreography as vault transfer.
+ */
+export function useCreateSession() {
+  const { cluster, customRpc, walletAddress } = useAppStore();
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
+
+  return useMutation({
+    mutationFn: async (input: CreateSessionInput): Promise<CreateSessionMutationResult> => {
+      const provider = getConnectedProvider(walletAddress);
+      if (!walletAddress || !provider) {
+        throw new Error(t("createSession.error.walletNotConnected"));
+      }
+
+      const built = await request<BuiltCreateSession>("/api/solana/create-session", {
+        method: "POST",
+        body: JSON.stringify({
+          cluster,
+          rpc: customRpc || null,
+          treasury: input.treasury,
+          wallet: walletAddress,
+          sessionKey: input.sessionKey,
+          label: input.label,
+          policy: input.policy ?? null,
+          sessionTtlHours: input.sessionTtlHours ?? 24,
+        }),
+      });
+
+      if (built.alreadyOnChain || !built.transaction) {
+        return { built, signature: null, status: "skipped" };
+      }
+
+      let signature: string;
+      try {
+        signature = await signAndSendTransaction(provider, built.transaction);
+      } catch (error) {
+        throw new Error(describeWalletError(error, t));
+      }
+
+      const confirmation = await request<ConfirmationResult>("/api/solana/confirm", {
+        method: "POST",
+        body: JSON.stringify({ cluster, rpc: customRpc || null, signature }),
+      });
+      if (confirmation.status === "failed") {
+        throw new Error(
+          t("createSession.error.rejectedOnChain", { detail: confirmation.error ?? "" }),
+        );
+      }
+      return { built, signature, status: confirmation.status };
+    },
+    onSuccess: () => {
+      for (const key of ["treasury", "vault-balances"]) {
+        queryClient.invalidateQueries({ queryKey: [key] });
+      }
+    },
+  });
+}
+
 export function useVaultTransfer() {
   const { cluster, customRpc, walletAddress } = useAppStore();
   const queryClient = useQueryClient();

@@ -1,5 +1,12 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalPassThroughEnv": [
+    "AGENT_RAILS_RPC",
+    "AGENT_RAILS_TREASURY",
+    "AGENT_RAILS_POLICY",
+    "AGENT_RAILS_ALERT_WEBHOOK_URL",
+    "AGENT_RAILS_GUARDIAN_KEYPAIR"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
@@ -7,6 +14,11 @@
     },
     "test": {
       "dependsOn": ["build"],
+      "outputs": []
+    },
+    "test:e2e": {
+      "dependsOn": ["^build"],
+      "cache": false,
       "outputs": []
     },
     "codegen": {

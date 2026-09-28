@@ -54,6 +54,16 @@ pnpm agent-rails init --rpc https://api.devnet.solana.com --yes
 
 Rows without a treasury address show `—` rather than borrowing a number.
 
+### Metrics payment history (Phase B)
+
+`/metrics` §5 replays `PaymentExecuted` events from transaction logs via
+`GET /api/metrics/history` — a signature walk on each session PDA, not an
+indexer. Public RPCs retain logs for days (not months), so the ledger is always
+**best-effort and windowed**: the completeness banner names the oldest slot the
+walk reached, and headline payment counts from on-chain `seq` may exceed the rows
+shown. CSV/JSON export uses the same `paymentRecordSchema` columns as the MCP/CLI
+sink (`GET /api/metrics/history/export`).
+
 ## Chat
 
 `GET /api/chat/providers` reports what this machine can run the chat on.
@@ -67,6 +77,10 @@ Rows without a treasury address show `—` rather than borrowing a number.
 
 The CLI wins by default: it needs no key and adds no per-token cost. Pick a
 specific model in the chat footer to override.
+
+If you previously saw **Demo** while Claude Code was installed, an old persisted
+choice may be stuck — open the chat footer and switch the model to Sonnet (or any
+non-demo option); the UI now auto-promotes when a real provider is detected.
 
 ### Using a subscription instead of an API key
 
@@ -155,11 +169,13 @@ a ceiling that was never set.
 The app is dark-only — `<html className="dark">` is hardcoded and there is no
 light palette yet.
 
-## Not implemented yet
+## Deferred
 
-Deposit/withdraw transactions, treasury creation from the UI (use the CLI), and
-email/Google auth. Each of those says so in the UI instead of showing a button
-that does nothing.
+Treasury bootstrap from zero in the browser (`create_treasury`, policy, first mint)
+and email/Google auth. Deposit and withdraw for SOL and SPL mints already run
+through `/treasury` and agent settings (`vault-transfer` + wallet sign +
+`/api/solana/confirm`). Until wave 2 (ADR-021), point new treasuries at
+`pnpm agent-rails init` and paste the address into a workflow.
 
 RAG, Harness and Integrations were removed outright rather than shipped as
 labels: none had backend infrastructure behind it, and a nav entry reads as a

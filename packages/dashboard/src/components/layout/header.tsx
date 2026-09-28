@@ -33,7 +33,7 @@ export function Header() {
     setOperationMode,
     setSidebarCollapsed,
   } = useAppStore();
-  const { email: authEmail } = useAuth();
+  const { label: authLabel } = useAuth();
   const { t } = useTranslation();
 
   return (
@@ -78,8 +78,8 @@ export function Header() {
           </SelectContent>
         </Select>
 
-        {authEmail && (
-          <span className="hidden text-xs text-muted-foreground xl:inline">{authEmail}</span>
+        {authLabel && (
+          <span className="hidden text-xs text-muted-foreground xl:inline">{authLabel}</span>
         )}
 
         <span className="hidden h-8 w-px bg-border sm:block" />

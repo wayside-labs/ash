@@ -37,7 +37,9 @@ export async function GET(req: Request) {
     return Response.json({ error: await serverT("api.error.notFound") }, { status: 404 });
   }
 
-  const { config, skipped } = compileRunnerConfig(workflow, state.agents, state.mcps);
+  const { config, skipped } = compileRunnerConfig(workflow, state.agents, state.mcps, {
+    alertWebhookUrl: state.settings.alertWebhookUrl,
+  });
 
   return new Response(`${JSON.stringify(config, null, 2)}\n`, {
     headers: {

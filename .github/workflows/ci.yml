@@ -79,6 +79,10 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Production build of the dashboard on every PR. Fonts ship via @fontsource in the
+      # lockfile so this does not reach Google at compile time; the step still catches
+      # Next/webpack regressions that vitest cannot see.
+      - run: pnpm turbo run build --filter @agent-rails/dashboard
       # lint, typecheck, test, codegen:check and pnpm audit. codegen:check is the
       # enforcement behind "never hand-edit packages/client/src/generated": it
       # regenerates from the committed IDL and fails on any difference, which no
@@ -121,7 +125,25 @@ jobs:
           echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
       # .gitignore already refuses `**/*keypair*.json`; this is the check for a secret
       # that reached a commit under some other name.
-      - run: gitleaks git --no-banner --redact .
+      #
+      # `-v` is not decoration. Without it gitleaks prints `leaks found: 1` and stops, and
+      # the finding — file, line, commit, rule — exists nowhere: not in the log, not in an
+      # artifact, nowhere. Diagnosing one cost an hour and a local install of the pinned
+      # binary to reproduce a single line. A gate that can fail without saying what it
+      # caught teaches people to rerun it.
+      #
+      # `--redact` stays. The point is to name the finding, never to print the secret into a
+      # log that outlives it; the report below is redacted for the same reason.
+      - run: gitleaks git --no-banner --redact -v --report-path "$RUNNER_TEMP/gitleaks.json" .
+
+      # Uploaded only on failure, and only then because a long history makes the log noisy
+      # while the JSON stays machine-readable.
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: failure()
+        with:
+          name: gitleaks-report
+          path: ${{ runner.temp }}/gitleaks.json
+          retention-days: 7
 
   sast:
     name: sast

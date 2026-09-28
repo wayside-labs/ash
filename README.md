@@ -1,17 +1,115 @@
 # Agent Rails
 
-A guardrail and treasury framework that lets autonomous AI agents make on-chain Solana
-payments without ever holding unbounded funds.
+**The on-chain spend control plane for AI agents** — capped, auditable, retry-safe.
 
-An owner deposits into a program-owned vault and defines policy — per-transaction,
-windowed and lifetime limits, destination allowlists, mint allowlists — then issues
-time-boxed sessions to agents. An agent pays through a single `execute_payment`
-instruction that the program refuses unless every rule holds. The agent's key authorizes
-a payment; it never authorizes a limit.
+Agent Rails is a guardrail and treasury framework that lets autonomous AI agents make on-chain
+Solana payments without ever holding unbounded funds. Operators deposit into a program-owned
+vault, set per-transaction and windowed limits, destination and mint allowlists, and issue
+time-boxed sessions; agents pay through a single `execute_payment` instruction the program
+refuses unless every rule holds. The agent's key authorizes a payment; it never authorizes a
+limit.
 
 > **Status: `0.x`, unaudited, devnet only.** No professional audit has been done and the
-> upgrade authority is not yet renounced. ADR-011 sets out the phases to `1.0.0`. Do not
-> put funds you care about behind this.
+> upgrade authority is not yet renounced. Do not put funds you care about behind this.
+
+## Trust phases
+
+Every claim below is one you can check on-chain, which is the point of writing them down
+(ADR-011). The row in bold is where the project is today.
+
+| Phase | Upgrade authority | Networks | What it means for you |
+|---|---|---|---|
+| **`0.x` — now** | **a single developer key** | **devnet only** | **Whoever holds that key can replace the program under your vault. Unaudited. Treat any balance as spendable by the maintainer.** |
+| `1.0.0-beta` | Squads 3-of-5, ≥1 external security signer, time lock, ≥72 h public notice | mainnet, with TVL guidance | No single person can ship an upgrade, and you get notice before one lands. |
+| `1.0.0` | `None` — renounced | mainnet | The program cannot be changed by anyone, including us. Post-audit. |
+| `2.x` | new program id | mainnet | Migration is opt-in, with `migrate_treasury` tooling; the `1.0.0` program keeps running. |
+
+```
+$ agent-rails doctor --rpc https://api.devnet.solana.com
+✔ Upgrade authority   <the key currently set on the deployed program>
+```
+
+That line is read out of the loader's `ProgramData` account, so the first column above is
+verifiable rather than promised — and if it ever prints the wallet you are running the
+command with, it says so.
+
+The rule that key follows is ADR-020: it is held by a person, offline, and it is **never** the
+`DEVNET_KEYPAIR` secret CI uses to pay for the release smoke. A repository secret that can also
+replace the program puts two powers several orders of magnitude apart behind one credential.
+Run the command above to see which key is actually set — that is the point of printing it
+rather than writing it down here. It is still a single key either way, which is what the `0.x`
+row is admitting.
+
+### Verifying what is deployed
+
+Every release tag carries the SBF artifact, its SHA-256 and the toolchain that produced it:
+
+```bash
+scripts/program-hash.sh build      # hash what this tree builds
+scripts/program-hash.sh onchain    # hash what devnet is running
+scripts/program-hash.sh compare    # and say whether they agree
+```
+
+The digest is toolchain-pinned, not container-hermetic: it reproduces for anyone on the
+same commit with the pinned Agave and Rust versions, and it is not yet a
+`solana-verify` image build. ADR-011 records why and what would change that.
+
+### Installing
+
+Nothing is on npm yet. The packages are versioned and ready to publish, and the release
+workflow runs on every merge with publishing switched off — deliberately, until the trust
+phase above is worth a package that cannot be unpublished. Until then:
+
+```bash
+git clone https://github.com/wayside-labs/agent-rails && cd agent-rails
+pnpm install && pnpm build
+pnpm agent-rails init --rpc https://api.devnet.solana.com
+```
+
+### Devnet demo
+
+`scripts/demo.sh` reproduces the three proofs from the Colosseum pitch on public devnet and
+prints a Markdown report with explorer links:
+
+1. **Prompt injection** — six MCP agent tools, no `withdraw`.
+2. **Indeterminate retry** — `pay --confirm-timeout 0` times out confirmation, the SDK reports
+   `indeterminate`, a retry on the same reference is refused on-chain (no double-spend).
+3. **Operator lowers the ceiling** — `policy set` tightens the daily limit, the next payment
+   is denied with a stable reason code.
+
+```bash
+pnpm build
+scripts/demo.sh --wallet ~/.config/solana/id.json
+```
+
+The wallet needs roughly 0.05 SOL on devnet (rent and deposits are not recoverable without
+`close treasury`). The script fails with a clear message if the balance is too low. Keys
+written under `--out` are session and fee-payer keypairs for a throwaway treasury — keep them
+`0600` and delete the directory when you are done.
+
+### Reference agent (devnet traction)
+
+An **in-house** agent pays a registered devnet destination on a loop until **2026-10-12** so
+pitch metrics are on-chain verifiable. This is manufactured traction under our own policy —
+say that explicitly in the video.
+
+| | |
+|---|---|
+| Treasury | [`BTE45zKpHiWMTwaPmShaUBq2cnA6XUc8KhgxnufSnz3w`](https://explorer.solana.com/address/BTE45zKpHiWMTwaPmShaUBq2cnA6XUc8KhgxnufSnz3w?cluster=devnet) |
+| Program | [`4qjD6vSgYa3oBKde3KVzsH8oCcP9BKsirX1xtD5SS6BS`](https://explorer.solana.com/address/4qjD6vSgYa3oBKde3KVzsH8oCcP9BKsirX1xtD5SS6BS?cluster=devnet) |
+| Policy (`dashboard-demo`) | [`H4HU1sPoevCGqHeFQiyW5Q8NVmQgAb1DyZgP2LSzwMPE`](https://explorer.solana.com/address/H4HU1sPoevCGqHeFQiyW5Q8NVmQgAb1DyZgP2LSzwMPE?cluster=devnet) |
+| Destination `demo` | [`3tvQknH6RHfnssAGgC64z7KkejwrQ3USftxosmoimX4z`](https://explorer.solana.com/address/3tvQknH6RHfnssAGgC64z7KkejwrQ3USftxosmoimX4z?cluster=devnet) |
+
+```bash
+# loop running via scripts/reference-agent.sh loop (or cron) — see docs/runbooks/reference-agent.md
+scripts/reference-agent.sh metrics   # audit export --verify + sink counts
+```
+
+Deck target (update before recording): **2,100 payments settled, 31 denied by policy, 0
+double-spends** — refresh with `agent-rails audit export --verify` and the sink JSONL at
+`~/.agent-rails/reference-agent/payments.jsonl`.
+
+Full setup: [`docs/runbooks/reference-agent.md`](docs/runbooks/reference-agent.md).
 
 ## Why it is shaped this way
 
@@ -42,7 +140,12 @@ packages/contract/          Zod schemas, reason codes, event types
 packages/client/            Codama-generated @solana/kit client
 packages/sdk/               PaymentIntent builder, preflight, signing, error mapping
 packages/mcp/               stdio MCP server exposing the agent-facing payment tools
+packages/adapters/vercel-ai/  Vercel AI SDK tools for AGENT_TOOL_NAMES (see package README)
 ```
+
+For Cursor or Claude Desktop, use the stdio MCP server (`examples/agent-rails-mcp.cursor.json`).
+For Vercel AI SDK apps (`generateText`, agents), use `@agent-rails/adapter-vercel-ai` — schemas
+from `@agent-rails/contract`, handlers wired to your MCP logic or SDK.
 
 The split is the design: the program stays thin, and all policy arithmetic lives in a crate
 with no Solana dependency, `#![forbid(unsafe_code)]`, `checked_*` arithmetic throughout, and
@@ -76,9 +179,26 @@ CI runs all of the above plus `cargo deny`, gitleaks and semgrep on every pull r
 | `ARCHITECTURE.md` | The design baseline — roles, payment flow, account model, policy engine, audit chain, MCP surface, test pyramid |
 | `docs/spec/accounts-and-instructions.md` | Byte-level account and instruction layouts |
 | `docs/adr/` | Decisions, immutable once recorded; `README.md` there is the index |
+| `docs/runbooks/reference-agent.md` | In-house devnet agent — MCP, cron, metrics until 12/10 |
+| `docs/runbooks/dashboard-smoke.md` | Ten-step manual smoke before demo recording |
+| `docs/runbooks/alert-webhooks.md` | Denial + headroom webhooks (`AGENT_RAILS_ALERT_WEBHOOK_URL`, `pnpm alert-watch`) |
+| `docs/strategy/colosseum-pre-hackathon-declaration.md` | Copy for the Colosseum pre-existing work field |
 
 Several directories carry their own `CLAUDE.md` with rules scoped to that subtree.
 
+## Open source vs hosted
+
+| Open source (this repo) | Commercial (hosted control plane) |
+|---|---|
+| Anchor program, policy crate, IDL | Multi-tenant dashboard, auth, billing |
+| `@agent-rails/sdk`, `@agent-rails/mcp`, CLI | Alert routing, guardian-as-a-service ops |
+| Vercel AI adapter, contract schemas | SLA-backed RPC and support |
+
+Protocol fees are **zero bps** by design (ADR in `docs/adr/`). Revenue is per governed
+treasury on the hosted plane, not per seat. See `docs/strategy/colosseum-plano-execucao.md`
+for pricing sketches used in the Colosseum deck.
+
 ## License
 
-Apache-2.0.
+Apache-2.0. See `CONTRIBUTING.md` for the agent no-go zones and the local gate
+(`VERIFY_STRICT=1 scripts/verify.sh`).

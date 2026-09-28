@@ -21,7 +21,7 @@ Option B.
 - `@agent-rails/client`: 100% Codama-generated; CI fails on a non-empty regeneration diff.
 - `@agent-rails/sdk`: Kit plugin `client.use(agentRails({ session, signer }))`; `Signer` = Kit `TransactionPartialSigner` with `KeypairSigner` and generic `RemoteSigner`; `PaymentIntent` builder; `intent_id` generation; decimals conversion; preflight; `PolicyHook`s; `AgentRailsError` with `reason_code` and `remaining`.
 - `@agent-rails/contract`: zod schemas for tools, reason codes, events; JSON Schema export consumed by Python.
-- Adapters (`langchain`, `ai-sdk`, `openai-agents`) call the SDK in-process and import schemas from the contract package.
+- Adapters (`langchain`, `ai-sdk`, `openai-agents`) call the SDK in-process and import schemas from the contract package. **`@agent-rails/adapter-vercel-ai`** (`packages/adapters/vercel-ai`) ships the Vercel AI SDK mapping; LangChain and OpenAI Agents remain planned.
 - Python (`agent-rails` on PyPI) is MCP-first: wraps the official MCP Python SDK and exposes LangChain / CrewAI / pydantic-ai tool wrappers. No native signing in v1.
 - `npx agent-rails init` bootstraps a devnet treasury, policy, allowlist entry, session, funds the vault, and writes the MCP config for Cursor or Claude Desktop. Target: under five minutes to the first guarded payment.
 - Docs: Agent Developer, Treasury Operator, Protocol/Security tracks; `ARCHITECTURE.md` and `THREAT_MODEL.md` at the root.

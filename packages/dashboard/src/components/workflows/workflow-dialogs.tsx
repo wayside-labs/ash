@@ -20,11 +20,22 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
-import { useCreateResource, useUpdateResource } from "@/hooks/use-dashboard";
+import {
+  buildSessionKeyDelivery,
+  type SessionKeyDelivery,
+  SessionKeyDeliveryDialog,
+} from "@/components/workflows/session-key-delivery-dialog";
+import { useCreateResource, useCreateSession, useUpdateResource } from "@/hooks/use-dashboard";
 import { useTranslation } from "@/i18n/locale-provider";
 import { addressSchema } from "@/lib/schema";
+import { getRpcUrl } from "@/lib/solana";
 import type { Agent, Workflow } from "@/lib/types";
 import { truncateAddress } from "@/lib/utils";
+import {
+  exportKeypairBytes,
+  generateSessionKeyPair,
+  suggestedKeypairFilename,
+} from "@/lib/wallet/session-key";
 import { useAppStore } from "@/stores/app-store";
 
 const ICONS = ["🏪", "📈", "🏭", "🤖", "🛰️", "🧪", "🚚", "💼"];
@@ -190,35 +201,82 @@ export function CreateAgentDialog({
   defaultWorkflowId?: string;
 }) {
   const { t } = useTranslation();
+  const { cluster, customRpc, walletAddress: connectedWallet } = useAppStore();
   const create = useCreateResource("agents");
+  const createSession = useCreateSession();
   const toast = useToast();
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
   const [workflowId, setWorkflowId] = useState(defaultWorkflowId ?? workflows[0]?.id ?? "");
   const [dailyLimitUsd, setDailyLimitUsd] = useState("50");
   const [walletAddress, setWalletAddress] = useState("");
+  const [keyDelivery, setKeyDelivery] = useState<SessionKeyDelivery | null>(null);
 
-  const walletInvalid = isMalformedAddress(walletAddress);
+  const selectedWorkflow = workflows.find((workflow) => workflow.id === workflowId);
+  const hasTreasury = Boolean(selectedWorkflow?.treasuryAddress);
+  const isDemo = Boolean(selectedWorkflow?.demo);
+  const walletInvalid = !hasTreasury && isMalformedAddress(walletAddress);
   const limit = Number(dailyLimitUsd);
   const limitInvalid = !Number.isFinite(limit) || limit < 0;
+  const pending = create.isPending || createSession.isPending;
 
   const submit = async () => {
     if (!name.trim() || !workflowId || walletInvalid || limitInvalid) return;
+    const trimmedName = name.trim();
+
+    if (!isDemo && !selectedWorkflow?.treasuryAddress) {
+      toast(t("workflowDialogs.createAgent.noTreasury"), "error");
+      return;
+    }
+
     try {
+      let sessionAddress: string | null = null;
+      let agentWallet: string | null = walletAddress.trim() || null;
+
+      if (hasTreasury && selectedWorkflow?.treasuryAddress) {
+        if (!connectedWallet) {
+          toast(t("createSession.error.walletNotConnected"), "error");
+          return;
+        }
+
+        const sessionKey = await generateSessionKeyPair();
+        const keypairBytes = await exportKeypairBytes(sessionKey);
+        const keypairFilename = suggestedKeypairFilename(trimmedName);
+        const sessionResult = await createSession.mutateAsync({
+          treasury: selectedWorkflow.treasuryAddress,
+          label: trimmedName,
+          sessionKey: sessionKey.address,
+        });
+
+        sessionAddress = sessionResult.built.session;
+        agentWallet = sessionResult.built.sessionKey;
+        setKeyDelivery(
+          buildSessionKeyDelivery({
+            agentName: trimmedName,
+            session: sessionResult.built.session,
+            sessionKey: sessionResult.built.sessionKey,
+            keypairBytes,
+            keypairFilename,
+            rpcUrl: getRpcUrl(cluster, customRpc),
+          }),
+        );
+      }
+
       await create.mutateAsync({
-        name: name.trim(),
+        name: trimmedName,
         role: role.trim(),
         workflowId,
-        walletAddress: walletAddress.trim() || null,
+        walletAddress: agentWallet,
+        sessionAddress,
         dailyLimitUsd: limit,
         paysTo: [],
-        receivesFrom: workflows.find((w) => w.id === workflowId)?.name ?? "",
+        receivesFrom: selectedWorkflow?.name ?? "",
         status: "active",
-        demo: false,
+        demo: isDemo,
         demoBalanceUsd: null,
         demoSpentUsd: null,
       });
-      toast(t("workflowDialogs.createAgent.created", { name: name.trim() }));
+      toast(t("workflowDialogs.createAgent.created", { name: trimmedName }));
       setName("");
       setRole("");
       setWalletAddress("");
@@ -229,95 +287,110 @@ export function CreateAgentDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{t("workflowDialogs.createAgent.title")}</DialogTitle>
-          <DialogDescription>{t("workflowDialogs.createAgent.description")}</DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("workflowDialogs.createAgent.title")}</DialogTitle>
+            <DialogDescription>{t("workflowDialogs.createAgent.description")}</DialogDescription>
+          </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="ag-name">{t("common.name")}</Label>
-              <Input
-                id="ag-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder={t("workflowDialogs.createAgent.namePlaceholder")}
-              />
+          <div className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="ag-name">{t("common.name")}</Label>
+                <Input
+                  id="ag-name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder={t("workflowDialogs.createAgent.namePlaceholder")}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="ag-role">{t("workflowDialogs.createAgent.roleLabel")}</Label>
+                <Input
+                  id="ag-role"
+                  value={role}
+                  onChange={(e) => setRole(e.target.value)}
+                  placeholder={t("workflowDialogs.createAgent.rolePlaceholder")}
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="ag-role">{t("workflowDialogs.createAgent.roleLabel")}</Label>
-              <Input
-                id="ag-role"
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                placeholder={t("workflowDialogs.createAgent.rolePlaceholder")}
-              />
-            </div>
-          </div>
 
-          <div className="space-y-2">
-            <Label>{t("common.workflow")}</Label>
-            <Select value={workflowId} onValueChange={setWorkflowId}>
-              <SelectTrigger>
-                <SelectValue placeholder={t("workflowDialogs.createAgent.workflowPlaceholder")} />
-              </SelectTrigger>
-              <SelectContent>
-                {workflows.map((workflow) => (
-                  <SelectItem key={workflow.id} value={workflow.id}>
-                    {workflow.icon} {workflow.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="ag-limit">{t("workflowDialogs.createAgent.dailyLimitLabel")}</Label>
-              <Input
-                id="ag-limit"
-                type="number"
-                min={0}
-                value={dailyLimitUsd}
-                onChange={(e) => setDailyLimitUsd(e.target.value)}
-                aria-invalid={limitInvalid}
-              />
+              <Label>{t("common.workflow")}</Label>
+              <Select value={workflowId} onValueChange={setWorkflowId}>
+                <SelectTrigger>
+                  <SelectValue placeholder={t("workflowDialogs.createAgent.workflowPlaceholder")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {workflows.map((workflow) => (
+                    <SelectItem key={workflow.id} value={workflow.id}>
+                      {workflow.icon} {workflow.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="ag-wallet">{t("workflowDialogs.createAgent.walletLabel")}</Label>
-              <Input
-                id="ag-wallet"
-                value={walletAddress}
-                onChange={(e) => setWalletAddress(e.target.value)}
-                placeholder={t("workflowDialogs.createAgent.walletPlaceholder")}
-                className="num text-sm"
-                aria-invalid={walletInvalid}
-              />
-              {walletInvalid && (
-                <p className="text-xs text-destructive">{t("common.invalidAddress")}</p>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="ag-limit">{t("workflowDialogs.createAgent.dailyLimitLabel")}</Label>
+                <Input
+                  id="ag-limit"
+                  type="number"
+                  min={0}
+                  value={dailyLimitUsd}
+                  onChange={(e) => setDailyLimitUsd(e.target.value)}
+                  aria-invalid={limitInvalid}
+                />
+              </div>
+              {!hasTreasury && (
+                <div className="space-y-2">
+                  <Label htmlFor="ag-wallet">{t("workflowDialogs.createAgent.walletLabel")}</Label>
+                  <Input
+                    id="ag-wallet"
+                    value={walletAddress}
+                    onChange={(e) => setWalletAddress(e.target.value)}
+                    placeholder={t("workflowDialogs.createAgent.walletPlaceholder")}
+                    className="num text-sm"
+                    aria-invalid={walletInvalid}
+                  />
+                  {walletInvalid && (
+                    <p className="text-xs text-destructive">{t("common.invalidAddress")}</p>
+                  )}
+                </div>
               )}
             </div>
-          </div>
-        </div>
 
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            {t("common.cancel")}
-          </Button>
-          <Button
-            onClick={submit}
-            disabled={
-              !name.trim() || !workflowId || walletInvalid || limitInvalid || create.isPending
-            }
-          >
-            {create.isPending ? t("common.creating") : t("workflowDialogs.createAgent.submit")}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+            {hasTreasury ? (
+              <p className="text-xs text-muted-foreground">
+                {t("workflowDialogs.createAgent.onChainHint")}
+              </p>
+            ) : (
+              !isDemo && (
+                <p className="text-xs text-muted-foreground">
+                  {t("workflowDialogs.createAgent.noTreasuryHint")}
+                </p>
+              )
+            )}
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              {t("common.cancel")}
+            </Button>
+            <Button
+              onClick={() => void submit()}
+              disabled={!name.trim() || !workflowId || walletInvalid || limitInvalid || pending}
+            >
+              {pending ? t("common.creating") : t("workflowDialogs.createAgent.submit")}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <SessionKeyDeliveryDialog delivery={keyDelivery} onClose={() => setKeyDelivery(null)} />
+    </>
   );
 }
 

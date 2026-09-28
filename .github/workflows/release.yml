@@ -1,0 +1,113 @@
+name: Release
+
+# ADR-011, the package half: Changesets accumulates one line per user-visible change, and
+# merging the "Version Packages" pull request this workflow opens is the act that releases.
+#
+# Publishing is deliberately inert until `NPM_TOKEN` exists, and the version pull request
+# until `RELEASE_TOKEN` does. Everything else runs on every merge, so the machinery is
+# exercised long before it can push a package that nobody can unpublish. ADR-011
+# §"Implementation status" says when those keys go in, and why neither is the default.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    name: version or publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      # A release candidate that does not build is not a release candidate. The full TS
+      # gate runs here rather than being inherited from the pull request that merged,
+      # because the version bump itself edits every manifest it touches.
+      - run: scripts/verify.sh ts
+        env:
+          VERIFY_STRICT: 1
+
+      - id: publish_enabled
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -n "$NPM_TOKEN" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::NPM_TOKEN is not set — versioning only, nothing will be published."
+          fi
+
+      # The version pull request needs a token that may open one, and `GITHUB_TOKEN` may
+      # not: "GitHub Actions is not permitted to create or approve pull requests" is a
+      # repository setting, and the setting that lifts it lifts *both* halves at once.
+      #
+      # Turning it on is not a small thing here. `main` requires one approving review and
+      # `enforce_admins` is false; a workflow that may approve pull requests is a workflow
+      # that can satisfy that requirement by itself. The release convenience is not worth
+      # handing the review gate to anything that can be made to run a job.
+      #
+      # So the bot pull request is opt-in behind its own credential, the same shape as
+      # `NPM_TOKEN` above. Without it the workflow still runs the gate on every merge —
+      # which was always the half that mattered — and says what to do by hand.
+      - id: release_token
+        env:
+          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          if [ -n "$RELEASE_TOKEN" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.release_token.outputs.present == 'true'
+        uses: changesets/action@e0145edc7d9d8679003495b11f87bd8ef63c0cba # v1.5.3
+        id: changesets
+        with:
+          version: pnpm run version-packages
+          publish: ${{ steps.publish_enabled.outputs.enabled == 'true' && 'pnpm run release' || '' }}
+          commit: "chore(release): version packages"
+          title: "chore(release): version packages"
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # Cannot fail the run: it reports, it does not gate. The gate above already ran.
+      - if: steps.release_token.outputs.present != 'true'
+        run: |
+          pending=$(ls .changeset/*.md 2>/dev/null | grep -v README || true)
+          {
+            echo "### Release"
+            echo ""
+            if [ -n "$pending" ]; then
+              echo "Changesets waiting to be released:"
+              echo ""
+              for file in $pending; do echo "- \`$file\`"; done
+            else
+              echo "No changesets are pending."
+            fi
+            echo ""
+            echo "\`RELEASE_TOKEN\` is not set, so no version pull request was opened."
+            echo "To cut a release by hand: \`pnpm version-packages\`, then open the pull"
+            echo "request as normal. ADR-011 covers why the alternative — letting Actions"
+            echo "open pull requests — is not the default here."
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -38,6 +38,8 @@ export type McpServerConfig = {
   mintAliases: Record<string, string>;
   /** JSONL path for the operator's payment record. Absent disables the sink. */
   sinkPath?: string;
+  /** HTTPS webhook for `payment_denied` alerts (generic URL or Slack incoming webhook). */
+  alertWebhookUrl?: string;
 };
 
 export type McpRuntime = {
@@ -152,6 +154,10 @@ export function loadConfigFromEnv(env: NodeJS.ProcessEnv = process.env): McpServ
   }
   if (env.AGENT_RAILS_SINK) {
     config.sinkPath = env.AGENT_RAILS_SINK;
+  }
+  const alertWebhook = env.AGENT_RAILS_ALERT_WEBHOOK_URL?.trim();
+  if (alertWebhook) {
+    config.alertWebhookUrl = alertWebhook;
   }
   return config;
 }

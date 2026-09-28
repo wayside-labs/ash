@@ -30,3 +30,65 @@ Option B.
 - Trust claims are checkable on-chain at every phase.
 - Post-freeze bugs are fixed only by migration to a new program id; v1 tooling is maintained long-term.
 - Operating a multisig and a notice policy is ongoing discipline for maintainers.
+
+## Implementation status (2026-09-25)
+
+The decision above is unchanged. This section records which of its seven points now have a
+mechanism, because until a release has actually run, a governance ADR is a promise.
+
+**Shipped:**
+
+- **Changesets** (point 5): `.changeset/`, independent semver, `@agent-rails/dashboard` and
+  `@agent-rails/e2e` ignored — one is an application, the other a test suite. Five packages
+  carry `0.1.0`, `publishConfig.access: public`, Apache-2.0 and a `repository.directory`.
+- **Release workflow** (`.github/workflows/release.yml`): runs the TypeScript gate under
+  `VERIFY_STRICT=1` on every merge to `main`. Two steps past that are behind their own
+  credentials, and neither is set:
+  - **Publishing** needs `NPM_TOKEN`. This is the deliberate order — exercise the machinery
+    on every merge, publish later. A package version cannot be unpublished, and the trust
+    phase is not yet worth one.
+  - **The version pull request** needs `RELEASE_TOKEN`. The first run of this workflow
+    found out why: `GITHUB_TOKEN` may not open a pull request unless the repository setting
+    *"Allow GitHub Actions to create and approve pull requests"* is on, and that setting
+    lifts both halves at once. `main` requires one approving review and `enforce_admins` is
+    false, so a workflow permitted to approve pull requests is a workflow that can satisfy
+    the review requirement by itself. A release convenience is not worth handing the review
+    gate to anything that can be made to run a job. Until a scoped token exists, the bump is
+    `pnpm version-packages` and an ordinary pull request.
+- **Verifiable program hash** (ADR-015's deferred row): `scripts/program-hash.sh`, one
+  script used by both the developer and `.github/workflows/release-tag.yml`, so a local
+  check and a release cannot disagree about what is being hashed. A tag attaches the `.so`,
+  its digest, and a `build-info.json` naming the Agave, Anchor and Rust versions the digest
+  depends on.
+- **Devnet smoke on tags** (ADR-015's other deferred row): `scripts/devnet-smoke.sh`, run by
+  the tag workflow against the funded CI key. SOL and SPL, on a real cluster.
+- **Trust phases in the README**, as a table with the current row in bold, next to the
+  commands that check it.
+
+**Not shipped, and why:**
+
+- **The hash is toolchain-pinned, not container-hermetic.** `solana-verify build` compiles
+  inside an image published per Agave release, which removes the host from the equation;
+  this tree is Anchor 1.1.2 on Agave 3.x, which those images do not cover. Until they do,
+  the digest reproduces for anyone with the pinned toolchain and the same `Cargo.lock`, and
+  the README says exactly that rather than the word "reproducible" unqualified.
+- **The program id is a developer key, not the `rail…` vanity key held by custodians.**
+  Point 1 is a mainnet commitment; devnet runs on the key that deployed it, and the README's
+  first phase row says so in the terms a user cares about.
+- Points 3, 6 and 7 — audit, `CODEOWNERS`/`GOVERNANCE.md`, incident runbook — are untouched.
+
+**First run, 2026-09-25, devnet.** The script was run end to end before the workflow was
+wired to it, against the CI key. It bootstrapped treasury `8bhePT5sbBypQwJJBhAyw9xPikN77eoxrf47dXnVTN8d`,
+paid 0.001 SOL and 1 MOCK to the demo destination, had a payment of 1 SOL refused by the
+program with `EXCEEDS_PER_TX_MAX`, and replayed the two-link audit chain to the head the
+session account reports — `c23e64fe23540d965792de3718af73d2e9a0df93a46c19b33e3a37782db21262`.
+That SPL payment is the first time `execute_payment` has run against a real cluster;
+everything before it executed in LiteSVM or on a surfnet. The run also found the thing a
+CI-only first run would have found at the worst moment: the public endpoint answers 429
+under burst, so the resumable steps retry and the legs are spaced.
+
+**Smoke scope.** The SPL leg pays with a mock 6-decimal mint created by
+`agent-rails init --mock-mint`, not with Circle's devnet USDC. Nobody but Circle can mint the
+latter and its faucet is not scriptable, so a USDC leg would be a smoke that depends on a
+web form. The mint is USDC-shaped, and `packages/contract/src/mints.ts` carries the real
+devnet and mainnet addresses for the path that names them.

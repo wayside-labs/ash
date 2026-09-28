@@ -1,15 +1,26 @@
 #!/usr/bin/env node
+import { readFileSync } from "node:fs";
 import { Command, InvalidArgumentError, Option } from "commander";
 import pc from "picocolors";
-import { parsePositiveInt, parseSol } from "./amounts.js";
+import { parseNonNegativeInt, parsePositiveInt, parseSol } from "./amounts.js";
 import { addGlobalOptions, argParser, DEFAULT_RPC, parseGlobalOptions } from "./cli-options.js";
+import {
+  runGuardianAdd,
+  runGuardianLs,
+  runGuardianRm,
+  runMintRm,
+  runRolesSet,
+} from "./commands/admin.js";
+import { runAuditExport } from "./commands/audit.js";
 import { runCeilingSet } from "./commands/ceiling.js";
+import { runClosePolicy, runCloseReceipt, runCloseTreasury } from "./commands/close.js";
 import { runDeposit } from "./commands/deposit.js";
 import { runDestAdd, runDestLs, runDestRm } from "./commands/dest.js";
 import { runDoctor } from "./commands/doctor.js";
 import { runInit } from "./commands/init.js";
 import { runMcpEmit } from "./commands/mcp.js";
 import { runPause, runUnpause } from "./commands/pause.js";
+import { runPay } from "./commands/pay.js";
 import { runPolicySet, runPolicyShow } from "./commands/policy.js";
 import {
   runSessionClose,
@@ -29,7 +40,11 @@ const program = new Command();
 program
   .name("agent-rails")
   .description("Guardrails and treasury operations for autonomous Solana payments")
-  .version("0.0.0");
+  // Read from the manifest: a literal here went stale the first time the package was
+  // versioned, and `--version` is the one output a user checks against a changelog.
+  .version(
+    JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).version as string,
+  );
 
 program
   .command("init")
@@ -420,6 +435,214 @@ addGlobalOptions(
       const ui = new Ui({ quiet: parsed.json });
       process.exitCode = await runSessionClose(
         { ...parsed, session: options.session as string },
+        ui,
+      );
+    }),
+);
+
+const guardian = program
+  .command("guardian")
+  .description("Guardians may pause the treasury; only the owner may unpause");
+addGlobalOptions(
+  guardian
+    .command("add")
+    .description("Let an address pause this treasury (owner only)")
+    .argument("<address>", "Guardian wallet")
+    .action(async (guardianAddress: string, options) => {
+      const parsed = parseGlobalOptions(options);
+      const ui = new Ui({ quiet: parsed.json });
+      process.exitCode = await runGuardianAdd({ ...parsed, address: guardianAddress }, ui);
+    }),
+);
+addGlobalOptions(
+  guardian
+    .command("rm")
+    .description("Remove a guardian (owner only)")
+    .argument("<address>", "Guardian wallet")
+    .action(async (guardianAddress: string, options) => {
+      const parsed = parseGlobalOptions(options);
+      const ui = new Ui({ quiet: parsed.json });
+      process.exitCode = await runGuardianRm({ ...parsed, address: guardianAddress }, ui);
+    }),
+);
+addGlobalOptions(
+  guardian
+    .command("ls")
+    .description("List guardians")
+    .action(async (options) => {
+      const parsed = parseGlobalOptions(options);
+      const ui = new Ui({ quiet: parsed.json });
+      process.exitCode = await runGuardianLs(parsed, ui);
+    }),
+);
+
+const roles = program.command("roles").description("Owner and operator assignment");
+addGlobalOptions(
+  roles
+    .command("set")
+    .description("Hand over ownership, the operator role, or both (owner only)")
+    .addOption(new Option("--owner <address>", "New owner — this is irreversible from here"))
+    .addOption(new Option("--operator <address>", "New operator"))
+    .action(async (options) => {
+      const parsed = parseGlobalOptions(options);
+      const ui = new Ui({ quiet: parsed.json });
+      process.exitCode = await runRolesSet(
+        {
+          ...parsed,
+          ...(options.owner ? { owner: options.owner as string } : {}),
+          ...(options.operator ? { operator: options.operator as string } : {}),
+        },
+        ui,
+      );
+    }),
+);
+
+const mint = program.command("mint").description("Mints the treasury accepts");
+addGlobalOptions(
+  mint
+    .command("rm")
+    .description("Delist a mint whose vault is empty (owner only)")
+    .argument("<mint>", "Mint address")
+    .action(async (mintAddress: string, options) => {
+      const parsed = parseGlobalOptions(options);
+      const ui = new Ui({ quiet: parsed.json });
+      process.exitCode = await runMintRm({ ...parsed, mint: mintAddress }, ui);
+    }),
+);
+
+const close = program.command("close").description("Reclaim rent from finished accounts");
+addGlobalOptions(
+  close
+    .command("policy")
+    .description("Close a policy with no live sessions")
+    .addOption(new Option("--rent-to <address>", "Where the rent goes; defaults to your wallet"))
+    .action(async (options) => {
+      const parsed = parseGlobalOptions(options);
+      const ui = new Ui({ quiet: parsed.json });
+      process.exitCode = await runClosePolicy(
+        { ...parsed, ...(options.rentTo ? { rentTo: options.rentTo as string } : {}) },
+        ui,
+      );
+    }),
+);
+addGlobalOptions(
+  close
+    .command("treasury")
+    .description("Close an empty treasury with no policies or sessions (owner only)")
+    .addOption(new Option("--rent-to <address>", "Where the rent goes; defaults to your wallet"))
+    .action(async (options) => {
+      const parsed = parseGlobalOptions(options);
+      const ui = new Ui({ quiet: parsed.json });
+      process.exitCode = await runCloseTreasury(
+        { ...parsed, ...(options.rentTo ? { rentTo: options.rentTo as string } : {}) },
+        ui,
+      );
+    }),
+);
+addGlobalOptions(
+  close
+    .command("receipt")
+    .description("Close an expired receipt; the rent returns to whoever paid for it")
+    .addOption(new Option("--receipt <address>", "Receipt PDA").makeOptionMandatory())
+    .action(async (options) => {
+      const parsed = parseGlobalOptions(options);
+      const ui = new Ui({ quiet: parsed.json });
+      process.exitCode = await runCloseReceipt(
+        { ...parsed, receipt: options.receipt as string },
+        ui,
+      );
+    }),
+);
+
+addGlobalOptions(
+  program
+    .command("pay")
+    .description("Pay a registered destination with the session key, under the live policy")
+    .addOption(
+      new Option("--to <label>", "Destination label from the allowlist").makeOptionMandatory(),
+    )
+    .addOption(
+      new Option("--amount <amount>", "Amount in human units, e.g. 12.50").makeOptionMandatory(),
+    )
+    .addOption(
+      new Option(
+        "--reference <text>",
+        "What this settles — an invoice number, a task id",
+      ).makeOptionMandatory(),
+    )
+    .addOption(
+      new Option("--mint <ref>", "SOL, a configured symbol, or a mint address").default("SOL"),
+    )
+    .addOption(new Option("--memo <text>", "Memo, max 64 bytes"))
+    .addOption(new Option("--session <address>", "Session PDA; defaults to the manifest's"))
+    .addOption(new Option("--session-keypair <path>", "Signer for the session"))
+    .addOption(new Option("--fee-payer-keypair <path>", "Pays the transaction fee"))
+    .addOption(
+      new Option("--expires-in <seconds>", "Validity of the intent")
+        .argParser(argParser((v) => parsePositiveInt(v, "--expires-in")))
+        .default(300, "300"),
+    )
+    .addOption(
+      new Option(
+        "--allow-raw-address",
+        "Accept a raw address for --to; refused on-chain under an allowlist policy",
+      ).default(false),
+    )
+    .addOption(
+      new Option(
+        "--confirm-timeout <ms>",
+        "How long to wait for confirmation; 0 reports indeterminate after broadcast",
+      ).argParser(argParser((v) => parseNonNegativeInt(v, "--confirm-timeout"))),
+    )
+    .action(async (options) => {
+      const parsed = parseGlobalOptions(options);
+      const ui = new Ui({ quiet: parsed.json });
+      process.exitCode = await runPay(
+        {
+          ...parsed,
+          to: options.to as string,
+          amount: options.amount as string,
+          reference: options.reference as string,
+          mint: options.mint as string,
+          ...(options.memo ? { memo: options.memo as string } : {}),
+          ...(options.session ? { session: options.session as string } : {}),
+          ...(options.sessionKeypair ? { sessionKeypair: options.sessionKeypair as string } : {}),
+          ...(options.feePayerKeypair
+            ? { feePayerKeypair: options.feePayerKeypair as string }
+            : {}),
+          expiresIn: options.expiresIn as number,
+          allowRawAddress: options.allowRawAddress as boolean,
+          ...(options.confirmTimeout !== undefined
+            ? { confirmTimeoutMs: options.confirmTimeout as number }
+            : {}),
+        },
+        ui,
+      );
+    }),
+);
+
+const audit = program.command("audit").description("The session's payment history");
+addGlobalOptions(
+  audit
+    .command("export")
+    .description("Export receipts and replay the hash chain against the on-chain head")
+    .addOption(new Option("--session <address>", "Session PDA; defaults to the manifest's"))
+    .addOption(
+      new Option("--format <format>", "Output format")
+        .choices(["json", "jsonl", "csv"])
+        .default("json"),
+    )
+    .addOption(new Option("--no-verify", "Skip the chain replay and just export"))
+    .action(async (options) => {
+      const parsed = parseGlobalOptions(options);
+      const ui = new Ui({ quiet: parsed.json });
+      process.exitCode = await runAuditExport(
+        {
+          ...parsed,
+          ...(options.session ? { session: options.session as string } : {}),
+          format: options.format as "json" | "jsonl" | "csv",
+          verify: options.verify as boolean,
+        },
         ui,
       );
     }),

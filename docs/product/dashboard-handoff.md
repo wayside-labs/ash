@@ -1,6 +1,6 @@
 # Agent Rails Dashboard — Handoff de implementação
 
-**Criado:** 2026-09-19 · **Atualizado:** 2026-09-20
+**Criado:** 2026-09-19 · **Atualizado:** 2026-09-25
 **Pacote:** `packages/dashboard` (`@agent-rails/dashboard`)
 
 > ## Atualização — 2026-09-20: o dashboard deixou de ser mock
@@ -8,7 +8,8 @@
 > O plano descrito abaixo foi executado. O que mudou:
 >
 > - **Program em devnet.** `4qjD6vSgYa3oBKde3KVzsH8oCcP9BKsirX1xtD5SS6BS` está
->   deployado, authority `5eznzq18xdeVaagEkyo7DYb8v12mAWmYcz6AdWTnH8JQ`. Antes não
+>   deployado. A upgrade authority saiu do segredo de CI em 2026-09-25 (ADR-020) — confira
+>   com `pnpm agent-rails doctor --rpc https://api.devnet.solana.com`. Antes não
 >   estava em rede nenhuma, o que tornava impossível qualquer leitura real — e o
 >   handoff original não registrava isso.
 > - **`lib/mock-data.ts` não existe mais.** O estado vive em
@@ -48,6 +49,31 @@
 >
 > As seções 5, 6, 11, 15 e 18 foram atualizadas. O restante permanece como registro
 > do desenho original e do raciocínio de produto.
+
+> ## Atualização — 2026-09-25: o dashboard passou a ser testado
+>
+> - **Depositar e sacar existem e movem dinheiro de verdade**, SOL e SPL. A §5 e a
+>   §6 abaixo ainda diziam que os botões estavam desabilitados de propósito; isso
+>   deixou de ser verdade em `dbffe1c` e `#29`, e as duas tabelas foram corrigidas.
+>   O item **1.6b** da §11 está feito.
+> - **Preço em USD existe** — `GET /api/solana/price` com cache, usado pelo ticker
+>   do header e por todo `Money.usd`. O item some da lista de aberto.
+> - **Suíte Playwright, 37 testes, verde contra `next build`.**
+>   `packages/dashboard/e2e/`, rodada por `scripts/verify.sh ui` e pela workflow
+>   `.github/workflows/ui.yml` (PRs que tocam dashboard/sdk/contract, mais
+>   nightly). Nenhum teste fala com cluster: todo `/api/solana/*` é respondido
+>   dentro do navegador e `AGENT_RAILS_HOME` é redirecionado, então a suíte nunca
+>   toca o `~/.agent-rails` do operador. As regras estão em
+>   `packages/dashboard/CLAUDE.md`.
+> - **`privileged-surface.test.ts`**: o split é MCP versus superfícies de operador
+>   (ADR-021), não CLI versus dashboard. O dashboard só importa builders na
+>   allowlist (`withdraw`, `create_session` na wave 1); qualquer outro builder do
+>   programa quebra o vitest até a lista e o ADR serem atualizados de propósito.
+> - **Dois bugs encontrados pela suíte e ainda abertos**: o default de workflow do
+>   `CreateAgentDialog` nunca se aplica (o `useState` lê a lista antes da query
+>   resolver, e o botão nasce desabilitado); e no Node 26 o SSR de `/` loga
+>   `localStorage.getItem` do zustand `persist` a cada request — a Vercel roda
+>   Node 22 e não vê isso.
 
 **Objetivo original deste doc:** servir como referência para tornar o dashboard funcional (substituir mocks, conectar SDK/CLI, auth, chat real).
 
@@ -216,9 +242,11 @@ packages/dashboard/
 | `/profile` | store | editar e salvar perfil |
 | `/settings` | store + zustand | testar RPC, exportar, restaurar padrões, preferências |
 
-Depositar e sacar continuam desabilitados **de propósito**: movem dinheiro real e
-exigem construção e assinatura de transação pelo dono. A UI aponta o comando de
-CLI em vez de oferecer um botão que não faz nada.
+Depositar e sacar movem dinheiro de verdade, em SOL e em SPL: o servidor monta a
+transação, a carteira do dono assina, `/api/solana/confirm` resolve a assinatura.
+Saque é oferecido só quando o **dono on-chain** casa com a carteira conectada — o
+programa é a autoridade, não a linha do workflow. Uma tesouraria sem endereço
+conectado continua apontando o comando de CLI em vez de um botão que não faz nada.
 
 ### Header global (sempre visível)
 
@@ -252,15 +280,20 @@ Arquivo: `src/components/layout/sidebar.tsx` — collapse mobile, footer com mod
 | Connect wallet | Phantom, Solflare, Backpack, com detecção do provider |
 | Teste de RPC | `POST /api/solana/rpc-health` |
 | Guarda de SSRF | RPC customizado: só https e host público |
+| Depositar e sacar, SOL e SPL | `POST /api/solana/vault-transfer` monta, a carteira assina, `/api/solana/confirm` resolve |
+| Preço SOL/USD | `GET /api/solana/price`, com cache curto |
+| Suíte de UI | `packages/dashboard/e2e/`, 37 testes Playwright, `scripts/verify.sh ui` |
 
 ### Ainda não existe (e a UI diz isso)
 
 | Feature | O que falta |
 |---|---|
-| Depositar / Sacar | construir e assinar a transação no navegador |
 | Criar treasury pela UI | hoje via `pnpm agent-rails init` |
-| Login Google / email | provedor de identidade com sessão no servidor |
-| Preço em USD | não há oráculo ligado; saldos aparecem em SOL |
+| Derivar agentes das sessões on-chain | o casamento é por label minúsculo; `sessionAddress` existe e ninguém o preenche |
+| Snippet MCP do Agent Rails em `/mcps` | depende de um caminho de keypair `0600` que o navegador não pode conhecer |
+
+Login com Google e com carteira saíram desta tabela: existem desde o ADR-017
+(`#45`, `#53`).
 
 RAG e Harness saíram desta tabela porque saíram da UI: em vez de uma página que
 diz "ainda não existe", não há página. Voltam quando houver pipeline de embeddings
@@ -418,8 +451,8 @@ Plugin: `client.use(agentRails({ session, signer, security }))`
 
 ### Continua em aberto
 
+- [x] **1.6b** Depositar/Sacar: construir e assinar transação no navegador — SOL e SPL
 - [ ] **1.3** `POST /api/bootstrap` — criar treasury pela UI (hoje: CLI)
-- [ ] **1.6b** Depositar/Sacar: construir e assinar transação no navegador
 - [ ] **2.2** Derivar endereços de agente a partir das sessões on-chain
 - [ ] **2.4** Gerar snippet de config MCP pós-init na página `/mcps`
 - [ ] **3.1** Google OAuth real (Privy/NextAuth)
@@ -427,8 +460,8 @@ Plugin: `client.use(agentRails({ session, signer, security }))`
 - [ ] **3.4** Harness: API Docker para start/stop e logs
 - [ ] **3.5** Superteam Earn
 - [ ] **3.6** Indexer para histórico de pagamentos
-- [ ] Oráculo de preço para exibir USD junto do SOL
-- [ ] Testes: o pacote ainda não tem vitest nem playwright
+- [x] Oráculo de preço para exibir USD junto do SOL
+- [x] Testes: 9 arquivos de vitest e 37 testes Playwright (`scripts/verify.sh ui`)
 
 ## 12. Spec UX por página (referência do usuário)
 
@@ -543,8 +576,10 @@ Dashboard incluído no lint global (`pnpm lint`). Formato: double quotes, semico
 | Chat demo only | **resolvido** — Claude com streaming; demo é fallback explícito |
 | `@agent-rails/sdk` sem uso | **resolvido** — usado em `lib/server/solana.ts` |
 | Google auth falso | **removido** — não fingir sessão que não existe |
-| Sem testes | **em aberto** — zero vitest/playwright no pacote |
-| Preço em USD | **em aberto** — sem oráculo; exibimos SOL |
+| Sem testes | **resolvido** — vitest sobre rotas e guardas, Playwright sobre as telas |
+| Preço em USD | **resolvido** — `/api/solana/price` com cache |
+| Default de workflow no `CreateAgentDialog` | **em aberto** — lido antes da query resolver; o botão nasce desabilitado |
+| `localStorage` no SSR sob Node 26 | **em aberto** — ruído no log local; a Vercel roda Node 22 |
 | Task `dev` no turbo | **em aberto** — `pnpm dashboard` continua fora do turbo |
 | Chat sem chave real testada | o caminho LLM não foi exercitado ao vivo (não havia credencial na máquina) |
 
@@ -596,7 +631,8 @@ ls packages/dashboard/node_modules/next
 - [x] `pnpm dashboard:build` passa sem erro
 - [x] `pnpm lint` e `typecheck` limpos
 - [ ] Chat cria workflow real via bootstrap (tool de escrita — decisão de segurança: não expor)
-- [ ] Depositar/Sacar executam transação real
+- [x] Depositar/Sacar executam transação real, SOL e SPL
+- [x] A UI é testada em navegador contra um servidor Next de produção
 - [ ] Modo Agent Rails vs Nativo altera o fluxo de pagamento de fato
 
 ## 19. Referências no repo
