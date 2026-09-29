@@ -3,6 +3,7 @@
 import { ArrowLeftRight, Columns2, LayoutTemplate, Rows2 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Fragment } from "react";
+import type { LayoutStorage } from "react-resizable-panels";
 import { WorkflowsPanel } from "@/components/home/workflows-panel";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,6 +32,25 @@ const DEFAULT_SIZES: Record<HomePanelId, number> = {
   workflows: 58,
 };
 
+// useDefaultLayout's default `storage = localStorage` is evaluated during server render, where
+// Node either has no localStorage (ReferenceError) or, from Node 25, one whose methods are
+// undefined without --localstorage-file. Either way SSR threw and the page fell back to client
+// rendering. Resolve the browser's storage lazily and tolerate its absence or refusal.
+const panelLayoutStorage: LayoutStorage = {
+  getItem(key) {
+    try {
+      return typeof window === "undefined" ? null : window.localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  },
+  setItem(key, value) {
+    try {
+      if (typeof window !== "undefined") window.localStorage.setItem(key, value);
+    } catch {}
+  },
+};
+
 function clearSavedPanelLayouts() {
   if (typeof window === "undefined") return;
   const prefix = "react-resizable-panels:";
@@ -55,6 +75,7 @@ export function HomeLayout() {
     id: storageId,
     panelIds: PANEL_IDS,
     onlySaveAfterUserInteractions: true,
+    storage: panelLayoutStorage,
   });
 
   const panelContent: Record<HomePanelId, React.ReactNode> = {
