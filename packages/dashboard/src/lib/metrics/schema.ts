@@ -173,7 +173,7 @@ export const metricsSummarySchema = z.object({
     .object({
       usd: z.number(),
       change24h: z.number().nullable(),
-      source: z.enum(["coingecko", "coinbase"]),
+      source: z.enum(["jupiter", "coingecko", "coinbase", "kraken"]),
       asOf: z.string(),
     })
     .nullable(),

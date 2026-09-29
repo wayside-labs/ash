@@ -1,7 +1,9 @@
 /**
  * Spot SOL/USD for the dashboard. Pyth Hermes now 401s without a key, so this
- * reads a public index (CoinGecko) and falls back to Coinbase rather than
- * asking the owner to mint an oracle credential for a ticker.
+ * reads keyless public APIs rather than asking the owner to mint an oracle
+ * credential for a ticker. Several, in order, because CoinGecko and Coinbase
+ * both refuse some networks outright (403 from a datacenter IP): one source
+ * left the hosted dashboard with no USD figures at all.
  *
  * Cached in-process so a page with several money widgets does not fan out.
  */
@@ -10,7 +12,7 @@ export type SolPrice = {
   usd: number;
   /** Percent change over the last 24 hours, when the source exposes it. */
   change24h: number | null;
-  source: "coingecko" | "coinbase";
+  source: "jupiter" | "coingecko" | "coinbase" | "kraken";
   asOf: string;
 };
 
@@ -44,6 +46,24 @@ async function fetchJson(url: string): Promise<unknown> {
   });
   if (!res.ok) throw new Error(`http ${res.status}`);
   return res.json();
+}
+
+const WSOL_MINT = "So11111111111111111111111111111111111111112";
+
+async function fromJupiter(): Promise<SolPrice> {
+  const body = (await fetchJson(`https://lite-api.jup.ag/price/v3?ids=${WSOL_MINT}`)) as Record<
+    string,
+    { usdPrice?: unknown; priceChange24h?: unknown } | undefined
+  >;
+  const entry = body[WSOL_MINT];
+  const usd = parsePositiveUsd(entry?.usdPrice);
+  if (usd === null) throw new Error("jupiter");
+  return {
+    usd,
+    change24h: parseChangePct(entry?.priceChange24h),
+    source: "jupiter",
+    asOf: new Date().toISOString(),
+  };
 }
 
 async function fromCoinGecko(): Promise<SolPrice> {
@@ -84,18 +104,33 @@ async function fromCoinbase(): Promise<SolPrice> {
   return { usd, change24h, source: "coinbase", asOf: new Date().toISOString() };
 }
 
+async function fromKraken(): Promise<SolPrice> {
+  const body = (await fetchJson("https://api.kraken.com/0/public/Ticker?pair=SOLUSD")) as {
+    result?: Record<string, { c?: unknown[] } | undefined>;
+  };
+  // Kraken's `o` is today's UTC open, not 24 hours ago; reporting it as change24h would lie.
+  const usd = parsePositiveUsd(body.result?.SOLUSD?.c?.[0]);
+  if (usd === null) throw new Error("kraken");
+  return { usd, change24h: null, source: "kraken", asOf: new Date().toISOString() };
+}
+
 export async function getSolUsdPrice(): Promise<SolPrice | null> {
   if (cache && Date.now() - cache.at < CACHE_MS) return cache.value;
   if (inflight) return inflight;
 
   inflight = (async () => {
-    for (const read of [fromCoinGecko, fromCoinbase]) {
+    const failures: string[] = [];
+    for (const read of [fromJupiter, fromCoinGecko, fromCoinbase, fromKraken]) {
       try {
         const value = await read();
         cache = { at: Date.now(), value };
         return value;
-      } catch {}
+      } catch (err) {
+        failures.push(`${read.name}: ${err instanceof Error ? err.message : String(err)}`);
+      }
     }
+    // The route answers a bare 502; without this the journal never says which upstream refused.
+    console.warn(`sol price unavailable (${failures.join("; ")})`);
     return cache?.value ?? null;
   })().finally(() => {
     inflight = null;
