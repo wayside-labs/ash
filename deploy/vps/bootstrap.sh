@@ -78,7 +78,7 @@ fi
 # --- supabase stack files ---------------------------------------------------------------------
 "$here/supabase/fetch-upstream.sh" "$stack"
 install -m 640 "$here/supabase/docker-compose.agent-rails.yml" "$stack/"
-install -m 750 "$here/supabase/check-gateway.sh" "$stack/"
+install -m 750 "$here/supabase/check-gateway.sh" "$here/supabase/stack.sh" "$stack/"
 
 # --- secrets and env files --------------------------------------------------------------------
 # Written once. Values reach files through stdin and sed on this box, never argv of a long-lived

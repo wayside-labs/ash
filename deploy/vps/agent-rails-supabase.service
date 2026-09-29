@@ -11,17 +11,14 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-WorkingDirectory=/srv/agent-rails/supabase
-Environment=COMPOSE=/usr/bin/docker compose -p agent-rails -f docker-compose.yml -f docker-compose.agent-rails.yml --env-file /etc/agent-rails/supabase.env
 # First start pulls ~1 GB of images.
 TimeoutStartSec=900
-ExecStart=/bin/sh -c '$COMPOSE up -d --wait'
+ExecStart=/srv/agent-rails/supabase/stack.sh up
 # The tunnel comes up only after the gateway has been probed; a failed probe fails the unit and
 # leaves everything on loopback.
 ExecStartPost=/srv/agent-rails/supabase/check-gateway.sh
-# No token yet (fresh bootstrap) means the stack runs private, which is a valid state.
-ExecStartPost=/bin/sh -c 'if grep -q "^TUNNEL_TOKEN=." /etc/agent-rails/tunnel.env; then $COMPOSE --profile tunnel up -d tunnel; else echo "no tunnel token: stack stays on loopback"; fi'
-ExecStop=/bin/sh -c '$COMPOSE --profile tunnel down'
+ExecStartPost=/srv/agent-rails/supabase/stack.sh tunnel
+ExecStop=/srv/agent-rails/supabase/stack.sh down
 
 [Install]
 WantedBy=multi-user.target
