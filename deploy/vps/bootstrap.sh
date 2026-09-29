@@ -134,8 +134,9 @@ for unit in agent-rails-supabase.service agent-rails-dashboard.service \
   install -m 644 "$here/$unit" /etc/systemd/system/
 done
 systemctl daemon-reload
-systemctl enable agent-rails-supabase agent-rails-dashboard \
-  agent-rails-backup.timer agent-rails-restore-test.timer
+systemctl enable agent-rails-supabase agent-rails-dashboard
+# --now: a timer that is only enabled waits for the next boot, and the backup would never run.
+systemctl enable --now agent-rails-backup.timer agent-rails-restore-test.timer
 
 # --- start the stack, then the backup role ----------------------------------------------------
 systemctl restart agent-rails-supabase
