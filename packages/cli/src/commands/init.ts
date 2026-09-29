@@ -17,8 +17,10 @@ import {
   type MintPlan,
   type MockMintPlan,
   NATIVE_MINT_ADDRESS,
+  PDA_RENT_ALLOWANCE_LAMPORTS,
   planBootstrap,
   readStepState,
+  resolveBootstrapLimits,
   type StepState,
 } from "../bootstrap.js";
 import { confirm } from "../confirm.js";
@@ -74,16 +76,6 @@ export type InitOptions = {
 
 /** Rent for one `IntentReceipt` (243 bytes, `tests/layout.rs`), paid by the fee payer. */
 const RECEIPT_RENT_LAMPORTS = 2_408_880n;
-
-/**
- * Rent allowance per account this bootstrap opens, plus its share of fees.
- *
- * Deliberately generous rather than exact: `Policy` is the largest at 546 bytes and the
- * real figure comes from the Rent sysvar, but this number only gates a "do you have enough
- * SOL" check. Over-estimating asks for a slightly larger airdrop; under-estimating lets the
- * run start and fail halfway, which is far worse.
- */
-const PDA_RENT_ALLOWANCE_LAMPORTS = 5_000_000n;
 
 /**
  * Bootstrap a working treasury, policy, allowlist, session, and MCP config in one command.
@@ -607,21 +599,14 @@ function resolveLimits(options: InitOptions): BootstrapLimits {
       { hint: "A per-payment cap above the daily cap cannot ever be reached." },
     );
   }
-  const lifetime = options.lifetime ?? options.daily * 30n;
-  if (lifetime < options.daily) {
+  if (options.lifetime !== undefined && options.lifetime < options.daily) {
     throw new CliError("--lifetime must be at least --daily");
   }
-  return {
-    perTxMax: options.perTx,
-    // An hour and a day, which is the shortest pair the program accepts alongside a
-    // meaningful long window: `validate_limit` requires both >= MIN_WINDOW_SECONDS and
-    // short <= long.
-    shortWindowMax: options.daily,
-    shortWindowSeconds: 3_600,
-    longWindowMax: options.daily,
-    longWindowSeconds: 86_400,
-    lifetimeMax: lifetime,
-  };
+  return resolveBootstrapLimits({
+    perTx: options.perTx,
+    daily: options.daily,
+    lifetime: options.lifetime,
+  });
 }
 
 function resolveExpiry(hours: number): bigint {

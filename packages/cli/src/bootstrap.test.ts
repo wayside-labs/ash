@@ -1,4 +1,10 @@
-import { type Address, generateKeyPairSigner, type KeyPairSigner } from "@solana/kit";
+import { findTreasuryPda } from "@agent-rails/client";
+import {
+  type Address,
+  createNoopSigner,
+  generateKeyPairSigner,
+  type KeyPairSigner,
+} from "@solana/kit";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
   type BootstrapInput,
@@ -9,7 +15,10 @@ import {
   type MintPlan,
   mergePolicyMintLimits,
   NATIVE_MINT_ADDRESS,
+  planBootstrap,
   policyNeedsUpdate,
+  readStepState,
+  resolveBootstrapLimits,
   type StepState,
 } from "./bootstrap.js";
 import { encodeFixedName } from "./names.js";
@@ -440,5 +449,152 @@ describe("destination token account", () => {
         (ix) => ix.programAddress === "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
       ),
     ).toBe(false);
+  });
+});
+
+/**
+ * The dashboard reaches the same builder with a session, a destination and a fee payer that
+ * are each optional (ADR-021 wave 2A). Leaving one out must drop exactly its instructions —
+ * never shift another stage's contents or leave an instruction that names a missing account.
+ */
+describe("buildStages - optional session, destination and fee payer", () => {
+  function bare(overrides: Partial<BootstrapInput> = {}) {
+    const { sessionKey: _s, feePayer: _f, destination: _d, ...rest } = makeInput(overrides);
+    return rest;
+  }
+  const barePlan = () => {
+    const { session: _s, allowlistEntry: _e, ...rest } = makePlan();
+    return rest;
+  };
+
+  it("names each stage so a caller can render its own copy", () => {
+    expect(buildStages(makeInput(), makePlan(), NOTHING_DONE).map((s) => s.id)).toEqual([
+      "treasury",
+      "policy",
+      "funding",
+    ]);
+    expect(
+      buildStages(makeInput({ mints: [solMint(), usdcMint()] }), makePlan(), NOTHING_DONE).map(
+        (s) => s.id,
+      ),
+    ).toEqual(["treasury", "tokens", "policy", "funding"]);
+  });
+
+  it("writes the policy alone when no destination is given", () => {
+    const stages = buildStages(bare(), barePlan(), NOTHING_DONE);
+    expect(stages.find((s) => s.id === "policy")?.instructions).toHaveLength(1);
+  });
+
+  it("funds the vault but mints no session and pays no fee budget", () => {
+    const stages = buildStages(bare(), barePlan(), NOTHING_DONE);
+    const funding = stages.find((s) => s.id === "funding");
+    // The deposit alone: a System transfer into the SOL vault.
+    expect(funding?.instructions).toHaveLength(1);
+    expect(funding?.instructions[0]?.programAddress).toBe(SYSTEM_PROGRAM);
+  });
+
+  it("skips the funding stage entirely when there is nothing to deposit", () => {
+    const stages = buildStages(bare({ depositLamports: 0n }), barePlan(), NOTHING_DONE);
+    expect(stages.map((s) => s.id)).toEqual(["treasury", "policy"]);
+  });
+
+  it("does not open a destination token account without a destination", () => {
+    const input = bare({
+      mints: [
+        solMint(),
+        usdcMint({ destinationAta: "11111111111111111111111111111118" as Address }),
+      ],
+    });
+    const tokens = buildStages(input, barePlan(), NOTHING_DONE).find((s) => s.id === "tokens");
+    expect(tokens?.instructions).toHaveLength(1);
+  });
+
+  it("uses the session key as fee payer when the caller says so", () => {
+    const input = makeInput({ feePayer: sessionKey });
+    const funding = buildStages(input, makePlan(), NOTHING_DONE).find((s) => s.id === "funding");
+    const transfers = (funding?.instructions ?? []).filter(
+      (ix) => ix.programAddress === SYSTEM_PROGRAM,
+    );
+    expect(transfers.map((ix) => ix.accounts?.[1]?.address)).toContain(sessionKey.address);
+  });
+});
+
+describe("planBootstrap", () => {
+  it("derives the treasury from a create_key the caller holds elsewhere", async () => {
+    // The dashboard's case: the browser holds the key, the server only knows its address.
+    const held = createNoopSigner(createKey.address);
+    const plan = await planBootstrap({
+      rpc: {} as Rpc,
+      policyName: encodeFixedName("default", "--name"),
+      createKey: held,
+    });
+    const [expected] = await findTreasuryPda({ createKey: createKey.address });
+    expect(plan.treasury).toBe(expected);
+    expect(plan.createKey).toBe(held);
+    expect(plan.session).toBeUndefined();
+    expect(plan.allowlistEntry).toBeUndefined();
+  });
+
+  it("derives a session and entry only for the keys it is given", async () => {
+    const plan = await planBootstrap({
+      rpc: {} as Rpc,
+      policyName: encodeFixedName("default", "--name"),
+      sessionKey: sessionKey.address,
+      destination: destination.address,
+    });
+    expect(plan.session).toBeDefined();
+    expect(plan.allowlistEntry).toBeDefined();
+    expect(plan.createKey).toBeDefined();
+  });
+});
+
+describe("readStepState", () => {
+  it("asks only about the accounts this run would create", async () => {
+    const asked: Address[][] = [];
+    const rpc = {
+      getMultipleAccounts: (addresses: Address[]) => {
+        asked.push(addresses);
+        return { send: async () => ({ value: addresses.map(() => null) }) };
+      },
+    } as unknown as Rpc;
+    const { session: _s, allowlistEntry: _e, ...plan } = makePlan();
+    const state = await readStepState(rpc, plan);
+    expect(asked[0]).toHaveLength(2);
+    expect(state).toMatchObject({ entryExists: false, sessionExists: false });
+  });
+
+  it("reads the session flag from its own slot when there is no entry", async () => {
+    const rpc = {
+      getMultipleAccounts: (addresses: Address[]) => ({
+        // treasury, policy, session: only the session exists.
+        send: async () => ({ value: addresses.map((_, i) => (i === 2 ? {} : null)) }),
+      }),
+    } as unknown as Rpc;
+    const { allowlistEntry: _e, ...plan } = makePlan();
+    const state = await readStepState(rpc, plan);
+    expect(state).toMatchObject({ treasuryExists: false, entryExists: false, sessionExists: true });
+  });
+});
+
+describe("resolveBootstrapLimits", () => {
+  it("uses the daily cap for both windows and 30x it for the lifetime", () => {
+    expect(resolveBootstrapLimits({ perTx: 1n, daily: 10n })).toEqual({
+      perTxMax: 1n,
+      shortWindowMax: 10n,
+      shortWindowSeconds: 3_600,
+      longWindowMax: 10n,
+      longWindowSeconds: 86_400,
+      lifetimeMax: 300n,
+    });
+  });
+
+  it("refuses a per-payment cap above the daily cap", () => {
+    expect(() => resolveBootstrapLimits({ perTx: 11n, daily: 10n })).toThrow(/exceeds/);
+  });
+
+  it("refuses a lifetime below the daily cap", () => {
+    expect(() => resolveBootstrapLimits({ perTx: 1n, daily: 10n, lifetime: 9n })).toThrow(
+      /lifetime/,
+    );
   });
 });

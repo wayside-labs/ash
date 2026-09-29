@@ -26,6 +26,10 @@ import {
 } from "@solana/kit";
 import { CliError } from "./errors.js";
 import { accountsExist, type Rpc, transferSol } from "./rpc.js";
+
+export { shortfall } from "./funding.js";
+export { limitLeqCeiling } from "./planners/policy.js";
+
 import {
   createAssociatedTokenAccountIdempotentInstruction,
   createMintInstructions,
@@ -51,6 +55,16 @@ export async function findEventAuthority(): Promise<Address> {
   return pda;
 }
 
+/**
+ * Rent allowance per stage still to send, plus its share of fees.
+ *
+ * Deliberately generous rather than exact: `Policy` is the largest at 546 bytes and the
+ * real figure comes from the Rent sysvar, but this number only gates a "do you have enough
+ * SOL" check. Over-estimating asks for a slightly larger airdrop; under-estimating lets the
+ * run start and fail halfway, which is far worse.
+ */
+export const PDA_RENT_ALLOWANCE_LAMPORTS = 5_000_000n;
+
 export type BootstrapLimits = {
   /** Owner ceiling. The operator's policy must be `<=` this on every axis. */
   perTxMax: bigint;
@@ -60,6 +74,44 @@ export type BootstrapLimits = {
   longWindowSeconds: number;
   lifetimeMax: bigint;
 };
+
+/**
+ * The SOL limit set both operator surfaces bootstrap with, from three human caps.
+ *
+ * One function so the CLI and the dashboard cannot drift into different window shapes for
+ * the same "per payment / per day / lifetime" answer. The same limits become the owner's
+ * ceiling and the operator's policy, so a fresh treasury starts with no headroom between
+ * them: loosening later is an owner decision (`ceiling set`), never a bootstrap default.
+ */
+export function resolveBootstrapLimits(caps: {
+  perTx: bigint;
+  daily: bigint;
+  lifetime?: bigint | undefined;
+}): BootstrapLimits {
+  if (caps.perTx > caps.daily) {
+    throw new CliError(
+      `The per-payment cap (${caps.perTx}) exceeds the daily cap (${caps.daily})`,
+      {
+        hint: "A per-payment cap above the daily cap cannot ever be reached.",
+      },
+    );
+  }
+  const lifetime = caps.lifetime ?? caps.daily * 30n;
+  if (lifetime < caps.daily) {
+    throw new CliError("The lifetime cap must be at least the daily cap");
+  }
+  return {
+    perTxMax: caps.perTx,
+    // An hour and a day, which is the shortest pair the program accepts alongside a
+    // meaningful long window: `validate_limit` requires both >= MIN_WINDOW_SECONDS and
+    // short <= long.
+    shortWindowMax: caps.daily,
+    shortWindowSeconds: 3_600,
+    longWindowMax: caps.daily,
+    longWindowSeconds: 86_400,
+    lifetimeMax: lifetime,
+  };
+}
 
 /**
  * One mint the treasury will hold, with the limits that apply to it.
@@ -101,19 +153,33 @@ export type BootstrapPlan = {
   treasury: Address;
   solVault: Address;
   policy: Address;
-  session: Address;
-  allowlistEntry: Address;
-  /** Absent once the treasury exists: `create_key` signs exactly once, at creation. */
-  createKey: KeyPairSigner | undefined;
+  /** Absent when this bootstrap issues no session — the dashboard's first agent is optional. */
+  session?: Address;
+  /** Absent when this bootstrap allowlists no destination. */
+  allowlistEntry?: Address;
+  /**
+   * Absent once the treasury exists: `create_key` signs exactly once, at creation.
+   *
+   * A `TransactionSigner` rather than a key pair so the dashboard can name a key the
+   * browser holds: the server builds with a no-op signer for it, and the browser adds the
+   * real signature before the wallet sees the transaction.
+   */
+  createKey: TransactionSigner | undefined;
 };
+
+/** What the CLI always gets: it issues a session and allowlists a destination every run. */
+export type FullBootstrapPlan = BootstrapPlan & { session: Address; allowlistEntry: Address };
 
 export type BootstrapInput = {
   rpc: Rpc;
   /** Owner, operator, and rent payer for setup. Never handed to the agent. */
   wallet: TransactionSigner;
-  sessionKey: TransactionSigner;
-  feePayer: TransactionSigner;
-  destination: Address;
+  /** Absent: no `create_session` stage. The session key never signs here, only its address. */
+  sessionKey?: TransactionSigner;
+  /** Absent: no fee budget moves, whatever `feeBudgetLamports` says. */
+  feePayer?: TransactionSigner;
+  /** Absent: no allowlist entry and no destination token accounts. */
+  destination?: Address;
   policyName: Uint8Array;
   sessionLabel: Uint8Array;
   destinationLabel: Uint8Array;
@@ -134,31 +200,48 @@ export type BootstrapInput = {
  * do not depend on any transaction landing, so the CLI can show the developer exactly what
  * it is about to create, and on a re-run can ask the chain which of them already exist.
  */
-export async function planBootstrap(input: {
+type PlanInput = {
   rpc: Rpc;
-  sessionKey: Address;
-  destination: Address;
   policyName: Uint8Array;
   existingTreasury?: Address;
-}): Promise<BootstrapPlan> {
+  /**
+   * The `create_key` for a treasury that does not exist yet. Generated here when absent;
+   * passed in when the key lives somewhere this process cannot reach, like a browser.
+   */
+  createKey?: TransactionSigner;
+};
+
+export async function planBootstrap(
+  input: PlanInput & { sessionKey: Address; destination: Address },
+): Promise<FullBootstrapPlan>;
+export async function planBootstrap(
+  input: PlanInput & { sessionKey?: Address | undefined; destination?: Address | undefined },
+): Promise<BootstrapPlan>;
+export async function planBootstrap(
+  input: PlanInput & { sessionKey?: Address | undefined; destination?: Address | undefined },
+): Promise<BootstrapPlan> {
   let treasury: Address;
-  let createKey: KeyPairSigner | undefined;
+  let createKey: TransactionSigner | undefined;
 
   if (input.existingTreasury) {
     treasury = input.existingTreasury;
   } else {
     // Ephemeral by design: it seeds the treasury PDA, signs `create_treasury`, and is then
     // discarded. That is what lets one owner hold unlimited treasuries with no index.
-    createKey = await generateKeyPairSigner();
+    createKey = input.createKey ?? (await generateKeyPairSigner());
     [treasury] = await findTreasuryPda({ createKey: createKey.address });
   }
 
   const [solVault] = await findSolVaultPda({ treasury });
   const [policy] = await findPolicyPda({ treasury, name: input.policyName });
-  const [session] = await findSessionPda({ treasury, sessionKey: input.sessionKey });
-  const [allowlistEntry] = await findEntryPda({ policy, destinationOwner: input.destination });
-
-  return { treasury, solVault, policy, session, allowlistEntry, createKey };
+  const plan: BootstrapPlan = { treasury, solVault, policy, createKey };
+  if (input.sessionKey) {
+    [plan.session] = await findSessionPda({ treasury, sessionKey: input.sessionKey });
+  }
+  if (input.destination) {
+    [plan.allowlistEntry] = await findEntryPda({ policy, destinationOwner: input.destination });
+  }
+  return plan;
 }
 
 /** One mint's limits as stored on a policy account or passed to `create_policy`. */
@@ -198,12 +281,16 @@ export async function readStepState(
   rpc: Rpc,
   plan: Pick<BootstrapPlan, "treasury" | "policy" | "session" | "allowlistEntry">,
 ): Promise<StepState> {
-  const [treasuryExists, policyExists, entryExists, sessionExists] = await accountsExist(rpc, [
-    plan.treasury,
-    plan.policy,
-    plan.allowlistEntry,
-    plan.session,
-  ]);
+  // An entry or session this run does not create is reported as absent; `buildStages` only
+  // consults those flags when the matching input is present.
+  const optional = [plan.allowlistEntry, plan.session].filter(
+    (account): account is Address => account !== undefined,
+  );
+  const exists = await accountsExist(rpc, [plan.treasury, plan.policy, ...optional]);
+  const [treasuryExists, policyExists] = exists;
+  let next = 2;
+  const entryExists = plan.allowlistEntry ? exists[next++] : false;
+  const sessionExists = plan.session ? exists[next++] : false;
 
   const configuredMints: Address[] = [];
   if (treasuryExists) {
@@ -246,7 +333,14 @@ export async function readStepState(
   };
 }
 
+/**
+ * Stable names for the four transactions, for a caller that renders its own copy — the
+ * dashboard translates these rather than showing the CLI's English labels.
+ */
+export type BootstrapStageId = "treasury" | "tokens" | "policy" | "funding";
+
 export type BootstrapStage = {
+  id: BootstrapStageId;
   /** Shown on the spinner and in the failure message. */
   label: string;
   instructions: Instruction[];
@@ -364,7 +458,11 @@ export function buildStages(
     stageOne.push(addMintInstruction(input, plan, native));
   }
   if (stageOne.length > 0) {
-    stages.push({ label: "Creating treasury and SOL ceiling", instructions: stageOne });
+    stages.push({
+      id: "treasury",
+      label: "Creating treasury and SOL ceiling",
+      instructions: stageOne,
+    });
   }
 
   // ---- The SPL mint -------------------------------------------------------------------
@@ -387,7 +485,7 @@ export function buildStages(
     // Idempotent, so it is emitted unconditionally rather than guarded by a read: the
     // instruction succeeds whether or not the account is already there, and one extra
     // instruction is cheaper than the round trip needed to find out.
-    if (token.destinationAta) {
+    if (token.destinationAta && input.destination) {
       stageTwo.push(
         createAssociatedTokenAccountIdempotentInstruction({
           payer: input.wallet,
@@ -401,6 +499,7 @@ export function buildStages(
   }
   if (stageTwo.length > 0) {
     stages.push({
+      id: "tokens",
       label: `Adding ${tokens.map((t) => t.symbol).join(", ")} and its vault token account`,
       instructions: stageTwo,
     });
@@ -447,7 +546,7 @@ export function buildStages(
     );
   }
 
-  if (!state.entryExists) {
+  if (input.destination && plan.allowlistEntry && !state.entryExists) {
     stageThree.push(
       getAddAllowlistEntryInstruction({
         operator: input.wallet,
@@ -464,12 +563,12 @@ export function buildStages(
     );
   }
   if (stageThree.length > 0) {
-    stages.push({ label: "Writing policy and allowlist", instructions: stageThree });
+    stages.push({ id: "policy", label: "Writing policy and allowlist", instructions: stageThree });
   }
 
   // ---- Session and funding ------------------------------------------------------------
   const stageFour: Instruction[] = [];
-  if (!state.sessionExists) {
+  if (input.sessionKey && plan.session && !state.sessionExists) {
     stageFour.push(
       getCreateSessionInstruction({
         operator: input.wallet,
@@ -489,7 +588,7 @@ export function buildStages(
   if (input.depositLamports > 0n) {
     stageFour.push(transferSol(input.wallet, plan.solVault, input.depositLamports));
   }
-  if (input.feeBudgetLamports > 0n) {
+  if (input.feePayer && input.feeBudgetLamports > 0n) {
     stageFour.push(transferSol(input.wallet, input.feePayer.address, input.feeBudgetLamports));
   }
   if (input.mockMint && input.mockMint.supply > 0n) {
@@ -506,7 +605,11 @@ export function buildStages(
     }
   }
   if (stageFour.length > 0) {
-    stages.push({ label: "Minting session and funding vault", instructions: stageFour });
+    stages.push({
+      id: "funding",
+      label: "Minting session and funding vault",
+      instructions: stageFour,
+    });
   }
 
   return stages;
