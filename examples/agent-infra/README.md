@@ -99,5 +99,6 @@ call these MCPs. Agents run through the exported config or `run-agent.sh`.
 ## VPS
 
 `deploy/vps/vendors/install.sh` after `bootstrap.sh`; see the message it prints. Vendors are
-public at `https://<vendors-domain>/{oracle,notary,compute}/`, so a local agent can pay the VPS
-vendors: set `ORACLE_URL=https://<vendors-domain>/oracle` etc. in `agents.env`.
+public through the agent-rails tunnel, one hostname each (`https://vendor-oracle.ash.app.br`,
+`vendor-notary`, `vendor-compute`), so a local agent can pay the VPS vendors: set
+`ORACLE_URL=https://vendor-oracle.ash.app.br` etc. in `agents.env`.

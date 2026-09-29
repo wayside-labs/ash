@@ -13,7 +13,7 @@ Variáveis usadas abaixo (exporte no shell antes de começar):
 export RPC=https://api.devnet.solana.com
 export SESSION=<AgentSession PDA do agente>
 export SKEY=<caminho do keypair da sessão>
-export V=http://127.0.0.1        # local; na VPS: https://<vendors-domain>
+export V=http://127.0.0.1        # local; na VPS troque $V:4101/4102/4103 por https://vendor-{oracle,notary,compute}.ash.app.br
 ```
 
 `jq` ajuda a ler as respostas. Se a internet cair, rode os vendors com `ORACLE_SOURCE=mock`:
@@ -173,13 +173,13 @@ Depois de `bootstrap.sh`, `vendors/install.sh` e `agent-rails-deploy main`.
 |---|---|---|
 | H.1 | `curl -sI https://<domain>/` | 200, headers `X-Frame-Options DENY`, HSTS, sem `Server` |
 | H.2 | `ss -ltnp` | só Caddy em 80/443; dashboard 3000 e vendors 4101–4103 em 127.0.0.1 🔒 |
-| H.3 | `curl https://<vendors-domain>/oracle/health` (e notary, compute) | `{ok:true}` |
+| H.3 | `curl https://vendor-oracle.ash.app.br/health` (e vendor-notary, vendor-compute) | `{ok:true}` |
 | H.4 | `systemctl status agent-rails-vendor@oracle` | active; `journalctl` mostra `pay_to … holds` |
 | H.5 | `sudo -u deploy cat /etc/agent-rails/dashboard.env` | permission denied (root 0600) 🔒 |
 | H.6 | `/etc/agent-rails/vendors.env` | só chaves públicas 🔒 |
 | H.7 | `sudo systemctl start agent-rails-buyer@oracle; journalctl -u agent-rails-buyer@oracle -n 50` | invoice → pay → redeem 200 |
 | H.8 | Ative os timers; espere 1 h | ~4 compras por vendor; `systemctl list-timers` mostra próximos disparos |
-| H.9 | Agente local com `ORACLE_URL=https://<vendors-domain>/oracle` (E.1) | paga e resgata contra os vendors da VPS |
+| H.9 | Agente local com `ORACLE_URL=https://vendor-oracle.ash.app.br` (E.1) | paga e resgata contra os vendors da VPS |
 | H.10 | `agent-rails-deploy <sha-antigo>` | troca de symlink quase instantânea (release em cache); vendors reiniciados |
 | H.11 | Deploy de um ref que quebra o build/start | rollback automático para o release anterior, saída mostra `rolling back` |
 | H.12 | Reboot da VPS | dashboard, vendors e timers voltam sozinhos; invoices persistidos |

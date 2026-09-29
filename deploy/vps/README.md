@@ -30,6 +30,7 @@ everything that needs docker is a root-owned unit reading root-owned files.
 |---|---|---|
 | `console.ash.app.br` | `http://127.0.0.1:3000` | everything (the dashboard) |
 | `console-api.ash.app.br` | `http://127.0.0.1:8000` | **path `^/(auth\|rest)/v1/` only** |
+| `vendor-{oracle,notary,compute}.ash.app.br` | `http://127.0.0.1:4101` / `4102` / `4103` | everything (demo vendors, `vendors/install.sh`) |
 
 - The API hostname has one label under the zone because Universal SSL covers `*.ash.app.br`, not
   `*.console.ash.app.br`.

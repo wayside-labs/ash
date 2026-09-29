@@ -38,7 +38,10 @@ if [[ ! -f $release/.built ]]; then
     set -a; . /etc/agent-rails/dashboard.public.env; set +a
     cd "$1"
     corepack pnpm install --frozen-lockfile --ignore-scripts
-    corepack pnpm turbo run build --filter=@agent-rails/dashboard
+    # The vendors, the CLI (the scripted buyer pays through it) and the MCP server (agents on
+    # this box run it) ride along; turbo builds their shared dependencies once.
+    corepack pnpm turbo run build --filter=@agent-rails/dashboard --filter=@agent-rails/vendors \
+      --filter=@agent-rails/cli --filter=@agent-rails/mcp --filter=@agent-rails/knowledge-mcp
     touch .built
   ' _ "$release"
 fi
@@ -47,6 +50,10 @@ switch_to() {
   ln -sfn "$1" "$base/current.tmp"
   mv -T "$base/current.tmp" "$base/current"
   systemctl restart agent-rails-dashboard
+  # Only the vendor instances someone enabled; `current` moved under them too.
+  for unit in $(systemctl list-units --plain --no-legend 'agent-rails-vendor@*' | awk '{print $1}'); do
+    systemctl restart "$unit"
+  done
 }
 
 healthy() {
