@@ -1,0 +1,17 @@
+[Unit]
+Description=Agent Rails nightly database backup (encrypted copy for ash-offsite)
+Requires=agent-rails-supabase.service
+After=agent-rails-supabase.service
+
+[Service]
+Type=oneshot
+User=agent-rails
+Group=agent-rails
+# root:agent-rails 0640 — the read-only backup role, never the superuser.
+EnvironmentFile=/etc/agent-rails/backup.env
+ExecStart=/usr/local/bin/agent-rails-backup
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/backups/agent-rails

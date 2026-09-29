@@ -1,0 +1,11 @@
+[Unit]
+Description=Agent Rails nightly database backup
+
+[Timer]
+# Before ash-offsite (04:00 UTC) ships /var/backups/agent-rails/offsite to livro-vps.
+OnCalendar=*-*-* 03:05:00 UTC
+RandomizedDelaySec=120
+Persistent=true
+
+[Install]
+WantedBy=timers.target

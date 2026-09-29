@@ -2,7 +2,7 @@
 # Build and switch the dashboard to a git ref. Installed by bootstrap.sh as
 # /usr/local/sbin/agent-rails-deploy and run by a person with sudo:
 #   sudo agent-rails-deploy [branch|tag|sha]     (default: main)
-# Everything that touches the checkout runs as `deploy`; root only swaps the service.
+# Everything that touches the checkout runs as `agent-rails`; root only swaps the service.
 set -euo pipefail
 
 ref="${1:-main}"
@@ -11,9 +11,11 @@ mirror="$base/repo.git"
 keep=3
 [[ $EUID -eq 0 ]] || { echo "run with sudo" >&2; exit 1; }
 
-as_deploy() { sudo -u deploy -H -- "$@"; }
+as_deploy() { sudo -u agent-rails -H -- "$@"; }
 
-if [[ ! -d $mirror ]]; then
+# bootstrap.sh pre-creates repo.git (the root-owned parent is not writable by agent-rails), so
+# "not cloned yet" means no HEAD inside it rather than no directory.
+if [[ ! -f $mirror/HEAD ]]; then
   as_deploy git clone --mirror git@github.com:wayside-labs/agent-rails.git "$mirror"
 fi
 as_deploy git -C "$mirror" fetch --prune --quiet

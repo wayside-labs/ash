@@ -1,0 +1,10 @@
+[Unit]
+Description=Agent Rails weekly restore test
+
+[Timer]
+# After ash's own restore test (Mon 04:15 UTC) so the two never compete for the CPU.
+OnCalendar=Mon *-*-* 04:40:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,16 +1,16 @@
 [Unit]
 Description=Agent Rails dashboard (Next.js)
-After=network-online.target
+After=network-online.target agent-rails-supabase.service
 Wants=network-online.target
 
 [Service]
 Type=simple
-User=deploy
-Group=deploy
+User=agent-rails
+Group=agent-rails
 # `current` is a symlink swapped by deploy.sh; systemd resolves it at start, so a restart is
 # what moves the service to a new release.
 WorkingDirectory=/srv/agent-rails/current/packages/dashboard
-# systemd reads both files as root before dropping to `deploy`, which is why the secret one
+# systemd reads both files as root before dropping to `agent-rails`, which is why the secret one
 # can stay root:root 0600 and still reach the process.
 EnvironmentFile=/etc/agent-rails/dashboard.public.env
 EnvironmentFile=/etc/agent-rails/dashboard.env
