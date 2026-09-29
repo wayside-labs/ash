@@ -85,7 +85,7 @@ export function resolveRpcUrl(cluster: SolanaCluster, customRpc?: string | null)
   return blocked ? fallback : parsed.toString();
 }
 
-function rpcFor(cluster: SolanaCluster, customRpc?: string | null) {
+export function rpcFor(cluster: SolanaCluster, customRpc?: string | null) {
   return createSolanaRpc(resolveRpcUrl(cluster, customRpc));
 }
 
@@ -201,7 +201,7 @@ const TREASURY_FIELD_OFFSET = 10n;
  * address that exists but belongs to a wallet or a token account is "not a
  * treasury", not a decode crash.
  */
-async function fetchTreasury(rpc: Rpc, treasuryPk: Address) {
+export async function fetchTreasury(rpc: Rpc, treasuryPk: Address) {
   const info = await rpc.getAccountInfo(treasuryPk, { encoding: "base64" }).send();
   if (!info.value || info.value.owner !== AGENT_RAILS_PROGRAM_ADDRESS) return null;
   return decodeTreasury({
@@ -267,7 +267,7 @@ export async function readTreasury(
   };
 }
 
-type Rpc = ReturnType<typeof createSolanaRpc>;
+export type Rpc = ReturnType<typeof createSolanaRpc>;
 
 const DEFAULT_PUBKEY = "11111111111111111111111111111111";
 
@@ -1117,6 +1117,29 @@ async function buildTokenWithdraw(
   return instructions;
 }
 
+/**
+ * An unsigned v0 transaction with `feePayer` as the first signer slot. Signers attached to
+ * the instructions are ignored: every one of them is a no-op stand-in for a key that signs
+ * in the browser.
+ */
+export async function compileUnsigned(
+  rpc: Rpc,
+  feePayer: Address,
+  instructions: Instruction[],
+): Promise<{ transaction: string; lastValidBlockHeight: number }> {
+  const { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
+  const message = pipe(
+    createTransactionMessage({ version: 0 }),
+    (m) => setTransactionMessageFeePayer(feePayer, m),
+    (m) => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, m),
+    (m) => appendTransactionMessageInstructions(instructions, m),
+  );
+  return {
+    transaction: getBase64EncodedWireTransaction(compileTransaction(message)),
+    lastValidBlockHeight: Number(latestBlockhash.lastValidBlockHeight),
+  };
+}
+
 export type CreateSessionRequest = {
   treasury: string;
   /** Operator or owner — fee payer and `create_session` authority. */
@@ -1149,7 +1172,7 @@ export type ConfirmationResult = {
 const CONFIRM_TIMEOUT_MS = 30_000;
 const CONFIRM_POLL_MS = 1_000;
 
-function requireOperatorOrOwner(
+export function requireOperatorOrOwner(
   wallet: Address,
   treasury: NonNullable<Awaited<ReturnType<typeof fetchTreasury>>>,
 ): void {
@@ -1158,7 +1181,7 @@ function requireOperatorOrOwner(
   }
 }
 
-function assertSessionKeySafe(
+export function assertSessionKeySafe(
   sessionKey: Address,
   treasury: NonNullable<Awaited<ReturnType<typeof fetchTreasury>>>,
 ): void {
@@ -1170,7 +1193,7 @@ function assertSessionKeySafe(
   }
 }
 
-function resolveExpiry(hours: number): bigint {
+export function resolveExpiry(hours: number): bigint {
   const seconds = hours * 3_600;
   if (seconds > MAX_SESSION_TTL_SECONDS) {
     throw new SolanaRequestError("api.error.sessionTtlTooLong");
