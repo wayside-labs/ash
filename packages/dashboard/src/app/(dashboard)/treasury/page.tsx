@@ -103,12 +103,15 @@ export default function TreasuryPage() {
             const isOwner = Boolean(walletAddress) && vault?.owner === walletAddress;
             return (
               // Keyed by treasury rather than by workflow id, so the UI suite
-              // can address the card whose vault it stubbed.
+              // can address the card whose vault it stubbed; a card with no
+              // treasury yet is addressed by its row instead.
               <Card
                 key={workflow.id}
-                {...(workflow.treasuryAddress
-                  ? { "data-testid": `vault-${workflow.treasuryAddress}` }
-                  : {})}
+                data-testid={
+                  workflow.treasuryAddress
+                    ? `vault-${workflow.treasuryAddress}`
+                    : `workflow-${workflow.id}`
+                }
               >
                 <CardHeader>
                   <div className="flex items-center justify-between gap-2">

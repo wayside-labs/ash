@@ -1,8 +1,8 @@
 # packages/dashboard
 
 The hosted operator surface (ADR-017, ADR-021). It reads the chain and submits transactions
-the connected wallet is allowed to sign — starting with owner vault transfer and operator
-session lifecycle (wave 1).
+the connected wallet is allowed to sign — owner vault transfer and operator session
+lifecycle (wave 1), and the treasury bootstrap (wave 2A).
 
 ## Rules specific to this package
 
@@ -31,8 +31,18 @@ session lifecycle (wave 1).
 - Import/sync on-chain `AgentSession` into agent cards (`sessionAddress`, `walletAddress`).
 - `POST /api/solana/create-session` — build unsigned tx; browser signs; confirm.
 - Post-create modal: download keypair + copy MCP config.
-- Full treasury bootstrap wizard is **out of scope** until after 2026-10-10; point at CLI
-  `init` when `treasuryAddress` is missing.
+
+### Wave 2A scope (ADR-021 amendment)
+
+- `POST /api/solana/bootstrap/{plan,build-step}` run `@agent-rails/cli/bootstrap`'s own
+  `buildStages` — never re-implement a stage here; change it in `packages/cli` so `init`
+  changes with it. `build-step` returns the next stage the chain lacks, so the client loop
+  is resumable by construction.
+- The browser holds the `create_key` (`lib/wallet/create-key.ts`) and signs the treasury
+  stage with it *before* the wallet. Only public keys cross the wire.
+- The wizard lives on `/treasury` for rows with no `treasuryAddress`, and as *Finish setup*
+  in the drawer for a treasury with no policy. Mainnet is refused in the UI.
+- Still out of scope: allowlist/policy editors, pause, revoke (waves 2B/2C).
 
 ## Tests
 

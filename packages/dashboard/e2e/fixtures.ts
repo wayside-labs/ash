@@ -1,4 +1,15 @@
 import { test as base, expect, type Locator, type Page } from "@playwright/test";
+import {
+  AccountRole,
+  address,
+  appendTransactionMessageInstructions,
+  compileTransaction,
+  createTransactionMessage,
+  getBase64EncodedWireTransaction,
+  pipe,
+  setTransactionMessageFeePayer,
+  setTransactionMessageLifetimeUsingBlockhash,
+} from "@solana/kit";
 import en from "../src/i18n/locales/en.json" with { type: "json" };
 
 /**
@@ -63,6 +74,8 @@ export const DEFAULT_CHAIN: ChainState = {
 
 export type ChainStub = {
   state: ChainState;
+  /** Bootstrap stages the stub has handed out, in order; `build-step` walks this list. */
+  bootstrapStages: ("treasury" | "policy" | "funding")[];
   /** Requests the browser made to `/api/solana/*`, in order, for assertions. */
   calls: { url: string; method: string; body: unknown }[];
 };
@@ -173,7 +186,11 @@ export async function stubChain(
   page: Page,
   overrides: Partial<ChainState> = {},
 ): Promise<ChainStub> {
-  const stub: ChainStub = { state: { ...DEFAULT_CHAIN, ...overrides }, calls: [] };
+  const stub: ChainStub = {
+    state: { ...DEFAULT_CHAIN, ...overrides },
+    calls: [],
+    bootstrapStages: [],
+  };
 
   await page.route("**/api/solana/**", async (route) => {
     const request = route.request();
@@ -246,6 +263,30 @@ export async function stubChain(
           transaction: Buffer.from("stub-create-session").toString("base64"),
           lastValidBlockHeight: 1,
         });
+      case "/api/solana/bootstrap/vendors":
+        return json({ vendors: [BOOTSTRAP_VENDOR] });
+      case "/api/solana/bootstrap/plan":
+        return json(bootstrapPlan(body as BootstrapBody));
+      case "/api/solana/bootstrap/build-step": {
+        const next = BOOTSTRAP_ORDER[stub.bootstrapStages.length];
+        if (!next) return json({ done: true, treasury: ADDR.treasury });
+        stub.bootstrapStages.push(next);
+        const request = body as BootstrapBody;
+        return json({
+          done: false,
+          treasury: ADDR.treasury,
+          stepId: next,
+          // Only the treasury stage has to be real: the browser decodes it to add the
+          // create_key signature. The wallet stub never parses the others.
+          transaction:
+            next === "treasury" && request.createKey
+              ? treasuryStageTransaction(request.wallet, request.createKey)
+              : Buffer.from(`stub-${next}`).toString("base64"),
+          lastValidBlockHeight: 1,
+          needsCreateKeySignature: next === "treasury",
+          remaining: BOOTSTRAP_ORDER.length - stub.bootstrapStages.length + 1,
+        });
+      }
       case "/api/solana/confirm":
         return json({
           signature: STUB_SIGNATURE,
@@ -260,6 +301,69 @@ export async function stubChain(
   });
 
   return stub;
+}
+
+/** A payee the stubbed `/bootstrap/vendors` offers, as the VPS catalogs would. */
+export const BOOTSTRAP_VENDOR = {
+  vendor: "oracle",
+  title: "Price oracle",
+  label: "oracle",
+  owner: "4Qg14cZWVLPXeFFrcaD9cFZEdLX44M4AWfxdHwSiVYeF",
+  mintRef: "SOL",
+};
+
+const BOOTSTRAP_ORDER = ["treasury", "policy", "funding"] as const;
+
+type BootstrapBody = {
+  wallet: string;
+  treasury: string | null;
+  createKey: string | null;
+  session: { key: string } | null;
+  depositLamports: string;
+};
+
+function bootstrapPlan(body: BootstrapBody) {
+  return {
+    treasury: ADDR.treasury,
+    solVault: ADDR.solVault,
+    policy: ADDR.solVault,
+    session: body.session ? ADDR.agentSession : null,
+    allowlistEntry: null,
+    treasuryExists: false,
+    steps: BOOTSTRAP_ORDER.map((id) => ({ id, instructions: 2 })),
+    deposit: { target: body.depositLamports, held: "0", shortfall: body.depositLamports },
+    feeBudget: null,
+    walletLamports: String(5 * LAMPORTS_PER_SOL),
+    requiredLamports: String(LAMPORTS_PER_SOL),
+  };
+}
+
+/**
+ * A decodable v0 transaction naming the browser's `create_key` as a signer — what the
+ * real `build-step` hands back for the treasury stage, minus the instruction data. The
+ * browser has to find its key in the signer slots or it refuses to sign.
+ */
+function treasuryStageTransaction(wallet: string, createKey: string): string {
+  const message = pipe(
+    createTransactionMessage({ version: 0 }),
+    (m) => setTransactionMessageFeePayer(address(wallet), m),
+    (m) =>
+      setTransactionMessageLifetimeUsingBlockhash(
+        { blockhash: ADDR.solVault as never, lastValidBlockHeight: 1n },
+        m,
+      ),
+    (m) =>
+      appendTransactionMessageInstructions(
+        [
+          {
+            programAddress: address("11111111111111111111111111111111"),
+            accounts: [{ address: address(createKey), role: AccountRole.READONLY_SIGNER }],
+          },
+        ],
+        m,
+      ),
+  );
+  return getBase64EncodedWireTransaction(compileTransaction(message));
 }
 
 /**
@@ -501,9 +605,12 @@ export async function stubWallet(
         on: () => {},
         removeListener: () => {},
         signMessage: async (message: Uint8Array) => message,
-        request: async ({ method }: { method: string }) => {
+        request: async ({ method, params }: { method: string; params?: unknown }) => {
           if (method !== "signAndSendTransaction") throw new Error(`unstubbed: ${method}`);
           if (rejectSigning) throw new Error("User rejected the request.");
+          // Kept for tests that assert what the dashboard asked the wallet to sign.
+          const w = window as unknown as { __signed?: unknown[] };
+          w.__signed = [...(w.__signed ?? []), params];
           return { signature };
         },
       };

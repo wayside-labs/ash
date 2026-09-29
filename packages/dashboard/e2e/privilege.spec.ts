@@ -87,18 +87,22 @@ test.describe("privilege boundaries", () => {
     }
   });
 
-  test("a treasury with no address points at the CLI instead of a dead button", async ({
-    page,
-  }) => {
+  test("a treasury with no address offers the bootstrap, not a dead button", async ({ page }) => {
     await stubChain(page);
     await stubWallet(page);
 
     // The seeded workflows carry no treasury, which is the state a first-run
-    // user is in: the honest answer is the bootstrap command, not a form.
+    // user is in. Since ADR-021 wave 2A the answer is the bootstrap wizard —
+    // which writes ceiling and policy from one set of numbers — rather than a
+    // terminal command, and still never a deposit button with no vault behind it.
     await page.goto("/treasury");
     await expect(page.getByText(t("treasury.noTreasuryConnected")).first()).toBeVisible();
     await expect(page.getByText(t("treasury.setupHint")).first()).toBeVisible();
-    await expect(page.getByText(/pnpm agent-rails init/).first()).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: t("treasury.bootstrap.cta") }).first(),
+    ).toBeVisible();
+    await expect(page.getByText(/pnpm agent-rails init/)).toHaveCount(0);
+    await expect(page.getByRole("button", { name: t("common.deposit") })).toHaveCount(0);
   });
 
   test("the chat box cannot move money", async ({ page }) => {
