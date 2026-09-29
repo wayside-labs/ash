@@ -9,7 +9,14 @@ set -euo pipefail
 umask 077
 
 root=/var/backups/agent-rails
-ts="$(date -u +%Y%m%dT%H%MZ)"
+# To the second, and never reused: ash-offsite pushes with rrsync -no-overwrite, so a name that
+# already exists on livro-vps is skipped without a word — a second run in the same minute would
+# have produced a backup that silently never left the box.
+ts="$(date -u +%Y%m%dT%H%M%SZ)"
+if [[ -e $root/daily/$ts || -e $root/offsite/$ts.tar.age ]]; then
+  echo "backup $ts already exists; refusing to reuse the name" >&2
+  exit 1
+fi
 
 agent-rails-db dump "$root/daily/$ts"
 tar -C "$root/daily" -cf - "$ts" |

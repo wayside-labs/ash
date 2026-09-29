@@ -48,7 +48,8 @@ services:
   # gateway on 127.0.0.1:8000; the hostnames and path rules live in Cloudflare (ash's account).
   tunnel:
     container_name: agent-rails-tunnel
-    image: cloudflare/cloudflared:2025.8.1
+    # Same release as ash's tunnel, so both move together.
+    image: cloudflare/cloudflared:2026.9.3
     profiles: [tunnel]
     restart: unless-stopped
     network_mode: host

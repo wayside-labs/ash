@@ -61,15 +61,20 @@ template above all), paste the sums.
 
 ## First install
 
+The repo is private and the box has no GitHub key until bootstrap makes one, so the scripts go
+over the SSH you already have, from a laptop checkout of the branch being installed:
+
 ```sh
-git clone … && cd agent-rails/deploy/vps
-sudo DOMAIN=console.ash.app.br API_DOMAIN=console-api.ash.app.br ./bootstrap.sh
+git archive --prefix=agent-rails-deploy/ HEAD deploy/vps | ssh agent-rails-vps 'tar -x -C ~'
+ssh -t agent-rails-vps 'cd ~/agent-rails-deploy/deploy/vps &&
+  sudo DOMAIN=console.ash.app.br API_DOMAIN=console-api.ash.app.br ./bootstrap.sh'
 ```
 
 It prints what is still missing. Fill each item with `sudoedit`:
 
 1. The deploy key it printed, registered read-only on `wayside-labs/agent-rails`.
-2. `TUNNEL_TOKEN` in `/etc/agent-rails/tunnel.env`, from Lucas.
+2. `TUNNEL_TOKEN` in `/etc/agent-rails/tunnel.env`. Lucas writes it there himself once
+   `/etc/agent-rails` exists; it never passes through chat.
 3. `/etc/agent-rails/backup.age-recipients`: our `age1…` public key. Keep the identity (private
    key) off this box, in the team password manager. Without it no backup can be read, including
    by us.
@@ -116,8 +121,9 @@ and tenant data carry over.
   write-only rrsync key cannot read, delete or overwrite. Locally: 7 days in plain, 3 days encrypted.
 - **Weekly:** `agent-rails-restore-test` restores the newest dump (public schema) into a
   throwaway container of the same image and compares row counts.
-- **Handoff to ash-offsite:** agreed in principle; still to be confirmed that `offsite.sh` ships
-  `/var/backups/agent-rails/offsite/*.tar.age` as-is into its own folder on livro-vps.
+- **Handoff to ash-offsite:** confirmed and tested by Lucas on 2026-09-29. At 04:00 UTC it ships
+  `offsite/*.tar.age` byte-for-byte (no re-encryption) to `agent-rails-db/` on livro-vps. Names
+  must be unique: a name already there is skipped silently, hence the per-second timestamps.
 - **Failure alerts:** `agent-rails-*` failures only reach the journal until ash's Telegram
   alerting also watches `agent-rails-*`.
 - **Restoring from offsite:** fetch the `.tar.age` from livro-vps, then
