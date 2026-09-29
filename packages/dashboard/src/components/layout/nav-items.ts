@@ -10,6 +10,7 @@ import {
   Home,
   Inbox,
   Key,
+  LayoutTemplate,
   Settings,
   User,
   Wallet,
@@ -41,6 +42,7 @@ export const navGroupDefs: NavGroupDef[] = [
   {
     labelKey: "nav.operation",
     items: [
+      { href: "/templates", labelKey: "nav.templates", icon: LayoutTemplate },
       { href: "/workflows", labelKey: "nav.workflows", icon: Zap },
       { href: "/agents", labelKey: "nav.agents", icon: Bot },
       { href: "/reviews", labelKey: "nav.reviews", icon: Inbox },

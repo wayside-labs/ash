@@ -234,6 +234,7 @@ export function seedState(): DashboardState {
         ].join("\n"),
       },
     ],
+    templates: [],
     apiKeys: [],
     integrations: [],
     profile: { displayName: "", company: "", bio: "", email: "" },

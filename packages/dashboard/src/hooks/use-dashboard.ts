@@ -86,6 +86,32 @@ export function useDeleteResource(resource: ResourceName) {
   );
 }
 
+export type ApplyTemplateVars = {
+  templateId: string;
+  workflowName: string;
+  cluster: SolanaCluster;
+  ownerAddress: string | null;
+  treasuryAddress: string | null;
+};
+
+export type ApplyTemplateResult = {
+  workflowId: string;
+  setupSteps: string[];
+  docsPath: string | null;
+};
+
+export function useApplyTemplate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: ApplyTemplateVars) =>
+      request<ApplyTemplateResult & { state: MaskedState }>("/api/templates/apply", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    onSuccess: (res) => queryClient.setQueryData(["state"], res.state),
+  });
+}
+
 /**
  * Downloads the workflow's `.mcp.json`. The body is fetched as an opaque blob
  * rather than parsed: it is the only response that carries unmasked env values,

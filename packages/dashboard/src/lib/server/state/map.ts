@@ -9,8 +9,9 @@ import type {
   StoredRagDocument,
   StoredSkill,
   StoredWorkflow,
+  StoredWorkflowTemplate,
 } from "@/lib/schema";
-import { integrationSchema, workflowLayoutSchema } from "@/lib/schema";
+import { integrationSchema, templateAgentDefSchema, workflowLayoutSchema } from "@/lib/schema";
 
 export type WorkflowRow = {
   id: string;
@@ -88,6 +89,20 @@ export type SkillRow = {
   scope_name: string | null;
   enabled: boolean;
   demo: boolean;
+  created_at: string;
+};
+
+export type WorkflowTemplateRow = {
+  id: string;
+  org_id: string;
+  name: string;
+  description: string;
+  icon: string;
+  summary: string;
+  how_it_works: string;
+  setup_steps: string[];
+  agents: unknown;
+  docs_path: string | null;
   created_at: string;
 };
 
@@ -413,12 +428,57 @@ export function settingsToRow(settings: Settings, accountId: string): SettingsRo
   };
 }
 
+function parseTemplateAgents(raw: unknown): StoredWorkflowTemplate["agents"] {
+  if (!Array.isArray(raw)) return [];
+  const agents: StoredWorkflowTemplate["agents"] = [];
+  for (const row of raw) {
+    const parsed = templateAgentDefSchema.safeParse(row);
+    if (parsed.success) agents.push(parsed.data);
+  }
+  return agents;
+}
+
+export function workflowTemplateFromRow(row: WorkflowTemplateRow): StoredWorkflowTemplate {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    icon: row.icon,
+    summary: row.summary,
+    howItWorks: row.how_it_works,
+    setupSteps: row.setup_steps ?? [],
+    agents: parseTemplateAgents(row.agents),
+    docsPath: row.docs_path,
+    createdAt: row.created_at,
+  };
+}
+
+export function workflowTemplateToRow(
+  template: StoredWorkflowTemplate,
+  orgId: string,
+): WorkflowTemplateRow {
+  return {
+    id: template.id,
+    org_id: orgId,
+    name: template.name,
+    description: template.description,
+    icon: template.icon,
+    summary: template.summary,
+    how_it_works: template.howItWorks,
+    setup_steps: template.setupSteps,
+    agents: template.agents,
+    docs_path: template.docsPath,
+    created_at: template.createdAt,
+  };
+}
+
 export function assembleState(parts: {
   workflows: StoredWorkflow[];
   agents: StoredAgent[];
   mcps: StoredMcp[];
   rag: StoredRagDocument[];
   skills: StoredSkill[];
+  templates: StoredWorkflowTemplate[];
   apiKeys: StoredApiKey[];
   integrations: StoredIntegration[];
   profile: Profile;

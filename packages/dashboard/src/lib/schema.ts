@@ -226,6 +226,32 @@ export const settingsSchema = z.object({
   alertWebhookUrl: alertWebhookUrlSchema,
 });
 
+/** One agent row a workflow template materializes when the operator clicks Use. */
+export const templateAgentDefSchema = z.object({
+  name: z.string().min(1),
+  role: z.string().default(""),
+  railsMcp: z.enum(["none", "readonly", "full"]).default("none"),
+  dailyLimitUsd: z.number().nonnegative().default(0),
+  paysTo: z.array(z.string()).default([]),
+});
+
+/**
+ * Operator-defined preset. Built-in starters ship from `lib/templates/catalog.ts` and are
+ * not duplicated here unless the user saves a copy.
+ */
+export const workflowTemplateSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1),
+  description: z.string().default(""),
+  icon: z.string().default("📋"),
+  summary: z.string().default(""),
+  howItWorks: z.string().default(""),
+  setupSteps: z.array(z.string()).default([]),
+  agents: z.array(templateAgentDefSchema).default([]),
+  docsPath: z.string().nullable().default(null),
+  createdAt: z.string(),
+});
+
 export const dashboardStateSchema = z.object({
   version: z.literal(1).default(1),
   workflows: z.array(workflowSchema).default([]),
@@ -235,6 +261,7 @@ export const dashboardStateSchema = z.object({
   skills: z.array(skillSchema).default([]),
   apiKeys: z.array(apiKeySchema).default([]),
   integrations: z.array(integrationSchema).default([]),
+  templates: z.array(workflowTemplateSchema).default([]),
   profile: profileSchema.default({ displayName: "", company: "", bio: "", email: "" }),
   settings: settingsSchema.default({
     language: "en",
@@ -252,6 +279,8 @@ export type StoredRagDocument = z.infer<typeof ragDocumentSchema>;
 export type StoredSkill = z.infer<typeof skillSchema>;
 export type StoredApiKey = z.infer<typeof apiKeySchema>;
 export type StoredIntegration = z.infer<typeof integrationSchema>;
+export type StoredWorkflowTemplate = z.infer<typeof workflowTemplateSchema>;
+export type TemplateAgentDef = z.infer<typeof templateAgentDefSchema>;
 export type Profile = z.infer<typeof profileSchema>;
 export type Settings = z.infer<typeof settingsSchema>;
 
@@ -264,6 +293,7 @@ export const RESOURCE_SCHEMAS = {
   skills: skillSchema,
   apiKeys: apiKeySchema,
   integrations: integrationSchema,
+  templates: workflowTemplateSchema,
 } as const;
 
 export type ResourceName = keyof typeof RESOURCE_SCHEMAS;
