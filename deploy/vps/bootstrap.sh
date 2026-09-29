@@ -18,9 +18,6 @@ docker compose version >/dev/null || { echo "docker compose plugin missing" >&2;
 
 here="$(cd "$(dirname "$0")" && pwd)"
 stack=/srv/agent-rails/supabase
-# Published at docs.github.com "GitHub's SSH key fingerprints". Pinned so the first fetch is
-# not trust-on-first-use.
-github_ed25519="SHA256:+DiY3wvvV6TuJJhbpZisF/zLDA0zPMSvHdkr4UvCOqU"
 # apt.postgresql.org signing key, as published on postgresql.org/download/linux/ubuntu.
 pgdg_fpr="B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8"
 
@@ -55,25 +52,13 @@ install -d -m 755 -o root -g root /srv/agent-rails
 install -d -m 755 -o agent-rails -g agent-rails /srv/agent-rails/releases /srv/agent-rails/repo.git
 install -d -m 750 -o root -g root "$stack"
 install -d -m 750 -o agent-rails -g agent-rails /var/lib/agent-rails
-install -d -m 700 -o agent-rails -g agent-rails /var/lib/agent-rails/.ssh
 install -d -m 750 -o root -g agent-rails /var/backups/agent-rails
 install -d -m 700 -o agent-rails -g agent-rails /var/backups/agent-rails/daily /var/backups/agent-rails/offsite
 install -d -m 750 -o root -g agent-rails /etc/agent-rails
 
-# --- read-only deploy key ---------------------------------------------------------------------
-# Generated here so the private half never leaves the box. The repo is private; an admin
-# registers the public half as a read-only deploy key.
-key=/var/lib/agent-rails/.ssh/id_ed25519
-if [[ ! -f $key ]]; then
-  sudo -u agent-rails ssh-keygen -q -t ed25519 -N "" -C "agent-rails@vps" -f "$key"
-fi
-known=/var/lib/agent-rails/.ssh/known_hosts
-if ! sudo -u agent-rails ssh-keygen -F github.com -f "$known" &>/dev/null; then
-  scanned="$(ssh-keyscan -t ed25519 github.com 2>/dev/null)"
-  got="$(ssh-keygen -lf - <<<"$scanned" | awk '{print $2}')"
-  [[ $got == "$github_ed25519" ]] || { echo "github.com host key mismatch: $got" >&2; exit 1; }
-  sudo -u agent-rails tee -a "$known" >/dev/null <<<"$scanned"
-fi
+# --- code ---------------------------------------------------------------------------------------
+# No deploy key and nothing that can reach GitHub: the org disables deploy keys, and code comes
+# in as a git bundle over the operator's SSH (push-deploy.sh → agent-rails-deploy).
 
 # --- supabase stack files ---------------------------------------------------------------------
 "$here/supabase/fetch-upstream.sh" "$stack"
@@ -164,10 +149,8 @@ cat <<EOF
 
 Bootstrap done; the Supabase stack is up on loopback and passed check-gateway.sh.
 Remaining, in order (sudoedit for every file — keep secrets out of argv and shell history):
-  1. Register as a READ-ONLY deploy key on wayside-labs/agent-rails:
-     $(cat "$key.pub")
 $(for m in "${missing[@]}"; do echo "  -  $m"; done)
-  2. sudo systemctl restart agent-rails-supabase     (picks up the tunnel token and Google keys)
-  3. sudo agent-rails-deploy main
-  4. The cutover import from hosted Supabase: README.md, "Cutover".
+  1. sudo systemctl restart agent-rails-supabase     (picks up the tunnel token and Google keys)
+  2. From a laptop checkout: deploy/vps/push-deploy.sh <branch>
+  3. The cutover import from hosted Supabase: README.md, "Cutover".
 EOF

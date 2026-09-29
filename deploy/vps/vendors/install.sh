@@ -33,7 +33,7 @@ cat <<MSG
 
 Vendors installed. Remaining, in order:
   1. sudoedit /etc/agent-rails/vendors.env   (ORACLE_PAY_TO, NOTARY_PAY_TO, COMPUTE_PAY_TO)
-  2. sudo agent-rails-deploy main            (builds packages/vendors and the CLI)
+  2. deploy/vps/push-deploy.sh <branch>      (from a laptop; builds packages/vendors and the CLI)
   3. sudo systemctl enable --now agent-rails-vendor@{oracle,notary,compute}
   4. Ask for the three vendor-*.ash.app.br hostnames on the agent-rails tunnel (see the header
      of this script), then: curl https://vendor-oracle.ash.app.br/health
