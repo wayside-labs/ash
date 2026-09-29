@@ -125,7 +125,9 @@ and tenant data carry over.
 - **Handoff to ash-offsite:** confirmed and tested by Lucas on 2026-09-29. At 04:00 UTC it ships
   `offsite/*.tar.age` byte-for-byte (no re-encryption) to `agent-rails-db/` on livro-vps. Names
   must be unique: a name already there is skipped silently, hence the per-second timestamps.
-- **Failure alerts:** `agent-rails-*` failures only reach the journal until ash's Telegram
-  alerting also watches `agent-rails-*`.
+- **Failure alerts:** none, by decision (2026-09-29). Failures reach only the journal, so check
+  now and then: `systemctl list-timers 'agent-rails-*'` (LAST should be recent) and
+  `journalctl -u agent-rails-backup -n 5`. Until the cutover import the nightly backup fails on
+  purpose: it refuses a dump with no tables rather than pass on an emptied database.
 - **Restoring from offsite:** fetch the `.tar.age` from livro-vps, then
   `age -d -i <identity> x.tar.age | tar -x`, then step 3 of the cutover against the target.
