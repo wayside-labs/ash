@@ -6,6 +6,7 @@ import {
   mcpGetPolicySchema,
   mcpGetSessionSchema,
   mcpListDestinationsSchema,
+  mcpRequestLimitIncreaseSchema,
 } from "@agent-rails/contract";
 import type { z } from "zod";
 
@@ -63,5 +64,13 @@ export const AGENT_RAILS_TOOL_METADATA: readonly AgentRailsToolMeta[] = [
       "payment idempotent, so retrying the same reference cannot pay twice. Returns an " +
       "outcome of settled, denied, or indeterminate.",
     inputSchema: mcpExecutePaymentSchema,
+  },
+  {
+    name: "agent_rails_request_limit_increase",
+    description:
+      "Ask the operator for more budget when the current limits block a legitimate task. " +
+      "This only sends a message; it changes no limit, and you must keep working within the " +
+      "current policy or stop.",
+    inputSchema: mcpRequestLimitIncreaseSchema,
   },
 ];

@@ -1,6 +1,6 @@
 import { buildHeadroomLowAlert, buildPaymentDeniedAlert } from "@agent-rails/contract/alerts";
 import { describe, expect, it, vi } from "vitest";
-import { type AlertWebhookFetch, postAlertWebhook } from "./alert-webhook.js";
+import { type AlertWebhookFetch, postAgentEvent, postAlertWebhook } from "./alert-webhook.js";
 
 describe("postAlertWebhook", () => {
   it("POSTs JSON with payment_denied payload", async () => {
@@ -44,5 +44,37 @@ describe("postAlertWebhook", () => {
     await postAlertWebhook("https://hooks.slack.com/services/T/B/x", payload, fetchImpl);
     const init = fetchImpl.mock.calls[0]?.[1];
     expect(JSON.parse(String(init?.body)).kind).toBe("headroom_low");
+  });
+});
+
+describe("postAgentEvent", () => {
+  const event = {
+    schema_version: 1 as const,
+    kind: "limit_increase_requested" as const,
+    ts: "2026-09-28T00:00:00.000Z",
+    request: {
+      treasury: "BTE45zKpHiWMTwaPmShaUBq2cnA6XUc8KhgxnufSnz3w",
+      policy: "H4HU1sPoevCGqHeFQiyW5Q8NVmQgAb1DyZgP2LSzwMPE",
+      session: "3tvQknH6RHfnssAGgC64z7KkejwrQ3USftxosmoimX4z",
+      reason: "need more",
+    },
+  };
+
+  it("sends the event with the ingest token as a bearer", async () => {
+    const fetchImpl = vi.fn(async () => new Response(null, { status: 202 }));
+    const result = await postAgentEvent("https://dash/api/ingest/events", "tok", event, fetchImpl);
+    expect(result).toEqual({ ok: true, status: 202 });
+    const [, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+    expect((init.headers as Record<string, string>).Authorization).toBe("Bearer tok");
+    expect(JSON.parse(String(init.body)).kind).toBe("limit_increase_requested");
+  });
+
+  it("never throws: a schema error or a network error is a result", async () => {
+    const bad = { ...event, request: { ...event.request, reason: "" } };
+    expect((await postAgentEvent("u", "t", bad, vi.fn())).ok).toBe(false);
+    const offline = vi.fn(async () => {
+      throw new Error("offline");
+    });
+    expect(await postAgentEvent("u", "t", event, offline)).toEqual({ ok: false, error: "offline" });
   });
 });

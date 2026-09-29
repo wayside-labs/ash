@@ -224,7 +224,6 @@ export default function MetricsPage() {
                 knownCount={
                   summary.payments.exactness === "counter" ? summary.payments.count : null
                 }
-                demo={false}
                 isLoading={historyQuery.isLoading}
                 isError={historyQuery.isError}
                 onLoadMore={

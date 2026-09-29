@@ -349,12 +349,13 @@ The server binds one session at startup and derives the treasury, policy, mint t
 | `list_payments` | read | Indexer-backed; degrades to "unavailable" *(not yet implemented)* |
 | `check_payment(destination_ref, amount, mint_ref, reference, memo?)` | dry run | Same resolution, hooks and simulation as a real payment; sends nothing |
 | `execute_payment(destination_ref, amount, mint_ref, reference, memo?)` | write | Resolve, derive intent, precheck receipt, hooks, simulate, send, resolve; returns `outcome`, `intent_id`, `receipt`, `signature` |
+| `request_limit_increase(reason, mint_ref?, amount?)` | message | Emits `limit_increase_requested` to the operator's dashboard; grants nothing (ADR-022) |
 
 Contract hygiene: amounts are decimal strings in human units, converted against `MintConfig.decimals` in trusted code with integer arithmetic — excess precision denies rather than rounds. Destinations are **labels, not addresses**: resolution is exact match on an NFKC-normalized label against the on-chain allowlist, with no fuzzy matching, and a raw pubkey is refused outright unless the policy is in `Any` mode. `expires_at` and the token program are server-authored. Every response carries `outcome`, `intent_id` and `receipt` — denials included, since without the id the receipt is unreachable — and every denial carries a `reason_code`. Program logs and raw errors never return to the agent; they go to the operator's structured sink, sharing the on-chain event schema. Resources `agent-rails://session/{pubkey}` and `agent-rails://policy/{pubkey}` mirror the read tools; one prompt, `payment-guidelines`, teaches the check-then-execute pattern.
 
 A local governor caps concurrency at one payment in flight — two in flight can each pass a limit check the pair of them violates — and applies a rolling per-minute budget. These are advisory: whoever owns the process owns the governor, and the program remains the guarantee.
 
-Deliberately absent from any agent-facing surface: session creation, policy edits, allowlist edits, unpause, withdraw. v1.1 adds `request_limit_increase(reason)`, which only emits an off-chain event.
+Deliberately absent from any agent-facing surface: session creation, policy edits, allowlist edits, unpause, withdraw. `request_limit_increase` only emits an off-chain event (ADR-022). With an ingest URL and token configured, the server also reports denials and `human-review` holds to the dashboard, where a person approves a held payment by its intent id; the agent's identical retry then goes through.
 
 ---
 
@@ -418,7 +419,7 @@ agent-rails/
 
 **v1.0 (still open)** — LangChain / OpenAI Agents adapters, `@agent-rails/indexer`, Python MCP wrapper, mainnet-beta after audit and trust phase.
 
-**v1.1** — timelocked loosening with guardian veto (`PendingChange`, `recovery_destination`); signed-intent mode + reference relayer; Streamable HTTP MCP with `SessionResolver`; `approval_threshold` (human-in-the-loop) and `cooldown_seconds`; `request_limit_increase` tool; frozen `1.0.0` program.
+**v1.1** — timelocked loosening with guardian veto (`PendingChange`, `recovery_destination`); signed-intent mode + reference relayer; Streamable HTTP MCP with `SessionResolver`; `approval_threshold` (human-in-the-loop, on-chain successor to ADR-022's review queue) and `cooldown_seconds`; frozen `1.0.0` program.
 
 **v2** — pluggable vault backends (Squads spending-limit adapter, custom adapters); TradFi adapters consuming the same signed `PaymentIntent` (brokerage/banking APIs); native Python client via Codama.
 

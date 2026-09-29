@@ -25,6 +25,8 @@ export type ActionNodeData = {
   name: string;
   provider: string;
   enabled: boolean;
+  /** Global or workflow scope: every agent here has it, so no single agent's edge. */
+  shared?: boolean;
 };
 
 export type FlowNodeData = TreasuryNodeData | AgentNodeData | ActionNodeData;

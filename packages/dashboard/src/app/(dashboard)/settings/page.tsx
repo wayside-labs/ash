@@ -2,6 +2,7 @@
 
 import { AlertTriangle, CheckCircle2, Download, Loader2, RotateCcw } from "lucide-react";
 import { useEffect, useState } from "react";
+import { ChannelsCard } from "@/components/settings/channels-card";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,11 +41,6 @@ export default function SettingsPage() {
 
   const [rpcInput, setRpcInput] = useState(customRpc);
   useEffect(() => setRpcInput(customRpc), [customRpc]);
-
-  const [webhookInput, setWebhookInput] = useState("");
-  useEffect(() => {
-    setWebhookInput(data?.settings?.alertWebhookUrl ?? "");
-  }, [data?.settings?.alertWebhookUrl]);
 
   const settings = data?.settings;
 
@@ -184,34 +180,25 @@ export default function SettingsPage() {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="alert-webhook">{t("settings.alertWebhookUrl")}</Label>
-                  <Input
-                    id="alert-webhook"
-                    type="url"
-                    placeholder="https://hooks.slack.com/services/…"
-                    value={webhookInput}
-                    onChange={(e) => setWebhookInput(e.target.value)}
-                    onBlur={() => patch({ alertWebhookUrl: webhookInput.trim() })}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {t("settings.alertWebhookUrlDescription")}
-                  </p>
-                </div>
-
-                <div className="flex items-center justify-between opacity-60">
+                <div className="flex items-center justify-between">
                   <div>
                     <Label>{t("settings.emailNotifications")}</Label>
                     <p className="text-xs text-muted-foreground">
                       {t("settings.emailNotificationsDescription")}
                     </p>
                   </div>
-                  <Switch checked={false} disabled aria-label={t("settings.emailNotifications")} />
+                  <Switch
+                    checked={settings.emailNotifications}
+                    onCheckedChange={(checked) => patch({ emailNotifications: checked })}
+                    aria-label={t("settings.emailNotifications")}
+                  />
                 </div>
               </>
             )}
           </CardContent>
         </Card>
+
+        <ChannelsCard />
 
         <Card className="md:col-span-2">
           <CardHeader>

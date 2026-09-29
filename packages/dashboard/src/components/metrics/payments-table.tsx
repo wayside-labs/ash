@@ -2,7 +2,6 @@
 
 import { Download, Loader2 } from "lucide-react";
 import { useState } from "react";
-import { DemoBadge } from "@/components/shared/demo-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,7 +29,6 @@ const OUTCOME_KEY: Record<string, string> = {
 export function PaymentsTable({
   history,
   knownCount,
-  demo,
   isLoading,
   isError,
   onLoadMore,
@@ -40,7 +38,6 @@ export function PaymentsTable({
   history: PaymentHistory | undefined;
   /** Exact on-chain `seq` total from §1 — may exceed visible rows. */
   knownCount: number | null;
-  demo: boolean;
   isLoading: boolean;
   isError: boolean;
   onLoadMore?: () => void;
@@ -58,14 +55,11 @@ export function PaymentsTable({
 
   return (
     <>
-      <Card data-testid={demo ? "payments-mock" : "payments-table"}>
+      <Card data-testid="payments-table">
         <CardHeader>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <CardTitle className="flex items-center gap-2">
-              {t("metrics.payments.title")}
-              {demo && <DemoBadge />}
-            </CardTitle>
-            {!demo && payments.length > 0 && (
+            <CardTitle className="flex items-center gap-2">{t("metrics.payments.title")}</CardTitle>
+            {payments.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 <Button
                   variant="outline"
@@ -91,9 +85,6 @@ export function PaymentsTable({
               </div>
             )}
           </div>
-          {demo && (
-            <p className="text-xs text-muted-foreground">{t("metrics.payments.mockNotice")}</p>
-          )}
         </CardHeader>
         <CardContent>
           {isLoading && payments.length === 0 ? (

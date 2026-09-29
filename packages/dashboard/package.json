@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "lint": "biome check ."
+    "lint": "biome check .",
+    "skills:sync": "node scripts/sync-builtin-skills.mjs && biome format --write src/lib/server/builtin-skills.ts"
   },
   "dependencies": {
     "@agent-rails/contract": "workspace:*",
@@ -44,6 +45,7 @@
     "react-dom": "^19.1.1",
     "react-resizable-panels": "^4.13.1",
     "tailwind-merge": "^3.3.1",
+    "unpdf": "^1",
     "zod": "^4.0.0",
     "zustand": "^5.0.8"
   },

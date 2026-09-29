@@ -13,6 +13,7 @@ import {
 } from "@agent-rails/sdk";
 import { notifyPaymentDeniedWebhook } from "../alert-webhook.js";
 import type { ServerContext } from "../context.js";
+import { emitAgentEvent, fetchReviewDecision } from "../ingest.js";
 import { type PreparedPayment, preparePayment } from "./prepare.js";
 
 /**
@@ -142,17 +143,66 @@ export async function handleExecutePayment(
     }
 
     if (prepared.requirements.has("human-review")) {
-      recordPayment(context, prepared, "review_required");
-      return {
-        outcome: "review_required",
-        intent_id: prepared.intentIdHex,
-        receipt: prepared.receipt,
-        reason_code: "REVIEW_REQUIRED",
-        message:
-          "This payment exceeds the value a person has to approve. It has been recorded " +
-          "for review and was not sent.",
-        ...describe(prepared),
-      };
+      // A person approves this exact payment in the dashboard, keyed by intent id; the
+      // agent calls again with the same arguments. Anything short of an explicit approval —
+      // pending, no answer, dashboard unreachable — holds the payment (ADR-022).
+      const decision = await fetchReviewDecision(context, prepared.intentIdHex);
+      if (decision === "rejected") {
+        notifyPaymentDeniedWebhook(context, {
+          session: String(context.bound.session),
+          intent: prepared.intentIdHex,
+          reason_code: "REVIEW_REJECTED",
+          source: "governor",
+        });
+        recordPayment(context, prepared, "denied", { reason_code: "REVIEW_REJECTED" });
+        return {
+          outcome: "denied",
+          intent_id: prepared.intentIdHex,
+          receipt: prepared.receipt,
+          reason_code: "REVIEW_REJECTED",
+          message: "A person reviewed this payment and refused it. Do not retry it.",
+          ...describe(prepared),
+        };
+      }
+      if (decision !== "approved") {
+        if (decision !== "pending") {
+          emitAgentEvent(context, {
+            schema_version: 1,
+            kind: "payment_review_required",
+            ts: new Date().toISOString(),
+            review: {
+              treasury: String(context.bound.treasury),
+              policy: String(context.bound.policy),
+              session: String(context.bound.session),
+              intent_id: prepared.intentIdHex,
+              destination: String(prepared.destination.owner),
+              ...(prepared.destination.label
+                ? { destination_label: prepared.destination.label }
+                : {}),
+              mint: String(prepared.mint.mint),
+              amount: prepared.amount.toString(),
+              reference: prepared.reference,
+              ...(prepared.memo ? { memo: prepared.memo } : {}),
+            },
+          });
+        }
+        recordPayment(context, prepared, "review_required");
+        const routed = Boolean(context.runtime.config.ingest);
+        return {
+          outcome: "review_required",
+          intent_id: prepared.intentIdHex,
+          receipt: prepared.receipt,
+          reason_code: "REVIEW_REQUIRED",
+          message: routed
+            ? "This payment needs a person's approval and was not sent. It is waiting in the " +
+              "operator's review queue. Once approved, call execute_payment again with exactly " +
+              "the same arguments; do not change the amount or the reference."
+            : "This payment exceeds the value a person has to approve. It has been recorded " +
+              "for review and was not sent.",
+          ...(routed ? { next_step: "wait_for_approval" } : {}),
+          ...describe(prepared),
+        };
+      }
     }
 
     // A `hooks` requirement overrides a fail-open posture for this payment: above the

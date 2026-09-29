@@ -10,6 +10,7 @@ import type {
   StoredSkill,
   StoredWorkflow,
 } from "@/lib/schema";
+import { integrationSchema, workflowLayoutSchema } from "@/lib/schema";
 
 export type WorkflowRow = {
   id: string;
@@ -22,6 +23,7 @@ export type WorkflowRow = {
   cluster: string;
   demo: boolean;
   demo_balance_usd: number | string | null;
+  canvas_layout?: unknown;
   created_at: string;
 };
 
@@ -66,6 +68,11 @@ export type RagRow = {
   scope: string;
   scope_name: string;
   source: string | null;
+  error?: string | null;
+  chunk_count?: number;
+  mode?: string | null;
+  bytes?: number;
+  indexed_at?: string | null;
   demo: boolean;
   created_at: string;
 };
@@ -92,6 +99,12 @@ export type IntegrationRow = {
   icon: string;
   url: string;
   connected: boolean;
+  kind?: string;
+  target?: string;
+  events?: string[];
+  enabled?: boolean;
+  last_delivery_at?: string | null;
+  last_error?: string | null;
   created_at: string;
 };
 
@@ -135,6 +148,10 @@ export function workflowFromRow(row: WorkflowRow): StoredWorkflow {
     cluster: row.cluster as StoredWorkflow["cluster"],
     demo: row.demo,
     demoBalanceUsd: num(row.demo_balance_usd),
+    // A malformed or missing layout is an empty one: it is only where boxes sit.
+    layout: workflowLayoutSchema
+      .catch({ positions: {}, hidden: [] })
+      .parse(row.canvas_layout ?? {}),
     createdAt: row.created_at,
   };
 }
@@ -151,6 +168,7 @@ export function workflowToRow(workflow: StoredWorkflow, orgId: string): Workflow
     cluster: workflow.cluster,
     demo: workflow.demo,
     demo_balance_usd: workflow.demoBalanceUsd,
+    canvas_layout: workflow.layout,
     created_at: workflow.createdAt,
   };
 }
@@ -236,6 +254,11 @@ export function ragFromRow(row: RagRow): StoredRagDocument {
     scopeName: row.scope_name,
     source: row.source,
     demo: row.demo,
+    error: row.error ?? null,
+    chunkCount: row.chunk_count ?? 0,
+    mode: (row.mode as StoredRagDocument["mode"]) ?? null,
+    bytes: row.bytes ?? 0,
+    indexedAt: row.indexed_at ?? null,
   };
 }
 
@@ -250,6 +273,11 @@ export function ragToRow(doc: StoredRagDocument, orgId: string): RagRow {
     scope_name: doc.scopeName,
     source: doc.source,
     demo: doc.demo,
+    error: doc.error,
+    chunk_count: doc.chunkCount,
+    mode: doc.mode,
+    bytes: doc.bytes,
+    indexed_at: doc.indexedAt,
     created_at: new Date().toISOString(),
   };
 }
@@ -285,14 +313,20 @@ export function skillToRow(skill: StoredSkill, orgId: string): SkillRow {
 }
 
 export function integrationFromRow(row: IntegrationRow): StoredIntegration {
-  return {
+  return integrationSchema.parse({
     id: row.id,
     name: row.name,
     description: row.description,
     icon: row.icon,
     url: row.url,
     connected: row.connected,
-  };
+    ...(row.kind ? { kind: row.kind } : {}),
+    ...(row.target !== undefined ? { target: row.target } : {}),
+    ...(row.events ? { events: row.events } : {}),
+    ...(row.enabled !== undefined ? { enabled: row.enabled } : {}),
+    lastDeliveryAt: row.last_delivery_at ?? null,
+    lastError: row.last_error ?? null,
+  });
 }
 
 export function integrationToRow(row: StoredIntegration, orgId: string): IntegrationRow {
@@ -304,6 +338,12 @@ export function integrationToRow(row: StoredIntegration, orgId: string): Integra
     icon: row.icon,
     url: row.url,
     connected: row.connected,
+    kind: row.kind,
+    target: row.target,
+    events: row.events,
+    enabled: row.enabled,
+    last_delivery_at: row.lastDeliveryAt,
+    last_error: row.lastError,
     created_at: new Date().toISOString(),
   };
 }

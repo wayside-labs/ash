@@ -1,5 +1,7 @@
-import type { StoredAgent, StoredMcp, StoredWorkflow } from "@/lib/schema";
+import type { StoredAgent, StoredMcp, StoredSkill, StoredWorkflow } from "@/lib/schema";
 import { appliesToAgent } from "@/lib/scope";
+import { renderSkillMarkdown, skillSlug } from "@/lib/skill-md";
+import type { ZipEntry } from "@/lib/zip";
 
 /**
  * The `mcpServers` map both `.mcp.json` and `claude_desktop_config.json` use.
@@ -14,6 +16,17 @@ export interface McpServerConfig {
 
 export interface RunnerConfig {
   mcpServers: Record<string, McpServerConfig>;
+}
+
+export interface RunnerOptions {
+  /**
+   * The dashboard's ingest API and the workflow's token. Denials, review requests and budget
+   * requests travel this way, and the dashboard fans them out to the notification channels
+   * — which replaced the single alert webhook the MCP used to post to directly.
+   */
+  ingest?: { url: string; token: string };
+  /** Per-agent exports: the knowledge MCP searches within this agent's document scope. */
+  agentName?: string;
 }
 
 export interface CompiledRunnerConfig {
@@ -46,6 +59,14 @@ export function isAgentRailsMcp(mcp: Pick<StoredMcp, "command" | "args">): boole
   return [mcp.command, ...mcp.args].some((part) => AGENT_RAILS_MCP_LAUNCH.test(part));
 }
 
+/** The knowledge MCP (`packages/knowledge-mcp`) also talks to this dashboard with the token. */
+const KNOWLEDGE_MCP_LAUNCH =
+  /agent-rails-knowledge-mcp|@agent-rails\/knowledge-mcp|packages[\\/]knowledge-mcp[\\/]/;
+
+export function isKnowledgeMcp(mcp: Pick<StoredMcp, "command" | "args">): boolean {
+  return [mcp.command, ...mcp.args].some((part) => KNOWLEDGE_MCP_LAUNCH.test(part));
+}
+
 /** Workflow-level export: global + workflow-scoped MCPs only (never another agent's MCP). */
 export function appliesToWorkflowExport(mcp: StoredMcp, workflow: StoredWorkflow): boolean {
   switch (mcp.scope) {
@@ -58,10 +79,7 @@ export function appliesToWorkflowExport(mcp: StoredMcp, workflow: StoredWorkflow
   }
 }
 
-function compileMcpServers(
-  mcps: StoredMcp[],
-  options?: { alertWebhookUrl?: string },
-): CompiledRunnerConfig {
+function compileMcpServers(mcps: StoredMcp[], options?: RunnerOptions): CompiledRunnerConfig {
   const mcpServers: Record<string, McpServerConfig> = {};
   const skipped: string[] = [];
 
@@ -76,10 +94,12 @@ function compileMcpServers(
       Object.entries(mcp.env).filter(([, value]) => value !== ""),
     ) as Record<string, string>;
 
-    const alertUrl = options?.alertWebhookUrl?.trim();
-    if (alertUrl && isAgentRailsMcp(mcp)) {
-      env.AGENT_RAILS_ALERT_WEBHOOK_URL = alertUrl;
+    // Only our two servers talk to the dashboard; no third-party MCP ever sees the token.
+    if (options?.ingest && (isAgentRailsMcp(mcp) || isKnowledgeMcp(mcp))) {
+      env.AGENT_RAILS_INGEST_URL = options.ingest.url;
+      env.AGENT_RAILS_INGEST_TOKEN = options.ingest.token;
     }
+    if (options?.agentName && isKnowledgeMcp(mcp)) env.AGENT_RAILS_AGENT_NAME = options.agentName;
 
     mcpServers[uniqueKey(mcpServerKey(mcp.name), mcpServers)] = {
       command: mcp.command.trim(),
@@ -99,10 +119,10 @@ export function compileRunnerConfigForAgent(
   agent: StoredAgent,
   workflow: StoredWorkflow,
   mcps: StoredMcp[],
-  options?: { alertWebhookUrl?: string },
+  options?: RunnerOptions,
 ): CompiledRunnerConfig {
   const inScope = mcps.filter((mcp) => appliesToAgent(mcp, agent, workflow));
-  return compileMcpServers(inScope, options);
+  return compileMcpServers(inScope, { ...options, agentName: agent.name });
 }
 
 /**
@@ -112,7 +132,7 @@ export function compileRunnerConfigForAgent(
 export function compileRunnerConfig(
   workflow: StoredWorkflow,
   mcps: StoredMcp[],
-  options?: { alertWebhookUrl?: string },
+  options?: RunnerOptions,
 ): CompiledRunnerConfig {
   const inScope = mcps.filter((mcp) => appliesToWorkflowExport(mcp, workflow));
   return compileMcpServers(inScope, options);
@@ -130,4 +150,56 @@ export function runnerConfigFilename(workflowName: string, agentName?: string): 
   const slug = mcpServerKey(workflowName);
   if (!agentName?.trim()) return `${slug}.mcp.json`;
   return `${slug}-${mcpServerKey(agentName)}.mcp.json`;
+}
+
+export function runnerBundleFilename(workflowName: string, agentName?: string): string {
+  return runnerConfigFilename(workflowName, agentName).replace(/\.mcp\.json$/, ".agent.zip");
+}
+
+/**
+ * Skills that travel with a runner: enabled and in scope, by the same rule as MCPs — the
+ * agent export gets global + its workflow + itself, the workflow export never another
+ * agent's. A skill with no body has nothing to teach and is left out.
+ */
+export function skillsInScope(
+  skills: StoredSkill[],
+  workflow: StoredWorkflow,
+  agent?: StoredAgent,
+): StoredSkill[] {
+  return skills.filter((skill) => {
+    if (!skill.enabled || !skill.content.trim()) return false;
+    if (agent) return appliesToAgent(skill, agent, workflow);
+    if (skill.scope === "agent") return false;
+    return skill.scope === "global" || skill.scopeName === workflow.name;
+  });
+}
+
+/**
+ * The runner bundle: `.mcp.json` plus `.claude/skills/<slug>/SKILL.md` per skill, laid out
+ * so that `claude -p` run from the unzipped directory picks both up with no flags beyond
+ * `--mcp-config .mcp.json`.
+ */
+export function compileRunnerBundle(
+  config: RunnerConfig,
+  skills: StoredSkill[],
+): { entries: ZipEntry[]; skillCount: number } {
+  const entries: ZipEntry[] = [{ path: ".mcp.json", data: `${JSON.stringify(config, null, 2)}\n` }];
+  const taken: Record<string, true> = {};
+  for (const skill of skills) {
+    const slug = uniqueKey(skillSlug(skill.name), taken);
+    taken[slug] = true;
+    entries.push({
+      path: `.claude/skills/${slug}/SKILL.md`,
+      data: renderSkillMarkdown({ ...skill, name: slug }),
+    });
+  }
+  entries.push({
+    path: "README.txt",
+    data:
+      "Agent Rails runner bundle.\n\n" +
+      "  unzip <this file> -d agent && cd agent\n" +
+      '  claude -p "<task>" --mcp-config .mcp.json --strict-mcp-config --setting-sources project\n\n' +
+      ".mcp.json holds whole environment values (RPC URLs, key paths): keep this file private.\n",
+  });
+  return { entries, skillCount: skills.length };
 }

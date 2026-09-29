@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  BookOpen,
   Bot,
   Brain,
   Cable,
@@ -7,6 +8,7 @@ import {
   CreditCard,
   Gauge,
   Home,
+  Inbox,
   Key,
   Settings,
   User,
@@ -19,8 +21,8 @@ import {
  * trying to do: run the operation, follow the money, configure the tooling,
  * manage themselves.
  *
- * RAG, Harness and Integrations were pruned along with their pages: none of the
- * three had backend infrastructure behind it, and a nav entry is a promise.
+ * A nav entry is a promise: every page listed here has a backend behind it. Knowledge (RAG)
+ * came back once it had indexing and search; Integrations live under Settings as channels.
  */
 export type NavItemDef = {
   href: string;
@@ -41,6 +43,7 @@ export const navGroupDefs: NavGroupDef[] = [
     items: [
       { href: "/workflows", labelKey: "nav.workflows", icon: Zap },
       { href: "/agents", labelKey: "nav.agents", icon: Bot },
+      { href: "/reviews", labelKey: "nav.reviews", icon: Inbox },
     ],
   },
   {
@@ -58,6 +61,7 @@ export const navGroupDefs: NavGroupDef[] = [
     items: [
       { href: "/mcps", labelKey: "nav.mcps", icon: Cable, prefetch: false },
       { href: "/skills", labelKey: "nav.skills", icon: Brain, prefetch: false },
+      { href: "/knowledge", labelKey: "nav.knowledge", icon: BookOpen, prefetch: false },
       { href: "/apis", labelKey: "nav.apis", icon: Key, prefetch: false },
     ],
   },
