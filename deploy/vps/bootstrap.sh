@@ -36,7 +36,8 @@ if ! command -v pg_dump >/dev/null || [[ $(pg_dump --version | grep -oE '[0-9]+'
     >/etc/apt/sources.list.d/pgdg.list
   apt-get update
 fi
-apt-get install -y postgresql-client-17 age openssl curl
+# needrestart list-only: a shared box, so installing never restarts host services on its own.
+NEEDRESTART_MODE=l apt-get install -y postgresql-client-17 age openssl curl
 
 # --- service user -----------------------------------------------------------------------------
 # No sudo, no docker group (docker is root-equivalent), no SSH login (not in AllowUsers).
@@ -95,7 +96,8 @@ if [[ ! -f $env_file ]]; then
     [[ -n $v ]] || { rm -f "$tmp"; echo "generate-keys.sh gave no $k" >&2; exit 1; }
     sed -i "s|^$k=__GENERATED__\$|$k=$v|" "$tmp"
   done
-  ! grep -q __GENERATED__ "$tmp" || { rm -f "$tmp"; echo "unfilled secret in template" >&2; exit 1; }
+  # Anchored to a value: the template's own comments mention the placeholder.
+  ! grep -qE '^[A-Z_]+=__GENERATED__$' "$tmp" || { rm -f "$tmp"; echo "unfilled secret in template" >&2; exit 1; }
   chmod 600 "$tmp" && mv "$tmp" "$env_file"
 fi
 anon="$(sed -n 's/^ANON_KEY=//p' "$env_file")"
