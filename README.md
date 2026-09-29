@@ -177,6 +177,10 @@ CI runs all of the above plus `cargo deny`, gitleaks and semgrep on every pull r
 |---|---|
 | `CLAUDE.md` | Commands, conventions, and the invariants to preserve when editing |
 | `ARCHITECTURE.md` | The design baseline — roles, payment flow, account model, policy engine, audit chain, MCP surface, test pyramid |
+| `THREAT_MODEL.md` | Assets, actors, and trust boundaries (pre-audit baseline) |
+| `SECURITY.md` | Vulnerability disclosure and supported versions |
+| `GOVERNANCE.md` | ADRs, releases, trust phases, incident response summary |
+| `docs/strategy/README.md` | Index of Portuguese strategy and pitch docs |
 | `docs/spec/accounts-and-instructions.md` | Byte-level account and instruction layouts |
 | `docs/adr/` | Decisions, immutable once recorded; `README.md` there is the index |
 | `docs/runbooks/reference-agent.md` | In-house devnet agent — MCP, cron, metrics until 12/10 |

@@ -239,6 +239,8 @@ Nada disto é obrigatório para começar as conversas.
 
 | Arquivo | O que é | Quando abrir |
 |---|---|---|
+| `docs/strategy/README.md` | Índice desta pasta (pitch, estratégia, hackathon) | Quando não souber qual doc abrir |
+| `docs/strategy/retorica-pitch-pt-BR.md` | Frases de palco, objeções e o que **não** calcar do inglês de engenharia | Antes de gravar vídeo, deck ou call com jurado/investidor |
 | `docs/strategy/product-strategy.md` | Estratégia completa, ainda com jargão técnico | Quando precisar defender um braço numa reunião |
 | `docs/research/revenue-model-analysis.pt-BR.md` | Precificação e linhas de receita, detalhadas | Quando for montar tabela de preço. Cuidado: as §§ 3, 4 e 6 que dependiam da licença foram **substituídas** pelo `product-strategy.md` |
 | `docs/research/colosseum-copilot-competitive-landscape.md` | Concorrência (em inglês) | Antes de call com investidor ou grant |

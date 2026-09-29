@@ -114,7 +114,7 @@ Agent Rails ataca exatamente **blast radius + audit trail + DX para agentes**, n
 Colosseum avalia founder-market fit, insight único, execução, mercado, comunicação, modelo de negócio e tração — **código limpo é table stakes**.
 
 **Hook 1 — “Corporate card on-chain for AI”**  
-Metáfora instantânea: owner deposita, operator define policy ≤ ceiling, agente paga só dentro da sessão. Dashboard `ceiling-meter` visualiza “loosening flows downhill”.
+Metáfora instantânea: dono deposita, operador define política ≤ teto, agente paga só dentro da sessão. Dashboard `ceiling-meter` visualiza a regra de pitch: **ninguém aumenta o próprio teto**.
 
 **Hook 2 — “Prompt injection não escala privilégio”**  
 MCP não expõe `create_session`, `withdraw`, `update_policy`. Treasury/session/policy bound at startup. Strict schemas. Isso responde ao medo #1 de CTOs.

@@ -75,7 +75,12 @@ mechanism, because until a release has actually run, a governance ADR is a promi
 - **The program id is a developer key, not the `rail…` vanity key held by custodians.**
   Point 1 is a mainnet commitment; devnet runs on the key that deployed it, and the README's
   first phase row says so in the terms a user cares about.
-- Points 3, 6 and 7 — audit, `CODEOWNERS`/`GOVERNANCE.md`, incident runbook — are untouched.
+- **Point 3 (partial):** `THREAT_MODEL.md`, `SECURITY.md`, and `audits/` exist; internal
+  checklist is documented, professional audit is not claimed, bug bounty inactive in `0.x`.
+- **Point 6 (partial):** `GOVERNANCE.md`, `CODEOWNERS`, and root security docs shipped;
+  branch protection with two required reviews is still a GitHub settings step.
+- **Point 7:** incident response summary is in `GOVERNANCE.md` §6; guardian runbook
+  exists; emergency notice-shortening rule is documented, not exercised.
 
 **First run, 2026-09-25, devnet.** The script was run end to end before the workflow was
 wired to it, against the CI key. It bootstrapped treasury `8bhePT5sbBypQwJJBhAyw9xPikN77eoxrf47dXnVTN8d`,

@@ -1,0 +1,13 @@
+# ADR-011: custody and policy arithmetic need explicit review.
+# Target: two approving reviews on pull requests touching these paths (branch protection).
+
+/programs/                          @0xcf02
+/crates/agent-rails-policy/           @0xcf02
+/idl/                                 @0xcf02
+/docs/spec/                           @0xcf02
+
+# Governance and security baselines — same reviewers as program changes.
+/THREAT_MODEL.md                      @0xcf02
+/SECURITY.md                          @0xcf02
+/GOVERNANCE.md                        @0xcf02
+/audits/                              @0xcf02

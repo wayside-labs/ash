@@ -100,7 +100,7 @@ Os dois documentos foram escritos no mesmo dia, sem se verem, e chegaram na mesm
 | §6.2 — camada 2 sem oráculo; oráculo é camada 3 e quebra as provas Kani | D-05 — "não medir perda, **limitar exposição**"; medir exigiria oráculo, contra a tese de enforcement sem terceiros |
 | §6.4 — a authority operacional tem de ser PDA que só o nosso programa assina | D-04 — verificar só as contas que **o próprio contrato derivou**, nunca as que vieram de fora |
 | Invariante 1 — saída unilateral do dono | D-09 — a chave de sessão nunca passa por eles |
-| Invariante 3 — afrouxar só flui morro abaixo | D-06 — só o dono autoriza programa externo; operador e agente não |
+| Invariante 3 — ninguém aumenta o próprio teto | D-06 — só o dono autoriza programa externo; operador e agente não |
 
 Duas derivações independentes no mesmo desenho valem mais que qualquer um dos dois documentos sozinho.
 
@@ -188,7 +188,7 @@ Frase do pitch, já presente nos dois documentos: *a Solana entregou o primitivo
 | | **Braço 1 — Rails** | **Braço 2 — Mandate** | **Braço 3 — Superfície** (repo do Lucas) |
 |---|---|---|---|
 | **O quê** | Alocação e prestação de contas: cofre, política, sessão, cadeia de auditoria | Envelope de perda provado on-chain: `begin`/`end`, invariantes de estado, retorno mínimo, teto de exposição | Manifesto → instalação → console → vitrine |
-| **Como** | 23 instruções, custódia por PDA, tetos morro abaixo, idempotência por recibo | Programa **separado**, governado por multisig com timelock, CPI só para programa da allowlist do dono, verificação sobre contas derivadas pelo próprio programa | Plano de controle fechado + execução na máquina do cliente + duas fontes (sink JSONL e RPC) |
+| **Como** | 23 instruções, custódia por PDA, limites só mais restritos na descida da hierarquia, idempotência por recibo | Programa **separado**, governado por multisig com timelock, CPI só para programa da allowlist do dono, verificação sobre contas derivadas pelo próprio programa | Plano de controle fechado + execução na máquina do cliente + duas fontes (sink JSONL e RPC) |
 | **Por quê** | Sem limite verificável por terceiro, nada em cima é crível | Transferência ≠ troca: quando o dinheiro sai e algo volta, limite de valor não protege nada. É a peça que não existe no mercado | Sem ela a garantia não é operável nem observável — e é a única linha com efeito de rede |
 | **Para quem** | Dev solo (aquisição), empresa com agentes (receita) | Quem **aloca capital**: mesa, DAO, fundo pequeno, marketplaces de agentes | Autor de agente (publica), cliente (instala), operador (vários cofres) |
 | **Cobra** | Nada. É a âncora de credibilidade | bps sobre capital sob mandato, nascendo em zero + fee opcional de gestor terceiro | Assinatura e listagem |
