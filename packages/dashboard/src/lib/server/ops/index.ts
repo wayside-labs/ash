@@ -1,4 +1,5 @@
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { publicOrigin } from "../origin";
 import { requirePostgresContext } from "../state/context";
 import { jsonOpsStore } from "./json";
 import { postgresOpsStore } from "./postgres";
@@ -44,8 +45,7 @@ export async function authenticateIngest(
  * loopback listener, so a deployment states its public URL in `DASHBOARD_PUBLIC_URL`.
  */
 export function ingestBaseUrl(req: Request): string {
-  const declared = process.env.DASHBOARD_PUBLIC_URL?.trim().replace(/\/+$/, "");
-  return `${declared || new URL(req.url).origin}/api/ingest`;
+  return `${publicOrigin(req)}/api/ingest`;
 }
 
 /** The workflow's live token, issued on first use so an exported agent always reports. */
