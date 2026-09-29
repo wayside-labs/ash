@@ -38,6 +38,23 @@ signer is not that session's `session_key`, the session is revoked or expired, t
 in `Allowlist` mode with no registered destinations, or the allowlist cannot be read. A
 server that cannot establish what it is for should not be able to pay anyone.
 
+## Layer 5 E2E (Surfpool)
+
+The MCP payment handlers have a Surfpool suite (`e2e/double-spend.e2e.test.ts`) that exercises
+`execute_payment` / `get_payment_status` against a real validator with the shared harness in
+`@agent-rails/e2e` (surfnet boot, blinding proxy). It is **not** part of `pnpm test`; it runs
+on the same nightly gate as the SDK E2E package:
+
+```bash
+cargo build-sbf --manifest-path programs/agent_rails/Cargo.toml   # once
+scripts/verify.sh e2e
+# or only the MCP leg:
+pnpm --filter @agent-rails/mcp test:e2e
+```
+
+Optional: point `AGENT_RAILS_E2E_RPC` (and `AGENT_RAILS_E2E_PAYER`) at an already-running
+surfnet to skip booting a second validator while iterating locally.
+
 ## Run locally
 
 ```bash

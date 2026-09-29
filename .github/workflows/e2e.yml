@@ -18,6 +18,10 @@ on:
   pull_request:
     paths:
       - "packages/e2e/**"
+      - "packages/mcp/e2e/**"
+      - "packages/mcp/vitest.e2e.config.ts"
+      - "packages/mcp/src/handlers/execute-payment.ts"
+      - "packages/mcp/src/handlers/get-payment-status.ts"
       - "packages/sdk/src/send-payment.ts"
       - ".github/workflows/e2e.yml"
 

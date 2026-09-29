@@ -193,4 +193,14 @@ export async function startSurfnet(options?: {
   }
 }
 
+/** Is a surfnet already listening? Used to reuse a local validator across E2E suites. */
+export async function surfnetIsRunning(rpcUrl: string): Promise<boolean> {
+  try {
+    const body = (await rpc(rpcUrl, "getHealth")) as { result?: string };
+    return body.result === "ok";
+  } catch {
+    return false;
+  }
+}
+
 export { PROGRAM_ID };

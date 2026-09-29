@@ -156,6 +156,7 @@ if [[ $group == e2e ]]; then
     note_skip "e2e (surfpool)"
   else
     run "e2e (surfpool)" pnpm --filter @agent-rails/e2e test:e2e
+    run "e2e (mcp handlers)" pnpm --filter @agent-rails/mcp test:e2e
   fi
 fi
 

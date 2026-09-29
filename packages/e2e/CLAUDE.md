@@ -42,6 +42,10 @@ report `denied` and the first test catches that. A green run here has been seen 
 deliberately **not** part of `verify.sh all` — it boots a validator per file and deploys a
 700 KB program, and ADR-008 scopes layer 5 to nightly.
 
+The gate runs this package first, then `pnpm --filter @agent-rails/mcp test:e2e`, which
+imports `exports` from here (`harness/surfnet`, `harness/blinding-proxy`) so the MCP handler
+suite does not carry a second copy of the harness.
+
 The harness installs the program by writing the loader's accounts through Surfpool's
 `surfnet_setAccount` cheatcode, not by running a deploy command. That is not a shortcut, it
 is the only thing that works: `solana program deploy` deploys at whatever address its keypair

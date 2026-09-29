@@ -1,4 +1,6 @@
 import { deriveIntentId } from "@agent-rails/contract";
+import { type BlindingProxy, startBlindingProxy } from "@agent-rails/e2e/harness/blinding-proxy";
+import { type Surfnet, startSurfnet, surfnetIsRunning } from "@agent-rails/e2e/harness/surfnet";
 import {
   buildPaymentIntent,
   executePayment,
@@ -16,9 +18,7 @@ import { PaymentGovernor } from "../src/governor.js";
 import { handleExecutePayment } from "../src/handlers/execute-payment.js";
 import { handleGetPaymentStatus } from "../src/handlers/get-payment-status.js";
 import { createPaymentSink } from "../src/sink.js";
-import { type BlindingProxy, startBlindingProxy } from "./harness/blinding-proxy.js";
 import { createFixture, type Fixture, lamportsOf, VENDOR_LABEL } from "./harness/fixture.js";
-import { type Surfnet, startSurfnet, surfnetIsRunning } from "./harness/surfnet.js";
 
 /**
  * The double-spend, against a real ledger.
@@ -99,13 +99,12 @@ function createContext(overrides: Partial<McpServerConfig> = {}): ServerContext 
 let boundContext: Awaited<ReturnType<typeof bindSession>>;
 
 beforeAll(async () => {
-  const repoRoot = new URL("../../..", import.meta.url).pathname;
   const existing = process.env.AGENT_RAILS_E2E_RPC;
 
   if (existing && (await surfnetIsRunning(existing))) {
     directRpcUrl = existing;
   } else {
-    surfnet = await startSurfnet({ repoRoot });
+    surfnet = await startSurfnet();
     directRpcUrl = surfnet.rpcUrl;
   }
 
@@ -143,8 +142,8 @@ function createContextConfigStub(): McpServerConfig {
 }
 
 afterAll(async () => {
-  await proxy?.close();
-  await surfnet?.stop();
+  await proxy?.stop();
+  surfnet?.stop();
 });
 
 describe("payments against a live surfnet", () => {
