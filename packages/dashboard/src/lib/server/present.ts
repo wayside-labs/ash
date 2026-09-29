@@ -34,6 +34,11 @@ export function maskState(state: DashboardState): MaskedState {
         Object.entries(mcp.env).map(([key, value]) => [key, value ? MASKED_ENV_VALUE : ""]),
       ),
     })),
+    // A channel target carries its credential in the string (webhook URL, bot token).
+    integrations: state.integrations.map((channel) => ({
+      ...channel,
+      target: maskChannelTarget(channel.kind, channel.target),
+    })),
     apiKeys: state.apiKeys.map((key) => ({
       id: key.id,
       provider: key.provider,
@@ -66,4 +71,18 @@ export function restoreMaskedEnv(
       value === MASKED_ENV_VALUE ? (stored[key] ?? "") : value,
     ]),
   );
+}
+
+/**
+ * An email address is not a secret and the operator needs to see which one it is; every
+ * other channel kind masks to the fixed bullet string, which a PATCH echoes back to mean
+ * "keep the stored value" (see `restoreMaskedTarget`).
+ */
+export function maskChannelTarget(kind: string, target: string): string {
+  if (!target) return "";
+  return kind === "email" ? target : MASKED_ENV_VALUE;
+}
+
+export function restoreMaskedTarget(incoming: unknown, stored: string): unknown {
+  return incoming === MASKED_ENV_VALUE ? stored : incoming;
 }

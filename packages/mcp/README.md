@@ -78,10 +78,20 @@ node packages/mcp/dist/cli.js
 | `agent_rails_get_payment_status` | read | Did an intent settle? Authoritative, via the receipt PDA |
 | `agent_rails_check_payment` | dry run | Resolve and simulate without sending |
 | `agent_rails_execute_payment` | write | Pay a labelled destination |
+| `agent_rails_request_limit_increase` | message | Ask the operator for more budget. Emits an event to the dashboard; changes nothing (ADR-022) |
 
 Nothing here loosens a constraint. `create_session`, `update_policy`, allowlist edits,
 `pause`/`unpause` and `withdraw` are absent by design and asserted absent in CI
 (`src/tools/tool-surface.test.ts`); operator actions live in the CLI.
+
+### Reporting to the dashboard (ADR-022)
+
+With `AGENT_RAILS_INGEST_URL` (`https://<dashboard>/api/ingest`) and `AGENT_RAILS_INGEST_TOKEN`
+set — the dashboard's runner export fills both — the server reports denials, review requests
+and budget requests to the operator's dashboard, which fans them out to its notification
+channels. A payment above a `human-review` band is queued there; once a person approves it on
+`/reviews`, the same `execute_payment` call (same arguments, so the same intent id) goes
+through. Pending, rejected or unreachable all hold the payment.
 
 ## Payment arguments
 

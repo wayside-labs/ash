@@ -3,6 +3,7 @@ import { USDC_MINT_DEVNET } from "@agent-rails/contract/mints";
 import { describe, expect, it } from "vitest";
 import type { SolPrice } from "@/lib/server/price";
 import type { SessionView, TreasuryView, VaultBalance } from "@/lib/server/solana";
+import { MOCK_DESTINATIONS, mockPayments } from "./__fixtures__/payments";
 import {
   type FoldInput,
   foldMetrics,
@@ -10,7 +11,6 @@ import {
   remainingRaw,
   tightestConstraint,
 } from "./fold";
-import { MOCK_DESTINATIONS, mockPayments } from "./mock";
 import { U64_MAX } from "./schema";
 
 const TREASURY = "2xbbqA1KvP7znHHk59tCbyN85cyHTy5hcwpQnwTKGc1i";

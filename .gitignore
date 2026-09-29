@@ -50,3 +50,6 @@ docs/strategy/crypto-worlds-fair-playbook.md
 # `supabase link` scratch: project ref and cached version probes, per-developer.
 **/supabase/.temp/
 .guardian-proof.*
+
+# Agent infra env files (examples/agent-infra/*.env.example is the committed template).
+examples/agent-infra/*.env

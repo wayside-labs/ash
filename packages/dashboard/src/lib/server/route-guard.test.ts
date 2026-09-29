@@ -16,6 +16,17 @@ import { describe, expect, it } from "vitest";
 const API_ROOT = join(import.meta.dirname, "../../app/api");
 const MUTATING = ["POST", "PATCH", "DELETE"] as const;
 
+/**
+ * Machine-to-machine routes: an agent's MCP calls them with a workflow ingest token and no
+ * cookie, so there is no browser session for a cross-site request to ride. Each must
+ * authenticate the bearer instead — and must stay on this list, not escape the sweep.
+ */
+const BEARER_ROUTES = new Set([
+  "ingest/events/route.ts",
+  "ingest/reviews/[intentId]/route.ts",
+  "ingest/knowledge/route.ts",
+]);
+
 /** Read-only, and still guarded: it is the one route that emits whole env values. */
 const GUARDED_READS = [["export/runner-config/route.ts", "GET"]] as const;
 
@@ -41,6 +52,11 @@ function handlerBody(source: string, method: string): string | null {
 describe("every mutating route handler calls assertSameOrigin", () => {
   const files = routeFiles(API_ROOT);
 
+  it("lists only bearer routes that exist", () => {
+    const relatives = new Set(files.map((file) => file.slice(API_ROOT.length + 1)));
+    for (const route of BEARER_ROUTES) expect(relatives.has(route)).toBe(true);
+  });
+
   it("finds the routes at all, so an empty sweep cannot pass silently", () => {
     expect(files.length).toBeGreaterThanOrEqual(13);
   });
@@ -53,8 +69,20 @@ describe("every mutating route handler calls assertSameOrigin", () => {
       const body = handlerBody(source, method);
       if (body === null) continue;
       it(`${method} ${relative}`, () => {
-        expect(body).toContain("assertSameOrigin(req)");
+        expect(body).toContain(
+          BEARER_ROUTES.has(relative) ? "authenticateIngest(req)" : "assertSameOrigin(req)",
+        );
       });
+    }
+
+    if (BEARER_ROUTES.has(relative)) {
+      for (const method of ["GET", ...MUTATING]) {
+        const body = handlerBody(source, method);
+        if (body === null) continue;
+        it(`${method} ${relative} authenticates its bearer`, () => {
+          expect(body).toContain("authenticateIngest(req)");
+        });
+      }
     }
   }
 

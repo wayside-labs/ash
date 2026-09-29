@@ -73,7 +73,7 @@ export async function POST(req: Request) {
   // above — an unreadable state is a 401 here, not an empty context.
   let context: string;
   try {
-    context = await buildContext(cluster, rpc);
+    context = await buildContext(cluster, rpc, last);
   } catch (error) {
     const stateDenied = stateAccessResponse(error);
     if (stateDenied) return stateDenied;

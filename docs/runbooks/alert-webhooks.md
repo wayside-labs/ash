@@ -12,15 +12,23 @@ Generic HTTPS webhooks for operator alerts. Payload shapes live in
 
 `check_payment` dry-runs do **not** emit webhooks — only failed `execute_payment` paths do.
 
-Slack incoming webhooks accept a raw JSON POST body; the payload is Agent Rails shaped (not
-`{ "text": "..." }` alone). Point Settings → **Alert webhook URL** at your receiver or Slack
-URL, then re-export the workflow MCP config so the agent runner picks up
-`AGENT_RAILS_ALERT_WEBHOOK_URL`.
+A **Slack** channel receives `{ "text": ... }`, a **Telegram** channel a `sendMessage`, and an
+**email** channel a message through Resend (`RESEND_API_KEY`, `ALERT_EMAIL_FROM` on the
+dashboard server). A generic **webhook** channel, or the direct `AGENT_RAILS_ALERT_WEBHOOK_URL`,
+receives the Agent Rails-shaped JSON.
 
 ## Configuration
 
-**Dashboard (Settings → Alert webhook URL)** — persisted in `dashboard.json` / Supabase
-`settings.alert_webhook_url`. The runner export injects the URL into `agent-rails-mcp` env.
+**Dashboard channels (ADR-022, the default)** — Settings → **Notification channels**. Add a
+webhook, Slack, Telegram or email channel and pick the event kinds it receives. The runner
+export gives the agent's MCP the dashboard's ingest URL and the workflow's token; the MCP
+posts events there and the dashboard delivers them to every subscribed channel, honouring
+the **Limit alerts** and **Email notifications** switches. A generic webhook channel receives
+exactly the payload below. The old single *Alert webhook URL* setting was migrated into a
+webhook channel on upgrade.
+
+**Direct, without a dashboard** — set `AGENT_RAILS_ALERT_WEBHOOK_URL` on the MCP yourself; it
+posts `payment_denied` to that URL with no dashboard involved.
 
 **Environment**
 

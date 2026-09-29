@@ -16,6 +16,10 @@ const BACKEND_BY_TOOL: Record<
     backend.checkPayment(input as Parameters<AgentRailsToolsBackend["checkPayment"]>[0]),
   agent_rails_execute_payment: (backend) => async (input) =>
     backend.executePayment(input as Parameters<AgentRailsToolsBackend["executePayment"]>[0]),
+  agent_rails_request_limit_increase: (backend) => async (input) =>
+    backend.requestLimitIncrease(
+      input as Parameters<AgentRailsToolsBackend["requestLimitIncrease"]>[0],
+    ),
 };
 
 /**

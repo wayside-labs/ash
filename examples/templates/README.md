@@ -19,11 +19,12 @@ Devnet first, all three. Nothing here is a mainnet promise; see the trust phases
 ```
              OPERATOR SURFACES (privileged — ADR-021)              AGENT SURFACE (ADR-007)
   ┌──────────────────────────────────────────────────┐   ┌──────────────────────────────────┐
-  │ pnpm agent-rails …        dashboard (/treasury,  │   │ agent-rails-mcp: six tools only  │
+  │ pnpm agent-rails …        dashboard (/treasury,  │   │ agent-rails-mcp: seven tools     │
   │  init · ceiling set        /limits, /workflows)  │   │  get_session   get_policy        │
   │  policy set · dest add                           │   │  list_destinations               │
   │  session create · pause   scripts/guardian-watch │   │  get_payment_status              │
   │  withdraw · audit export  scripts/alert-watch    │   │  check_payment execute_payment   │
+  │                                                  │   │  request_limit_increase (asks)   │
   └──────────────────┬───────────────────────────────┘   └────────────────┬─────────────────┘
                      │ writes ceilings, policy,                           │ signs with the
                      │ allowlist, sessions                                │ session key only

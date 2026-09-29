@@ -41,6 +41,12 @@ export type McpServerConfig = {
   /** HTTPS webhook for `payment_denied` alerts (generic URL or Slack incoming webhook). */
   alertWebhookUrl?: string;
   /**
+   * The operator dashboard's ingest API (`https://<dashboard>/api/ingest`) and the workflow
+   * token it issued. Events go to `<url>/events`; review decisions come from
+   * `<url>/reviews/<intent_id>`. Both or neither.
+   */
+  ingest?: { url: string; token: string };
+  /**
    * When `readonly`, registers check/list/status tools only — no `execute_payment`.
    * Useful for planner agents that must simulate spend without signing.
    */
@@ -164,6 +170,21 @@ export function loadConfigFromEnv(env: NodeJS.ProcessEnv = process.env): McpServ
   const alertWebhook = env.AGENT_RAILS_ALERT_WEBHOOK_URL?.trim();
   if (alertWebhook) {
     config.alertWebhookUrl = alertWebhook;
+  }
+  const ingestUrl = env.AGENT_RAILS_INGEST_URL?.trim();
+  const ingestToken = env.AGENT_RAILS_INGEST_TOKEN?.trim();
+  if (Boolean(ingestUrl) !== Boolean(ingestToken)) {
+    throw new Error("AGENT_RAILS_INGEST_URL and AGENT_RAILS_INGEST_TOKEN go together");
+  }
+  if (ingestUrl && ingestToken) {
+    const parsed = new URL(ingestUrl);
+    // A bearer token over plain HTTP is readable by anyone on the path; loopback is the one
+    // place that is not true, and it is where a local dashboard runs.
+    const loopback = ["localhost", "127.0.0.1", "[::1]"].includes(parsed.hostname);
+    if (parsed.protocol !== "https:" && !(parsed.protocol === "http:" && loopback)) {
+      throw new Error("AGENT_RAILS_INGEST_URL must be https (http only for localhost)");
+    }
+    config.ingest = { url: ingestUrl.replace(/\/+$/, ""), token: ingestToken };
   }
   const toolsRaw = env.AGENT_RAILS_TOOLS?.trim().toLowerCase();
   if (toolsRaw === "readonly" || toolsRaw === "read-only") {

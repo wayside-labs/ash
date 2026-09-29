@@ -1,0 +1,31 @@
+# Scripted buyer, no model in the loop: invoice → `agent-rails pay` → redeem, against one
+# vendor per instance. Fired by agent-rails-buyer@<vendor>.timer. This is the steady devnet
+# traffic the reference-agent runbook counts, and the first thing to look at when a vendor or
+# the policy breaks: `journalctl -u agent-rails-buyer@oracle`.
+[Unit]
+Description=Agent Rails scripted buyer (%i)
+After=network-online.target agent-rails-vendor@%i.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=agent-rails
+Group=agent-rails
+WorkingDirectory=/srv/agent-rails/current
+# AGENT_RAILS_SESSION, AGENT_RAILS_RPC and BUYER_PAY_FLAGS (see buyer.env.example).
+EnvironmentFile=/etc/agent-rails/buyer.env
+Environment=AGENT_RAILS_CLI=/srv/agent-rails/current/packages/cli/dist/cli.js
+# $BUYER_PAY_FLAGS is unbraced on purpose: systemd splits it into separate arguments.
+ExecStart=/usr/bin/node packages/vendors/dist/cli.js buy %i -- $BUYER_PAY_FLAGS
+TimeoutStartSec=120
+
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadOnlyPaths=/var/lib/agent-rails/buyer
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes

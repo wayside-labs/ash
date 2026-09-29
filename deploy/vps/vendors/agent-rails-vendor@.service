@@ -1,0 +1,32 @@
+# One demo vendor per instance: agent-rails-vendor@oracle, @notary, @compute.
+# Installed by vendors/install.sh. Holds no secret: the env file has public keys only.
+[Unit]
+Description=Agent Rails demo vendor (%i)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=agent-rails
+Group=agent-rails
+WorkingDirectory=/srv/agent-rails/current
+EnvironmentFile=/etc/agent-rails/vendors.env
+Environment=NODE_ENV=production
+Environment=VENDOR_DATA_DIR=/var/lib/agent-rails/vendors
+ExecStart=/usr/bin/node packages/vendors/dist/cli.js serve %i
+Restart=on-failure
+RestartSec=5
+
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/agent-rails/vendors
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+
+[Install]
+WantedBy=multi-user.target

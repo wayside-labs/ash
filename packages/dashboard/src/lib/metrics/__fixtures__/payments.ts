@@ -1,20 +1,14 @@
 /**
- * The Phase A stand-in for §5 (docs/product/metrics-page.md §I).
+ * Test fixture for the metrics fold: a plausible payment history over the seed's
+ * workflows and agents. It was the Phase A stand-in for §5 until the real history
+ * (event replay) replaced it; nothing in the app imports it any more.
  *
- * Real payment history needs the event replay Phase B adds: receipts are
- * closeable an hour after their intent expires, so the receipt set is never the
- * ledger. Until then the table shows this fixture behind a section-level
- * `DemoBadge` — section level rather than per row, because a screenshot of a
- * table whose every row is individually badged still reads as real history.
- *
- * Workflow and agent ids are the ones `lib/server/seed.ts` already creates, so
- * the fixture joins onto the demo rows an operator can actually see instead of
- * describing a parallel universe.
+ * The owner addresses are syntactically valid base58 but are not real accounts.
  */
 
 import { NATIVE_MINT } from "@agent-rails/contract/constants";
 import { USDC_MINT_DEVNET } from "@agent-rails/contract/mints";
-import type { DestinationContact, PaymentRecordView } from "./schema";
+import type { DestinationContact, PaymentRecordView } from "../schema";
 
 /** 28 hex chars; the row index supplies the last 4, so every id is valid by construction. */
 const INTENT_PREFIX = "9c4e17bb5af2408da6013e7cd1a5";

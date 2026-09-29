@@ -7,6 +7,7 @@ import {
   mcpGetPolicySchema,
   mcpGetSessionSchema,
   mcpListDestinationsSchema,
+  mcpRequestLimitIncreaseSchema,
 } from "@agent-rails/contract";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { McpServerConfig } from "../config.js";
@@ -17,6 +18,7 @@ import { handleGetPaymentStatus } from "../handlers/get-payment-status.js";
 import { handleGetPolicy } from "../handlers/get-policy.js";
 import { handleGetSession } from "../handlers/get-session.js";
 import { handleListDestinations } from "../handlers/list-destinations.js";
+import { handleRequestLimitIncrease } from "../handlers/request-limit-increase.js";
 import { toolJsonResult } from "./response.js";
 
 /**
@@ -88,6 +90,15 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     inputSchema: mcpExecutePaymentSchema,
     handler: (context, input) => handleExecutePayment(context, input),
   },
+  {
+    name: "agent_rails_request_limit_increase",
+    description:
+      "Ask the operator for more budget when the current limits block a legitimate task. " +
+      "This only sends a message; it changes no limit, and you must keep working within the " +
+      "current policy or stop.",
+    inputSchema: mcpRequestLimitIncreaseSchema,
+    handler: (context, input) => handleRequestLimitIncrease(context, input),
+  },
 ];
 
 /** Names actually registered, for the CI assertion against the committed contract. */
@@ -103,6 +114,8 @@ export const READONLY_TOOL_NAMES: ReadonlySet<AgentToolName> = new Set<AgentTool
   "agent_rails_list_destinations",
   "agent_rails_get_payment_status",
   "agent_rails_check_payment",
+  // Grants nothing: a planner that cannot pay may still say it needs budget.
+  "agent_rails_request_limit_increase",
 ]);
 
 export function toolsForMode(mode: McpServerConfig["toolsMode"]): ToolDefinition[] {

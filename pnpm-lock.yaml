@@ -225,6 +225,9 @@ importers:
       tailwind-merge:
         specifier: ^3.3.1
         version: 3.7.0
+      unpdf:
+        specifier: ^1
+        version: 1.8.1
       zod:
         specifier: ^4.0.0
         version: 4.5.4
@@ -282,6 +285,25 @@ importers:
         specifier: ^4.0.0
         version: 4.1.11(@opentelemetry/api@1.9.0)(@types/node@22.20.1)(@vitest/coverage-v8@4.1.11)(vite@8.2.2(@types/node@22.20.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
 
+  packages/knowledge-mcp:
+    dependencies:
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.30.0
+        version: 1.30.0(zod@4.5.4)
+      zod:
+        specifier: ^4.0.0
+        version: 4.5.4
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.1
+      tsdown:
+        specifier: ^0.15.0
+        version: 0.15.12(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)(typescript@5.9.3)
+      vitest:
+        specifier: ^4.0.0
+        version: 4.1.11(@opentelemetry/api@1.9.0)(@types/node@22.20.1)(@vitest/coverage-v8@4.1.11)(vite@8.2.2(@types/node@22.20.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
+
   packages/mcp:
     dependencies:
       '@agent-rails/client':
@@ -328,6 +350,37 @@ importers:
       '@vitest/coverage-v8':
         specifier: ^4.0.0
         version: 4.1.11(vitest@4.1.11)
+      tsdown:
+        specifier: ^0.15.0
+        version: 0.15.12(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)(typescript@5.9.3)
+      vitest:
+        specifier: ^4.0.0
+        version: 4.1.11(@opentelemetry/api@1.9.0)(@types/node@22.20.1)(@vitest/coverage-v8@4.1.11)(vite@8.2.2(@types/node@22.20.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
+
+  packages/vendors:
+    dependencies:
+      '@agent-rails/client':
+        specifier: workspace:*
+        version: link:../client
+      '@agent-rails/contract':
+        specifier: workspace:*
+        version: link:../contract
+      '@agent-rails/sdk':
+        specifier: workspace:*
+        version: link:../sdk
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.30.0
+        version: 1.30.0(zod@4.5.4)
+      '@solana/kit':
+        specifier: ^8.2.0
+        version: 8.2.0(typescript@5.9.3)
+      zod:
+        specifier: ^4.0.0
+        version: 4.5.4
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.1
       tsdown:
         specifier: ^0.15.0
         version: 0.15.12(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)(typescript@5.9.3)
@@ -3538,6 +3591,15 @@ packages:
   undici@7.30.0:
     resolution: {integrity: sha512-dkrQXeHSaoamnItlYbmzG0wFYrM0ZwDxCIg0A7aKjTyyhh9svRzCNFEzV+Vm05/yehjCzjDZ31KXfGEjYSztDQ==}
     engines: {node: '>=20.18.1'}
+
+  unpdf@1.8.1:
+    resolution: {integrity: sha512-xkURhy2SoGpOIH0a1gLHNkASPIQYonadDJs2AQwPEfUakafeD9EA1WTWWsaR++gfTCXJpV27W7tU1nXuk82UKQ==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      '@napi-rs/canvas': ^0.1.69 || ^1.0.0
+    peerDependenciesMeta:
+      '@napi-rs/canvas':
+        optional: true
 
   unpipe@1.0.0:
     resolution: {integrity: sha512-pjy2bYhSsufwWlKwPc+l3cN7+wuJlK6uz0YdJEOlQDbl6jo/YlPi4mb8agUkVC8BF7V8NuzeyPNqRksA3hztKQ==}
@@ -6805,6 +6867,8 @@ snapshots:
   undici-types@8.10.2: {}
 
   undici@7.30.0: {}
+
+  unpdf@1.8.1: {}
 
   unpipe@1.0.0: {}
 

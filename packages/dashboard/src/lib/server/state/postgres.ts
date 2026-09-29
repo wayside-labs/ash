@@ -20,6 +20,8 @@ import {
   skillFromRow,
   skillToRow,
   workflowFromRow,
+  workflowTemplateFromRow,
+  workflowTemplateToRow,
   workflowToRow,
 } from "./map";
 import { seedPostgresOrg } from "./seed-postgres";
@@ -61,21 +63,32 @@ async function deleteAccountOrphans(
 export async function readState(ctx: PostgresStateContext): Promise<DashboardState> {
   const { supabase, orgId, accountId } = ctx;
 
-  const [workflows, agents, mcps, rag, skills, integrations, apiKeys, profile, settings] =
-    await Promise.all([
-      supabase.from("workflows").select("*").eq("org_id", orgId).order("created_at"),
-      supabase.from("agents").select("*").eq("org_id", orgId).order("created_at"),
-      supabase.from("mcp_servers").select("*").eq("org_id", orgId).order("created_at"),
-      supabase.from("rag_documents").select("*").eq("org_id", orgId).order("created_at"),
-      supabase.from("skills").select("*").eq("org_id", orgId).order("created_at"),
-      supabase.from("integrations").select("*").eq("org_id", orgId).order("created_at"),
-      supabase
-        .from("api_keys")
-        .select("id, account_id, provider, created_at")
-        .eq("account_id", accountId),
-      supabase.from("profiles").select("*").eq("account_id", accountId).maybeSingle(),
-      supabase.from("settings").select("*").eq("account_id", accountId).maybeSingle(),
-    ]);
+  const [
+    workflows,
+    agents,
+    mcps,
+    rag,
+    skills,
+    templates,
+    integrations,
+    apiKeys,
+    profile,
+    settings,
+  ] = await Promise.all([
+    supabase.from("workflows").select("*").eq("org_id", orgId).order("created_at"),
+    supabase.from("agents").select("*").eq("org_id", orgId).order("created_at"),
+    supabase.from("mcp_servers").select("*").eq("org_id", orgId).order("created_at"),
+    supabase.from("rag_documents").select("*").eq("org_id", orgId).order("created_at"),
+    supabase.from("skills").select("*").eq("org_id", orgId).order("created_at"),
+    supabase.from("workflow_templates").select("*").eq("org_id", orgId).order("created_at"),
+    supabase.from("integrations").select("*").eq("org_id", orgId).order("created_at"),
+    supabase
+      .from("api_keys")
+      .select("id, account_id, provider, created_at")
+      .eq("account_id", accountId),
+    supabase.from("profiles").select("*").eq("account_id", accountId).maybeSingle(),
+    supabase.from("settings").select("*").eq("account_id", accountId).maybeSingle(),
+  ]);
 
   for (const result of [
     workflows,
@@ -83,6 +96,7 @@ export async function readState(ctx: PostgresStateContext): Promise<DashboardSta
     mcps,
     rag,
     skills,
+    templates,
     integrations,
     apiKeys,
     profile,
@@ -97,6 +111,7 @@ export async function readState(ctx: PostgresStateContext): Promise<DashboardSta
     mcps: (mcps.data ?? []).map((row) => mcpFromRow(row)),
     rag: (rag.data ?? []).map((row) => ragFromRow(row)),
     skills: (skills.data ?? []).map((row) => skillFromRow(row)),
+    templates: (templates.data ?? []).map((row) => workflowTemplateFromRow(row)),
     integrations: (integrations.data ?? []).map((row) => integrationFromRow(row)),
     apiKeys: (apiKeys.data ?? []).map((row) => apiKeyFromRow(row)),
     profile: profileFromRow(profile.data),
@@ -174,6 +189,19 @@ export async function writeState(ctx: PostgresStateContext, state: DashboardStat
 
   await deleteOrphans(
     supabase,
+    "workflow_templates",
+    orgId,
+    state.templates.map((row) => row.id),
+  );
+  if (state.templates.length > 0) {
+    const { error } = await supabase
+      .from("workflow_templates")
+      .upsert(state.templates.map((row) => workflowTemplateToRow(row, orgId)));
+    if (error) throw error;
+  }
+
+  await deleteOrphans(
+    supabase,
     "integrations",
     orgId,
     state.integrations.map((row) => row.id),
@@ -231,6 +259,7 @@ export async function resetState(ctx: PostgresStateContext): Promise<DashboardSt
     "mcp_servers",
     "rag_documents",
     "skills",
+    "workflow_templates",
     "integrations",
   ] as const;
   for (const table of tables) {
