@@ -42,7 +42,9 @@ After publication, update `README.md` trust language only if findings and trust 
 
 | Review | Status |
 |---|---|
-| Internal pre-audit (`THREAT_MODEL.md` checklist) | In progress — tooling and tests exist; formal sign-off not recorded |
+| Internal pre-audit (`THREAT_MODEL.md` checklist) | **Recorded 2026-09-29** — `internal/2026-09-29-pre-audit-checklist.md` (self-review on branch ref noted there) |
+| Sealevel-oriented internal review | **Recorded 2026-09-29** — `internal/sealevel-attacks-review-2026-09-29.md` |
+| Branch protection / CODEOWNERS | **Partial** — `internal/branch-protection-2026-09-29.md`; 1 review until second maintainer |
 | Professional audit | **Not performed** |
 | Competitive / second opinion | **Not performed** |
 

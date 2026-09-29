@@ -115,14 +115,14 @@ Agent runtime  ──►  MCP (payment tools only)  ──►  SDK  ──►  s
 
 Use before engaging a professional auditor (ADR-011):
 
-- [ ] This threat model reviewed against current instruction set (`docs/spec/accounts-and-instructions.md`).
-- [ ] Sealevel-attacks checklist run on `programs/agent_rails` (account validation, signer checks, CPI targets).
-- [ ] `scripts/verify.sh rust` green (fmt, clippy, tests, CU baselines, policy coverage).
-- [ ] `scripts/verify.sh kani` green where `cargo-kani` is available.
-- [ ] `scripts/verify.sh e2e` green (SDK + MCP handler paths on Surfpool).
-- [ ] Surface freeze: no new instructions without ADR + spec + IDL codegen drift gate.
-- [ ] Upgrade authority and trust-phase claims match `README.md` and on-chain `doctor` output.
-- [ ] Findings recorded under `audits/` (see `audits/README.md`).
+- [x] This threat model reviewed against current instruction set (`docs/spec/accounts-and-instructions.md`). Record: `audits/internal/2026-09-29-pre-audit-checklist.md`.
+- [x] Sealevel-attacks checklist run on `programs/agent_rails` (account validation, signer checks, CPI targets). Record: `audits/internal/sealevel-attacks-review-2026-09-29.md`.
+- [x] `scripts/verify.sh rust` green (fmt, clippy, tests, CU baselines, policy coverage). Last run: 2026-09-29, `VERIFY_STRICT=1`.
+- [x] `scripts/verify.sh kani` green where `cargo-kani` is available. Last run: 2026-09-29.
+- [x] `scripts/verify.sh e2e` green (SDK + MCP handler paths on Surfpool). Last run: 2026-09-29.
+- [x] Surface freeze: no new instructions without ADR + spec + IDL codegen drift gate (CI `codegen:check` + `idl` workflow).
+- [ ] Upgrade authority and trust-phase claims match `README.md` and on-chain `doctor` output (re-run before each release tag).
+- [x] Findings recorded under `audits/` (see `audits/README.md`).
 
 ---
 

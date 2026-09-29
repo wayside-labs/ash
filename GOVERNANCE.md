@@ -33,7 +33,7 @@ There is no on-chain DAO for this repository (ADR-011 option D rejected).
 - `crates/agent-rails-policy/` — limit arithmetic and audit hash  
 - `idl/` and `docs/spec/` — client and indexer compatibility  
 
-**ADR-011 target:** two approving reviews for program and policy changes. Enable via GitHub branch protection on `main` (required reviewers + `CODEOWNERS`).
+**ADR-011 target:** two approving reviews for program and policy changes. Enable via GitHub branch protection on `main` (required reviewers + `CODEOWNERS`). Procedure: `docs/runbooks/github-branch-protection.md`. Snapshot: `audits/internal/branch-protection-2026-09-29.md`.
 
 Agent-assisted contributions: see `CONTRIBUTING.md` no-go zones. High-risk paths (`send-payment.ts`, `vault-transfer`, generated client) need human review even when an agent authored the diff.
 
