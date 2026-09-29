@@ -1,24 +1,36 @@
 #!/usr/bin/env bash
 # Build and switch the dashboard to a git ref. Installed by bootstrap.sh as
-# /usr/local/sbin/agent-rails-deploy and run by a person with sudo:
-#   sudo agent-rails-deploy [branch|tag|sha]     (default: main)
+# /usr/local/sbin/agent-rails-deploy. The code arrives as a git bundle on stdin, sent over the
+# operator's own SSH by push-deploy.sh from a laptop checkout:
+#   deploy/vps/push-deploy.sh <branch|tag>
+# The org disables deploy keys, and this way the box holds no credential that reaches GitHub
+# at all. Empty stdin reuses what the mirror already has, which is how a rollback runs:
+#   ssh agent-rails-vps sudo agent-rails-deploy <sha-of-an-earlier-release> </dev/null
 # Everything that touches the checkout runs as `agent-rails`; root only swaps the service.
 set -euo pipefail
 
-ref="${1:-main}"
+ref="${1:?usage: agent-rails-deploy <branch|tag|sha> < repo.bundle}"
 base=/srv/agent-rails
 mirror="$base/repo.git"
 keep=3
 [[ $EUID -eq 0 ]] || { echo "run with sudo" >&2; exit 1; }
+[[ -t 0 ]] && { echo "expects a git bundle on stdin (use push-deploy.sh)" >&2; exit 1; }
 
 as_deploy() { sudo -u agent-rails -H -- "$@"; }
 
 # bootstrap.sh pre-creates repo.git (the root-owned parent is not writable by agent-rails), so
-# "not cloned yet" means no HEAD inside it rather than no directory.
-if [[ ! -f $mirror/HEAD ]]; then
-  as_deploy git clone --mirror git@github.com:wayside-labs/agent-rails.git "$mirror"
+# "not initialised yet" means no HEAD inside it rather than no directory.
+[[ -f $mirror/HEAD ]] || as_deploy git init -q --bare "$mirror"
+
+bundle="$(mktemp /var/lib/agent-rails/incoming.XXXXXX)"
+trap 'rm -f "$bundle"' EXIT
+cat >"$bundle"
+if [[ -s $bundle ]]; then
+  chown agent-rails:agent-rails "$bundle"
+  # verify checks the bundle's own checksum and that every prerequisite is already present.
+  as_deploy git -C "$mirror" bundle verify -q "$bundle"
+  as_deploy git -C "$mirror" fetch -q --force "$bundle" '+refs/*:refs/*'
 fi
-as_deploy git -C "$mirror" fetch --prune --quiet
 sha="$(as_deploy git -C "$mirror" rev-parse --verify "$ref^{commit}")"
 release="$base/releases/$sha"
 previous="$(readlink -f "$base/current" 2>/dev/null || true)"

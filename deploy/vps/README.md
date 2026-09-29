@@ -73,17 +73,26 @@ ssh -t agent-rails-vps 'cd ~/agent-rails-deploy/deploy/vps &&
 
 It prints what is still missing. Fill each item with `sudoedit`:
 
-1. The deploy key it printed, registered read-only on `wayside-labs/agent-rails`.
-2. `TUNNEL_TOKEN` in `/etc/agent-rails/tunnel.env`. Lucas writes it there himself once
+1. `TUNNEL_TOKEN` in `/etc/agent-rails/tunnel.env`. Lucas writes it there himself once
    `/etc/agent-rails` exists; it never passes through chat.
-3. `/etc/agent-rails/backup.age-recipients`: our `age1…` public key. Keep the identity (private
+2. `/etc/agent-rails/backup.age-recipients`: our `age1…` public key. Keep the identity (private
    key) off this box, in the team password manager. Without it no backup can be read, including
    by us.
-4. `GOOGLE_CLIENT_ID`, `GOOGLE_SECRET` and `GOOGLE_ENABLED=true` in
+3. `GOOGLE_CLIENT_ID`, `GOOGLE_SECRET` and `GOOGLE_ENABLED=true` in
    `/etc/agent-rails/supabase.env`: the hosted project's Google OAuth client. Also add
    `https://console-api.ash.app.br/auth/v1/callback` to its authorized redirect URIs.
 
-Then `sudo systemctl restart agent-rails-supabase` and `sudo agent-rails-deploy main`.
+Then `sudo systemctl restart agent-rails-supabase`, and deploy from a laptop checkout:
+
+```sh
+deploy/vps/push-deploy.sh feat/vps-stage1-dashboard   # or origin/main once merged
+```
+
+The box never talks to GitHub: the org disables deploy keys, and a bundle streamed over your
+own SSH leaves no credential on the server. `agent-rails-deploy` verifies the bundle, builds as
+`agent-rails` and switches `current`, rolling back if the new release does not answer. A rollback
+to a release that is still on disk needs no bundle:
+`ssh agent-rails-vps sudo agent-rails-deploy <sha> </dev/null`.
 
 ## Cutover from hosted Supabase
 
