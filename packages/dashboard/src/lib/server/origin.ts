@@ -89,3 +89,14 @@ export function assertSameOrigin(req: Request): Response | null {
 
   return null;
 }
+
+/**
+ * The origin a browser should be sent back to. Behind a proxy (the VPS tunnel) the request's
+ * own URL is the loopback listener, so a redirect built from it lands the user on
+ * `localhost`; a deployment states its public URL in `DASHBOARD_PUBLIC_URL`. Never derived
+ * from `Host` or `X-Forwarded-Host`, which the caller controls.
+ */
+export function publicOrigin(req: Request): string {
+  const declared = process.env.DASHBOARD_PUBLIC_URL?.trim().replace(/\/+$/, "");
+  return declared || new URL(req.url).origin;
+}
