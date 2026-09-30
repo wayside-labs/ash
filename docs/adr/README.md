@@ -21,6 +21,7 @@ Each ADR captures one decision from the v1 design session: the context, the opti
 | [015](ADR-015-phased-ci-gates.md) | Phased CI gates, with the deferred half of ADR-008 named rather than implied | Accepted |
 | [017](ADR-017-hosted-tenancy-and-client-held-secrets.md) | Hosted dashboard: account/org tenancy, Supabase identity, and client-held secrets | Accepted |
 | [018](ADR-018-in-browser-wallet-generation.md) | In-browser wallet generation, shown once and never held | Accepted |
+| [019](ADR-019-self-hosted-platform.md) | Self-hosted platform on a VPS, replacing Vercel and managed Supabase | Proposed |
 | [020](ADR-020-upgrade-authority-off-ci.md) | The upgrade authority leaves CI: a separate offline key, held by a person | Accepted |
 | [021](ADR-021-operator-surfaces-cli-and-dashboard.md) | Operator surfaces: CLI and dashboard, never MCP; wave 1 session lifecycle | Accepted |
 | [022](ADR-022-agent-reporting-and-review-queue.md) | Agents report to the dashboard; a person decides what they ask | Accepted |
@@ -28,7 +29,6 @@ Each ADR captures one decision from the v1 design session: the context, the opti
 | [024](ADR-024-email-first-login-and-platform-wallet.md) | Email-first sign-in, a platform wallet per account, self-custody wallets as Pro | Proposed |
 | [025](ADR-025-cross-network-connector-desk-signed.md) | Cross-network execution through a desk-signed connector with an off-chain recipient allowlist | Proposed |
 
-016 is reserved by issue #23 (the per-session ceiling) and lands with it. 019 is reserved by
-pull request #54 (self-hosting on a VM) and lands with it.
+016 is reserved by issue #23 (the per-session ceiling) and lands with it.
 
 Template for new ADRs: `ADR-NNN-short-title.md` with sections **Context**, **Options considered**, **Decision**, **Consequences**.
