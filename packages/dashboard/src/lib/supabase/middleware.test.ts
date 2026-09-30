@@ -57,7 +57,7 @@ describe("updateSession", () => {
     expect(res.cookies.get("sb-auth-token")?.value).toBe("");
   });
 
-  it.each(["/api/state", "/account", "/auth/callback"])(
+  it.each(["/api/state", "/api/account/wallet", "/account", "/auth/callback", "/auth/confirm"])(
     "leaves %s to answer for itself when signed out",
     async (path) => {
       getUser.mockResolvedValue({ data: { user: null } });

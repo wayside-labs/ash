@@ -67,6 +67,25 @@ export function useAuth() {
   }, []);
 
   /**
+   * Magic link (ADR-024), the default door: no password, no extension, works on a phone.
+   *
+   * The redirect names `/auth/callback`, which serves the stock email template's PKCE link.
+   * The runbook's token-hash template points at `/auth/confirm` instead, which also works
+   * when the link opens in a different browser from the one that asked for it.
+   */
+  const signInWithEmail = useCallback(async (email: string) => {
+    const supabase = createClient();
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback${nextQuery()}`,
+        shouldCreateUser: true,
+      },
+    });
+    if (error) throw error;
+  }, []);
+
+  /**
    * Sign in With Solana. Unlike the Google flow this never leaves the page, so
    * there is no `/auth/callback` to provision the account — the bootstrap is
    * asked for here, once the session exists.
@@ -118,6 +137,7 @@ export function useAuth() {
     // Keyed on the user, not the email: a wallet account has none, and keying
     // on the email would render every wallet sign-in as signed out.
     signedIn: Boolean(user),
+    signInWithEmail,
     signInWithGoogle,
     signInWithWallet,
     signOut,

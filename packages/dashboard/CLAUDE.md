@@ -44,6 +44,18 @@ lifecycle (wave 1), and the treasury bootstrap (wave 2A).
   in the drawer for a treasury with no policy. Mainnet is refused in the UI.
 - Still out of scope: allowlist/policy editors, pause, revoke (waves 2B/2C).
 
+### Email-first sign-in and the platform wallet (ADR-024, Proposed)
+
+- Magic link is the default door; `/auth/confirm` (token hash) is the cross-browser landing,
+  `/auth/callback` (PKCE) the same-browser one. Both call `ensureAccountForUser`.
+- Every account gets one `platform_wallets` row, provisioned inside the bootstrap through
+  `lib/server/wallet-provider`. Only `stub` exists: its key is discarded, `custody = 'none'`,
+  and the UI must never offer a keyless address as somewhere to send funds.
+- The plan lives in `account_entitlements`, never on `accounts` (whose self-update policy would
+  make Pro self-service). The external-wallet gate is a product tier, not a security boundary.
+- Linking a self-custody wallet requires a signature over `lib/wallet-link.ts`'s statement,
+  checked against the *session's* account id before a service-role insert.
+
 ## Tests
 
 Two layers, both offline:

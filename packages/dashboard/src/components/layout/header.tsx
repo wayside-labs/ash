@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ConnectButton } from "@/components/wallet/connect-button";
+import { GatedConnectButton } from "@/components/wallet/gated-connect-button";
 import { SolPriceTicker } from "@/components/wallet/sol-price-ticker";
 import { useAuth } from "@/hooks/use-auth";
 import { useTranslation } from "@/i18n/locale-provider";
@@ -84,7 +84,7 @@ export function Header() {
 
         <span className="hidden h-8 w-px bg-border sm:block" />
         <SolPriceTicker />
-        <ConnectButton />
+        <GatedConnectButton />
       </div>
     </header>
   );
