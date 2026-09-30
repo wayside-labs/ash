@@ -536,7 +536,8 @@ function WorkflowCanvasInner({ workflowId }: { workflowId: string }) {
       <NodePalette workflowId={workflow.id} />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="flex items-center justify-between gap-3 border-b border-border bg-card/40 px-4 py-2.5 backdrop-blur-sm">
+        {/* Wraps below `md`: beside the title, the prompt input shrank to a sliver on a phone. */}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-card/40 px-4 py-2.5 backdrop-blur-sm">
           <div className="flex min-w-0 items-center gap-3">
             <Button variant="ghost" size="icon" asChild>
               <Link href="/workflows" aria-label={t("flowCanvas.backToWorkflows")}>
@@ -551,7 +552,7 @@ function WorkflowCanvasInner({ workflowId }: { workflowId: string }) {
             </div>
           </div>
           <form
-            className="flex max-w-md flex-1 items-center gap-2"
+            className="flex w-full items-center gap-2 md:w-auto md:max-w-md md:flex-1"
             onSubmit={(event) => {
               event.preventDefault();
               void generate(aiPrompt);
@@ -614,7 +615,8 @@ function WorkflowCanvasInner({ workflowId }: { workflowId: string }) {
             <MiniMap
               nodeColor={minimapNodeColor}
               maskColor="rgb(8 8 10 / 0.75)"
-              className="!bottom-4 !right-4"
+              // A third of a phone screen, covering the nodes it summarises.
+              className="!bottom-4 !right-4 max-md:!hidden"
             />
           </ReactFlow>
         </div>

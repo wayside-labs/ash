@@ -703,7 +703,7 @@
   "api.error.bootstrapOwnerOnly": "O próximo passo define o teto de SOL da tesouraria, que só o proprietário pode assinar. Conecte a carteira do proprietário.",
   "api.error.bootstrapNotOperatorOrOwner": "Só o proprietário ou o operador da tesouraria pode continuar a configuração.",
   "api.error.buildBootstrapFailed": "falha ao montar a transação de configuração",
-  "wallets.vaultFeeBalance": "SOL para taxas",
+  "wallets.vaultFeeBalance": "para taxas",
   "walletPrompt.title": "Adicione uma carteira",
   "walletPrompt.description": "Você entrou, mas um tesouro, uma política e uma sessão de agente começam todos numa carteira que possui algo on-chain.",
   "walletPrompt.connect": "Conectar uma carteira que eu já tenho",

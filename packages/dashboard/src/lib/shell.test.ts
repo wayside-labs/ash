@@ -24,6 +24,12 @@ describe("isSimpleRoute", () => {
     expect(isSimpleRoute("/balance/history", "simple")).toBe(true);
   });
 
+  it("treats the account page as simple in either shell", () => {
+    expect(isSimpleRoute("/account", "simple")).toBe(true);
+    expect(isSimpleRoute("/account", "operator")).toBe(true);
+    expect(isSimpleRoute("/accounts", "simple")).toBe(false);
+  });
+
   it("never treats an operator route as simple", () => {
     for (const path of ["/advanced", "/treasury", "/limits", "/wallets", "/balances"]) {
       expect(isSimpleRoute(path, "simple")).toBe(false);

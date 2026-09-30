@@ -19,7 +19,7 @@ import {
   Wallet,
   Zap,
 } from "lucide-react";
-import { ADVANCED_HOME_PATH, BALANCE_PATH, type ShellMode } from "@/lib/shell";
+import { ACCOUNT_PATH, ADVANCED_HOME_PATH, BALANCE_PATH, type ShellMode } from "@/lib/shell";
 
 /**
  * Two tiers. Simple is the whole product for someone who signed in to ask a question: chat,
@@ -59,7 +59,7 @@ export function navTierDefs(mode: ShellMode): NavTierDefs {
         items: [
           { href: "/", labelKey: "nav.chat", icon: MessageSquare },
           { href: BALANCE_PATH, labelKey: "nav.balance", icon: CircleDollarSign },
-          { href: "/account", labelKey: "nav.account", icon: User, prefetch: false },
+          { href: ACCOUNT_PATH, labelKey: "nav.account", icon: User, prefetch: false },
         ],
       },
     ],

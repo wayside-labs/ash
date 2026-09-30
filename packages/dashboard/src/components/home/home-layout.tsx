@@ -13,6 +13,7 @@ import {
   useDefaultLayout,
 } from "@/components/ui/resizable";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { useTranslation } from "@/i18n/locale-provider";
 import { cn } from "@/lib/utils";
 import { type HomePanelId, useAppStore } from "@/stores/app-store";
@@ -70,7 +71,11 @@ export function HomeLayout() {
   const setHomeLayoutDirection = useAppStore((s) => s.setHomeLayoutDirection);
   const resetHomeLayout = useAppStore((s) => s.resetHomeLayout);
 
-  const storageId = `home-${homeLayout.direction}-${layoutResetCounter}`;
+  // Side by side at phone width left the chat one word per line and clipped the workflows, so
+  // below `md` the panels always stack. The saved preference is kept for wider screens.
+  const narrow = useMediaQuery("(max-width: 767px)");
+  const direction = narrow ? "vertical" : homeLayout.direction;
+  const storageId = `home-${direction}-${layoutResetCounter}`;
   const { defaultLayout, onLayoutChanged } = useDefaultLayout({
     id: storageId,
     panelIds: PANEL_IDS,
@@ -103,13 +108,13 @@ export function HomeLayout() {
               label={t("home.layout.horizontal")}
               onClick={() => setHomeLayoutDirection("horizontal")}
               icon={Columns2}
-              active={homeLayout.direction === "horizontal"}
+              active={direction === "horizontal"}
             />
             <LayoutToolbarButton
               label={t("home.layout.vertical")}
               onClick={() => setHomeLayoutDirection("vertical")}
               icon={Rows2}
-              active={homeLayout.direction === "vertical"}
+              active={direction === "vertical"}
             />
             <LayoutToolbarButton
               label={t("home.layout.reset")}
@@ -122,14 +127,14 @@ export function HomeLayout() {
 
       <ResizablePanelGroup
         id={storageId}
-        orientation={homeLayout.direction}
+        orientation={direction}
         defaultLayout={defaultLayout ?? DEFAULT_SIZES}
         onLayoutChanged={onLayoutChanged}
         className="min-h-0 flex-1 rounded-xl"
       >
         {homeLayout.panelOrder.map((panelId, index) => (
           <Fragment key={panelId}>
-            {index > 0 && <ResizableHandle orientation={homeLayout.direction} />}
+            {index > 0 && <ResizableHandle orientation={direction} />}
             <ResizablePanel
               id={panelId}
               minSize={22}

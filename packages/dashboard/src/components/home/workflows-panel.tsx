@@ -27,7 +27,9 @@ export function WorkflowsPanel() {
           </Button>
         </header>
 
-        <ScrollArea className="min-h-0 flex-1">
+        {/* Radix wraps the viewport's content in a `display: table` div that grows to fit the
+            agent carousel, so rows overflowed instead of wrapping; block keeps them to the panel. */}
+        <ScrollArea className="min-h-0 flex-1 [&_[data-radix-scroll-area-viewport]>div]:!block">
           <div className="p-4">
             {isLoading ? (
               <div className="flex items-center gap-2 py-12 text-sm text-muted-foreground">

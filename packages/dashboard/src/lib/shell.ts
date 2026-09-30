@@ -24,10 +24,18 @@ export function parseShellMode(raw: string | undefined): ShellMode {
 export const ADVANCED_HOME_PATH = "/advanced";
 export const BALANCE_PATH = "/balance";
 
-/** Routes that render the pared-down header: no cluster, no mode switch, no SOL ticker. */
+export const ACCOUNT_PATH = "/account";
+
+/**
+ * Routes that render the pared-down header: no cluster, no mode switch, no SOL ticker. Every
+ * page in the sidebar's Simple tier is one, so walking Chat → Balance → Account never flips the
+ * header into operator mode; Account links an external wallet from its own card.
+ */
 export function isSimpleRoute(pathname: string, mode: ShellMode): boolean {
   if (pathname === "/") return mode === "simple";
-  return pathname === BALANCE_PATH || pathname.startsWith(`${BALANCE_PATH}/`);
+  return [BALANCE_PATH, ACCOUNT_PATH].some(
+    (path) => pathname === path || pathname.startsWith(`${path}/`),
+  );
 }
 
 /** How many ledger rows the home page's extrato shows; the balance page shows all the API returns. */

@@ -95,7 +95,9 @@ export function WorkflowRow({ workflow, onAddAgent }: WorkflowRowProps) {
 
   return (
     <section className="mb-8">
-      <div className="mb-3 flex items-center justify-between gap-3">
+      {/* Wraps rather than clips: in the /advanced split the row gets about half the width
+          the /workflows page gives it, and five shrink-0 actions ran past the panel edge. */}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <span className="text-2xl">{workflow.icon}</span>
           <div className="min-w-0">
@@ -111,7 +113,7 @@ export function WorkflowRow({ workflow, onAddAgent }: WorkflowRowProps) {
             </p>
           </div>
         </div>
-        <div className="flex shrink-0 gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" asChild>
             <Link href={`/workflows/${workflow.id}/canvas`}>
               <Network className="h-3.5 w-3.5" />
