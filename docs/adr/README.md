@@ -25,6 +25,7 @@ Each ADR captures one decision from the v1 design session: the context, the opti
 | [021](ADR-021-operator-surfaces-cli-and-dashboard.md) | Operator surfaces: CLI and dashboard, never MCP; wave 1 session lifecycle | Accepted |
 | [022](ADR-022-agent-reporting-and-review-queue.md) | Agents report to the dashboard; a person decides what they ask | Accepted |
 | [024](ADR-024-email-first-login-and-platform-wallet.md) | Email-first sign-in, a platform wallet per account, self-custody wallets as Pro | Proposed |
+| [025](ADR-025-cross-network-connector-desk-signed.md) | Cross-network execution through a desk-signed connector with an off-chain recipient allowlist | Proposed |
 
 016 is reserved by issue #23 (the per-session ceiling) and lands with it. 019 is reserved by
 pull request #54 (self-hosting on a VM) and lands with it. 023 is taken by pull request #82
