@@ -6,7 +6,15 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**", "!**/dist", "!**/src/generated", "!**/node_modules", "!idl"]
+    "includes": [
+      "**",
+      "!**/dist",
+      "!**/src/generated",
+      "!**/node_modules",
+      "!idl",
+      "!.claude/skills/sodax-*",
+      "!skills-lock.json"
+    ]
   },
   "formatter": {
     "indentStyle": "space",
