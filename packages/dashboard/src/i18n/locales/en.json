@@ -703,7 +703,7 @@
   "api.error.bootstrapOwnerOnly": "The next step sets the treasury's SOL ceiling, which only its owner may sign. Connect the owner wallet.",
   "api.error.bootstrapNotOperatorOrOwner": "Only the treasury's owner or operator can continue its setup.",
   "api.error.buildBootstrapFailed": "failed to build the setup transaction",
-  "wallets.vaultFeeBalance": "SOL for fees",
+  "wallets.vaultFeeBalance": "for fees",
   "walletPrompt.title": "Add a wallet",
   "walletPrompt.description": "You are signed in, but a treasury, a policy and an agent session all start from a wallet that owns something on chain.",
   "walletPrompt.connect": "Connect a wallet I already have",

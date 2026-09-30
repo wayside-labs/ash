@@ -60,7 +60,7 @@ export default function ProfilePage() {
           ) : (
             <>
               <div className="flex items-center gap-4">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted text-2xl">
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-muted text-2xl">
                   {form.displayName ? form.displayName.slice(0, 1).toUpperCase() : "👤"}
                 </div>
                 <p className="text-xs text-muted-foreground">{t("profile.avatarHint")}</p>

@@ -7,7 +7,7 @@ import { useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { useExternalWalletsAllowed } from "@/hooks/use-account-wallet";
 import { useTranslation } from "@/i18n/locale-provider";
-import type { ShellMode } from "@/lib/shell";
+import { isSimpleRoute, type ShellMode } from "@/lib/shell";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/stores/app-store";
 import { isActiveHref, isAdvancedPath, type NavGroupDef, navTierDefs } from "./nav-items";
@@ -76,19 +76,23 @@ export function Sidebar({ shellMode }: { shellMode: ShellMode }) {
           </div>
         </nav>
 
-        <div className="border-t border-sidebar-border p-3">
-          <p className="text-[11px] text-faint-foreground">{t("common.mode")}</p>
-          <p className="flex items-center gap-1.5 text-xs text-foreground">
-            <span
-              className={cn(
-                "h-1.5 w-1.5 rounded-full",
-                operationMode === "agent-rails" ? "bg-primary" : "bg-border-strong",
-              )}
-              aria-hidden
-            />
-            {operationMode === "native" ? t("mode.native") : t("mode.agentRails")}
-          </p>
-        </div>
+        {/* The payment mode is operator framing; the header drops it on simple routes, and so
+            does this footer. */}
+        {!isSimpleRoute(pathname, shellMode) && (
+          <div className="border-t border-sidebar-border p-3">
+            <p className="text-[11px] text-faint-foreground">{t("common.mode")}</p>
+            <p className="flex items-center gap-1.5 text-xs text-foreground">
+              <span
+                className={cn(
+                  "h-1.5 w-1.5 rounded-full",
+                  operationMode === "agent-rails" ? "bg-primary" : "bg-border-strong",
+                )}
+                aria-hidden
+              />
+              {operationMode === "native" ? t("mode.native") : t("mode.agentRails")}
+            </p>
+          </div>
+        )}
       </aside>
     </>
   );

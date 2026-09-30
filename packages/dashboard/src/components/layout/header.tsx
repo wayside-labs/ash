@@ -97,7 +97,11 @@ export function Header({ shellMode }: { shellMode: ShellMode }) {
           )}
 
           <span className="hidden h-8 w-px bg-border sm:block" />
-          <SolPriceTicker />
+          {/* At phone width the ticker is what pushes Connect off-screen, and it is the one
+              control here that only informs. */}
+          <div className="hidden sm:block">
+            <SolPriceTicker />
+          </div>
           <GatedConnectButton />
         </div>
       )}

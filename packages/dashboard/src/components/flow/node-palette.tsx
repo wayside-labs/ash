@@ -65,7 +65,7 @@ function PaletteRow({
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium">{t(item.labelKey)}</p>
-        <p className="truncate text-xs text-muted-foreground">{t(item.descriptionKey)}</p>
+        <p className="text-xs leading-snug text-muted-foreground">{t(item.descriptionKey)}</p>
       </div>
     </button>
   );
@@ -113,7 +113,9 @@ export function NodePalette({ workflowId, className }: { workflowId: string; cla
   return (
     <aside
       className={cn(
-        "surface-card flex w-64 shrink-0 flex-col border-r border-border bg-sidebar",
+        // Drag and drop does not work on touch, and at phone width the palette took two thirds
+        // of the screen; below `md` the canvas gets the full width instead.
+        "surface-card hidden w-64 shrink-0 flex-col border-r border-border bg-sidebar md:flex",
         className,
       )}
     >
