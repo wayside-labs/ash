@@ -549,7 +549,7 @@ export function describeWalletError(error: unknown, t: (key: string) => string):
 }
 
 export type ProviderStatus = {
-  id: "claude-cli" | "anthropic-api" | "demo";
+  id: "claude-cli" | "anthropic-api" | "openrouter-platform" | "demo";
   label: string;
   available: boolean;
   detail: string;
