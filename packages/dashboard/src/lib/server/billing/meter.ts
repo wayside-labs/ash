@@ -46,8 +46,10 @@ export function billingConfig(): BillingConfig {
 /** The caller's org when hosted, the server's single ledger locally, null when signed out. */
 export async function resolveBillingScope(): Promise<BillingScope | null> {
   if (!isSupabaseConfigured()) return { kind: "local" };
-  const ctx = await resolvePostgresContext();
-  return ctx ? { kind: "org", orgId: ctx.orgId, accountId: ctx.accountId } : null;
+  // An unprovisioned account has no org to bill, so it is refused like a signed-out one.
+  const result = await resolvePostgresContext();
+  if (result?.kind !== "ok") return null;
+  return { kind: "org", orgId: result.ctx.orgId, accountId: result.ctx.accountId };
 }
 
 function scopeKey(scope: BillingScope): string {
