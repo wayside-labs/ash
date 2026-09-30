@@ -87,10 +87,53 @@ sink (`GET /api/metrics/history/export`).
 |---|---|---|
 | `claude-cli` | Claude Code installed and logged in | your Claude subscription |
 | `anthropic-api` | an Anthropic key in *My APIs* or `ANTHROPIC_API_KEY` | per token |
+| `openrouter-platform` | `OPENROUTER_API_KEY` on the server, and a signed-in session when hosted | per token, paid by the operator |
 | `demo` | nothing | fixed replies |
 
-The CLI wins by default: it needs no key and adds no per-token cost. Pick a
-specific model in the chat footer to override.
+The CLI wins by default: it needs no key and adds no per-token cost. A key the
+user brought comes next, the platform key after that — it is the one path where
+the operator pays, so it is last before demo. Pick a specific model in the chat
+footer to override.
+
+### The platform key
+
+`openrouter-platform` lets a signed-in user chat without knowing what an API key
+is. The route checks access itself before the snapshot is built
+(`openrouterPlatformAccess` in `providers.ts`): with Supabase configured, no
+session means 401, not a fallback. In local JSON mode there are no sessions, so
+setting the env var is the operator opting in for whoever can reach the server.
+
+- Models are a fixed allowlist in `openrouter-api.ts` — Claude-class only,
+  because the prompt defences are instructions and hold only as well as the
+  model follows them.
+- The request carries no `tools`, like every other path here.
+- OpenRouter gets a hashed per-user id (`user`), never the auth uuid, and the app
+  is marked hidden so no public page lists this dashboard's traffic.
+- Each caller gets 10 messages a minute on top of the route's 20. Both are per
+  instance (`rate-limit.ts`), so this is abuse damping, not metering — the
+  credit ledger below is the metering. Still set a spend limit on the OpenRouter
+  key.
+- Upstream errors reach the user as a localized "temporarily unavailable", never
+  the raw message, which is about the operator's account.
+
+### Credit billing
+
+The platform key is prepaid: each org holds a credit balance, and every
+`openrouter-platform` reply debits OpenRouter's reported cost plus
+`BILLING_MARKUP_BPS` (default 2000 = 20%). BYO keys, the CLI and demo are never
+metered. Before the model runs, the route refuses with **402** a balance that
+could not pay for the turn at its worst — the full 8192-token output — and
+allows one metered turn per org at a time (409 for a second). The balance and
+ledger are on the Account page, from `GET /api/billing`.
+
+Always on when Supabase is configured; opt-in locally with `BILLING_ENABLED=true`
+(ledger in `~/.agent-rails/billing.json`). No route adds credit. Design, the
+overdraft bound, and how to grant credit by hand:
+[`docs/runbooks/chat-credit-billing.md`](../../docs/runbooks/chat-credit-billing.md).
+
+Every API path fences every user turn, not only the last, and escapes our own
+fence tags inside untrusted text (`prompt.ts`); the snapshot is sent once, on the
+last turn.
 
 If you previously saw **Demo** while Claude Code was installed, an old persisted
 choice may be stuck — open the chat footer and switch the model to Sonnet (or any

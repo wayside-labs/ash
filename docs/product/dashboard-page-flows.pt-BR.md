@@ -59,15 +59,19 @@ flowchart TB
 | `useTreasury(address)` | GET `/api/solana/treasury` — policy e sessões on-chain |
 | `useBalances` / `useVaultBalances` | POST saldos reais, refetch a cada 30s |
 
-### Navegação (12 páginas)
+### Navegação (shell simples + Avançado)
 
-Organizadas em 5 grupos na sidebar (`nav-items.ts`):
+Dois níveis na sidebar (`nav-items.ts`, `docs/product/simple-shell.md`):
 
-1. **Home** — `/`
-2. **Operação** — `/workflows`, `/agents`
-3. **Dinheiro** — `/treasury`, `/limits`, `/wallets`
-4. **Ferramentas** — `/mcps`, `/skills`, `/apis`
-5. **Conta** — `/account`, `/profile`, `/settings`
+1. **Simples** (sempre visível) — `/` (Chat), `/balance` (Saldo), `/account` (Conta)
+2. **Avançado** (recolhido até o usuário abrir; abre sozinho dentro de uma rota avançada)
+   - **Workflows** — `/advanced` (visão geral, o antigo `/`), `/templates`, `/workflows`, `/reviews`
+   - **Agentes** — `/agents`, `/mcps`, `/skills`, `/knowledge`, `/apis`
+   - **Carteiras** — `/metrics`, `/treasury` (Pro), `/limits`, `/wallets` (Pro)
+   - **Configurações** — `/profile`, `/settings`
+
+O selo **Pro** só aparece para quem o gate da ADR-024 recusaria; a rota continua aberta.
+`NEXT_PUBLIC_DASHBOARD_SHELL=operator` (build) devolve o `/` antigo.
 
 > **Podadas:** `/harness`, `/rag` e `/integrations` foram removidas junto com suas
 > entradas de navegação — nenhuma tinha infraestrutura de backend por trás, e uma
@@ -76,7 +80,8 @@ Organizadas em 5 grupos na sidebar (`nav-items.ts`):
 
 ### Controles globais (header)
 
-Sempre visíveis em todas as páginas:
+Nas rotas simples (`/`, `/balance`) o header mostra só o saldo de crédito e **Adicionar saldo**.
+Em todas as outras rotas, os controles abaixo:
 
 | Controle | Efeito |
 |---|---|
@@ -87,6 +92,10 @@ Sempre visíveis em todas as páginas:
 ---
 
 ## 1. Home (`/`)
+
+> Desde o shell simples, `/` é chat + saldo + extrato curto (ver `docs/product/simple-shell.md`).
+> A página descrita nesta seção vive agora em **`/advanced`** — ou em `/` quando o build usa
+> `NEXT_PUBLIC_DASHBOARD_SHELL=operator`.
 
 ### O que faz
 

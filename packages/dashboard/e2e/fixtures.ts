@@ -11,6 +11,7 @@ import {
   setTransactionMessageLifetimeUsingBlockhash,
 } from "@solana/kit";
 import en from "../src/i18n/locales/en.json" with { type: "json" };
+import type { BillingSummary } from "../src/lib/billing";
 
 /**
  * Selectors read from the same catalogue the UI renders from, so a reworded
@@ -568,6 +569,27 @@ export async function stubChat(page: Page, reply = "Stubbed answer."): Promise<v
   );
   await page.route("**/api/chat", (route) =>
     route.fulfill({ status: 200, contentType: "text/plain; charset=utf-8", body: reply }),
+  );
+}
+
+/**
+ * `/api/billing`, fulfilled in the browser. The suite runs in JSON mode with billing off, where
+ * the real route answers `enabled: false` and the simple shell hides every balance surface; a
+ * spec about the balance has to say what the balance is.
+ */
+export async function stubBilling(
+  page: Page,
+  summary: Partial<BillingSummary> = {},
+): Promise<void> {
+  const body: BillingSummary = {
+    enabled: true,
+    balanceMicros: 0,
+    markupBps: 2_000,
+    entries: [],
+    ...summary,
+  };
+  await page.route("**/api/billing", (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) }),
   );
 }
 

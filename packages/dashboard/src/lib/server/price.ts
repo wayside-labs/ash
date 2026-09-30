@@ -129,7 +129,7 @@ export async function getSolUsdPrice(): Promise<SolPrice | null> {
         failures.push(`${read.name}: ${err instanceof Error ? err.message : String(err)}`);
       }
     }
-    // The route answers a bare 502; without this the journal never says which upstream refused.
+    // The route answers a bare 503; without this the journal never says which upstream refused.
     console.warn(`sol price unavailable (${failures.join("; ")})`);
     return cache?.value ?? null;
   })().finally(() => {

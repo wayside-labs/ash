@@ -3,6 +3,7 @@
 import type { User } from "@supabase/supabase-js";
 import { useCallback, useEffect, useState } from "react";
 import { truncateAddressForName, tryResolveIdentity } from "@/lib/auth/identity";
+import { SIGN_IN_PATH, safeNext } from "@/lib/auth/sign-in-gate";
 import { getWalletProvider, type WalletId } from "@/lib/solana";
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -13,6 +14,18 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
  */
 const SIGN_IN_STATEMENT =
   "Sign in to Agent Rails. This proves you control this wallet and moves no funds.";
+
+/** Where the sign-in gate was sending this visitor, if it sent them here. */
+function pendingNext(): string | null {
+  const raw = new URLSearchParams(window.location.search).get("next");
+  const next = safeNext(raw, "");
+  return next && next !== SIGN_IN_PATH ? next : null;
+}
+
+function nextQuery(): string {
+  const next = pendingNext();
+  return next ? `?next=${encodeURIComponent(next)}` : "";
+}
 
 export function useAuth() {
   const configured = isSupabaseConfigured();
@@ -47,7 +60,26 @@ export function useAuth() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${window.location.origin}/auth/callback${nextQuery()}`,
+      },
+    });
+    if (error) throw error;
+  }, []);
+
+  /**
+   * Magic link (ADR-024), the default door: no password, no extension, works on a phone.
+   *
+   * The redirect names `/auth/callback`, which serves the stock email template's PKCE link.
+   * The runbook's token-hash template points at `/auth/confirm` instead, which also works
+   * when the link opens in a different browser from the one that asked for it.
+   */
+  const signInWithEmail = useCallback(async (email: string) => {
+    const supabase = createClient();
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback${nextQuery()}`,
+        shouldCreateUser: true,
       },
     });
     if (error) throw error;
@@ -77,6 +109,10 @@ export function useAuth() {
       const body = (await response.json().catch(() => null)) as { error?: string } | null;
       throw new Error(body?.error ?? "could not provision this account");
     }
+
+    // Google returns through the callback's `next`; the wallet never left, so it goes here.
+    const next = pendingNext();
+    if (next) window.location.assign(next);
   }, []);
 
   const signOut = useCallback(async () => {
@@ -101,6 +137,7 @@ export function useAuth() {
     // Keyed on the user, not the email: a wallet account has none, and keying
     // on the email would render every wallet sign-in as signed out.
     signedIn: Boolean(user),
+    signInWithEmail,
     signInWithGoogle,
     signInWithWallet,
     signOut,

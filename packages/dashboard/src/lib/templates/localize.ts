@@ -7,6 +7,7 @@ const BUILTIN_I18N_KEY: Record<BuiltinTemplateId, string> = {
   "builtin:earn-bounty-hunter": "earnBountyHunter",
   "builtin:dca-sol": "dcaSol",
   "builtin:defi-yield-rebalance": "defiYieldRebalance",
+  "builtin:solana-workstation": "solanaWorkstation",
 };
 
 function setupStepsFromLocale(t: Translate, prefix: string): string[] {

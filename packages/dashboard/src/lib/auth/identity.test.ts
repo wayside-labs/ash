@@ -196,3 +196,31 @@ describe("google wins when an account has both", () => {
     expect(resolved).toMatchObject({ provider: "google", subject: "1078" });
   });
 });
+
+describe("resolveIdentity — email magic link", () => {
+  it("keys on the auth user id, so a changed address keeps the same account", () => {
+    const resolved = resolveIdentity(
+      user({
+        email: "someone@example.com",
+        identities: [identity("email", { sub: "00000000-0000-4000-8000-000000000001" })],
+      }),
+    );
+    expect(resolved).toEqual({
+      provider: "email",
+      subject: "00000000-0000-4000-8000-000000000001",
+      displayName: "someone",
+      email: "someone@example.com",
+    });
+  });
+
+  it("prefers Google when GoTrue linked both doors to one user", () => {
+    const resolved = resolveIdentity(
+      user({
+        email: "someone@example.com",
+        identities: [identity("email", { sub: "u-1" }), identity("google", { sub: "1078" })],
+      }),
+    );
+    expect(resolved.provider).toBe("google");
+    expect(resolved.subject).toBe("1078");
+  });
+});

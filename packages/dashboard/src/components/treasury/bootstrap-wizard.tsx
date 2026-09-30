@@ -23,6 +23,7 @@ import {
   type SessionKeyDelivery,
   SessionKeyDeliveryDialog,
 } from "@/components/workflows/session-key-delivery-dialog";
+import { useExternalWalletsAllowed } from "@/hooks/use-account-wallet";
 import {
   type BootstrapForm,
   type BootstrapProgress,
@@ -103,6 +104,7 @@ export function BootstrapWizard({
   const { t } = useTranslation();
   const toast = useToast();
   const { cluster, customRpc, walletAddress } = useAppStore();
+  const externalWallets = useExternalWalletsAllowed();
   const planMutation = useBootstrapPlan();
   const run = useRunBootstrap();
   const updateWorkflow = useUpdateResource("workflows");
@@ -200,8 +202,11 @@ export function BootstrapWizard({
     return null;
   })();
 
+  // A free account has no connect button to follow this hint to (ADR-024), so it is told why.
   const networkError = !walletAddress
-    ? t("bootstrap.error.walletNotConnected")
+    ? externalWallets === false
+      ? t("bootstrap.error.walletNeedsPro")
+      : t("bootstrap.error.walletNotConnected")
     : cluster === "mainnet-beta"
       ? t("bootstrap.network.mainnetBlocked")
       : null;

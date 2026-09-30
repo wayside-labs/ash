@@ -38,4 +38,26 @@ describe("applyTemplateToState", () => {
     expect(state.agents).toHaveLength(0);
     expect(state.workflows[0]?.name).toBe("Weekly DCA");
   });
+
+  it("adds the Jupiter and SODAX integration MCPs for solana workstation", () => {
+    const state = dashboardStateSchema.parse({});
+    applyTemplateToState(state, {
+      template: BUILTIN_TEMPLATES["builtin:solana-workstation"],
+      workflowName: "DeFi desk",
+      cluster: "devnet",
+      ownerAddress: null,
+      treasuryAddress: null,
+      newId: (p) => `${p}_ws`,
+      now: "2026-09-29T00:00:00.000Z",
+    });
+    expect(state.agents).toHaveLength(3);
+    const connector = (name: string) =>
+      state.mcps.find((m) => m.command === "agent-rails-integrations" && m.args[1] === name);
+    const jupiter = connector("jupiter");
+    expect(jupiter?.scope).toBe("workflow");
+    expect(jupiter?.scopeName).toBe("DeFi desk");
+    const sodax = connector("sodax");
+    expect(sodax?.scopeName).toBe("DeFi desk");
+    expect(sodax?.env.SODAX_ALLOWED_DESTINATIONS).toBe("");
+  });
 });
