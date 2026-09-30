@@ -1,10 +1,11 @@
 # Runbook — a plataforma própria na VPS
 
-**Escopo:** o servidor da ADR-019 — dashboard e, na etapa 2, o Supabase self-hosted, numa VPS
-paga da Hostinger. Enquanto a etapa 1 não vira, a produção continua em
-[`deploy-vercel.md`](deploy-vercel.md).
+**Escopo:** a *máquina* da ADR-019 — conta, acesso SSH e endurecimento do host. O que roda nela
+(dashboard, Supabase self-hosted, túnel, backups, deploys) está em
+[`deploy/vps/README.md`](../../deploy/vps/README.md), que é o runbook operacional.
 
-**Estado em 2026-09-28 — VPS contratada, endurecida e vazia.**
+**Estado em 2026-09-30 — em produção desde 2026-09-29**, dividindo a VPS com o stack ash.
+[`deploy-vercel.md`](deploy-vercel.md) ficou só como caminho de rollback.
 
 | | |
 |---|---|
@@ -41,8 +42,8 @@ pessoas; no servidor só existem chaves públicas.
 |---|---|---|---|
 | `root` | — | — | **login por SSH desligado** |
 | `lucas` | Lucas, chave própria (`SHA256:ulEjKtRT…fWok`) | sim, sem senha | ✅ 28/09 |
-| `ronaldo` | Ronaldo, chave de `github.com/0xcf02.keys` (`SHA256:uc7Gv1Rz…K7qk`) | sim, sem senha | ✅ 28/09; ⏳ primeiro login dele |
-| `deploy` | serviços e deploys — nunca uma pessoa | **não** | ⏳ criado com a etapa 1 |
+| `ronaldo` | Ronaldo, chave de `github.com/0xcf02.keys` (`SHA256:uc7Gv1Rz…K7qk`) | sim, sem senha | ✅ 28/09; em uso desde 29/09 |
+| `agent-rails` | serviço do dashboard e backups — nunca uma pessoa; sem docker, sem SSH | **não** | ✅ 29/09 (`bootstrap.sh`) |
 
 Os dois usuários pessoais estão no grupo `docker` e não têm senha (`passwd -l`): o login é só
 por chave, e `NOPASSWD` no sudo evita criar uma senha só para ele.
@@ -101,73 +102,40 @@ Os scripts usados vivem fora do repositório; esta tabela é a fonte do que foi 
 
 ---
 
-## 4. Abrir HTTP/HTTPS ⏳
+## 4. O que roda na máquina
 
-Hoje só a 22 está aberta. Para o proxy:
+Tudo o que o plano original listava aqui (Caddy nas portas 80/443, usuário `deploy`, deploy key,
+etapa 2 depois de 12/10) foi substituído pelo que foi combinado com o Lucas e construído no PR #77:
 
-```bash
-sudo ufw allow 80,443/tcp
-```
+- **Tráfego:** túnel Cloudflare próprio; nenhuma porta aberta e o `ufw` não mudou (o certbot do
+  ash usa a 80). Hostnames `console.ash.app.br` e `console-api.ash.app.br` (só `/auth` e `/rest`).
+- **Usuário:** `agent-rails`, sem docker, sem sudo, sem SSH. O `deploy` é do ash e está no grupo
+  docker; não usamos.
+- **Supabase:** self-hosted enxuto na mesma VPS, versões iguais às do hospedado, cutover em
+  2026-09-29.
+- **Deploy:** bundle git por SSH (`deploy/vps/push-deploy.sh origin/<branch>`), sem chave do GitHub
+  no servidor. **Migrations não vão no deploy:** aplicar à mão antes, com backup.
+- **Backups:** dump noturno cifrado com `age`, enviado pelo ash-offsite para o livro-vps, com teste
+  de restauração semanal.
 
-Só o Caddy escuta em 80/443. Nenhum container publica porta para fora (§3, Docker).
-
----
-
-## 5. Etapa 1 — dashboard na VPS ⏳
-
-Pré-requisitos: domínio decidido, ADR-019 aceita.
-
-1. Usuário `deploy`; código em `/srv/agent-rails` com acesso de leitura ao repositório por
-   **deploy key somente leitura** gerada no servidor e cadastrada por um admin do repo.
-2. `pnpm install --frozen-lockfile` e `turbo run build --filter=@agent-rails/dashboard`, os
-   mesmos comandos do `vercel.json`.
-3. Variáveis em `/etc/agent-rails/dashboard.env` (`root:root`, `0600`), lidas pelo systemd — as
-   mesmas da §3 do `deploy-vercel.md`, com `ALLOWED_ORIGINS` já no domínio novo.
-4. Serviço systemd rodando `pnpm --filter @agent-rails/dashboard start` como `deploy`. O script
-   já escuta em `127.0.0.1:3000`, então a porta nunca fica exposta.
-5. Caddy na frente, TLS automático, repassando o domínio para `127.0.0.1:3000`, com os mesmos
-   headers do `vercel.json` (`X-Frame-Options: DENY`).
-6. No Supabase: Redirect URL `https://<domínio>/auth/callback`.
-7. Conferir com os três `curl` da §5 do `deploy-vercel.md`, trocando `U`. Só então apontar o DNS.
-
-**Latência:** a VPS está nos EUA e o Supabase gerenciado em São Paulo; cada chamada do servidor
-ao banco paga ~120 ms de ida e volta. Medir o tempo das páginas autenticadas antes de apontar o
-DNS — se ficar ruim, a resposta é a etapa 2 ou mudar a VPS de data center, não otimizar código.
-
-**Rollback:** apontar o DNS de volta. A Vercel continua de pé até a etapa 1 estar estável.
+Passo a passo, layout, rede e procedimentos: [`deploy/vps/README.md`](../../deploy/vps/README.md).
+Decisão e porquês: [ADR-019](../adr/ADR-019-self-hosted-platform.md).
 
 ---
 
-## 6. Etapa 2 — Supabase na VPS ⏳
+## 5. Máquina compartilhada com o ash
 
-Não agendar antes de verificar:
-
-- memória: com a etapa 1 e os serviços de vendas rodando, sobrarem **3 GB** — o Supabase
-  self-hosted usa ~1,3 GB medido na outra VPS do time;
-- versão do Auth self-hosted com o provider **Web3/Solana** (o `signInWithWeb3` da ADR-017);
-- **backup noturno fora da VPS** (`pg_dump` para um storage externo) funcionando e
-  **restaurado uma vez** — sem isso, o gerenciado era mais seguro. O backup do plano da
-  Hostinger não substitui este.
-
-Migração: `pg_dump` do projeto gerenciado → `pg_restore` local → providers Google e Web3
-reconfigurados → redirect do Google Cloud apontando para o callback do Auth próprio → troca de
-`NEXT_PUBLIC_SUPABASE_URL` e das chaves → rebuild (as `NEXT_PUBLIC_*` são inlinadas no build).
-O Kong do Compose publica em `127.0.0.1`, e o Caddy repassa o subdomínio da API para ele.
+Site, e-mail e listmonk do ash rodam na mesma VPS, com usuários, caminhos (`/opt/ash*`,
+`/var/backups/ash-*`) e units (`ash-*`) próprios — nunca dentro de `/srv/agent-rails`.
+**Avisar no chat do time antes de reboot, `apt upgrade`, ou mudança em firewall, sshd ou daemon do
+docker; nenhum reboot sem o ok do outro.** Separar em duas máquinas quando a memória apertar ou
+antes de o produto guardar algo que um cliente chamaria de produção (ADR-019, *Consequences*).
 
 ---
 
-## 7. Dividindo a máquina com os serviços de vendas
-
-Site, blog e disparo de e-mail do time rodam na mesma VPS, num projeto Compose próprio e com
-usuário de serviço próprio — nunca dentro de `/srv/agent-rails` nem como `deploy`. Separar numa
-segunda VPS quando a memória apertar ou antes de o produto guardar algo que um cliente chamaria
-de produção (ADR-019, *Consequences*).
-
----
-
-## 8. Segredos
+## 6. Segredos
 
 Nenhum segredo no repositório, no chat ou em `argv` (mesmo aviso do `deploy-vercel.md` §1).
-No servidor: arquivos `0600` de root em `/etc/agent-rails/`. Entre os sócios: um cofre
+No servidor: arquivos de root em `/etc/agent-rails/*.env` (0600/0640). Entre os sócios: um cofre
 compartilhado de gerenciador de senhas. Chave de sessão de agente gerada **no servidor**, nunca
 colada de fora.

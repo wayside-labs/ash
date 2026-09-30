@@ -1,7 +1,14 @@
 # ADR-019: Self-hosted platform on a VPS, replacing Vercel and managed Supabase
 
-**Status:** Proposed. Supersedes the *Platform* section of ADR-017 only; tenancy, identity,
-access path and secrets in ADR-017 stand unchanged.
+**Status:** Accepted — in production since 2026-09-29. Supersedes the *Platform* section of
+ADR-017 only; tenancy, identity, access path and secrets in ADR-017 stand unchanged.
+
+**Amended 2026-09-30.** The first accepted text planned Caddy on a machine of our own, a
+`deploy` service user, and stage 2 after 12/10. What was agreed with Lucas and built instead
+(PR #77) is recorded below: one VPS shared with the ash stack, our own Cloudflare tunnel, an
+`agent-rails` user, a trimmed self-hosted Supabase, and backups — with both stages done before
+the freeze. Context and options are unchanged; Decision and Consequences describe what runs.
+The operational runbook is `deploy/vps/README.md`.
 
 ## Context
 
@@ -86,69 +93,93 @@ What to move (unchanged from the first draft):
 ## Decision
 
 A **Hostinger KVM 2** VPS — 2 vCPU AMD EPYC 9354P, 7.8 GiB RAM, ~97 GB NVMe, Ubuntu 22.04,
-x86_64 — provisioned and hardened on 2026-09-28. Option C, reached through B.
+x86_64 — provisioned and hardened on 2026-09-28, **shared with the ash stack** (site, mail,
+listmonk: the go-to-market services this budget was sized for). Option C, reached through B,
+both stages completed on 2026-09-29.
 
-### Stages
+### Traffic: our own Cloudflare tunnel, no open port
 
-1. **Stage 1 — dashboard to the VPS (= option B).** Built and run with `next start` (already
-   bound to `127.0.0.1` by the package script) under systemd, behind Caddy for automatic TLS.
-   Supabase stays managed. Cutover is DNS: the Vercel deployment stays up, untouched, until
-   the checks in `deploy-vercel.md` §5 pass against the VPS.
-2. **Stage 2 — Supabase to the VPS.** Self-hosted Supabase on the same VPS, data moved by
-   `pg_dump`/`pg_restore`, the Google provider and the Web3 (Solana) provider reconfigured on
-   our Auth instance, redirect URLs moved to our domain.
+| Hostname (ash's Cloudflare account) | Target | Exposed |
+|---|---|---|
+| `console.ash.app.br` | `127.0.0.1:3000` (dashboard) | everything |
+| `console-api.ash.app.br` | `127.0.0.1:8000` (Supabase gateway) | path `^/(auth\|rest)/v1/` only |
 
-### Gates
+- Nothing of ours listens on 80/443 and `ufw` is unchanged: ash's certbot owns port 80 in
+  standalone mode, and a TLS proxy would have competed with it. Cloudflare terminates TLS.
+- The API hostname sits one label under the zone because Universal SSL covers `*.ash.app.br`
+  only. Studio, pg-meta and the gateway root never reach the tunnel; Studio is `ssh -L`.
+- Security headers live in `next.config.ts`, so every host sends the same ones.
 
-- **ADR-017's freeze wins.** Stage 1 lands before 2026-10-05 or after 12/10, never in the
-  final week. Stage 2 is after 12/10.
-- **A domain first.** TLS and the Google OAuth redirect both need a hostname we control; the
-  `*.vercel.app` name does not move. The product name is still open (execution plan, *Aberto*),
-  so a neutral hostname is acceptable for stage 1.
-- **Memory before stage 2.** Measured on the team's other VPS, the self-hosted Supabase
-  containers use ~1.3 GB. Stage 2 is scheduled only if, with stage 1 and the go-to-market
-  services running, at least 3 GB stay available; otherwise the plan is upgraded first.
+### Supabase: trimmed, pinned, probed
+
+- **Runs:** db, auth, rest, meta, studio and the Envoy gateway, all on loopback. **Off:**
+  realtime, storage, imgproxy, functions, the pooler. The dashboard uses none of them.
+- **Pinned to hosted's versions** (Postgres `17.6.1.166`, GoTrue `v2.197.0`) so the cutover
+  import had no schema drift. Upstream's compose files are fetched at one commit and checked
+  against `supabase/upstream.lock`; a changed file stops the install.
+- **Our own env template**, not upstream's `.env.example`, whose demo `sb_` secret key would be
+  service-role access for anyone.
+- **`check-gateway.sh` on every start** asserts that `/pg/` and the `/rest/v1/` root refuse an
+  empty `apikey`; if it fails, the unit fails and the tunnel never comes up.
+- Auth providers: email magic link (ADR-024), Google, and Solana web3.
+
+### Stages, as run
+
+1. **Stage 1 — dashboard to the VPS.** `next start` on `127.0.0.1:3000` under systemd, first
+   deploy 2026-09-29. Releases are built per commit under `/srv/agent-rails/releases/<sha>`
+   and swapped atomically.
+2. **Stage 2 — Supabase to the VPS.** Cut over 2026-09-29 ~23:05 UTC. Hosted had no rows and
+   no users, so the move carried the schema and migration history; a hosted dump taken first
+   is kept locally.
+
+The freeze gate held: both stages landed before 2026-10-05. The memory gate held too: the
+trimmed stack runs in ~445 MB beside ash.
 
 ### Access model
 
 No private key is shared between people, and no single person can lock the other out.
 
-- **Hostinger panel:** the account owner plus Ronaldo, each with their own login and MFA,
-  through the panel's account-sharing feature (to be confirmed in the panel). The owner's
-  login is never shared. The panel's recovery console is the way back in if SSH is lost.
-- **SSH:** one Linux user per person (`lucas`, `ronaldo`), key-only, with sudo; public keys
-  only on the server (Ronaldo's from `github.com/0xcf02.keys`). `root` login and password
-  authentication are off, verified from outside.
-- **Service user:** `deploy`, without sudo, owns the application directories and runs the
-  services. Deploys act as `deploy`, never as a person.
-- **Application secrets** (Supabase keys, `ALLOWED_ORIGINS`, optional `ANTHROPIC_API_KEY`) live
-  in root-owned `0600` environment files on the server, read by systemd. The copy both partners
-  can reach is a shared password-manager vault — never the repository, never chat.
+- **Hostinger panel:** the account owner plus Ronaldo, each with their own login and MFA.
+  The owner's login is never shared. The panel's recovery console is the way back if SSH is lost.
+- **SSH:** one Linux user per person (`lucas`, `ronaldo`), key-only, with sudo. `root` login and
+  password authentication are off, verified from outside.
+- **Service user:** `agent-rails` — no docker group, no sudo, no SSH. It builds and runs the
+  dashboard. `/srv/agent-rails` stays root-owned so it cannot swap files root runs; everything
+  that needs docker is a root-owned unit reading root-owned files. (`deploy` is the ash stack's
+  user and is in the docker group, i.e. root-equivalent; we do not use it.)
+- **Deploys** go as a git bundle over the SSH a person already has (`deploy/vps/push-deploy.sh`):
+  the org disables deploy keys, and no GitHub credential lives on the box.
+- **Application secrets** live in root-owned `/etc/agent-rails/*.env` (0600/0640), read by
+  systemd. The copy both partners can reach is a shared password-manager vault — never the
+  repository, never chat.
+- **Shared host rule:** reboots, `apt upgrade`, and firewall, sshd or docker-daemon changes are
+  announced to the other side first; no reboot without the other person's ack.
 
 ## Consequences
 
-- **The VPS is in the US East, not São Paulo.** Measured from the machine: 14 ms to AWS
-  `us-east-1`, ~120 ms to `sa-east-1`. During stage 1 every server-side call to the managed
-  Supabase pays that round trip, and a page that makes several of them pays it several times.
-  Stage 2 removes it by putting the database next to the dashboard. Accepted for now; moving
-  the VPS to a São Paulo data centre is the remedy if stage 1 feels slow.
-- We own what the vendors did: OS patching (unattended security upgrades are on), TLS renewal
-  (Caddy), **backups** (nightly `pg_dump` off the VPS is a stage 2 prerequisite, not a
-  follow-up — without it the managed tier was the safer choice), and uptime monitoring, which
-  does not exist yet.
-- **Docker publishes ports around `ufw`.** On the team's other VPS, Kong's 8000/8443 answered
-  from the internet while `ufw` allowed only 22. Here the daemon sets `"ip": "127.0.0.1"`, so a
-  published port listens locally unless an address is written out; public traffic enters only
-  through the proxy.
-- **One host, two workloads.** The go-to-market services share the VPS under their own
-  Compose project and service user. They hold contact lists, not wallets or tenant data, but a
-  compromise of one is a compromise of the host. They move to a second VPS when memory runs
-  short or before the product holds anything a customer would call production.
+- **The VPS is in the US East, not São Paulo** (14 ms to `us-east-1`, ~120 ms to `sa-east-1`).
+  With the database now on the same host, server-side calls no longer pay that trip; users in
+  Brazil still do, once per request. Moving to a São Paulo data centre remains the remedy.
+- We own what the vendors did:
+  - **OS patching:** unattended security upgrades are on.
+  - **TLS:** Cloudflare, through the tunnel.
+  - **Backups:** nightly `agent-rails-db dump` (03:05 UTC) as a read-only role, encrypted with
+    `age` to our key, shipped by ash-offsite to livro-vps; a weekly restore test (Mon 04:40 UTC)
+    proves the dump restores.
+  - **Monitoring:** journal-only by decision (2026-09-29); no alerting.
+- **Migrations are not applied by deploys.** `push-deploy.sh` ships code only; a release that
+  needs a migration has it applied by hand first (backup, then one transaction with its history
+  row, then `notify pgrst, 'reload schema'`). Missing this once made every `/api/state` call 500.
+- **One host, two workloads.** ash holds contact lists and mail, not wallets or tenant data,
+  but a compromise of one is a compromise of the host. The agent-rails side is split from it by
+  user, paths and units; the two move to separate machines when memory runs short or before the
+  product holds anything a customer would call production.
+- **Docker publishes ports around `ufw`.** The daemon sets `"ip": "127.0.0.1"`, so a published
+  port listens locally unless an address is written out; public traffic enters only through
+  the tunnel.
 - x86_64 removes the arm64 check the first draft required for every image.
-- The `claude-cli` chat provider becomes technically possible on a server with a disk, and stays
-  off. ADR-017's rule holds: a visitor without a key of their own gets `demo`, never the host's
-  subscription or API key.
-- `deploy-vercel.md` stays the reference for the managed deployment until stage 1 is cut over,
-  then becomes the rollback path. `docs/runbooks/deploy-vps.md` is the runbook for this ADR.
-- The exit is the same Compose file on any VM — the portability that the managed stack did
-  not offer.
+- The `claude-cli` chat provider is installed on the host and stays off for hosted tenants.
+  ADR-017's rule holds: a visitor without a key of their own never gets the host's subscription
+  or API key.
+- `deploy-vercel.md` is now the rollback path only.
+- The exit is the same Compose files on any VM — the portability the managed stack did not offer.
