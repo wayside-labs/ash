@@ -3,6 +3,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Bot, Loader2, Send, Square } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AddBalanceButton } from "@/components/billing/add-balance-button";
 import { Markdown } from "@/components/chat/markdown";
 import { reconcileSelectedModel, selectableProviders } from "@/components/chat/model-selection";
 import { Badge } from "@/components/ui/badge";
@@ -54,6 +55,8 @@ export function ChatPanel({ className }: { className?: string }) {
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [mode, setMode] = useState<string | null>(null);
+  /** The reply the server refused for want of credit; it carries the top-up button. */
+  const [creditShortId, setCreditShortId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -136,6 +139,7 @@ export function ChatPanel({ className }: { className?: string }) {
     } catch (error) {
       if ((error as Error).name === "AbortError") return;
       const message = error instanceof Error ? error.message : t("chat.error.generic");
+      if (creditShort) setCreditShortId(assistantId);
       const hint = creditShort
         ? t("chat.error.addCredit")
         : mode === "claude-cli"
@@ -195,7 +199,10 @@ export function ChatPanel({ className }: { className?: string }) {
                 )}
               >
                 {msg.content ? (
-                  <Markdown content={msg.content} />
+                  <>
+                    <Markdown content={msg.content} />
+                    {msg.id === creditShortId && <AddBalanceButton className="mt-2" />}
+                  </>
                 ) : (
                   <span className="flex items-center gap-2 text-muted-foreground">
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />

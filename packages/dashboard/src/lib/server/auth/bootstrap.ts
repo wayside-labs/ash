@@ -1,5 +1,6 @@
 import type { User } from "@supabase/supabase-js";
 import { resolveIdentity } from "@/lib/auth/identity";
+import { ensurePlatformWallet } from "@/lib/server/auth/platform-wallet";
 import { seedPostgresOrg } from "@/lib/server/state/seed-postgres";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -27,6 +28,8 @@ export async function ensureAccountForUser(user: User): Promise<string> {
   if (lookupError) throw lookupError;
   if (existing?.account_id) {
     await ensureOrgSeeded(admin, existing.account_id);
+    // Also how an account created before ADR-024 gets its wallet: on its next sign-in.
+    await provisionWallet(admin, existing.account_id);
     return existing.account_id;
   }
 
@@ -72,8 +75,25 @@ export async function ensureAccountForUser(user: User): Promise<string> {
   if (settingsError) throw settingsError;
 
   await seedPostgresOrg(admin, org.id);
+  await provisionWallet(admin, account.id);
 
   return account.id;
+}
+
+/**
+ * Best effort. A vendor outage must not lock someone out of an account whose every other row
+ * was written; the account page shows the wallet as pending, and the next bootstrap — any
+ * sign-in, or the page's own retry — tries again.
+ */
+async function provisionWallet(
+  admin: ReturnType<typeof createAdminClient>,
+  accountId: string,
+): Promise<void> {
+  try {
+    await ensurePlatformWallet(admin, accountId);
+  } catch (cause) {
+    console.error("[auth/bootstrap] platform wallet provisioning failed", cause);
+  }
 }
 
 async function ensureOrgSeeded(

@@ -1,8 +1,9 @@
 "use client";
 
-import { Info, LogOut } from "lucide-react";
+import { ChevronDown, Info, LogOut } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect } from "react";
+import { EmailSignInForm } from "@/components/auth/email-sign-in-form";
 import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
 import { WalletSignInButton } from "@/components/auth/wallet-sign-in-button";
 import { CreditCard } from "@/components/billing/credit-card";
@@ -11,12 +12,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/components/ui/toast";
-import { ConnectButton } from "@/components/wallet/connect-button";
-import { WalletSetupPrompt } from "@/components/wallet/wallet-setup-prompt";
+import { ExternalWalletCard } from "@/components/wallet/external-wallet-card";
+import { PlatformWalletCard } from "@/components/wallet/platform-wallet-card";
 import { useAuth } from "@/hooks/use-auth";
 import { useTranslation } from "@/i18n/locale-provider";
-import { truncateAddress } from "@/lib/utils";
-import { useAppStore } from "@/stores/app-store";
 
 function AuthErrorToast() {
   const searchParams = useSearchParams();
@@ -38,12 +37,14 @@ function AuthErrorToast() {
   return null;
 }
 
+/**
+ * Also the sign-in page: the middleware sends signed-out visitors here (ADR-017), so the
+ * signed-out state is the product's front door and leads with the one path that needs nothing
+ * installed (ADR-024).
+ */
 export default function AccountPage() {
   const { t } = useTranslation();
-  const { walletAddress, walletName, setWallet } = useAppStore();
   const { configured, label, loading, signedIn, signOut } = useAuth();
-  // Lifted so the post-login offer can open this page's picker directly.
-  const [pickerOpen, setPickerOpen] = useState(false);
   const toast = useToast();
 
   return (
@@ -51,88 +52,80 @@ export default function AccountPage() {
       <Suspense fallback={null}>
         <AuthErrorToast />
       </Suspense>
-      <WalletSetupPrompt onConnect={() => setPickerOpen(true)} />
       <PageHeader title={t("account.title")} description={t("account.description")} />
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
+      {!configured ? (
+        // Local JSON mode: no accounts, so no platform wallet; the extension is the signer.
+        <div className="grid gap-4 md:grid-cols-2">
+          <ExternalWalletCard />
+          <Card>
+            <CardContent className="flex items-start gap-2 p-4">
+              <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">{t("account.authNotConfigured")}</p>
+            </CardContent>
+          </Card>
+        </div>
+      ) : loading ? (
+        <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
+      ) : !signedIn ? (
+        <Card className="max-w-lg">
           <CardHeader>
-            <CardTitle>{t("account.identity")}</CardTitle>
+            <CardTitle>{t("account.signIn.title")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {walletAddress ? (
-              <div className="space-y-3">
-                <div>
-                  <p className="text-xs text-muted-foreground">{t("account.connectedWallet")}</p>
-                  <p className="num text-sm">{truncateAddress(walletAddress, 8)}</p>
-                  {walletName && <p className="text-xs text-muted-foreground">{walletName}</p>}
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setWallet(null);
-                    toast(t("common.walletDisconnected"));
-                  }}
-                >
-                  <LogOut className="h-3.5 w-3.5" />
-                  {t("common.disconnect")}
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">{t("account.noWalletHint")}</p>
-                <ConnectButton pickerOpen={pickerOpen} onPickerOpenChange={setPickerOpen} />
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("account.emailGoogleTitle")}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {!configured ? (
-              <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/40 p-3">
-                <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">{t("account.authNotConfigured")}</p>
-              </div>
-            ) : loading ? (
-              <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
-            ) : signedIn ? (
-              <div className="space-y-3">
-                <div>
-                  <p className="text-xs text-muted-foreground">{t("account.signedInAs")}</p>
-                  <p className="text-sm">{label}</p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={async () => {
-                    await signOut();
-                    toast(t("account.signedOut"));
-                  }}
-                >
-                  <LogOut className="h-3.5 w-3.5" />
-                  {t("account.signOut")}
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">{t("account.signInHint")}</p>
-                <GoogleSignInButton />
+            <p className="text-sm text-muted-foreground">{t("account.signInHint")}</p>
+            <EmailSignInForm />
+            <div className="flex items-center gap-3">
+              <Separator className="flex-1" />
+              <span className="text-xs text-muted-foreground">{t("account.signIn.or")}</span>
+              <Separator className="flex-1" />
+            </div>
+            <GoogleSignInButton />
+            <details className="group">
+              <summary className="flex cursor-pointer list-none items-center gap-1 text-xs text-muted-foreground">
+                <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" />
+                {t("account.signIn.walletDisclosure")}
+              </summary>
+              <div className="mt-3 space-y-2">
                 <WalletSignInButton />
                 <p className="text-xs text-muted-foreground">{t("account.walletSignInHint")}</p>
               </div>
-            )}
-            <Separator />
-            <p className="text-xs text-muted-foreground">{t("account.walletSeparateNote")}</p>
+            </details>
           </CardContent>
         </Card>
-
-        <CreditCard />
-      </div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2">
+          <PlatformWalletCard />
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("account.identity")}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div>
+                <p className="text-xs text-muted-foreground">{t("account.signedInAs")}</p>
+                <p className="text-sm">{label}</p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  await signOut();
+                  toast(t("account.signedOut"));
+                }}
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                {t("account.signOut")}
+              </Button>
+            </CardContent>
+          </Card>
+          <div className="md:col-span-2">
+            <CreditCard />
+          </div>
+          <div className="md:col-span-2">
+            <ExternalWalletCard />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

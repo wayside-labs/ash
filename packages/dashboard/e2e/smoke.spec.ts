@@ -19,6 +19,8 @@ const ROUTES: { path: string; heading: string }[] = [
   { path: "/account", heading: t("account.title") },
   { path: "/profile", heading: t("profile.title") },
   { path: "/settings", heading: t("settings.title") },
+  // Last: the sidebar walk below takes the first four, which must all sit under Advanced.
+  { path: "/balance", heading: t("balance.title") },
 ];
 
 test.describe("every page renders", () => {
@@ -44,12 +46,21 @@ test.describe("every page renders", () => {
     });
   }
 
-  test("/ renders the chat and the workflow panel", async ({ page }) => {
+  test("/ renders the chat without asking for a wallet", async ({ page }) => {
+    await stubChain(page);
+    await stubChat(page);
+
+    await page.goto("/");
+    await expect(page.getByPlaceholder(t("chat.placeholder"))).toBeVisible();
+    await expect(page.getByRole("heading", { name: t("home.workflowsTitle") })).toHaveCount(0);
+  });
+
+  test("/advanced keeps the operator's chat and workflow panel", async ({ page }) => {
     await stubChain(page);
     await stubChat(page);
     await stubWallet(page);
 
-    await page.goto("/");
+    await page.goto("/advanced");
     await expect(page.getByPlaceholder(t("chat.placeholder"))).toBeVisible();
     await expect(page.getByRole("heading", { name: t("home.workflowsTitle") })).toBeVisible();
   });
