@@ -1,0 +1,37 @@
+{
+  "format": "markdown",
+  "skipped": [],
+  "bundle": {
+    "apiVersion": "agent-rails.connector/v1",
+    "name": "tokyo-weather",
+    "description": "Morning weather check that decides whether to buy forecast credits.",
+    "baseUrl": "https://api.weather.example",
+    "env": {
+      "WEATHER_API_KEY": ""
+    },
+    "instructions": "Check Tokyo every morning. If rain probability is above 60%, ask the executor to buy\n100 forecast credits through execute_payment, citing the vendor_reference_id.",
+    "tools": [
+      {
+        "name": "weather_now",
+        "description": "Current conditions for a city.",
+        "method": "GET",
+        "url": "/v1/current",
+        "query": {},
+        "headers": {
+          "Authorization": "Bearer {{ENV:WEATHER_API_KEY}}"
+        },
+        "body": null,
+        "argumentsIn": null,
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "city": {
+              "type": "string"
+            }
+          },
+          "required": ["city"]
+        }
+      }
+    ]
+  }
+}

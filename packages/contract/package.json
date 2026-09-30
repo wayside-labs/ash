@@ -71,6 +71,14 @@
     "./security": {
       "types": "./dist/security.d.ts",
       "import": "./dist/security.js"
+    },
+    "./connector-bundle": {
+      "types": "./dist/connector-bundle.d.ts",
+      "import": "./dist/connector-bundle.js"
+    },
+    "./connector-import": {
+      "types": "./dist/connector-import.d.ts",
+      "import": "./dist/connector-import.js"
     }
   },
   "files": [
@@ -87,6 +95,7 @@
   "devDependencies": {
     "@types/node": "^22.0.0",
     "tsdown": "^0.15.0",
-    "vitest": "^4.0.0"
+    "vitest": "^4.0.0",
+    "yaml": "^2.9.1"
   }
 }

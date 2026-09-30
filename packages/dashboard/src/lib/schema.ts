@@ -1,3 +1,4 @@
+import { connectorBundleSchema } from "@agent-rails/contract/connector-bundle";
 import { z } from "zod";
 
 export const solanaClusterSchema = z.enum(["devnet", "testnet", "mainnet-beta"]);
@@ -92,6 +93,12 @@ export const mcpServerSchema = z.object({
    * runner-config export route.
    */
   env: z.record(envKeySchema, z.string()).default({}),
+  /**
+   * Set on rows served by `services/connector-host`: the declarative bundle it mounts. It
+   * carries env *names* only — values live in `env` above, under the same mask — so it is
+   * not secret and travels to the runner inline (`CONNECTOR_BUNDLE_JSON`).
+   */
+  connector: connectorBundleSchema.nullable().optional(),
   demo: z.boolean().default(false),
 });
 

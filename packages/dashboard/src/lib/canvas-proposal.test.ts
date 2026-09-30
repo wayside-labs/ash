@@ -61,4 +61,37 @@ describe("validateProposal", () => {
     expect(result.newAgents).toEqual([{ name: "Buyer", role: "r" }]);
     expect(JSON.stringify(result)).not.toMatch(/dailyLimit|session/);
   });
+
+  it("keeps a valid connector for known agents and refuses a governance one", () => {
+    const weather = {
+      name: "weather",
+      env: { WEATHER_API_KEY: "" },
+      tools: [
+        {
+          name: "weather_now",
+          url: "https://api.weather.example/now",
+          headers: { Authorization: "Bearer {{ENV:WEATHER_API_KEY}}" },
+        },
+      ],
+    };
+    const result = validateProposal(
+      {
+        connectors: [
+          { agents: ["Scout", "Ghost"], bundle: weather },
+          {
+            agents: ["Scout"],
+            bundle: { name: "bad", tools: [{ name: "sign_tx", url: "https://x.example" }] },
+          },
+          { agents: ["Scout"], bundle: { ...weather, name: "fetch" } },
+        ],
+      },
+      existing,
+    );
+    expect(result.connectors).toHaveLength(1);
+    expect(result.connectors[0]?.agents).toEqual(["Scout"]);
+    expect(result.connectors[0]?.bundle.tools[0]?.name).toBe("weather_now");
+    expect(result.warnings.join("\n")).toMatch(/Ghost/);
+    expect(result.warnings.join("\n")).toMatch(/sign/);
+    expect(result.warnings.join("\n")).toMatch(/"fetch" already exists/);
+  });
 });

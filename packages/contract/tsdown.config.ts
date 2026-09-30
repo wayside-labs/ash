@@ -15,6 +15,8 @@ export default defineConfig({
     "src/payment-build.ts",
     "src/mcp-tools.ts",
     "src/solana-dapps.ts",
+    "src/connector-bundle.ts",
+    "src/connector-import.ts",
   ],
   format: ["esm"],
   dts: true,

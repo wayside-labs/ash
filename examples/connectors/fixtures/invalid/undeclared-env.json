@@ -1,0 +1,4 @@
+{
+  "name": "bad",
+  "tools": [{ "name": "q", "url": "https://x.example", "headers": { "A": "Bearer {{ENV:HOME}}" } }]
+}

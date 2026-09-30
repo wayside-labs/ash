@@ -37,6 +37,7 @@ import {
   useCreateResource,
   useDashboardState,
   useDeleteResource,
+  useImportConnector,
   useUpdateResource,
   useWorkflows,
 } from "@/hooks/use-dashboard";
@@ -107,6 +108,7 @@ function WorkflowCanvasInner({ workflowId }: { workflowId: string }) {
   const updateMcp = useUpdateResource("mcps");
   const updateSkill = useUpdateResource("skills");
   const createAgent = useCreateResource("agents");
+  const importConnector = useImportConnector();
   const deleteAgent = useDeleteResource("agents");
   const deleteMcp = useDeleteResource("mcps");
 
@@ -466,6 +468,15 @@ function WorkflowCanvasInner({ workflowId }: { workflowId: string }) {
         (x) => x.agent,
       )) {
         await updateSkill.mutateAsync({ id: skillId, enabled: true, ...scopeFor(targets) });
+      }
+      // Re-validated server-side: the preview showed what the browser parsed, the route
+      // decides what is written.
+      for (const connector of proposal.connectors) {
+        const target = scopeFor(connector.agents) as {
+          scope: "workflow" | "agent";
+          scopeName: string;
+        };
+        await importConnector.mutateAsync({ bundle: connector.bundle, ...target, enabled: true });
       }
       toast(t("flowCanvas.ai.applied"));
       setProposal(null);

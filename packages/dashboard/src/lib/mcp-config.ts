@@ -8,6 +8,14 @@ import type { ZipEntry } from "@/lib/zip";
  * Keeping the two file names apart buys nothing — the body is identical, so
  * one compiler serves both and the route only picks a filename.
  */
+/**
+ * How `services/connector-host` receives its bundle from a runner config. Inline rather than
+ * a path, because a hosted dashboard and the operator's machine share no filesystem.
+ */
+export const CONNECTOR_BUNDLE_ENV = "CONNECTOR_BUNDLE_JSON";
+/** The console script `uv tool install ./services/connector-host` puts on PATH. */
+export const CONNECTOR_HOST_COMMAND = "agent-rails-connector";
+
 export interface McpServerConfig {
   command: string;
   args: string[];
@@ -100,6 +108,14 @@ function compileMcpServers(mcps: StoredMcp[], options?: RunnerOptions): Compiled
       env.AGENT_RAILS_INGEST_TOKEN = options.ingest.token;
     }
     if (options?.agentName && isKnowledgeMcp(mcp)) env.AGENT_RAILS_AGENT_NAME = options.agentName;
+    if (mcp.connector) {
+      // The host reads only the names its bundle declares, and the bundle schema refuses
+      // these prefixes; dropping them here keeps a hand-edited row from shipping them at all.
+      for (const key of Object.keys(env)) {
+        if (/^(AGENT_RAILS_|SOLANA_|CONNECTOR_)/.test(key)) delete env[key];
+      }
+      env[CONNECTOR_BUNDLE_ENV] = JSON.stringify(mcp.connector);
+    }
 
     mcpServers[uniqueKey(mcpServerKey(mcp.name), mcpServers)] = {
       command: mcp.command.trim(),

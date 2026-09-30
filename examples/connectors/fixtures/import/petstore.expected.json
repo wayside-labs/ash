@@ -1,0 +1,87 @@
+{
+  "format": "openapi",
+  "skipped": ["create_session: forbidden term 'session'"],
+  "bundle": {
+    "apiVersion": "agent-rails.connector/v1",
+    "name": "petstore-lite",
+    "description": "Subset of the classic petstore, used as the OpenAPI import fixture.",
+    "baseUrl": "https://petstore.example/api",
+    "env": {
+      "API_KEY_TOKEN": ""
+    },
+    "instructions": "",
+    "tools": [
+      {
+        "name": "list_pets",
+        "description": "List pets",
+        "method": "GET",
+        "url": "/pets",
+        "query": {},
+        "headers": {
+          "X-Api-Key": "{{ENV:API_KEY_TOKEN}}"
+        },
+        "body": null,
+        "argumentsIn": null,
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer"
+            },
+            "status": {
+              "type": "string",
+              "enum": ["available", "sold"]
+            }
+          },
+          "required": []
+        }
+      },
+      {
+        "name": "create_pet",
+        "description": "Create a pet",
+        "method": "POST",
+        "url": "/pets",
+        "query": {},
+        "headers": {
+          "X-Api-Key": "{{ENV:API_KEY_TOKEN}}"
+        },
+        "body": null,
+        "argumentsIn": "body",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Pet name"
+            },
+            "tag": {
+              "type": "string"
+            }
+          },
+          "required": ["name"]
+        }
+      },
+      {
+        "name": "show_pet_by_id",
+        "description": "Info for a specific pet",
+        "method": "GET",
+        "url": "/pets/{petId}",
+        "query": {},
+        "headers": {
+          "X-Api-Key": "{{ENV:API_KEY_TOKEN}}"
+        },
+        "body": null,
+        "argumentsIn": null,
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "petId": {
+              "type": "integer"
+            }
+          },
+          "required": ["petId"]
+        }
+      }
+    ]
+  }
+}

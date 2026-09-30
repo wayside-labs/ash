@@ -117,6 +117,50 @@ export function useApplyTemplate() {
   });
 }
 
+export type ImportConnectorVars = (
+  | { file: { name: string; content: string } }
+  | { bundle: unknown }
+) & {
+  scope: "global" | "workflow" | "agent";
+  scopeName: string | null;
+  enabled?: boolean;
+};
+
+export type ImportConnectorResult = {
+  created: { id: string; name: string };
+  format: string;
+  skipped: string[];
+  missingEnv: string[];
+};
+
+/**
+ * One path for all three connector sources — a file, a chat fence, a canvas proposal — so
+ * the server's bundle checks are the only gate. The schema's reason (`detail`) is shown with
+ * the error, since "invalid connector" alone would not say which tool name was refused.
+ */
+export function useImportConnector() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: ImportConnectorVars) => {
+      const res = await fetch("/api/connectors/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(vars),
+      });
+      const body = (await res.json().catch(() => ({}))) as Partial<ImportConnectorResult> & {
+        error?: string;
+        detail?: string;
+        state?: MaskedState;
+      };
+      if (!res.ok) {
+        throw new Error([body.error ?? `${res.status}`, body.detail].filter(Boolean).join(": "));
+      }
+      return body as ImportConnectorResult & { state: MaskedState };
+    },
+    onSuccess: (res) => queryClient.setQueryData(["state"], res.state),
+  });
+}
+
 /**
  * Downloads the workflow's `.mcp.json`. The body is fetched as an opaque blob
  * rather than parsed: it is the only response that carries unmasked env values,

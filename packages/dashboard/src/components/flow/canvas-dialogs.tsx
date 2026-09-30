@@ -122,7 +122,8 @@ export function ProposalDialog({
     proposal.newAgents.length +
       proposal.payees.length +
       proposal.tools.length +
-      proposal.skills.length ===
+      proposal.skills.length +
+      proposal.connectors.length ===
     0;
   return (
     <Dialog open onOpenChange={onOpenChange}>
@@ -180,6 +181,24 @@ export function ProposalDialog({
                   </li>
                 ))}
               </ul>
+            </section>
+          )}
+          {proposal.connectors.length > 0 && (
+            <section data-testid="proposal-connectors">
+              <p className="font-medium">{t("flowCanvas.ai.connectors")}</p>
+              <ul className="list-inside list-disc text-muted-foreground">
+                {proposal.connectors.map(({ bundle, agents }) => (
+                  <li key={bundle.name}>
+                    <span className="num">{bundle.name}</span> → {agents.join(", ")}
+                    <span className="block pl-4 text-xs">
+                      {bundle.tools.map((tool) => `${tool.method} ${tool.name}`).join(" · ")}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {t("flowCanvas.ai.connectorsHint")}
+              </p>
             </section>
           )}
           {proposal.warnings.length > 0 && (
