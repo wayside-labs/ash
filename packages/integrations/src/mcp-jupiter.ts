@@ -25,7 +25,8 @@ export async function startJupiterMcp(env: NodeJS.ProcessEnv = process.env) {
     {
       instructions:
         "Solana swap quotes and unsigned transactions via Jupiter. This server cannot move funds. " +
-        "Pair with agent-rails-mcp: treasury pays the desk, then sign and send the swap from the desk.",
+        "Pair with agent-rails-mcp: treasury pays the desk, then sign and send the swap from the desk. " +
+        "For anything that leaves Solana (other networks, bridging, lending, yield vaults) use the SODAX connector.",
     },
   );
 

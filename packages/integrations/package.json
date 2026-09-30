@@ -5,7 +5,7 @@
   "description": "stdio MCP connectors for Solana dApps — quotes and transaction building that compose with Agent Rails payments.",
   "license": "Apache-2.0",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.12"
   },
   "type": "module",
   "bin": {
@@ -19,6 +19,7 @@
   "dependencies": {
     "@agent-rails/contract": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.30.0",
+    "@sodax/sdk": "2.1.0",
     "zod": "^4.0.0"
   },
   "devDependencies": {
