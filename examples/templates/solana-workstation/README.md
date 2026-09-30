@@ -55,8 +55,31 @@ From the dashboard **Templates → Solana agent workstation**, or wire MCP manua
 
 - `agent-rails-mcp` with `AGENT_RAILS_TOOLS=full` on the executor only.
 - `agent-rails-integrations mcp jupiter` on the workflow (shared by orchestrator and analyst).
+- `agent-rails-integrations mcp sodax` on the workflow for anything that leaves Solana (below).
 
 See `mcp/executor.cursor.json` and `mcp/orchestrator.cursor.json` in this folder.
+
+## Cross-network: SODAX (mainnet only)
+
+Jupiter stays the route for swaps inside Solana. SODAX covers what Jupiter cannot: swaps into
+other networks, bridging, the SODAX money market and leverage-yield vaults. Same shape — the
+treasury pays the desk, the connector builds an **unsigned** intent, the desk signs:
+
+```
+sodax_quote ─▶ agent_rails_execute_payment ─▶ desk
+sodax_build_swap | _bridge | _mm_action | _vault_action ─▶ desk signs + sends
+sodax_submit (swap, bridge) or sodax_relay (money market, vaults) ─▶ sodax_status until done
+```
+
+- **Mainnet only.** SODAX has no devnet; the devnet setup above cannot exercise it. Use a
+  mainnet desk with small amounts.
+- **Recipients are operator configuration.** `SODAX_ALLOWED_DESTINATIONS` lists every
+  `<chainKey>:<address>` a build may deliver to. Empty means funds may only return to the
+  signing desk on its own chain. Agents cannot change it.
+- Optional: `SODAX_API_KEY` (partner portal), `SODAX_PARTNER_FEE_ADDRESS` +
+  `SODAX_PARTNER_FEE_BPS`, `SODAX_SOLANA_RPC_URL`, `SODAX_HUB_RPC_URL`.
+
+Design and the failure modes to plan for: `docs/product/sodax-integration.md`.
 
 ## Monetization (operators)
 

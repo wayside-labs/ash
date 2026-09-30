@@ -35,7 +35,9 @@ HTTP services settled through the same payment tools.
 ## Ecosystem map
 
 Canonical list: `@agent-rails/contract` → `SOLANA_DAPPS` (`solana-dapps.ts`). Jupiter is **live**
-via MCP; Raydium and Orca are **catalog + Jupiter routes**; Kamino and Drift follow desk-wallet
+via MCP for swaps inside Solana; SODAX is **live** via MCP for everything that crosses networks
+(swaps to 22 networks, bridge, money market, leverage-yield vaults — `docs/product/sodax-integration.md`,
+ADR-025); Raydium and Orca are **catalog + Jupiter routes**; Kamino and Drift follow desk-wallet
 and delegation patterns described in strategy docs.
 
 ## Adding a connector

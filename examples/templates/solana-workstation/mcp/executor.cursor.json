@@ -17,6 +17,13 @@
       "env": {
         "JUPITER_API_BASE": "https://quote-api.jup.ag"
       }
+    },
+    "sodax": {
+      "command": "agent-rails-integrations",
+      "args": ["mcp", "sodax"],
+      "env": {
+        "SODAX_ALLOWED_DESTINATIONS": "<chainKey>:<address>,<chainKey>:<address>"
+      }
     }
   }
 }
