@@ -47,7 +47,8 @@ export function WalletBalance({ address }: { address: string }) {
 
   return (
     <div className="flex min-w-0 items-center gap-2">
-      <div className="flex min-w-0 items-baseline gap-1.5 whitespace-nowrap">
+      {/* In the top bar beside the credit balance: on a phone the address alone has to fit. */}
+      <div className="hidden min-w-0 items-baseline gap-1.5 whitespace-nowrap sm:flex">
         <span className="num text-sm font-semibold text-foreground">{usdLabel}</span>
         <span className="num text-sm text-muted-foreground">{solParen}</span>
       </div>

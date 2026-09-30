@@ -56,7 +56,7 @@ export default function WalletsPage() {
   if (isLoading) {
     return (
       <div>
-        <PageHeader wallet title={t("wallets.title")} description={t("wallets.descriptionShort")} />
+        <PageHeader title={t("wallets.title")} description={t("wallets.descriptionShort")} />
         <div className="flex items-center gap-2 py-12 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
           {t("common.loading")}
@@ -67,7 +67,7 @@ export default function WalletsPage() {
 
   return (
     <div>
-      <PageHeader wallet title={t("wallets.title")} description={t("wallets.descriptionLong")} />
+      <PageHeader title={t("wallets.title")} description={t("wallets.descriptionLong")} />
 
       {/* Moved from Account: the customer path shows no wallets, the operator's does. */}
       <div className="mb-6 grid gap-4 md:grid-cols-2">

@@ -1,15 +1,12 @@
 /**
- * Where the viewer is, as far as money is concerned: which currency the balance is shown in and
- * which deposit rails are offered. Pure and client-safe.
+ * Where the viewer is, as far as money is concerned: which currency the balance is shown in.
+ * Pure and client-safe.
  *
- * Presentation only. The ledger is USD whatever this says, a rail's availability is decided by
- * its server config, and a wrong guess costs a viewer one extra option or a converted figure —
- * never access to anything.
+ * Presentation only. The ledger is USD whatever this says, and a wrong guess costs a viewer a
+ * converted figure — never access to anything.
  */
 
 export type DisplayCurrency = "USD" | "BRL";
-
-export type DepositRail = "pix" | "solana_pay_usdc";
 
 export type Region = {
   /** ISO 3166-1 alpha-2, upper case; null when neither the edge nor the browser said. */
@@ -28,15 +25,6 @@ export function normalizeCountry(raw: string | null | undefined): string | null 
 
 export function currencyFor(country: string | null): DisplayCurrency {
   return country === "BR" ? "BRL" : "USD";
-}
-
-/**
- * PIX is Brazil's; everyone gets USDC over Solana Pay. USDC rather than USDT or SOL because it
- * is the stablecoin Solana wallets hold most, and it maps 1:1 onto the USD ledger with no price
- * to read at deposit time.
- */
-export function depositRailsFor(country: string | null): DepositRail[] {
-  return country === "BR" ? ["pix", "solana_pay_usdc"] : ["solana_pay_usdc"];
 }
 
 // Brazil's IANA zones, for when the edge sent no country (local dev, another proxy).

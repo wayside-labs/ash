@@ -9,13 +9,15 @@
 export type Plan = "free" | "pro";
 
 /**
- * `pro` is the product rule. `everyone` exists for deployments whose demo still runs through
- * Phantom — the treasury bootstrap signs with an external wallet until a platform wallet can.
+ * `everyone` is the MVP default (2026-09-30): the product runs the traditional web3 way, with
+ * the wallet as the signer for deposits, treasuries and sessions, so gating it would leave a
+ * free account unable to do anything on chain. `pro` keeps ADR-024's tier for when a platform
+ * wallet can sign in its place.
  */
 export type ExternalWalletPolicy = "pro" | "everyone";
 
 export function parseExternalWalletPolicy(raw: string | undefined): ExternalWalletPolicy {
-  return raw?.trim().toLowerCase() === "everyone" ? "everyone" : "pro";
+  return raw?.trim().toLowerCase() === "pro" ? "pro" : "everyone";
 }
 
 /**

@@ -21,12 +21,13 @@ describe("canConnectExternalWallet", () => {
 
 describe("parseExternalWalletPolicy", () => {
   it.each([
-    [undefined, "pro"],
-    ["", "pro"],
+    [undefined, "everyone"],
+    ["", "everyone"],
     ["pro", "pro"],
+    [" PRO ", "pro"],
     ["everyone", "everyone"],
     [" Everyone ", "everyone"],
-    ["all", "pro"],
+    ["all", "everyone"],
   ])("%j -> %s", (raw, expected) => {
     expect(parseExternalWalletPolicy(raw)).toBe(expected);
   });

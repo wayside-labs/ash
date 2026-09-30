@@ -59,7 +59,8 @@ export type DepositIntentView = {
   signature?: string;
 };
 
-export type WithdrawalDestinationKind = "solana_usdc" | "pix";
+/** The table also allows `pix` for a later rail; the MVP pays out USDC on Solana only. */
+export type WithdrawalDestinationKind = "solana_usdc";
 
 export type WithdrawalRequestView = {
   id: string;
@@ -74,8 +75,6 @@ export type WithdrawalRequestView = {
 export type RailsConfig = {
   /** `feeCovered`: the platform's fee wallet pays the network fee (transaction requests). */
   solanaPay: { enabled: boolean; cluster: "mainnet-beta" | "devnet"; feeCovered: boolean };
-  /** No PIX provider is integrated yet; the modal lists it as coming soon for Brazil. */
-  pix: { enabled: false };
 };
 
 /** Per-token list prices in micro-USD. */

@@ -52,7 +52,6 @@ export default function TreasuryPage() {
   return (
     <div>
       <PageHeader
-        wallet
         title={t("treasury.title")}
         description={t("treasury.description")}
         action={
