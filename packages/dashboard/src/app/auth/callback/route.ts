@@ -1,13 +1,9 @@
 import { NextResponse } from "next/server";
+import { safeNext } from "@/lib/auth/sign-in-gate";
 import { ensureAccountForUser } from "@/lib/server/auth/bootstrap";
 import { publicOrigin } from "@/lib/server/origin";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
-
-/** Only a same-site path: `//evil.example` or an absolute URL in `next` would leave the site. */
-function safeNext(next: string | null): string {
-  return next?.startsWith("/") && !next.startsWith("//") ? next : "/account";
-}
 
 export async function GET(request: Request) {
   const back = (path: string) => NextResponse.redirect(new URL(path, publicOrigin(request)));
