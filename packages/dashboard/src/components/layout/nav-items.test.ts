@@ -6,21 +6,14 @@ const hrefs = (groups: ReturnType<typeof navTierDefs>["simple"]) =>
 
 describe("navTierDefs", () => {
   it("keeps every privileged surface out of the simple tier", () => {
-    const simple = hrefs(navTierDefs("simple").simple);
+    const simple = hrefs(navTierDefs().simple);
     expect(simple).toEqual(["/", "/balance", "/account"]);
   });
 
   it("lists no route twice across tiers", () => {
-    for (const mode of ["simple", "operator"] as const) {
-      const tiers = navTierDefs(mode);
-      const all = [...hrefs(tiers.simple), ...hrefs(tiers.advanced)];
-      expect(new Set(all).size).toBe(all.length);
-    }
-  });
-
-  it("offers the operator overview only where / is not already it", () => {
-    expect(hrefs(navTierDefs("simple").advanced)).toContain("/advanced");
-    expect(hrefs(navTierDefs("operator").advanced)).not.toContain("/advanced");
+    const tiers = navTierDefs();
+    const all = [...hrefs(tiers.simple), ...hrefs(tiers.advanced)];
+    expect(new Set(all).size).toBe(all.length);
   });
 });
 
@@ -34,7 +27,7 @@ describe("isActiveHref", () => {
 });
 
 describe("isAdvancedPath", () => {
-  const tiers = navTierDefs("simple");
+  const tiers = navTierDefs();
 
   it("opens the advanced section for an operator route", () => {
     expect(isAdvancedPath("/treasury", tiers)).toBe(true);

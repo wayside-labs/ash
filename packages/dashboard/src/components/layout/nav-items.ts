@@ -10,7 +10,6 @@ import {
   Gauge,
   Inbox,
   Key,
-  LayoutDashboard,
   LayoutTemplate,
   MessageSquare,
   Settings,
@@ -19,7 +18,7 @@ import {
   Wallet,
   Zap,
 } from "lucide-react";
-import { ACCOUNT_PATH, ADVANCED_HOME_PATH, BALANCE_PATH, type ShellMode } from "@/lib/shell";
+import { ACCOUNT_PATH, BALANCE_PATH } from "@/lib/shell";
 
 /**
  * Two tiers. Simple is the whole product for someone who signed in to ask a question: chat,
@@ -44,14 +43,7 @@ export type NavItemDef = {
 export type NavGroupDef = { labelKey: string | null; items: NavItemDef[] };
 export type NavTierDefs = { simple: NavGroupDef[]; advanced: NavGroupDef[] };
 
-export function navTierDefs(mode: ShellMode): NavTierDefs {
-  // Under the operator shell `/` already is the chat + workflows split, so an overview entry
-  // would be a second link to the same page.
-  const overview: NavItemDef[] =
-    mode === "simple"
-      ? [{ href: ADVANCED_HOME_PATH, labelKey: "nav.overview", icon: LayoutDashboard }]
-      : [];
-
+export function navTierDefs(): NavTierDefs {
   return {
     simple: [
       {
@@ -67,7 +59,6 @@ export function navTierDefs(mode: ShellMode): NavTierDefs {
       {
         labelKey: "nav.workflowsGroup",
         items: [
-          ...overview,
           { href: "/templates", labelKey: "nav.templates", icon: LayoutTemplate },
           { href: "/workflows", labelKey: "nav.workflows", icon: Zap },
           { href: "/reviews", labelKey: "nav.reviews", icon: Inbox },

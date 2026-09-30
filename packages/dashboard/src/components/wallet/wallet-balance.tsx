@@ -1,6 +1,6 @@
 "use client";
 
-import { Copy, Eye, EyeOff, Wallet } from "lucide-react";
+import { Copy, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -21,9 +21,6 @@ export function WalletBalance({ address }: { address: string }) {
   const intl = intlLocale(locale);
   const { cluster } = useAppStore();
   const hidden = useBalancesHidden();
-  const balancesHidden = useAppStore((s) => s.balancesHidden);
-  const hasHydrated = useAppStore((s) => s.hasHydrated);
-  const setBalancesHidden = useAppStore((s) => s.setBalancesHidden);
   const toast = useToast();
   const { data: price } = useSolPrice();
   const { byAddress, isFetching } = useBalances([address]);
@@ -31,7 +28,6 @@ export function WalletBalance({ address }: { address: string }) {
   const lamports = byAddress.get(address);
   const sol = lamports === undefined ? null : lamports / LAMPORTS_PER_SOL;
   const usd = sol === null || price === undefined ? null : sol * price.usd;
-  const hideLabel = hidden ? t("wallet.aria.showBalances") : t("wallet.aria.hideBalances");
 
   const usdLabel =
     usd === null ? (isFetching ? "…" : hidden ? HIDDEN_AMOUNT : "—") : formatUsd(usd, intl, hidden);
@@ -85,26 +81,6 @@ export function WalletBalance({ address }: { address: string }) {
           <TooltipContent>{t("wallets.aria.copyAddress")}</TooltipContent>
         </Tooltip>
       </div>
-
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 shrink-0"
-            aria-label={hideLabel}
-            aria-pressed={hidden}
-            onClick={() => {
-              if (!hasHydrated) return;
-              setBalancesHidden(!balancesHidden);
-            }}
-          >
-            {hidden ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>{hideLabel}</TooltipContent>
-      </Tooltip>
     </div>
   );
 }

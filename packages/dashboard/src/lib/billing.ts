@@ -18,7 +18,7 @@ export const DEFAULT_MARKUP_BPS = 2_000;
 /** Above this a typo (`20000` for 20%) would bill 3x; refuse it rather than charge it. */
 export const MAX_MARKUP_BPS = 10_000;
 
-export type LedgerKind = "starter_grant" | "deposit" | "chat_debit" | "adjustment";
+export type LedgerKind = "starter_grant" | "deposit" | "chat_debit" | "adjustment" | "withdrawal";
 
 export type LedgerEntry = {
   id: string;
@@ -42,6 +42,39 @@ export type BillingSummary = {
   balanceMicros: number;
   markupBps: number;
   entries: LedgerEntry[];
+};
+
+/** What the deposit modal needs to show a Solana Pay request and follow it. */
+export type DepositIntentView = {
+  id: string;
+  rail: "solana_pay_usdc";
+  cluster: "mainnet-beta" | "devnet";
+  amountMicros: number;
+  /** The `solana:` transfer request a wallet opens or scans. */
+  url: string;
+  reference: string;
+  recipient: string;
+  status: "pending" | "confirmed";
+  creditedMicros?: number;
+  signature?: string;
+};
+
+export type WithdrawalDestinationKind = "solana_usdc" | "pix";
+
+export type WithdrawalRequestView = {
+  id: string;
+  amountMicros: number;
+  destinationKind: WithdrawalDestinationKind;
+  destination: string;
+  status: "pending" | "paid" | "rejected";
+  createdAt: string;
+};
+
+/** Which rails this server can actually take, independent of the viewer's region. */
+export type RailsConfig = {
+  solanaPay: { enabled: boolean; cluster: "mainnet-beta" | "devnet" };
+  /** No PIX provider is integrated yet; the modal lists it as coming soon for Brazil. */
+  pix: { enabled: false };
 };
 
 /** Per-token list prices in micro-USD. */

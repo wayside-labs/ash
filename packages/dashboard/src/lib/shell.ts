@@ -1,42 +1,13 @@
 /**
- * The consumer shell (sign in → add balance → ask) and the operator shell share one app. What
- * decides which one a page belongs to lives here, pure, so the sidebar, the header and the home
- * route cannot disagree about it.
- *
- * This is presentation, not privilege. Every advanced route stays reachable by URL and keeps its
- * own server-side checks; the simple shell only stops showing a newcomer a cluster picker and a
- * vault before they have asked a single question.
+ * Paths and balance states the header, the sidebar and the billing pages share, pure so they
+ * cannot disagree. (Until 2026-10 this also chose between a "simple" and an "operator" shell;
+ * the dashboard now has one: chat + workflows at `/`, the client's money in the top bar.)
  */
 
 import type { BillingSummary } from "@/lib/billing";
 
-/**
- * `simple` puts chat + balance at `/`. `operator` restores the chat + workflows split there, for
- * a self-hosted operator who never wanted the consumer framing. `/advanced` serves that split
- * under either mode, so switching the flag never strands a route.
- */
-export type ShellMode = "simple" | "operator";
-
-export function parseShellMode(raw: string | undefined): ShellMode {
-  return raw?.trim().toLowerCase() === "operator" ? "operator" : "simple";
-}
-
-export const ADVANCED_HOME_PATH = "/advanced";
 export const BALANCE_PATH = "/balance";
-
 export const ACCOUNT_PATH = "/account";
-
-/**
- * Routes that render the pared-down header: no cluster, no mode switch, no SOL ticker. Every
- * page in the sidebar's Simple tier is one, so walking Chat → Balance → Account never flips the
- * header into operator mode; Account links an external wallet from its own card.
- */
-export function isSimpleRoute(pathname: string, mode: ShellMode): boolean {
-  if (pathname === "/") return mode === "simple";
-  return [BALANCE_PATH, ACCOUNT_PATH].some(
-    (path) => pathname === path || pathname.startsWith(`${path}/`),
-  );
-}
 
 /** How many ledger rows the home page's extrato shows; the balance page shows all the API returns. */
 export const LEDGER_PREVIEW = 5;
@@ -57,9 +28,3 @@ export function balanceState(
   if (summary.balanceMicros === 0) return "empty";
   return "funded";
 }
-
-/**
- * Inlined at build time, like every `NEXT_PUBLIC_` var: reading it per request would force every
- * dashboard route dynamic just to pick a nav layout. Changing it means rebuilding.
- */
-export const SHELL_MODE: ShellMode = parseShellMode(process.env.NEXT_PUBLIC_DASHBOARD_SHELL);

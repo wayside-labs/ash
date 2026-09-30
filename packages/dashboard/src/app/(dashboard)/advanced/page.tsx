@@ -1,8 +1,6 @@
-export const dynamic = "force-dynamic";
+import { redirect } from "next/navigation";
 
-import { HomeLayout } from "@/components/home/home-layout";
-
-/** The operator's chat + workflows split, which was `/` before the simple shell took it. */
+/** The operator overview was `/` again once the simple shell went; old links still land there. */
 export default function AdvancedHomePage() {
-  return <HomeLayout />;
+  redirect("/");
 }
