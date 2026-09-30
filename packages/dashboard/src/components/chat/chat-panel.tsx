@@ -132,7 +132,11 @@ export function ChatPanel({ className }: { className?: string }) {
       if ((error as Error).name === "AbortError") return;
       const message = error instanceof Error ? error.message : t("chat.error.generic");
       const hint =
-        mode === "claude-cli" ? t("chat.error.checkSubscription") : t("chat.error.checkApiKey");
+        mode === "claude-cli"
+          ? t("chat.error.checkSubscription")
+          : mode === "openrouter-platform"
+            ? t("chat.error.checkPlatform")
+            : t("chat.error.checkApiKey");
       setMessages((prev) =>
         prev.map((m) => (m.id === assistantId ? { ...m, content: `⚠️ ${message}\n\n${hint}` } : m)),
       );
@@ -162,6 +166,9 @@ export function ChatPanel({ className }: { className?: string }) {
           <Badge variant="success">{t("chat.badge.claudeSubscription")}</Badge>
         )}
         {mode === "anthropic-api" && <Badge variant="outline">{t("chat.badge.tokenApi")}</Badge>}
+        {mode === "openrouter-platform" && (
+          <Badge variant="outline">{t("chat.badge.platform")}</Badge>
+        )}
       </div>
 
       <ScrollArea className="flex-1 px-4">

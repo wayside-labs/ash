@@ -6,14 +6,27 @@ import { streamAnthropicApi } from "@/lib/server/llm/anthropic-api";
 import { isClaudeCliModel, streamClaudeCli } from "@/lib/server/llm/claude-cli";
 import { buildContext } from "@/lib/server/llm/context";
 import { getDemoReply, getSystemPrompt, transcriptRoleLabel } from "@/lib/server/llm/i18n";
-import { withContextLocalized } from "@/lib/server/llm/prompt";
-import { anthropicApiKey, resolveProvider } from "@/lib/server/llm/providers";
+import { OpenRouterError, streamOpenRouter } from "@/lib/server/llm/openrouter-api";
+import { fencedHistory, withContextLocalized } from "@/lib/server/llm/prompt";
+import {
+  anthropicApiKey,
+  openrouterPlatformAccess,
+  resolveProvider,
+} from "@/lib/server/llm/providers";
 import { assertSameOrigin } from "@/lib/server/origin";
 import { acquireSlot, checkFixedWindow } from "@/lib/server/rate-limit";
 import { stateAccessResponse } from "@/lib/server/state/access";
+import { unauthorizedStateResponse } from "@/lib/server/state/context";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
+
+/**
+ * Per caller, on top of the route-wide window: the platform key is the one path
+ * where a single user spends the operator's money, so one user must not be able
+ * to take the whole window. Still per instance on serverless (rate-limit.ts).
+ */
+const PLATFORM_PER_USER_LIMIT = 10;
 
 const requestSchema = z.object({
   messages: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string() })).min(1),
@@ -69,6 +82,25 @@ export async function POST(req: Request) {
     });
   }
 
+  // Checked again here, before the snapshot is built, rather than trusted from
+  // resolveProvider: this is the gate on the operator's key, and it must not
+  // rest on buildContext happening to 401 an anonymous caller.
+  let platform: { apiKey: string; user?: string } | null = null;
+  if (provider === "openrouter-platform") {
+    const access = await openrouterPlatformAccess();
+    if (!access.granted) {
+      return unauthorizedStateResponse();
+    }
+    const perUser = checkFixedWindow(
+      `chat:platform:${access.user ?? "local"}`,
+      PLATFORM_PER_USER_LIMIT,
+    );
+    if (perUser) return perUser;
+    platform = access.user
+      ? { apiKey: access.apiKey, user: access.user }
+      : { apiKey: access.apiKey };
+  }
+
   // The snapshot is tenant data, unlike the locale and the provider probe
   // above — an unreadable state is a 401 here, not an empty context.
   let context: string;
@@ -114,6 +146,38 @@ export async function POST(req: Request) {
     return response;
   }
 
+  if (platform) {
+    const slot = acquireSlot("chat");
+    if (slot instanceof Response) return slot;
+
+    const response = textStream(
+      streamOpenRouter({
+        apiKey: platform.apiKey,
+        model: chosen,
+        systemPrompt,
+        messages: fencedHistory(locale, context, messages),
+        ...(platform.user ? { user: platform.user } : {}),
+        ...(req.signal ? { signal: req.signal } : {}),
+      }),
+      (error) => {
+        console.error("[chat] openrouter error:", error);
+        // Localized text only: the upstream message is about the operator's
+        // account (credits, keys), which is not the chat user's business.
+        const status = error instanceof OpenRouterError ? error.status : 0;
+        const key =
+          status === 402
+            ? "llm.error.platformUnavailable"
+            : status === 429
+              ? "llm.error.platformBusy"
+              : "llm.error.platformFailed";
+        return `\n\n⚠️ ${t(key, locale)}`;
+      },
+      slot.release,
+    );
+    response.headers.set("x-agent-rails-mode", "openrouter-platform");
+    return response;
+  }
+
   const apiKey = await anthropicApiKey();
   if (!apiKey) {
     return new Response(getDemoReply(locale, last), {
@@ -129,10 +193,7 @@ export async function POST(req: Request) {
       apiKey,
       model: chosen,
       systemPrompt,
-      messages: [
-        ...messages.slice(0, -1),
-        { role: "user" as const, content: withContextLocalized(locale, context, last) },
-      ],
+      messages: fencedHistory(locale, context, messages),
       ...(req.signal ? { signal: req.signal } : {}),
     }),
     (error) => {
