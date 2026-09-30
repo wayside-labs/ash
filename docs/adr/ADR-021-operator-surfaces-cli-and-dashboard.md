@@ -97,3 +97,48 @@ a deliberate edit and an ADR or amendment when a new operator action ships in th
   pointing at `agent-rails init` for treasury creation.
 - Future operator actions (policy set, revoke session, allowlist) follow the same pattern:
   allowlist in `privileged-surface.test.ts`, role gate on-chain, no MCP exposure.
+
+## Amendment (2026-09-29): wave 2A shipped — treasury bootstrap in the dashboard
+
+The first item of the deferred list is done. A workflow with no `treasuryAddress` offers
+**Criar cofre on-chain / Create on-chain vault** on `/treasury` instead of the CLI hint: a
+five-step wizard (network, limits, first destination, funding with an optional first agent,
+review and sign) that ends with the workflow linked to a funded treasury. Devnet and testnet
+only; mainnet stays with `agent-rails init` until someone decides otherwise on purpose.
+
+**One set of stages, two surfaces.** `packages/cli/src/bootstrap.ts` is published as the
+`@agent-rails/cli/bootstrap` subpath and the dashboard's server routes call its
+`planBootstrap`, `readStepState` and `buildStages` directly — the same ordering
+(`add_mint` before the policy), the same limit shape, the same shortfall funding. To make
+that possible the module gained three optional inputs (session key, destination, fee payer),
+an injectable `create_key` signer, and stable stage ids; `init`'s behaviour is unchanged.
+
+**Keys.** The server builds with no-op signers and never signs. The browser generates the
+throwaway `create_key` (non-extractable, dropped with the tab) and signs the treasury stage
+with it *before* the wallet does, so a wallet that leaves partially signed transactions
+alone cannot invalidate that signature. The optional session key is generated in the
+browser as in wave 1, funded as its own fee payer, and delivered by the same download + MCP
+snippet dialog; only its public key reaches the server.
+
+**Resume is the chain's.** `POST /api/solana/bootstrap/build-step` re-reads the chain and
+returns the next stage still missing, so the client loops build → sign → confirm until the
+server says `done`. The workflow row is patched the moment the treasury exists; a setup that
+stops halfway resumes from the treasury drawer's *Finish setup*.
+
+**Gates.** Resuming requires the on-chain owner or operator; any stage that carries
+`add_mint` requires the owner; the session key may not be the wallet, owner, operator or a
+guardian; and a resumed treasury that already has a SOL ceiling rejects policy limits above
+it before anything is signed. A fresh treasury gets one set of numbers as both ceiling and
+policy, so the wizard cannot create headroom the owner did not choose.
+
+**The allowlist grew deliberately.** `privileged-surface.test.ts` now also reads the shared
+module and every relative import it pulls in: it may reach `create_treasury`, `add_mint`,
+`create_policy`, `update_policy`, `add_allowlist_entry` and `create_session`, nothing else.
+`update_policy` is there because `buildStages` rewrites a policy that predates a mint — it
+is not a policy editor, and a dashboard page that names it directly still fails the scan.
+The MCP tool surface is unchanged.
+
+Still deferred (wave 2B+): allowlist editor, policy editor, pause/unpause, session revoke,
+ceiling and guardian management, SPL mints in the wizard, and mainnet in the browser. The
+consequence *"until then the handoff and README keep pointing at `agent-rails init`"* no
+longer holds for devnet and testnet.

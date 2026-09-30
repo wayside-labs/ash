@@ -58,5 +58,6 @@ These are in `CLAUDE.md` in full. The short version:
 
 ## Security
 
-Do not open a public issue for a vulnerability. Until `SECURITY.md` exists with a disclosure
-process, mail the maintainers and expect an acknowledgement before you publish anything.
+Do not open a public issue for a vulnerability. See `SECURITY.md` for disclosure and
+`THREAT_MODEL.md` for scope. Prefer GitHub private vulnerability reporting on
+`wayside-labs/agent-rails`.

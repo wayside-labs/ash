@@ -365,18 +365,42 @@ Click no endereço truncado
 Link externo → Solana Explorer (cluster atual)
 ```
 
-#### 4.6 Treasury não conectado
+#### 4.6 Treasury não conectado → criar cofre on-chain (ADR-021 onda 2A)
 
 ```
-Sem treasuryAddress:
-    → Hint com CLI: pnpm agent-rails init --rpc <url>
-    → Botões Depositar/Sacar desabilitados (opacidade 50%)
+Sem treasuryAddress (e workflow não-demo, carteira conectada):
+    → Botão "Criar cofre on-chain" → BootstrapWizard (5 passos)
+        1. Rede: cluster + RPC das Configurações, carteira que vira owner/operator
+           (mainnet bloqueada na UI — usar agent-rails init)
+        2. Limites: nome da policy, SOL por pagamento / por dia / total
+           (mesmos valores viram teto do owner E policy do operator)
+        3. Primeiro destino (opcional): manual (rótulo + carteira) ou
+           preset "Vendors devnet" → GET /api/solana/bootstrap/vendors
+           (lê /catalog de vendor-{oracle,notary,compute}.ash.app.br; se falhar, manual)
+        4. Fundos: meta do cofre em SOL (shortfall, igual ao CLI) +
+           primeiro agente opcional (chave de sessão gerada no navegador)
+        5. Revisar e assinar:
+           → POST /api/solana/bootstrap/plan (passos que faltam on-chain, custo)
+           → loop: POST /api/solana/bootstrap/build-step
+                   → (passo "treasury": navegador assina com a create_key antes da carteira)
+                   → carteira signAndSendTransaction
+                   → POST /api/solana/confirm
+             até { done: true }
+    → Assim que a tesouraria existe: PATCH workflow.treasuryAddress
+    → Fim: toast + links para Tesouraria e Limites
+           (+ diálogo de entrega da chave de sessão, se houve agente)
+Sem carteira: botão desabilitado + "Conecte uma carteira para criar o cofre."
 ```
+
+Os passos são os do `agent-rails init` (`@agent-rails/cli/bootstrap`), não uma cópia.
+Se a configuração parar no meio, o drawer "Ver policy e sessões" mostra
+**Concluir configuração** enquanto a tesouraria não tiver policy; o assistente retoma a
+partir do que já existe on-chain.
 
 ### O que ainda não existe
 
-- Depositar / sacar pela UI (requer construção e assinatura de tx pelo owner).
-- Criar treasury pela UI (hoje via CLI).
+- Editor de allowlist, editor de policy, pause/unpause, revogar sessão (ondas 2B/2C).
+- Mints SPL e mainnet no assistente (hoje via CLI).
 
 ---
 

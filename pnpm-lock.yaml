@@ -135,6 +135,9 @@ importers:
 
   packages/dashboard:
     dependencies:
+      '@agent-rails/cli':
+        specifier: workspace:*
+        version: link:../cli
       '@agent-rails/contract':
         specifier: workspace:*
         version: link:../contract
@@ -325,6 +328,9 @@ importers:
         specifier: ^4.0.0
         version: 4.5.4
     devDependencies:
+      '@agent-rails/e2e':
+        specifier: workspace:*
+        version: link:../e2e
       '@types/node':
         specifier: ^22.0.0
         version: 22.20.1

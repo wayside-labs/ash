@@ -3,6 +3,10 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "exports": {
+    "./harness/blinding-proxy": "./src/harness/blinding-proxy.ts",
+    "./harness/surfnet": "./src/harness/surfnet.ts"
+  },
   "scripts": {
     "test:e2e": "vitest run",
     "typecheck": "tsc --noEmit"

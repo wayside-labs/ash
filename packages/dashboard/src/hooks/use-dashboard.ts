@@ -31,7 +31,7 @@ import { useAppStore } from "@/stores/app-store";
 
 const LAMPORTS_PER_SOL = 1_000_000_000;
 
-async function request<T>(url: string, init?: RequestInit): Promise<T> {
+export async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
     ...init,
     headers: { "Content-Type": "application/json", ...init?.headers },
@@ -536,7 +536,7 @@ export function useVaultTransfer() {
 }
 
 /** Wallet rejections are routine, not failures worth a stack trace. */
-function describeWalletError(error: unknown, t: (key: string) => string): string {
+export function describeWalletError(error: unknown, t: (key: string) => string): string {
   const message = error instanceof Error ? error.message : String(error);
   if (message === "WALLET_CANNOT_SIGN") return t("vaultTransfer.error.walletCannotSign");
   if (/user rejected|denied|cancel/i.test(message)) return t("vaultTransfer.error.rejected");

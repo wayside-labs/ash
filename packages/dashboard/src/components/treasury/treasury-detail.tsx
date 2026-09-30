@@ -2,6 +2,7 @@
 
 import { AlertTriangle, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -18,9 +19,12 @@ import { formatBaseUnits, formatSol, formatWindow, mintSymbol, truncateAddress }
 export function TreasuryDetail({
   address,
   onClose,
+  onFinishSetup,
 }: {
   address: string | null;
   onClose: () => void;
+  /** Offered when the treasury has no policy yet — a bootstrap that stopped halfway. */
+  onFinishSetup?: (treasury: string) => void;
 }) {
   const { t, locale } = useTranslation();
   const { data, isLoading, error } = useTreasury(address);
@@ -85,9 +89,16 @@ export function TreasuryDetail({
             <section>
               <h3 className="mb-2 text-sm font-medium">{t("treasuryDetail.policies")}</h3>
               {data.policies.length === 0 ? (
-                <p className="text-xs text-muted-foreground">
-                  {t("treasuryDetail.noOpenPolicies")}
-                </p>
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    {t("treasuryDetail.noOpenPolicies")}
+                  </p>
+                  {onFinishSetup && address && (
+                    <Button size="sm" variant="outline" onClick={() => onFinishSetup(address)}>
+                      {t("treasuryDetail.finishSetup")}
+                    </Button>
+                  )}
+                </div>
               ) : (
                 <div className="space-y-3">
                   {data.policies.map((policy) => (

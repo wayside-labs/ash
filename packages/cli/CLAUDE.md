@@ -29,6 +29,11 @@ The operator-facing CLI. `init` bootstraps a treasury; day-2 commands (`status`,
 - **The destination's token account is opened at setup.** Keeping
   `allow_create_destination_ata` false means the payment path cannot open accounts, so the
   CLI opens the destination's ATA itself with the idempotent ATA instruction.
+- **`bootstrap.ts` is shared with the dashboard** through the `@agent-rails/cli/bootstrap`
+  subpath (ADR-021 wave 2A). The dashboard's `privileged-surface.test.ts` reads this file's
+  imports, so every instruction builder added here must also be allowlisted there — a
+  deliberate edit and an ADR amendment, not a side effect of changing `init`. Keep the
+  module free of Node built-ins and of terminal output: a Next.js route bundles it.
 - Human output goes to stderr so `--json` keeps stdout a clean pipe.
 - **`policy set` always submits a complete `PolicyInput`.** Read current limits from chain,
   apply CLI deltas, preflight `policy ≤ ceiling` in `planners/policy.ts`, then

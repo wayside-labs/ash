@@ -15,6 +15,7 @@
     "skills:sync": "node scripts/sync-builtin-skills.mjs && biome format --write src/lib/server/builtin-skills.ts"
   },
   "dependencies": {
+    "@agent-rails/cli": "workspace:*",
     "@agent-rails/contract": "workspace:*",
     "@agent-rails/sdk": "workspace:*",
     "@anthropic-ai/sdk": "^0.127.0",

@@ -38,7 +38,7 @@ Com todas as alavancas soltas, o risco deixa de ser rigidez e passa a ser incoer
 
 1. **Saída unilateral do dono.** O dono sempre consegue tirar o dinheiro, sem cooperação de ninguém — nossa, do operador, do guardião. Note que isto é mais forte e mais útil que a palavra "não-custodial": é a propriedade que faz a diferença jurídica e a diferença de confiança, e é ela que deve ser preservada, não o rótulo.
 2. **A garantia é verificável por terceiro sem confiar em nós.** Alguém consegue ler o que é enforçado e conferir que é aquilo mesmo que roda. Licença não decide isso; *onde o enforcement mora* decide.
-3. **Afrouxar só flui morro abaixo.** Nenhum papel consegue aumentar o próprio limite. É o que transforma "temos limites" em "os limites significam alguma coisa".
+3. **Ninguém aumenta o próprio teto.** Cada papel só repassa um limite menor ou igual ao que recebeu — é o que transforma "temos limites" em "os limites significam alguma coisa".
 4. **Nenhuma superfície de agente escala privilégio.** Num mundo de prompt injection, o argumento de ferramenta é território hostil e não pode alcançar campo privilegiado.
 
 Tudo fora dessa lista — licença, congelamento, taxa, custódia por PDA, escopo, estrutura de repositório, marca, até o modelo aberto — é alavanca.

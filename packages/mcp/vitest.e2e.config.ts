@@ -1,4 +1,9 @@
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
+
+const packageRoot = dirname(fileURLToPath(import.meta.url));
+const repoRoot = resolve(packageRoot, "../..");
 
 /**
  * Layer 5 of the test pyramid (ADR-008): a real validator, run on demand.
@@ -8,6 +13,15 @@ import { defineConfig } from "vitest/config";
  * layers 1 to 4 in seconds.
  */
 export default defineConfig({
+  resolve: {
+    alias: {
+      "@agent-rails/e2e/harness/blinding-proxy": resolve(
+        repoRoot,
+        "packages/e2e/src/harness/blinding-proxy.ts",
+      ),
+      "@agent-rails/e2e/harness/surfnet": resolve(repoRoot, "packages/e2e/src/harness/surfnet.ts"),
+    },
+  },
   test: {
     environment: "node",
     include: ["e2e/**/*.e2e.test.ts"],

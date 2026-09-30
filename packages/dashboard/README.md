@@ -46,7 +46,21 @@ The dashboard reads the chain server-side through `@agent-rails/sdk`:
 A custom RPC is user input that reaches a server-side fetch, so it is restricted
 to `https` on a public host — private ranges fall back to the cluster default.
 
-To see real numbers, bootstrap a treasury and paste its address into a workflow:
+To see real numbers, give a workflow a treasury. On devnet or testnet, **Create on-chain
+vault** on `/treasury` runs the same stages as `agent-rails init` with your wallet signing
+each one (ADR-021 wave 2A):
+
+| Endpoint | What it does |
+|---|---|
+| `POST /api/solana/bootstrap/plan` | Addresses, the stages still missing on-chain, deposit shortfall, a cost estimate |
+| `POST /api/solana/bootstrap/build-step` | The next missing stage as an unsigned transaction; `{ done: true }` when none is left |
+| `GET /api/solana/bootstrap/vendors` | The VPS demo vendors' catalogs, for the first-destination preset |
+
+The stages come from `@agent-rails/cli/bootstrap`, not from a copy. The browser holds the
+throwaway `create_key` and the optional first session key; each signature is confirmed
+through `/api/solana/confirm`, as with vault transfer and session create. The CLI remains the
+path for mainnet and for scripts, and an existing treasury address can still be pasted into
+a workflow:
 
 ```bash
 pnpm agent-rails init --rpc https://api.devnet.solana.com --yes
@@ -171,11 +185,10 @@ light palette yet.
 
 ## Deferred
 
-Treasury bootstrap from zero in the browser (`create_treasury`, policy, first mint)
-and email/Google auth. Deposit and withdraw for SOL and SPL mints already run
-through `/treasury` and agent settings (`vault-transfer` + wallet sign +
-`/api/solana/confirm`). Until wave 2 (ADR-021), point new treasuries at
-`pnpm agent-rails init` and paste the address into a workflow.
+The rest of ADR-021 wave 2: allowlist editor, policy editor, pause/unpause, session
+revoke, ceiling and guardian management (2B/2C), plus SPL mints and mainnet in the bootstrap
+wizard — use `pnpm agent-rails init --mint` / `init` against mainnet for those. Treasury
+bootstrap (wave 2A), deposit/withdraw and session create already run in the browser.
 
 RAG, Harness and Integrations were removed outright rather than shipped as
 labels: none had backend infrastructure behind it, and a nav entry reads as a

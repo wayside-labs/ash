@@ -31,7 +31,11 @@
     "agent-rails": "./dist/cli.js"
   },
   "exports": {
-    ".": "./dist/cli.js"
+    ".": "./dist/cli.js",
+    "./bootstrap": {
+      "types": "./dist/bootstrap.d.ts",
+      "import": "./dist/bootstrap.js"
+    }
   },
   "files": [
     "dist"

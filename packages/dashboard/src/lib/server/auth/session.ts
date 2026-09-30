@@ -34,3 +34,13 @@ export async function requireSessionUser(): Promise<SessionUser> {
 export function toSessionUser(user: User): SessionUser {
   return { id: user.id, email: user.email ?? null };
 }
+
+/**
+ * Hosted mode (ADR-017): a signed-in user, or a 401 to return. The local JSON-store mode has
+ * no accounts, so there is nothing to check and the route proceeds.
+ */
+export async function hostedSessionDenied(): Promise<Response | null> {
+  if (!isSupabaseConfigured()) return null;
+  if (await getSessionUser()) return null;
+  return Response.json({ error: "unauthorized" }, { status: 401 });
+}
