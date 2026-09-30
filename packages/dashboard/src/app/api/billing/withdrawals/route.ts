@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 
 const bodySchema = z.strictObject({
   amountUsd: z.string().max(16),
-  destinationKind: z.enum(["solana_usdc", "pix"]),
+  destinationKind: z.enum(["solana_usdc"]),
   destination: z.string().max(200),
 });
 

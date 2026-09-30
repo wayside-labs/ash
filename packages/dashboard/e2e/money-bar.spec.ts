@@ -41,7 +41,9 @@ async function money(page: Page, balanceMicros = 1_234_567) {
 }
 
 test.describe("money bar", () => {
-  test("home is chat beside the workflows, and the bar holds only the money", async ({ page }) => {
+  test("home is chat beside the workflows; the bar holds network, money and wallet", async ({
+    page,
+  }) => {
     await money(page);
     await stubRegion(page, "US");
 
@@ -53,13 +55,12 @@ test.describe("money bar", () => {
     await expect(bar.getByTestId("header-balance")).toContainText("$1.23");
     await expect(bar.getByRole("button", { name: t("header.deposit") })).toBeVisible();
     await expect(bar.getByRole("button", { name: t("header.withdraw") })).toBeVisible();
-    // Cluster, payment mode, SOL price and Connect all left the bar.
-    await expect(bar.getByText("Devnet", { exact: true })).toHaveCount(0);
-    await expect(bar.getByRole("button", { name: t("wallet.connect") })).toHaveCount(0);
-    await expect(bar.getByText(/\$\d+\.\d{2} \(/)).toHaveCount(0);
+    // A web3 bar: the network and the wallet are here; the SOL price ticker is not.
+    await expect(bar.getByText("Devnet", { exact: true })).toBeVisible();
+    await expect(bar.getByRole("button", { name: t("wallet.connect") })).toBeVisible();
   });
 
-  test("a Brazilian viewer sees reais, and PIX offered beside USDC", async ({ page }) => {
+  test("a Brazilian viewer sees reais, and USDC on Solana is the one rail", async ({ page }) => {
     await money(page, 2_000_000);
     await stubRegion(page, "BR", 5.5);
     await stubRails(page);
@@ -68,18 +69,6 @@ test.describe("money bar", () => {
     await expect(page.getByTestId("header-balance")).toContainText("R$");
     await expect(page.getByTestId("header-balance")).toContainText("11,00");
 
-    await page.getByRole("button", { name: t("header.deposit") }).click();
-    await expect(page.getByTestId("deposit-rail-pix")).toBeVisible();
-    await expect(page.getByTestId("deposit-rail-pix")).toBeDisabled();
-    await expect(page.getByTestId("deposit-rail-solana_pay_usdc")).toBeEnabled();
-  });
-
-  test("anywhere else only USDC is offered", async ({ page }) => {
-    await money(page);
-    await stubRegion(page, "DE");
-    await stubRails(page);
-
-    await page.goto("/");
     await page.getByRole("button", { name: t("header.deposit") }).click();
     await expect(page.getByTestId("deposit-rail-solana_pay_usdc")).toBeVisible();
     await expect(page.getByTestId("deposit-rail-pix")).toHaveCount(0);
@@ -206,7 +195,7 @@ test.describe("money bar", () => {
     await expect(page.getByRole("heading", { name: t("deposit.title") })).toBeVisible();
   });
 
-  test("with billing off the bar is empty", async ({ page }) => {
+  test("with billing off the bar shows no money", async ({ page }) => {
     await stubChain(page);
     await stubChat(page);
     // No billing stub: the suite's server has billing off and answers `enabled: false`.
@@ -235,7 +224,7 @@ test.describe("money bar", () => {
     await clickUntil(toggle, nav);
   });
 
-  test("/advanced lands on home, and Connect lives in the pages that sign", async ({ page }) => {
+  test("/advanced lands on home, and Connect is in the bar on every page", async ({ page }) => {
     await money(page);
     await stubRegion(page, "US");
 
@@ -243,13 +232,10 @@ test.describe("money bar", () => {
     await expect(page).toHaveURL(/\/$/);
 
     await page.goto("/treasury");
-    const main = page.locator("main");
-    await expect(main.getByRole("button", { name: t("wallet.connect") })).toBeVisible();
+    const bar = page.locator("header").first();
+    await expect(bar.getByRole("button", { name: t("wallet.connect") })).toBeVisible();
     await expect(
-      page
-        .locator("header")
-        .first()
-        .getByRole("button", { name: t("wallet.connect") }),
+      page.locator("main").getByRole("button", { name: t("wallet.connect") }),
     ).toHaveCount(0);
   });
 });

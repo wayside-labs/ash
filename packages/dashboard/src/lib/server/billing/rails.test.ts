@@ -34,12 +34,10 @@ describe("solanaPayConfig", () => {
 });
 
 describe("validDestination", () => {
-  it("takes a Solana address for USDC and a short PIX key", () => {
+  it("takes a Solana address and nothing else", () => {
     expect(validDestination("solana_usdc", ` ${WALLET} `)).toBe(WALLET);
     expect(validDestination("solana_usdc", "abc")).toBeNull();
-    expect(validDestination("pix", " user@example.com ")).toBe("user@example.com");
-    expect(validDestination("pix", "   ")).toBeNull();
-    expect(validDestination("pix", "x".repeat(141))).toBeNull();
+    expect(validDestination("solana_usdc", "user@example.com")).toBeNull();
   });
 });
 
@@ -73,7 +71,7 @@ describe("requestWithdrawal", () => {
   });
 
   it("refuses more than the balance and holds nothing", async () => {
-    const result = await requestWithdrawal(LOCAL, 1_000_000, 2_000_000, "pix", "key");
+    const result = await requestWithdrawal(LOCAL, 1_000_000, 2_000_000, "solana_usdc", WALLET);
     expect(result).toEqual({ ok: false, reason: "insufficient" });
     expect(await jsonLedger.balance(LOCAL)).toBe(0);
     expect(await listWithdrawals(LOCAL)).toEqual([]);

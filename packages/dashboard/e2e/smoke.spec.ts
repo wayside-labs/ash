@@ -46,14 +46,19 @@ test.describe("every page renders", () => {
     });
   }
 
-  test("/ renders the chat beside the workflows, without asking for a wallet", async ({ page }) => {
+  test("/ renders the chat beside the workflows, with Connect in the bar", async ({ page }) => {
     await stubChain(page);
     await stubChat(page);
 
     await page.goto("/");
     await expect(page.getByPlaceholder(t("chat.placeholder"))).toBeVisible();
     await expect(page.getByRole("heading", { name: t("home.workflowsTitle") })).toBeVisible();
-    await expect(page.getByRole("button", { name: t("wallet.connect") })).toHaveCount(0);
+    await expect(
+      page
+        .locator("header")
+        .first()
+        .getByRole("button", { name: t("wallet.connect") }),
+    ).toBeVisible();
   });
 
   test("/advanced keeps the operator's chat and workflow panel", async ({ page }) => {

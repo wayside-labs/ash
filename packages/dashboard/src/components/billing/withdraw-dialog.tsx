@@ -13,13 +13,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useBilling, useRequestWithdrawal, useWithdrawals } from "@/hooks/use-billing";
 import { useRegion } from "@/hooks/use-region";
 import { intlLocale } from "@/i18n";
@@ -30,8 +23,8 @@ import { useAppStore } from "@/stores/app-store";
 
 /**
  * A withdrawal request. The server holds the amount on the ledger the moment it is sent, so it
- * cannot also be spent in chat, and the operator pays it out by hand. Brazil gets a PIX key as
- * a destination; everyone can take USDC to a Solana address.
+ * cannot also be spent in chat, and the operator pays it out by hand in USDC to the Solana
+ * address given.
  */
 export function WithdrawDialog() {
   const open = useAppStore((s) => s.moneyDialog === "withdraw");
@@ -43,9 +36,8 @@ export function WithdrawDialog() {
   const withdrawals = useWithdrawals(open);
   const request = useRequestWithdrawal();
 
-  const kinds: WithdrawalDestinationKind[] =
-    region.country === "BR" ? ["pix", "solana_usdc"] : ["solana_usdc"];
-  const [kind, setKind] = useState<WithdrawalDestinationKind>(kinds[0] ?? "solana_usdc");
+  // The MVP pays out in USDC to a Solana wallet only.
+  const kind: WithdrawalDestinationKind = "solana_usdc";
   const [amount, setAmount] = useState("");
   const [destination, setDestination] = useState("");
   const [sent, setSent] = useState(false);
@@ -59,10 +51,6 @@ export function WithdrawDialog() {
     }
     // Reset on open only; `request.reset` is stable.
   }, [open]);
-
-  useEffect(() => {
-    setKind(region.country === "BR" ? "pix" : "solana_usdc");
-  }, [region.country]);
 
   const usd = { ...region, currency: "USD" as const, usdRate: 1 };
   const available = billing?.balanceMicros ?? 0;
@@ -127,19 +115,7 @@ export function WithdrawDialog() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="withdraw-kind">{t("withdraw.destinationKind")}</Label>
-              <Select value={kind} onValueChange={(v) => setKind(v as WithdrawalDestinationKind)}>
-                <SelectTrigger id="withdraw-kind">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {kinds.map((k) => (
-                    <SelectItem key={k} value={k}>
-                      {t(`withdraw.kind.${k}`)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="withdraw-destination">{t("withdraw.kind.solana_usdc")}</Label>
               <Input
                 id="withdraw-destination"
                 aria-label={t(`withdraw.kind.${kind}.placeholder`)}

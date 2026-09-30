@@ -1,11 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  countryFromBrowser,
-  currencyFor,
-  depositRailsFor,
-  formatBalance,
-  normalizeCountry,
-} from "./region";
+import { countryFromBrowser, currencyFor, formatBalance, normalizeCountry } from "./region";
 
 describe("normalizeCountry", () => {
   it("accepts a two-letter code in any case", () => {
@@ -21,13 +15,9 @@ describe("normalizeCountry", () => {
 });
 
 describe("region choices", () => {
-  it("shows reais and offers PIX in Brazil only", () => {
+  it("shows reais in Brazil only", () => {
     expect(currencyFor("BR")).toBe("BRL");
-    expect(depositRailsFor("BR")).toEqual(["pix", "solana_pay_usdc"]);
-    for (const country of ["US", "PT", null]) {
-      expect(currencyFor(country)).toBe("USD");
-      expect(depositRailsFor(country)).toEqual(["solana_pay_usdc"]);
-    }
+    for (const country of ["US", "PT", null]) expect(currencyFor(country)).toBe("USD");
   });
 
   it("guesses Brazil from a Brazilian time zone or a pt-BR language", () => {

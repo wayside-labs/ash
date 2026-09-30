@@ -80,6 +80,9 @@ describe("account wallet routes", () => {
   beforeEach(() => {
     process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "anon";
+    // The gate under test is ADR-024's `pro` tier, which a deployment opts into; the MVP
+    // default is `everyone` (lib/plan.ts), pinned by its own case below.
+    process.env.DASHBOARD_EXTERNAL_WALLETS = "pro";
     plan = "free";
     upsert.mockReset().mockResolvedValue({ error: null });
     resolvePostgresContext.mockReset().mockImplementation(async () => ({
@@ -134,6 +137,11 @@ describe("account wallet routes", () => {
       { account_id: ACCOUNT, address: proof.address, wallet_name: "Phantom" },
       expect.anything(),
     );
+  });
+
+  it("POST link opens for a free account when nothing is configured (MVP default)", async () => {
+    delete process.env.DASHBOARD_EXTERNAL_WALLETS;
+    expect((await link(await signedLink())).status).toBe(200);
   });
 
   it("POST link opens for a free account when the deployment says everyone", async () => {

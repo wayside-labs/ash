@@ -69,7 +69,6 @@ export function railsConfig(): RailsConfig {
       cluster: pay?.cluster ?? "mainnet-beta",
       feeCovered: pay !== null && feePayer() !== null,
     },
-    pix: { enabled: false },
   };
 }
 
@@ -430,10 +429,9 @@ export async function findPendingIntent(id: string) {
 
 export const MIN_WITHDRAWAL_MICROS = 1_000_000;
 
-export function validDestination(kind: WithdrawalDestinationKind, raw: string): string | null {
+export function validDestination(_kind: WithdrawalDestinationKind, raw: string): string | null {
   const value = raw.trim();
-  if (kind === "solana_usdc") return isAddress(value) ? value : null;
-  return value.length >= 1 && value.length <= 140 ? value : null;
+  return isAddress(value) ? value : null;
 }
 
 // One request per scope at a time, so two tabs cannot both pass the balance check.

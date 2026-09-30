@@ -1,9 +1,8 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Copy, ExternalLink, Loader2, QrCode as QrIcon, Zap } from "lucide-react";
+import { CheckCircle2, Copy, ExternalLink, Loader2, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -20,7 +19,7 @@ import { useRegion } from "@/hooks/use-region";
 import { intlLocale } from "@/i18n";
 import { useLocale, useTranslation } from "@/i18n/locale-provider";
 import type { DepositIntentView } from "@/lib/billing";
-import { type DepositRail, depositRailsFor, formatBalance } from "@/lib/region";
+import { formatBalance } from "@/lib/region";
 import { useAppStore } from "@/stores/app-store";
 import { QrCode } from "./qr-code";
 
@@ -28,9 +27,9 @@ const POLL_MS = 5_000;
 const PRESETS = ["5", "10", "25", "50"];
 
 /**
- * Deposit, opened from the header (or any "add balance" prompt). The rails offered follow the
- * viewer's region; which ones actually work follows the server's config. Credit lands only when
- * the server finds the finalized transfer — this dialog just shows the request and polls.
+ * Deposit, opened from the header (or any "add balance" prompt): USDC on Solana through Solana
+ * Pay, the MVP's one rail. Credit lands only when the server finds the finalized transfer —
+ * this dialog just shows the request and polls.
  */
 export function DepositDialog() {
   const open = useAppStore((s) => s.moneyDialog === "deposit");
@@ -42,21 +41,16 @@ export function DepositDialog() {
   const toast = useToast();
   const queryClient = useQueryClient();
 
-  const [rail, setRail] = useState<DepositRail>("solana_pay_usdc");
   const [amount, setAmount] = useState("10");
   const [intent, setIntent] = useState<DepositIntentView | null>(null);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const offered = depositRailsFor(region.country);
 
   // A fresh dialog each time: an old QR must never be paid twice by mistake.
   useEffect(() => {
     if (!open) {
       setIntent(null);
       setError(null);
-    } else {
-      setRail("solana_pay_usdc");
     }
   }, [open]);
 
@@ -115,45 +109,22 @@ export function DepositDialog() {
 
         {!intent && (
           <div className="space-y-4">
-            <fieldset className="grid gap-2">
-              <legend className="sr-only">{t("deposit.method")}</legend>
-              {offered.map((id) => {
-                const soon = id === "pix";
-                const selected = rail === id && !soon;
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    aria-pressed={selected}
-                    disabled={soon}
-                    onClick={() => setRail(id)}
-                    data-testid={`deposit-rail-${id}`}
-                    className={`flex items-center justify-between rounded-lg border px-3 py-2.5 text-left text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
-                      selected ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"
-                    }`}
-                  >
-                    <span className="flex items-center gap-2">
-                      {id === "pix" ? (
-                        <QrIcon className="h-4 w-4 text-muted-foreground" />
-                      ) : (
-                        <Zap className="h-4 w-4 text-primary" />
-                      )}
-                      <span>
-                        <span className="block font-medium">{t(`deposit.rail.${id}`)}</span>
-                        <span className="block text-xs text-muted-foreground">
-                          {t(
-                            id === "solana_pay_usdc" && !solanaPay?.feeCovered
-                              ? "deposit.rail.solana_pay_usdc.hintFee"
-                              : `deposit.rail.${id}.hint`,
-                          )}
-                        </span>
-                      </span>
-                    </span>
-                    {soon && <Badge variant="outline">{t("balance.soon")}</Badge>}
-                  </button>
-                );
-              })}
-            </fieldset>
+            <div
+              className="flex items-center gap-2 rounded-lg border border-primary/40 bg-primary/5 px-3 py-2.5 text-sm"
+              data-testid="deposit-rail-solana_pay_usdc"
+            >
+              <Zap className="h-4 w-4 shrink-0 text-primary" />
+              <span>
+                <span className="block font-medium">{t("deposit.rail.solana_pay_usdc")}</span>
+                <span className="block text-xs text-muted-foreground">
+                  {t(
+                    solanaPay?.feeCovered
+                      ? "deposit.rail.solana_pay_usdc.hint"
+                      : "deposit.rail.solana_pay_usdc.hintFee",
+                  )}
+                </span>
+              </span>
+            </div>
 
             {solanaPay && !solanaPay.enabled ? (
               <p className="rounded-lg border border-border bg-muted/40 p-3 text-sm text-muted-foreground">

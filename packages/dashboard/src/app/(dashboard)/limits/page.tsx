@@ -20,7 +20,7 @@ export default function LimitsPage() {
   if (isLoading) {
     return (
       <div>
-        <PageHeader wallet title={t("limits.title")} description={t("limits.descriptionShort")} />
+        <PageHeader title={t("limits.title")} description={t("limits.descriptionShort")} />
         <div className="flex items-center gap-2 py-12 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
           {t("common.loading")}
@@ -31,7 +31,7 @@ export default function LimitsPage() {
 
   return (
     <div>
-      <PageHeader wallet title={t("limits.title")} description={t("limits.descriptionLong")} />
+      <PageHeader title={t("limits.title")} description={t("limits.descriptionLong")} />
 
       {workflows.length === 0 ? (
         <EmptyState
