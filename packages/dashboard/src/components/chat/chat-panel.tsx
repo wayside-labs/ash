@@ -161,7 +161,9 @@ export function ChatPanel({ className }: { className?: string }) {
         {mode === "claude-cli" && (
           <Badge variant="success">{t("chat.badge.claudeSubscription")}</Badge>
         )}
-        {mode === "anthropic-api" && <Badge variant="outline">{t("chat.badge.tokenApi")}</Badge>}
+        {(mode === "anthropic-api" || mode === "openai-api") && (
+          <Badge variant="outline">{t("chat.badge.tokenApi")}</Badge>
+        )}
       </div>
 
       <ScrollArea className="flex-1 px-4">

@@ -7,16 +7,6 @@ import Anthropic from "@anthropic-ai/sdk";
  * has two dependencies and none of them.
  */
 
-export const ANTHROPIC_API_MODELS = [
-  { id: "claude-opus-5", label: "Opus 5" },
-  { id: "claude-sonnet-5", label: "Sonnet 5" },
-  { id: "claude-haiku-4-5", label: "Haiku 4.5" },
-] as const;
-
-export function isAnthropicApiModel(id: string): boolean {
-  return ANTHROPIC_API_MODELS.some((m) => m.id === id);
-}
-
 export type AnthropicApiOptions = {
   apiKey: string;
   model: string;

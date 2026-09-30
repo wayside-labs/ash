@@ -2,12 +2,12 @@ import { z } from "zod";
 import { t } from "@/i18n";
 import { solanaClusterSchema } from "@/lib/schema";
 import { getDashboardLocale, serverT } from "@/lib/server/i18n";
-import { streamAnthropicApi } from "@/lib/server/llm/anthropic-api";
 import { isClaudeCliModel, streamClaudeCli } from "@/lib/server/llm/claude-cli";
 import { buildContext } from "@/lib/server/llm/context";
 import { getDemoReply, getSystemPrompt, transcriptRoleLabel } from "@/lib/server/llm/i18n";
 import { withContextLocalized } from "@/lib/server/llm/prompt";
-import { anthropicApiKey, resolveProvider } from "@/lib/server/llm/providers";
+import { resolveProvider } from "@/lib/server/llm/providers";
+import { streamApiProvider } from "@/lib/server/llm/stream";
 import { assertSameOrigin } from "@/lib/server/origin";
 import { acquireSlot, checkFixedWindow } from "@/lib/server/rate-limit";
 import { stateAccessResponse } from "@/lib/server/state/access";
@@ -114,8 +114,21 @@ export async function POST(req: Request) {
     return response;
   }
 
-  const apiKey = await anthropicApiKey();
-  if (!apiKey) {
+  // resolveProvider only pairs the CLI with its own models; this is the type system's copy.
+  if (provider === "claude-cli") {
+    return Response.json({ error: await serverT("api.error.invalidPayload") }, { status: 422 });
+  }
+
+  const stream = await streamApiProvider(provider, {
+    model: chosen,
+    systemPrompt,
+    messages: [
+      ...messages.slice(0, -1),
+      { role: "user" as const, content: withContextLocalized(locale, context, last) },
+    ],
+    ...(req.signal ? { signal: req.signal } : {}),
+  });
+  if (!stream) {
     return new Response(getDemoReply(locale, last), {
       headers: { "content-type": "text/plain; charset=utf-8", "x-agent-rails-mode": "demo" },
     });
@@ -124,23 +137,16 @@ export async function POST(req: Request) {
   const slot = acquireSlot("chat");
   if (slot instanceof Response) return slot;
 
+  const failedKey =
+    provider === "openai-api" ? "llm.error.openaiFailed" : "llm.error.anthropicFailed";
   const response = textStream(
-    streamAnthropicApi({
-      apiKey,
-      model: chosen,
-      systemPrompt,
-      messages: [
-        ...messages.slice(0, -1),
-        { role: "user" as const, content: withContextLocalized(locale, context, last) },
-      ],
-      ...(req.signal ? { signal: req.signal } : {}),
-    }),
+    stream,
     (error) => {
-      console.error("[chat] anthropic api error:", error);
-      return `\n\n⚠️ ${error instanceof Error ? error.message : t("llm.error.anthropicFailed", locale)}`;
+      console.error(`[chat] ${provider} error:`, error);
+      return `\n\n⚠️ ${error instanceof Error ? error.message : t(failedKey, locale)}`;
     },
     slot.release,
   );
-  response.headers.set("x-agent-rails-mode", "anthropic-api");
+  response.headers.set("x-agent-rails-mode", provider);
   return response;
 }

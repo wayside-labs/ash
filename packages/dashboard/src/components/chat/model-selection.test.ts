@@ -63,4 +63,17 @@ describe("reconcileSelectedModel", () => {
   it("keeps an explicit non-default model", () => {
     expect(reconcileSelectedModel("claude-cli:opus", [cli, demo])).toBe("claude-cli:opus");
   });
+
+  it("moves a stale CLI choice to the OpenAI key's models when the CLI is gone", () => {
+    const openai = {
+      id: "openai-api" as const,
+      label: "OpenAI API",
+      detail: "",
+      models: [
+        { id: "openai:gpt-4.1", label: "gpt-4.1" },
+        { id: "openai:gpt-5", label: "gpt-5" },
+      ],
+    };
+    expect(reconcileSelectedModel("claude-cli:sonnet", [openai, demo])).toBe("openai:gpt-5");
+  });
 });

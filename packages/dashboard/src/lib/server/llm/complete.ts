@@ -1,6 +1,6 @@
-import { streamAnthropicApi } from "./anthropic-api";
 import { isClaudeCliModel, streamClaudeCli } from "./claude-cli";
-import { anthropicApiKey, type ProviderId, resolveProvider } from "./providers";
+import { type ProviderId, resolveProvider } from "./providers";
+import { streamApiProvider } from "./stream";
 
 export type Completion =
   | { ok: true; provider: Exclude<ProviderId, "demo">; text: string }
@@ -9,7 +9,7 @@ export type Completion =
 /**
  * One whole answer from whichever provider the chat would use, for callers that need a
  * result rather than a stream (the canvas generator). Same sandbox as the chat: the CLI
- * runs with no tools and no MCP, the API with the stored key. `demo` is reported, never
+ * runs with no tools and no MCP, an API provider with the caller's stored key. `demo` is reported, never
  * faked — a caller that gets it must say no model is connected.
  */
 export async function completeText(input: {
@@ -27,16 +27,15 @@ export async function completeText(input: {
       model,
       ...(input.signal ? { signal: input.signal } : {}),
     });
-  } else if (provider === "anthropic-api") {
-    const apiKey = await anthropicApiKey();
-    if (!apiKey) return { ok: false, provider: "demo" };
-    source = streamAnthropicApi({
-      apiKey,
+  } else if (provider === "anthropic-api" || provider === "openai-api") {
+    const stream = await streamApiProvider(provider, {
       model,
       systemPrompt: input.systemPrompt,
       messages: [{ role: "user", content: input.prompt }],
       ...(input.signal ? { signal: input.signal } : {}),
     });
+    if (!stream) return { ok: false, provider: "demo" };
+    source = stream;
   } else {
     return { ok: false, provider: "demo" };
   }
