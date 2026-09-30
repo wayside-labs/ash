@@ -1,6 +1,6 @@
 # Agent templates
 
-Three starter setups that show a real product using Agent Rails as its **spend authority**:
+Four starter setups that show a real product using Agent Rails as its **spend authority**:
 the layer that decides whether money may move, not the layer that decides what to buy. Each
 template is docs, config snippets, and at most a thin shell script. None of them adds a
 program instruction, an MCP tool, or a package.
@@ -10,6 +10,7 @@ program instruction, an MCP tool, or a package.
 | [`earn-bounty-hunter/`](earn-bounty-hunter/) | Scouts Superteam Earn, researches, builds | Builder pays capped vendors (RPC, inference, hosting) per bounty | Three agent roles, one of them holds the rails MCP |
 | [`dca-sol/`](dca-sol/) | Nothing — no model in the loop | Cron moves a fixed USDC slice to an allowlisted swap desk each period | `cron` + `agent-rails pay` |
 | [`defi-yield-rebalance/`](defi-yield-rebalance/) | Reads rates, proposes a capped rebalance | Executor moves USDC to an allowlisted per-venue desk wallet | Script scout, planner agent, executor agent, guardian |
+| [`solana-workstation/`](solana-workstation/) | Orchestrate Solana tasks, Jupiter quotes | Executor pays desks/vendors; desk signs swaps | Orchestrator, analyst, executor |
 
 Devnet first, all three. Nothing here is a mainnet promise; see the trust phases in the root
 `README.md` before pointing any of it at real funds.

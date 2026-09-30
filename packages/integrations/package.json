@@ -1,0 +1,29 @@
+{
+  "name": "@agent-rails/integrations",
+  "version": "0.1.0",
+  "private": true,
+  "description": "stdio MCP connectors for Solana dApps — quotes and transaction building that compose with Agent Rails payments.",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "type": "module",
+  "bin": {
+    "agent-rails-integrations": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@agent-rails/contract": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsdown": "^0.15.0",
+    "vitest": "^4.0.0"
+  }
+}

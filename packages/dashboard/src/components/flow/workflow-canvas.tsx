@@ -13,6 +13,7 @@ import {
   ReactFlowProvider,
   useEdgesState,
   useNodesState,
+  useReactFlow,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { ArrowLeft, Eye, Loader2, Sparkles } from "lucide-react";
@@ -59,6 +60,35 @@ import { ActionNodeDialog } from "./action-node-dialog";
 
 type RemoveTarget = { nodeId: string; kind: "agent" | "action"; refId: string; name: string };
 
+const fitViewOptions = { padding: 0.2 };
+
+function minimapNodeColor(node: Node): string {
+  switch (node.type) {
+    case "treasury":
+      return "var(--color-ceiling)";
+    case "agent":
+      return "var(--color-primary)";
+    case "action":
+      return "var(--color-accent)";
+    default:
+      return "var(--color-border-strong)";
+  }
+}
+
+/** Fit once per graph revision — the `fitView` prop re-runs on every render and can loop. */
+function CanvasFitView({ revision }: { revision: string }) {
+  const { fitView } = useReactFlow();
+  const lastRevision = useRef<string | null>(null);
+  useEffect(() => {
+    if (!revision || lastRevision.current === revision) return;
+    lastRevision.current = revision;
+    requestAnimationFrame(() => {
+      void fitView(fitViewOptions);
+    });
+  }, [revision, fitView]);
+  return null;
+}
+
 /**
  * The canvas is a view of rows (`lib/canvas-graph.ts`): what a node or an edge shows is an
  * agent, a payee in `paysTo`, or an MCP's scope, and editing one edits the row. Only the
@@ -68,7 +98,8 @@ function WorkflowCanvasInner({ workflowId }: { workflowId: string }) {
   const { t } = useTranslation();
   const hidden = useBalancesHidden();
   const toast = useToast();
-  const { workflows } = useWorkflows();
+  // Chain polling rebuilds composed workflows every few seconds; the canvas only needs row structure.
+  const { workflows } = useWorkflows({ withChain: false });
   const state = useDashboardState();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const updateWorkflow = useUpdateResource("workflows");
@@ -80,13 +111,27 @@ function WorkflowCanvasInner({ workflowId }: { workflowId: string }) {
   const deleteMcp = useDeleteResource("mcps");
 
   const workflow = workflows.find((row) => row.id === workflowId);
-  const mcps = state.data?.mcps ?? [];
+  const mcps = useMemo(() => state.data?.mcps ?? [], [state.data?.mcps]);
   const agents = useMemo(() => workflow?.agents ?? [], [workflow]);
 
-  const graph = useMemo(
-    () => (workflow ? buildGraph(workflow, agents, mcps) : { nodes: [], edges: [] }),
-    [workflow, agents, mcps],
-  );
+  const { graph, graphRevision } = useMemo(() => {
+    const built = workflow ? buildGraph(workflow, agents, mcps) : { nodes: [], edges: [] };
+    const revision = workflow
+      ? JSON.stringify({
+          nodes: built.nodes.map((node) => [
+            node.id,
+            node.kind,
+            node.refId,
+            node.position.x,
+            node.position.y,
+            Boolean(node.shared),
+          ]),
+          edges: built.edges.map((edge) => [edge.id, edge.source, edge.target, edge.kind]),
+          hidden: workflow.layout.hidden,
+        })
+      : "";
+    return { graph: built, graphRevision: revision };
+  }, [workflow, agents, mcps]);
 
   const flow = useMemo(() => {
     if (!workflow) return { nodes: [] as Node<FlowNodeData>[], edges: [] as Edge[] };
@@ -146,11 +191,37 @@ function WorkflowCanvasInner({ workflowId }: { workflowId: string }) {
     return { nodes, edges };
   }, [workflow, graph, agents, mcps, hidden]);
 
-  // Local copies so dragging is smooth; re-seeded whenever the rows change underneath.
+  const presentationRevision = useMemo(() => {
+    if (!workflow) return "";
+    const balanceLabel = formatMoney(workflow.balance, hidden);
+    return [
+      hidden ? "1" : "0",
+      balanceLabel,
+      agents.map((agent) => `${agent.id}:${agent.name}:${agent.status}`).join("|"),
+      mcps.map((mcp) => `${mcp.id}:${mcp.name}:${mcp.enabled}`).join("|"),
+    ].join(";");
+  }, [workflow, hidden, agents, mcps]);
+
+  const flowSyncToken = `${graphRevision}\0${presentationRevision}`;
+  const flowRef = useRef(flow);
+  flowRef.current = flow;
+
+  // Local copies so dragging is smooth; re-seeded when rows or labels change, not every parent render.
   const [nodes, setNodes, onNodesChange] = useNodesState(flow.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(flow.edges);
-  useEffect(() => setNodes(flow.nodes), [flow.nodes, setNodes]);
-  useEffect(() => setEdges(flow.edges), [flow.edges, setEdges]);
+  const lastFlowSync = useRef<string | null>(null);
+  useEffect(() => {
+    if (!flowSyncToken || lastFlowSync.current === flowSyncToken) return;
+    lastFlowSync.current = flowSyncToken;
+    const next = flowRef.current;
+    setNodes((current) =>
+      next.nodes.map((node) => {
+        const live = current.find((row) => row.id === node.id);
+        return live ? { ...node, position: live.position } : node;
+      }),
+    );
+    setEdges(next.edges);
+  }, [flowSyncToken, setNodes, setEdges]);
 
   const [aiPrompt, setAiPrompt] = useState("");
   const [editingWorkflow, setEditingWorkflow] = useState(false);
@@ -523,26 +594,14 @@ function WorkflowCanvasInner({ workflowId }: { workflowId: string }) {
             onNodeClick={onNodeClick}
             nodeTypes={flowNodeTypes}
             deleteKeyCode="Backspace"
-            fitView
-            fitViewOptions={{ padding: 0.2 }}
             className="bg-background"
             proOptions={{ hideAttribution: true }}
           >
+            <CanvasFitView revision={graphRevision} />
             <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
             <Controls showInteractive={false} />
             <MiniMap
-              nodeColor={(node) => {
-                switch (node.type) {
-                  case "treasury":
-                    return "var(--color-ceiling)";
-                  case "agent":
-                    return "var(--color-primary)";
-                  case "action":
-                    return "var(--color-accent)";
-                  default:
-                    return "var(--color-border-strong)";
-                }
-              }}
+              nodeColor={minimapNodeColor}
               maskColor="rgb(8 8 10 / 0.75)"
               className="!bottom-4 !right-4"
             />
