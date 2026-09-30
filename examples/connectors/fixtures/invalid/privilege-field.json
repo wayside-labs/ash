@@ -1,0 +1,1 @@
+{ "name": "bad", "privilege": "elevated", "tools": [{ "name": "q", "url": "https://x.example" }] }

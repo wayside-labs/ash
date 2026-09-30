@@ -1,0 +1,10 @@
+{
+  "name": "bad",
+  "tools": [
+    {
+      "name": "q",
+      "url": "https://x.example",
+      "parameters": { "type": "object", "properties": { "class": { "type": "string" } } }
+    }
+  ]
+}

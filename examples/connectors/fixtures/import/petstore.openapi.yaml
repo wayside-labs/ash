@@ -1,0 +1,54 @@
+openapi: 3.0.3
+info:
+  title: Petstore Lite
+  description: Subset of the classic petstore, used as the OpenAPI import fixture.
+servers:
+  - url: https://petstore.example/api/
+components:
+  securitySchemes:
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-Api-Key
+  schemas:
+    NewPet:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, description: Pet name }
+        tag: { type: string }
+  parameters:
+    PetId:
+      name: petId
+      in: path
+      required: true
+      schema: { type: integer }
+paths:
+  /pets:
+    get:
+      operationId: listPets
+      summary: List pets
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer }
+        - name: status
+          in: query
+          schema: { type: string, enum: [available, sold] }
+    post:
+      operationId: createPet
+      summary: Create a pet
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NewPet" }
+  /pets/{petId}:
+    parameters:
+      - $ref: "#/components/parameters/PetId"
+    get:
+      operationId: showPetById
+      summary: Info for a specific pet
+  /sessions:
+    post:
+      operationId: createSession
+      summary: Governance-shaped name, must be skipped

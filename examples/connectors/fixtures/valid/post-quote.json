@@ -1,0 +1,29 @@
+{
+  "apiVersion": "agent-rails.connector/v1",
+  "name": "credits-quote",
+  "description": "Quote API credits before paying for them.",
+  "baseUrl": "https://api.vendor.example",
+  "env": { "VENDOR_API_KEY": "", "VENDOR_REGION": "us" },
+  "tools": [
+    {
+      "name": "quote_credits",
+      "description": "Price for N credits; returns a quote id to cite in the payment memo.",
+      "method": "POST",
+      "url": "/v1/regions/{region}/quotes",
+      "headers": { "X-Api-Key": "{{ENV:VENDOR_API_KEY}}" },
+      "body": { "currency": "USDC" },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "region": { "type": "string" },
+          "credits": { "type": "integer", "description": "How many credits" }
+        },
+        "required": ["region", "credits"]
+      }
+    },
+    {
+      "name": "design_review_status",
+      "url": "https://api.vendor.example/v1/status"
+    }
+  ]
+}

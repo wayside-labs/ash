@@ -1,7 +1,7 @@
 "use client";
 
-import { Cable, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { Cable, FileUp, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { useRef, useState } from "react";
 import { DemoBadge } from "@/components/shared/demo-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
@@ -31,6 +31,7 @@ import {
   useCreateResource,
   useDashboardState,
   useDeleteResource,
+  useImportConnector,
   useUpdateResource,
 } from "@/hooks/use-dashboard";
 import { useTranslation } from "@/i18n/locale-provider";
@@ -277,6 +278,41 @@ export default function McpsPage() {
   const toast = useToast();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<McpServer | null>(null);
+  const importConnector = useImportConnector();
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  /**
+   * A connector file (bundle, OpenAPI 3, or markdown with frontmatter) becomes a global,
+   * disabled MCP served by the connector host — same rule as an imported skill.
+   */
+  const importFiles = async (files: FileList | null) => {
+    try {
+      for (const file of Array.from(files ?? [])) {
+        try {
+          const res = await importConnector.mutateAsync({
+            file: { name: file.name, content: await file.text() },
+            scope: "global",
+            scopeName: null,
+          });
+          toast(
+            res.missingEnv.length > 0
+              ? t("connectors.addedNeedsEnv", {
+                  name: res.created.name,
+                  env: res.missingEnv.join(", "),
+                })
+              : t("connectors.added", { name: res.created.name }),
+          );
+          if (res.skipped.length > 0) {
+            toast(t("connectors.skipped", { detail: res.skipped.join("; ") }), "error");
+          }
+        } catch (error) {
+          toast(`${file.name}: ${error instanceof Error ? error.message : String(error)}`, "error");
+        }
+      }
+    } finally {
+      if (fileInput.current) fileInput.current.value = "";
+    }
+  };
 
   const toggle = async (id: string, enabled: boolean, label: string) => {
     try {
@@ -317,10 +353,33 @@ export default function McpsPage() {
         title={t("mcps.title")}
         description={t("mcps.description")}
         action={
-          <Button onClick={() => setOpen(true)}>
-            <Plus className="h-4 w-4" />
-            {t("mcps.addMcp")}
-          </Button>
+          <div className="flex gap-2">
+            <input
+              ref={fileInput}
+              type="file"
+              accept=".yaml,.yml,.json,.md,.mdx"
+              multiple
+              className="hidden"
+              data-testid="connector-import-input"
+              onChange={(e) => importFiles(e.target.files)}
+            />
+            <Button
+              variant="outline"
+              disabled={importConnector.isPending}
+              onClick={() => fileInput.current?.click()}
+            >
+              {importConnector.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <FileUp className="h-4 w-4" />
+              )}
+              {t("connectors.import")}
+            </Button>
+            <Button onClick={() => setOpen(true)}>
+              <Plus className="h-4 w-4" />
+              {t("mcps.addMcp")}
+            </Button>
+          </div>
         }
       />
 
@@ -349,6 +408,11 @@ export default function McpsPage() {
                       <span className="text-xs text-muted-foreground">{mcp.scopeName}</span>
                     )}
                     {mcp.demo && <DemoBadge />}
+                    {mcp.connector && (
+                      <Badge variant="outline" data-testid="connector-badge">
+                        {t("connectors.badge", { count: mcp.connector.tools.length })}
+                      </Badge>
+                    )}
                   </div>
                   <p className="text-sm text-muted-foreground">{mcp.description}</p>
                   {/* The invocation, verbatim — what the export will spawn. */}

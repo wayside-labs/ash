@@ -14,6 +14,8 @@ export default defineConfig({
     "src/alerts.ts",
     "src/payment-build.ts",
     "src/mcp-tools.ts",
+    "src/connector-bundle.ts",
+    "src/connector-import.ts",
   ],
   format: ["esm"],
   dts: true,

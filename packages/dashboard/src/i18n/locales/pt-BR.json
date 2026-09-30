@@ -931,5 +931,20 @@
   "knowledge.searchPlaceholder": "O que um agente perguntaria?",
   "knowledge.search": "Buscar",
   "knowledge.searchMode": "Ranking: {mode}",
-  "knowledge.noHits": "Nada encontrado."
+  "knowledge.noHits": "Nada encontrado.",
+  "connectors.import": "Importar conector",
+  "connectors.added": "Conector {name} adicionado",
+  "connectors.addedNeedsEnv": "Conector {name} adicionado — defina {env} no card do MCP antes que os agentes possam usá-lo",
+  "connectors.skipped": "Deixados de fora: {detail}",
+  "connectors.badge": "Conector · {count} tools",
+  "connectors.error.invalid": "Este conector foi recusado",
+  "connectors.error.unsupported": "Este formato de arquivo ainda não é suportado",
+  "connectors.chat.draft": "Rascunho de conector",
+  "connectors.chat.secrets": "Precisa de: {env}",
+  "connectors.chat.add": "Adicionar conector",
+  "connectors.chat.added": "Adicionado",
+  "connectors.chat.invalid": "O conector proposto foi recusado",
+  "connectors.chat.noPrivilege": "Só tools de leitura e cotação. Pagamentos continuam pelo MCP agent-rails e seus limites.",
+  "flowCanvas.ai.connectors": "Novos conectores",
+  "flowCanvas.ai.connectorsHint": "Criados como MCPs servidos pelo host de conectores; defina as API keys na página de MCPs."
 }

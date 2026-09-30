@@ -13,6 +13,7 @@
 #   scripts/verify.sh mutants  mutation testing of the policy crate (nightly gate)
 #   scripts/verify.sh e2e      Surfpool end-to-end suite (nightly gate)
 #   scripts/verify.sh ui       Playwright suite for the dashboard (nightly gate)
+#   scripts/verify.sh py       connector host (services/connector-host) pytest suite
 #
 # The integration tests deploy compiled programs, so a fresh checkout with an
 # empty target/ needs `cargo build-sbf` (or `anchor build`) once before the rust
@@ -196,8 +197,22 @@ if [[ $group == all || $group == ts ]]; then
   run "coverage (sdk >=85%)" pnpm coverage
 fi
 
-if [[ $group != all && $group != rust && $group != ts && $group != kani && $group != mutants && $group != e2e && $group != ui ]]; then
-  echo "usage: scripts/verify.sh [all|rust|ts|kani|mutants|e2e|ui]" >&2
+if [[ $group == all || $group == py ]]; then
+  # The Python connector host shares examples/connectors/fixtures with the contract's
+  # vitest suite; the two together are the drift test between its schema and the Zod one.
+  if command -v uv >/dev/null 2>&1; then
+    run "pytest (connector-host)" uv run --project services/connector-host --extra dev \
+      pytest -q services/connector-host/tests
+  else
+    printf '\n\033[1m▸ pytest (connector-host)\033[0m\n'
+    printf '\033[33mskipped: uv is not installed\033[0m\n'
+    printf '  curl -LsSf https://astral.sh/uv/install.sh | sh\n'
+    note_skip "pytest (connector-host)"
+  fi
+fi
+
+if [[ $group != all && $group != rust && $group != ts && $group != kani && $group != mutants && $group != e2e && $group != ui && $group != py ]]; then
+  echo "usage: scripts/verify.sh [all|rust|ts|kani|mutants|e2e|ui|py]" >&2
   exit 2
 fi
 

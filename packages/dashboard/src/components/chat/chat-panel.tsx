@@ -1,7 +1,9 @@
 "use client";
 
+import { extractConnectorProposals } from "@agent-rails/contract/connector-bundle";
 import { Bot, Loader2, Send, Square } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ConnectorProposalCard, withoutConnectorBlocks } from "@/components/chat/connector-card";
 import { Markdown } from "@/components/chat/markdown";
 import { reconcileSelectedModel, selectableProviders } from "@/components/chat/model-selection";
 import { Badge } from "@/components/ui/badge";
@@ -180,7 +182,11 @@ export function ChatPanel({ className }: { className?: string }) {
                 )}
               >
                 {msg.content ? (
-                  <Markdown content={msg.content} />
+                  msg.role === "assistant" ? (
+                    <AssistantContent content={msg.content} />
+                  ) : (
+                    <Markdown content={msg.content} />
+                  )
                 ) : (
                   <span className="flex items-center gap-2 text-muted-foreground">
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -253,5 +259,23 @@ export function ChatPanel({ className }: { className?: string }) {
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * Only closed fences are parsed, so a block still streaming in shows as text until its
+ * closing backticks arrive and then becomes a card.
+ */
+function AssistantContent({ content }: { content: string }) {
+  const proposals = useMemo(() => extractConnectorProposals(content), [content]);
+  if (proposals.length === 0) return <Markdown content={content} />;
+  return (
+    <>
+      <Markdown content={withoutConnectorBlocks(content)} />
+      {proposals.map((proposal, index) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: blocks have no identity beyond order
+        <ConnectorProposalCard key={index} proposal={proposal} />
+      ))}
+    </>
   );
 }

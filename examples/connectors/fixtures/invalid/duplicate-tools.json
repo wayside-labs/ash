@@ -1,0 +1,7 @@
+{
+  "name": "bad",
+  "tools": [
+    { "name": "q", "url": "https://x.example" },
+    { "name": "q", "url": "https://y.example" }
+  ]
+}

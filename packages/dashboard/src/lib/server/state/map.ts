@@ -1,3 +1,4 @@
+import { connectorBundleSchema } from "@agent-rails/contract/connector-bundle";
 import type {
   DashboardState,
   Profile,
@@ -56,6 +57,8 @@ export type McpRow = {
   scope_name: string | null;
   command: string;
   args: string[];
+  /** Absent until migration 20260930010000 is applied; see `mcpToRow`. */
+  connector?: unknown;
   demo: boolean;
   created_at: string;
 };
@@ -239,6 +242,9 @@ export function mcpFromRow(row: McpRow): StoredMcp {
     args: row.args ?? [],
     // Hosted mode: secrets are not persisted until passkey encryption ships (ADR-017).
     env: {},
+    // Re-validated on read: a row edited in the database cannot hand the runner a bundle the
+    // import route would have refused.
+    connector: connectorBundleSchema.safeParse(row.connector).data ?? null,
     demo: row.demo,
   };
 }
@@ -254,6 +260,9 @@ export function mcpToRow(mcp: StoredMcp, orgId: string): McpRow {
     scope_name: mcp.scopeName,
     command: mcp.command,
     args: mcp.args,
+    // Only sent when set, so a deployment that has not applied the column's migration keeps
+    // saving every other row.
+    ...(mcp.connector ? { connector: mcp.connector } : {}),
     demo: mcp.demo,
     created_at: new Date().toISOString(),
   };

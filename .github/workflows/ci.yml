@@ -89,6 +89,17 @@ jobs:
       # local hook can be talked out of.
       - run: scripts/verify.sh ts
 
+  python:
+    name: connector host (python)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # pipx rather than a setup action: no new third-party action to pin, and uv.lock
+      # then pins everything the suite imports.
+      - run: pipx install uv==0.12.5
+      # Strict: a missing uv must fail here, not pass as a skip.
+      - run: VERIFY_STRICT=1 scripts/verify.sh py
+
   supply-chain:
     name: supply-chain
     runs-on: ubuntu-latest

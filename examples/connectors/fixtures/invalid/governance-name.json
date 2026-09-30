@@ -1,0 +1,1 @@
+{ "name": "bad", "tools": [{ "name": "create_session", "url": "https://x.example" }] }

@@ -931,5 +931,20 @@
   "knowledge.searchPlaceholder": "What would an agent ask?",
   "knowledge.search": "Search",
   "knowledge.searchMode": "Ranking: {mode}",
-  "knowledge.noHits": "Nothing matched."
+  "knowledge.noHits": "Nothing matched.",
+  "connectors.import": "Import connector",
+  "connectors.added": "Connector {name} added",
+  "connectors.addedNeedsEnv": "Connector {name} added — set {env} on its MCP card before agents can call it",
+  "connectors.skipped": "Left out: {detail}",
+  "connectors.badge": "Connector · {count} tools",
+  "connectors.error.invalid": "This connector was refused",
+  "connectors.error.unsupported": "This file format is not supported yet",
+  "connectors.chat.draft": "Draft connector",
+  "connectors.chat.secrets": "Needs: {env}",
+  "connectors.chat.add": "Add connector",
+  "connectors.chat.added": "Added",
+  "connectors.chat.invalid": "The proposed connector was refused",
+  "connectors.chat.noPrivilege": "Read and quote tools only. Payments still go through the agent-rails MCP and its limits.",
+  "flowCanvas.ai.connectors": "New connectors",
+  "flowCanvas.ai.connectorsHint": "Created as MCPs served by the connector host; set their API keys on the MCPs page."
 }

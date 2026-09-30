@@ -1,0 +1,21 @@
+apiVersion: agent-rails.connector/v1
+name: sample-weather
+description: Read-only weather connector for workstation demos. Replace api.example.com with a real vendor.
+env:
+  WEATHER_API_KEY: ""
+tools:
+  - name: tokyo_weather_now
+    description: Current conditions for Tokyo (read-only; no payment).
+    method: GET
+    url: https://api.example.com/v1/weather
+    query:
+      city: Tokyo
+    headers:
+      Authorization: "Bearer {{ENV:WEATHER_API_KEY}}"
+    parameters:
+      type: object
+      properties:
+        units:
+          type: string
+          enum: [metric, imperial]
+      required: []

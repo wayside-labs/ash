@@ -1,0 +1,1 @@
+{ "name": "bad", "tools": [{ "name": "GetThing", "url": "https://x.example" }] }
