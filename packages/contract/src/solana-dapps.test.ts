@@ -8,6 +8,13 @@ describe("solana-dapps", () => {
     expect(jup?.programIds.length).toBeGreaterThan(0);
   });
 
+  it("includes sodax as a live cross-chain integration with its Solana programs", () => {
+    const sodax = getSolanaDapp("sodax");
+    expect(sodax?.integration).toMatchObject({ kind: "mcp-sodax", status: "live" });
+    expect(sodax?.category).toBe("cross-chain");
+    expect(sodax?.programIds).toHaveLength(2);
+  });
+
   it("lists raydium and orca for routing context", () => {
     const ids = new Set(SOLANA_DAPPS.map((d) => d.id));
     expect(ids.has("raydium")).toBe(true);

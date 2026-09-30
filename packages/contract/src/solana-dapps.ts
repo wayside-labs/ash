@@ -10,10 +10,12 @@ export type DappCategory =
   | "perps"
   | "oracle"
   | "rpc"
-  | "payments";
+  | "payments"
+  | "cross-chain";
 
 export type IntegrationKind =
   | "mcp-jupiter"
+  | "mcp-sodax"
   | "mcp-vendor"
   | "delegation"
   | "desk-wallet"
@@ -45,6 +47,8 @@ export const PROGRAM_IDS = {
   orcaWhirlpool: "whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyC",
   kaminoLend: "KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD",
   driftV2: "dRiftyHA39MWEi3m9aunc5MzRF1JYuBsbn6VPcn33PD",
+  sodaxAssetManager: "AnCCJjheynmGqPp6Vgat9DTirGKD4CtQzP8cwTYV8qKH",
+  sodaxIntentFiller: "ABBqXPEtnEnT2QywyRcpmwqHnGFXCpRSspL2Y4dB7YMA",
 } as const;
 
 /**
@@ -62,6 +66,18 @@ export const SOLANA_DAPPS: readonly SolanaDapp[] = [
       kind: "mcp-jupiter",
       status: "live",
       hint: "Quote and build swap transactions via @agent-rails/integrations; fund moves through execute_payment to a desk wallet or native allowance.",
+    },
+  },
+  {
+    id: "sodax",
+    name: "SODAX",
+    category: "cross-chain",
+    website: "https://sodax.com",
+    programIds: [PROGRAM_IDS.sodaxAssetManager, PROGRAM_IDS.sodaxIntentFiller],
+    integration: {
+      kind: "mcp-sodax",
+      status: "live",
+      hint: "Cross-network swaps, bridge, money market and leverage-yield vaults via @agent-rails/integrations (mcp sodax): unsigned intents for a desk wallet, recipients limited to the operator's SODAX_ALLOWED_DESTINATIONS. Mainnet only.",
     },
   },
   {
