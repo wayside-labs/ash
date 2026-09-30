@@ -22,6 +22,18 @@ export function isLikelyAddress(value: string | null | undefined): value is stri
   return typeof value === "string" && BASE58_ADDRESS.test(value) && value.length >= 43;
 }
 
+/**
+ * Canvas layout only: node positions and nodes the operator hid. The graph itself is derived
+ * from agents, `paysTo` and MCP scope (`lib/canvas-graph.ts`), never stored.
+ */
+export const workflowLayoutSchema = z.object({
+  positions: z
+    .record(z.string().max(80), z.object({ x: z.number().finite(), y: z.number().finite() }))
+    .default({}),
+  hidden: z.array(z.string().max(80)).max(500).default([]),
+});
+export type WorkflowLayout = z.infer<typeof workflowLayoutSchema>;
+
 export const workflowSchema = z.object({
   id: z.string(),
   name: z.string().min(1),
@@ -34,6 +46,7 @@ export const workflowSchema = z.object({
   demo: z.boolean().default(false),
   /** Only rendered for demo rows; real rows read their balance from the RPC. */
   demoBalanceUsd: z.number().nullable().default(null),
+  layout: workflowLayoutSchema.default({ positions: {}, hidden: [] }),
   createdAt: z.string(),
 });
 
@@ -82,6 +95,12 @@ export const mcpServerSchema = z.object({
   demo: z.boolean().default(false),
 });
 
+/**
+ * A knowledge-base document. The text itself is chunked into a separate store
+ * (`lib/server/knowledge`); this row is what the list shows and what scope filters on.
+ * `mode` says how it is searchable: `vector` with Voyage embeddings, `lexical` (BM25)
+ * without — never a pretence of one as the other.
+ */
 export const ragDocumentSchema = z.object({
   id: z.string(),
   name: z.string().min(1),
@@ -89,8 +108,14 @@ export const ragDocumentSchema = z.object({
   status: z.enum(["indexed", "indexing", "error"]).default("indexing"),
   scope: scopeSchema.default("global"),
   scopeName: z.string().default("All"),
+  /** The URL for `url` documents; null for uploads. */
   source: z.string().nullable().default(null),
   demo: z.boolean().default(false),
+  error: z.string().nullable().default(null),
+  chunkCount: z.number().int().nonnegative().default(0),
+  mode: z.enum(["vector", "lexical"]).nullable().default(null),
+  bytes: z.number().int().nonnegative().default(0),
+  indexedAt: z.string().nullable().default(null),
 });
 
 export const skillSchema = z.object({
@@ -99,9 +124,9 @@ export const skillSchema = z.object({
   description: z.string().default(""),
   icon: z.string().default("🧩"),
   /**
-   * The skill itself: Markdown injected into the agent's system prompt. The
-   * description is the one-liner that decides *whether* to load it; this is
-   * what the agent actually reads.
+   * The skill itself: the Markdown body of a `SKILL.md`, exported into the runner
+   * bundle (`.claude/skills/<slug>/`) of every agent in scope. The description is the
+   * one-liner that decides *whether* the agent loads it; this is what it then reads.
    */
   content: z.string().default(""),
   scope: scopeSchema.default("global"),
@@ -118,14 +143,63 @@ export const apiKeySchema = z.object({
   createdAt: z.string(),
 });
 
-export const integrationSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  description: z.string().default(""),
-  icon: z.string().default("🔌"),
-  url: z.string().default(""),
-  connected: z.boolean().default(false),
-});
+export const channelKindSchema = z.enum(["webhook", "slack", "telegram", "email"]);
+export type ChannelKind = z.infer<typeof channelKindSchema>;
+
+export const CHANNEL_EVENT_KINDS = [
+  "payment_denied",
+  "headroom_low",
+  "payment_review_required",
+  "limit_increase_requested",
+] as const;
+
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/** `<bot token>#<chat id>`: a bot token already contains a colon. */
+const TELEGRAM = /^\d+:[\w-]{20,}#-?\d+$/;
+
+function validTarget(kind: ChannelKind, target: string): boolean {
+  if (target === "") return true;
+  switch (kind) {
+    case "webhook":
+      return URL.canParse(target) && new URL(target).protocol === "https:";
+    case "slack":
+      return URL.canParse(target) && new URL(target).host === "hooks.slack.com";
+    case "telegram":
+      return TELEGRAM.test(target);
+    case "email":
+      return EMAIL.test(target);
+  }
+}
+
+/**
+ * A notification channel. Agent events reach the dashboard through the ingest API and are
+ * fanned out to every enabled channel subscribed to their kind (`lib/server/notify`).
+ *
+ * `target` is where to deliver: a webhook URL, a Slack incoming-webhook URL,
+ * `<bot token>#<chat id>` for Telegram, or an email address. The first three carry a
+ * credential in the string itself, so `target` is the same secret class as an MCP env
+ * value — masked on every read.
+ */
+export const integrationSchema = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    description: z.string().default(""),
+    icon: z.string().default("🔌"),
+    /** Legacy display field from before channels; unused. */
+    url: z.string().default(""),
+    connected: z.boolean().default(false),
+    kind: channelKindSchema.default("webhook"),
+    target: z.string().default(""),
+    events: z.array(z.enum(CHANNEL_EVENT_KINDS)).default([...CHANNEL_EVENT_KINDS]),
+    enabled: z.boolean().default(true),
+    lastDeliveryAt: z.string().nullable().default(null),
+    lastError: z.string().nullable().default(null),
+  })
+  .refine((row) => validTarget(row.kind, row.target), {
+    message: "target does not match the channel kind",
+    path: ["target"],
+  });
 
 export const profileSchema = z.object({
   displayName: z.string().default(""),
@@ -145,8 +219,37 @@ export const settingsSchema = z.object({
   language: z.enum(["pt-BR", "en"]).default("en"),
   emailNotifications: z.boolean().default(false),
   limitAlerts: z.boolean().default(true),
-  /** Generic HTTPS webhook for payment_denied and headroom_low alerts (Slack incoming URLs work). */
+  /**
+   * Superseded by channels (`integrations`); kept so an older dashboard.json still parses.
+   * The JSON store moves a non-empty value into a webhook channel on first read.
+   */
   alertWebhookUrl: alertWebhookUrlSchema,
+});
+
+/** One agent row a workflow template materializes when the operator clicks Use. */
+export const templateAgentDefSchema = z.object({
+  name: z.string().min(1),
+  role: z.string().default(""),
+  railsMcp: z.enum(["none", "readonly", "full"]).default("none"),
+  dailyLimitUsd: z.number().nonnegative().default(0),
+  paysTo: z.array(z.string()).default([]),
+});
+
+/**
+ * Operator-defined preset. Built-in starters ship from `lib/templates/catalog.ts` and are
+ * not duplicated here unless the user saves a copy.
+ */
+export const workflowTemplateSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1),
+  description: z.string().default(""),
+  icon: z.string().default("📋"),
+  summary: z.string().default(""),
+  howItWorks: z.string().default(""),
+  setupSteps: z.array(z.string()).default([]),
+  agents: z.array(templateAgentDefSchema).default([]),
+  docsPath: z.string().nullable().default(null),
+  createdAt: z.string(),
 });
 
 export const dashboardStateSchema = z.object({
@@ -158,6 +261,7 @@ export const dashboardStateSchema = z.object({
   skills: z.array(skillSchema).default([]),
   apiKeys: z.array(apiKeySchema).default([]),
   integrations: z.array(integrationSchema).default([]),
+  templates: z.array(workflowTemplateSchema).default([]),
   profile: profileSchema.default({ displayName: "", company: "", bio: "", email: "" }),
   settings: settingsSchema.default({
     language: "en",
@@ -175,6 +279,8 @@ export type StoredRagDocument = z.infer<typeof ragDocumentSchema>;
 export type StoredSkill = z.infer<typeof skillSchema>;
 export type StoredApiKey = z.infer<typeof apiKeySchema>;
 export type StoredIntegration = z.infer<typeof integrationSchema>;
+export type StoredWorkflowTemplate = z.infer<typeof workflowTemplateSchema>;
+export type TemplateAgentDef = z.infer<typeof templateAgentDefSchema>;
 export type Profile = z.infer<typeof profileSchema>;
 export type Settings = z.infer<typeof settingsSchema>;
 
@@ -187,6 +293,7 @@ export const RESOURCE_SCHEMAS = {
   skills: skillSchema,
   apiKeys: apiKeySchema,
   integrations: integrationSchema,
+  templates: workflowTemplateSchema,
 } as const;
 
 export type ResourceName = keyof typeof RESOURCE_SCHEMAS;

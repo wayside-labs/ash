@@ -1,0 +1,33 @@
+{
+  "name": "@agent-rails/vendors",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Three pay-per-use vendor services, their MCP servers and a scripted buyer: real counterparties for exercising Agent Rails end to end.",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "type": "module",
+  "bin": {
+    "agent-rails-vendor": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "start": "node dist/cli.js"
+  },
+  "dependencies": {
+    "@agent-rails/client": "workspace:*",
+    "@agent-rails/contract": "workspace:*",
+    "@agent-rails/sdk": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@solana/kit": "^8.2.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsdown": "^0.15.0",
+    "vitest": "^4.0.0"
+  }
+}

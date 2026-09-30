@@ -10,7 +10,7 @@ import {
   resolveAgentSessionAddress,
   resolveAgentSigningKey,
 } from "@/lib/agent-wallet";
-import { runnerConfigFilename } from "@/lib/mcp-config";
+import { runnerBundleFilename, runnerConfigFilename } from "@/lib/mcp-config";
 import type { ResourceName, SolanaCluster } from "@/lib/schema";
 import type { MaskedState } from "@/lib/server/present";
 import type { SolPrice } from "@/lib/server/price";
@@ -86,6 +86,32 @@ export function useDeleteResource(resource: ResourceName) {
   );
 }
 
+export type ApplyTemplateVars = {
+  templateId: string;
+  workflowName: string;
+  cluster: SolanaCluster;
+  ownerAddress: string | null;
+  treasuryAddress: string | null;
+};
+
+export type ApplyTemplateResult = {
+  workflowId: string;
+  setupSteps: string[];
+  docsPath: string | null;
+};
+
+export function useApplyTemplate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: ApplyTemplateVars) =>
+      request<ApplyTemplateResult & { state: MaskedState }>("/api/templates/apply", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    onSuccess: (res) => queryClient.setQueryData(["state"], res.state),
+  });
+}
+
 /**
  * Downloads the workflow's `.mcp.json`. The body is fetched as an opaque blob
  * rather than parsed: it is the only response that carries unmasked env values,
@@ -95,12 +121,14 @@ export function useDeleteResource(resource: ResourceName) {
 export type RunnerExportTarget = {
   workflow: { id: string; name: string };
   agent?: { id: string; name: string };
+  /** `zip` adds the in-scope skills as `.claude/skills/<slug>/SKILL.md`. */
+  format?: "json" | "zip";
 };
 
 export function useExportRunnerConfig() {
   return useMutation({
-    mutationFn: async ({ workflow, agent }: RunnerExportTarget) => {
-      const params = new URLSearchParams({ workflowId: workflow.id });
+    mutationFn: async ({ workflow, agent, format = "json" }: RunnerExportTarget) => {
+      const params = new URLSearchParams({ workflowId: workflow.id, format });
       if (agent) params.set("agentId", agent.id);
       const res = await fetch(`/api/export/runner-config?${params.toString()}`);
       if (!res.ok) {
@@ -109,15 +137,19 @@ export function useExportRunnerConfig() {
       }
       const servers = Number(res.headers.get("X-Runner-Servers") ?? 0);
       const skipped = Number(res.headers.get("X-Runner-Skipped") ?? 0);
+      const skills = Number(res.headers.get("X-Runner-Skills") ?? 0);
 
       const url = URL.createObjectURL(await res.blob());
       const a = document.createElement("a");
       a.href = url;
-      a.download = runnerConfigFilename(workflow.name, agent?.name);
+      a.download =
+        format === "zip"
+          ? runnerBundleFilename(workflow.name, agent?.name)
+          : runnerConfigFilename(workflow.name, agent?.name);
       a.click();
       URL.revokeObjectURL(url);
 
-      return { servers, skipped };
+      return { servers, skipped, skills };
     },
   });
 }

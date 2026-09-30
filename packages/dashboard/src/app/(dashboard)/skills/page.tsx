@@ -1,7 +1,7 @@
 "use client";
 
-import { Brain, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { Brain, Download, FileUp, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { useRef, useState } from "react";
 import { DemoBadge } from "@/components/shared/demo-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
@@ -35,6 +35,7 @@ import {
   useUpdateResource,
 } from "@/hooks/use-dashboard";
 import { useTranslation } from "@/i18n/locale-provider";
+import { parseSkillMarkdown, renderSkillMarkdown, skillSlug } from "@/lib/skill-md";
 import type { Scope, Skill } from "@/lib/types";
 
 interface SkillDraft {
@@ -165,8 +166,58 @@ export default function SkillsPage() {
   const toast = useToast();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Skill | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState(false);
 
   const skills = data?.skills ?? [];
+
+  /**
+   * One or more `SKILL.md` files become skills, disabled and global: importing must not
+   * change what any agent does until someone switches the skill on and scopes it.
+   */
+  const importFiles = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setImporting(true);
+    const failed: string[] = [];
+    let imported = 0;
+    try {
+      for (const file of Array.from(files)) {
+        const parsed = parseSkillMarkdown(await file.text());
+        if (!parsed.ok) {
+          failed.push(`${file.name}: ${parsed.error}`);
+          continue;
+        }
+        try {
+          await create.mutateAsync({
+            ...parsed.skill,
+            icon: "🧩",
+            scope: "global",
+            enabled: false,
+            demo: false,
+          });
+          imported += 1;
+        } catch (error) {
+          failed.push(`${file.name}: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
+    } finally {
+      setImporting(false);
+      if (fileInput.current) fileInput.current.value = "";
+    }
+    if (imported > 0) toast(t("skills.imported", { count: imported }));
+    if (failed.length > 0) toast(t("skills.importFailed", { detail: failed.join("; ") }), "error");
+  };
+
+  const downloadSkill = (skill: Skill) => {
+    const url = URL.createObjectURL(
+      new Blob([renderSkillMarkdown(skill)], { type: "text/markdown;charset=utf-8" }),
+    );
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${skillSlug(skill.name)}.SKILL.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const toggle = async (skill: Skill, enabled: boolean) => {
     try {
@@ -255,6 +306,15 @@ export default function SkillsPage() {
                 <Button
                   variant="ghost"
                   size="icon"
+                  aria-label={t("skills.aria.download", { name: skill.name })}
+                  disabled={!skill.content.trim()}
+                  onClick={() => downloadSkill(skill)}
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
                   aria-label={t("skills.aria.edit", { name: skill.name })}
                   onClick={() => setEditing(skill)}
                 >
@@ -281,10 +341,33 @@ export default function SkillsPage() {
         title={t("skills.title")}
         description={t("skills.description")}
         action={
-          <Button onClick={() => setOpen(true)}>
-            <Plus className="h-4 w-4" />
-            {t("skills.newSkill")}
-          </Button>
+          <div className="flex gap-2">
+            <input
+              ref={fileInput}
+              type="file"
+              accept=".md,text/markdown"
+              multiple
+              className="hidden"
+              data-testid="skill-import-input"
+              onChange={(e) => importFiles(e.target.files)}
+            />
+            <Button
+              variant="outline"
+              disabled={importing}
+              onClick={() => fileInput.current?.click()}
+            >
+              {importing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <FileUp className="h-4 w-4" />
+              )}
+              {t("skills.import")}
+            </Button>
+            <Button onClick={() => setOpen(true)}>
+              <Plus className="h-4 w-4" />
+              {t("skills.newSkill")}
+            </Button>
+          </div>
         }
       />
 

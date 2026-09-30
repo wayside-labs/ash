@@ -1,7 +1,7 @@
 import { isResourceName, RESOURCE_SCHEMAS } from "@/lib/schema";
 import { serverT } from "@/lib/server/i18n";
 import { assertSameOrigin } from "@/lib/server/origin";
-import { maskState, restoreMaskedEnv } from "@/lib/server/present";
+import { maskState, restoreMaskedEnv, restoreMaskedTarget } from "@/lib/server/present";
 import { stateAccessResponse } from "@/lib/server/state/access";
 import { mutateState } from "@/lib/server/store";
 
@@ -38,6 +38,10 @@ export async function PATCH(req: Request, { params }: Params) {
       if (resource === "mcps" && patch.env && typeof patch.env === "object") {
         const stored = (rows[index] as { env?: Record<string, string> }).env ?? {};
         patch.env = restoreMaskedEnv(patch.env as Record<string, string>, stored);
+      }
+      if (resource === "integrations" && "target" in patch) {
+        const stored = (rows[index] as { target?: string }).target ?? "";
+        patch.target = restoreMaskedTarget(patch.target, stored);
       }
 
       const parsed = RESOURCE_SCHEMAS[resource].safeParse({ ...rows[index], ...patch });

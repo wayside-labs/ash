@@ -25,7 +25,10 @@ async function readRaw(): Promise<DashboardState> {
   const path = storePath();
   try {
     const parsed = dashboardStateSchema.safeParse(JSON.parse(await readFile(path, "utf8")));
-    if (parsed.success) return parsed.data;
+    if (parsed.success) {
+      if (migrateAlertWebhook(parsed.data)) await persist(parsed.data);
+      return parsed.data;
+    }
     await rename(path, `${path}.corrupt-${Date.now()}`).catch(() => {});
   } catch (error) {
     const code = (error as NodeJS.ErrnoException).code;
@@ -34,6 +37,34 @@ async function readRaw(): Promise<DashboardState> {
   const seeded = seedState();
   await persist(seeded);
   return seeded;
+}
+
+/**
+ * The single settings webhook predates channels. Moved once, on the first read that finds
+ * it, into a webhook channel subscribed to the same two alerts it used to carry — and
+ * cleared, so it is not delivered twice.
+ */
+export function migrateAlertWebhook(state: DashboardState): boolean {
+  const url = state.settings.alertWebhookUrl.trim();
+  if (!url) return false;
+  if (!state.integrations.some((channel) => channel.target === url)) {
+    state.integrations.push({
+      id: `int_${randomUUID().slice(0, 8)}`,
+      name: "Alert webhook",
+      description: "",
+      icon: "🔔",
+      url: "",
+      connected: true,
+      kind: url.startsWith("https://hooks.slack.com/") ? "slack" : "webhook",
+      target: url,
+      events: ["payment_denied", "headroom_low"],
+      enabled: true,
+      lastDeliveryAt: null,
+      lastError: null,
+    });
+  }
+  state.settings.alertWebhookUrl = "";
+  return true;
 }
 
 async function persist(state: DashboardState): Promise<void> {

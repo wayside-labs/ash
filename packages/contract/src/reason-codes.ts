@@ -85,6 +85,8 @@ export const SDK_REASON_CODES = {
   DRY_RUN_REQUIRED: "DRY_RUN_REQUIRED",
   /** Above the configured value band a person has to approve it. Terminal for the agent. */
   REVIEW_REQUIRED: "REVIEW_REQUIRED",
+  /** A person reviewed this exact payment (by intent id) and refused it. Terminal. */
+  REVIEW_REJECTED: "REVIEW_REJECTED",
   /** A soft policy hook timed out or threw. Denies by default (ADR-005 section 6). */
   HOOK_UNAVAILABLE: "HOOK_UNAVAILABLE",
   /**

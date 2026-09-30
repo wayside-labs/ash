@@ -57,6 +57,7 @@ describe("Vercel AI SDK adapter", () => {
       getPaymentStatus: async (input) => ({ intent_id: input.intent_id, status: "settled" }),
       checkPayment: async (input) => ({ wouldAccept: true, input }),
       executePayment: async (input) => ({ outcome: "settled", input }),
+      requestLimitIncrease: async (input) => ({ requested: false, input }),
     });
 
     expect(Object.keys(tools).sort()).toEqual([...AGENT_TOOL_NAMES].sort());

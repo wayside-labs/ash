@@ -93,33 +93,18 @@ export function NodePalette({ workflowId, className }: { workflowId: string; cla
     },
     {
       type: "action",
-      labelKey: "flowCanvas.palette.jupiter",
-      descriptionKey: "flowCanvas.palette.actionHint",
+      labelKey: "flowCanvas.palette.tool",
+      descriptionKey: "flowCanvas.palette.toolHint",
       icon: Zap,
       accent: "text-accent",
+      // The drop opens a picker of real MCPs; this payload only says "a tool".
       buildPayload: () => ({
         type: "action",
         data: {
           kind: "action",
-          name: "Jupiter Swap",
-          provider: "Jupiter",
-          enabled: true,
-        },
-      }),
-    },
-    {
-      type: "action",
-      labelKey: "flowCanvas.palette.kamino",
-      descriptionKey: "flowCanvas.palette.actionHint",
-      icon: Zap,
-      accent: "text-accent",
-      buildPayload: () => ({
-        type: "action",
-        data: {
-          kind: "action",
-          name: "Kamino Lend",
-          provider: "Kamino",
-          enabled: true,
+          name: t("flowCanvas.palette.tool"),
+          provider: "MCP",
+          enabled: false,
         },
       }),
     },

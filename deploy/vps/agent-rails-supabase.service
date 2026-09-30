@@ -1,0 +1,24 @@
+# Self-hosted Supabase (trimmed) and the agent-rails Cloudflare tunnel, as one compose project.
+# Root-owned on purpose: running compose needs the docker socket, which is root-equivalent, and
+# ADR-019 keeps every person and service user out of the docker group. So root runs it, and only
+# from files root owns (/srv/agent-rails/supabase is root:root 0750).
+[Unit]
+Description=Agent Rails Supabase stack and tunnel
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# First start pulls ~1 GB of images.
+TimeoutStartSec=900
+ExecStart=/srv/agent-rails/supabase/stack.sh up
+# The tunnel comes up only after the gateway has been probed; a failed probe fails the unit and
+# leaves everything on loopback.
+ExecStartPost=/srv/agent-rails/supabase/check-gateway.sh
+ExecStartPost=/srv/agent-rails/supabase/stack.sh tunnel
+ExecStop=/srv/agent-rails/supabase/stack.sh down
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,57 @@
+# Layered over upstream's docker-compose.yml (pinned in upstream.lock), never an edit of it:
+#   docker compose -p agent-rails -f docker-compose.yml -f docker-compose.agent-rails.yml \
+#     --env-file /etc/agent-rails/supabase.env ...
+# agent-rails-supabase.service is the only thing that runs this, as root: no person or service
+# user is in the docker group (ADR-019, one machine shared with the ash stack).
+name: agent-rails
+
+services:
+  # The dashboard uses Auth (Google + Solana web3) and PostgREST only. What remains is the
+  # trimmed set measured at ~1.3 GB on the sibling VPS; Studio and meta stay for administration
+  # and are reachable only through `ssh -L` (the tunnel forwards /auth/v1 and /rest/v1 alone).
+  realtime: { profiles: [unused] }
+  storage: { profiles: [unused] }
+  imgproxy: { profiles: [unused] }
+  functions: { profiles: [unused] }
+  supavisor: { profiles: [unused] }
+
+  # Prefixed so they cannot collide with anything the ash stack adds to this host later.
+  studio: { container_name: agent-rails-supabase-studio }
+  api-gw: { container_name: agent-rails-supabase-gw }
+  rest: { container_name: agent-rails-supabase-rest }
+  meta: { container_name: agent-rails-supabase-meta }
+
+  auth:
+    container_name: agent-rails-supabase-auth
+    # Hosted runs v2.197.0 (supabase/.temp/gotrue-version). Importing its auth rows into an older
+    # GoTrue would hit columns the older migrations never created, so match or lead it.
+    image: supabase/gotrue:v2.197.0
+    environment:
+      GOTRUE_EXTERNAL_WEB3_SOLANA_ENABLED: "true"
+      GOTRUE_EXTERNAL_GOOGLE_ENABLED: ${GOOGLE_ENABLED}
+      GOTRUE_EXTERNAL_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOTRUE_EXTERNAL_GOOGLE_SECRET: ${GOOGLE_SECRET}
+      GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI: ${API_EXTERNAL_URL}/callback
+
+  db:
+    container_name: agent-rails-supabase-db
+    # Same build as hosted (supabase/.temp/postgres-version), so the cutover dump restores into
+    # the extension versions it was taken from.
+    image: supabase/postgres:17.6.1.166
+    # Loopback only, for agent-rails-backup (runs as the agent-rails user, which has no docker
+    # access and so cannot `docker exec`). Spelled out rather than trusting daemon.json's default.
+    ports:
+      - 127.0.0.1:54322:5432
+
+  # Started by the unit only after check-gateway.sh passes, so nothing is public before the
+  # gateway has been probed. Host networking reaches the dashboard on 127.0.0.1:3000 and the
+  # gateway on 127.0.0.1:8000; the hostnames and path rules live in Cloudflare (ash's account).
+  tunnel:
+    container_name: agent-rails-tunnel
+    # Same release as ash's tunnel, so both move together.
+    image: cloudflare/cloudflared:2026.9.3
+    profiles: [tunnel]
+    restart: unless-stopped
+    network_mode: host
+    env_file: /etc/agent-rails/tunnel.env
+    command: ["tunnel", "--no-autoupdate", "run"]

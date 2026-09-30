@@ -1,0 +1,13 @@
+[Unit]
+Description=Agent Rails scripted buyer (%i) schedule
+
+[Timer]
+OnBootSec=5min
+# Every 15 minutes is ~96 payments a day per vendor: enough to exercise window rollover
+# without eating a devnet faucet. Tighten with a drop-in, not by editing this file.
+OnUnitActiveSec=15min
+RandomizedDelaySec=60
+Persistent=false
+
+[Install]
+WantedBy=timers.target

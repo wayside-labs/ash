@@ -1,4 +1,5 @@
 import type { DashboardState } from "@/lib/schema";
+import { BUILTIN_SKILLS } from "./builtin-skills";
 
 const NOW = "2026-09-20T00:00:00.000Z";
 
@@ -22,6 +23,7 @@ export function seedState(): DashboardState {
         cluster: "devnet",
         demo: true,
         demoBalanceUsd: 2450,
+        layout: { positions: {}, hidden: [] },
         createdAt: NOW,
       },
       {
@@ -34,6 +36,7 @@ export function seedState(): DashboardState {
         cluster: "devnet",
         demo: true,
         demoBalanceUsd: 550,
+        layout: { positions: {}, hidden: [] },
         createdAt: NOW,
       },
       {
@@ -46,6 +49,7 @@ export function seedState(): DashboardState {
         cluster: "devnet",
         demo: true,
         demoBalanceUsd: 2800,
+        layout: { positions: {}, hidden: [] },
         createdAt: NOW,
       },
     ],
@@ -100,6 +104,40 @@ export function seedState(): DashboardState {
         demo: false,
       },
       {
+        id: "m_knowledge",
+        name: "Knowledge base",
+        description: "Read-only search over the documents on the Knowledge page",
+        enabled: false,
+        scope: "global",
+        scopeName: null,
+        // Path relative to a checkout, like the MCP snippet. The export fills in the
+        // dashboard URL, the workflow token and, per agent, the agent's name.
+        command: "node",
+        args: ["packages/knowledge-mcp/dist/cli.js"],
+        env: {},
+        demo: false,
+      },
+      ...(["oracle", "notary", "compute"] as const).map((vendor, i) => ({
+        id: `m_vendor_${vendor}`,
+        name: `Vendor: ${vendor}`,
+        description: [
+          "Pay-per-quote prices (packages/vendors)",
+          "Document hash timestamps (packages/vendors)",
+          "Prepaid credits for text jobs (packages/vendors)",
+        ][i] as string,
+        enabled: false,
+        scope: "global" as const,
+        scopeName: null,
+        // Holds no key: buying still goes through the Agent Rails payment MCP.
+        command: "node",
+        args: ["packages/vendors/dist/cli.js", "mcp", vendor],
+        env: {
+          [`${vendor.toUpperCase()}_URL`]: `http://127.0.0.1:${4101 + i}`,
+          AGENT_RAILS_SESSION: "",
+        },
+        demo: false,
+      })),
+      {
         id: "m_jupiter",
         name: "Jupiter Swap",
         description: "Swap tokens within the agent's limit",
@@ -141,68 +179,7 @@ export function seedState(): DashboardState {
     // schema so an existing dashboard.json still parses.
     rag: [],
     skills: [
-      {
-        id: "s_pagar",
-        name: "Make payment",
-        description: "Execute payment within limits",
-        icon: "\u{1F4B0}",
-        scope: "global",
-        scopeName: null,
-        enabled: true,
-        demo: false,
-        content: [
-          "## When to use",
-          "",
-          "The user asked you to pay someone, settle an invoice, or send funds.",
-          "",
-          "## How",
-          "",
-          "1. Resolve the destination to a base58 address. Never guess one.",
-          "2. Call `create_payment_intent` with the amount, mint and destination.",
-          "3. Read the preflight result back to the user **before** executing:",
-          "   it reports the per-tx, windowed and lifetime headroom the policy",
-          "   leaves, and refusing early is cheaper than a failed transaction.",
-          "4. Execute only after the user confirms the quoted amount.",
-          "",
-          "## Rules",
-          "",
-          "- One `intent_id` per payment. Retrying reuses the same id, so a",
-          "  duplicate never becomes a second transfer.",
-          "- A refusal is an answer. Report the reason code verbatim and stop;",
-          "  do not try a smaller amount to feel your way around a limit.",
-          "- You cannot raise a limit, unpause, or withdraw. If the user asks,",
-          "  tell them it is an owner action in the dashboard.",
-        ].join("\n"),
-      },
-      {
-        id: "s_saldo",
-        name: "Check balance",
-        description: "Check vault or agent balance",
-        icon: "\u{1F4CA}",
-        scope: "global",
-        scopeName: null,
-        enabled: true,
-        demo: false,
-        content: [
-          "## When to use",
-          "",
-          'Any question about "how much is left", remaining limit, or whether a',
-          "payment would fit.",
-          "",
-          "## How",
-          "",
-          "1. Read the vault balance and the session's remaining headroom.",
-          "2. Answer with both: the vault can hold plenty while the window is",
-          "   already spent, and only the smaller of the two is spendable now.",
-          "3. State the window that applies and when it rolls over. Windows are",
-          "   fixed epoch buckets, not a rolling 24h.",
-          "",
-          "## Rules",
-          "",
-          "- Give figures in the mint's own units, with the ticker.",
-          "- If a read fails, say so. Never fill a gap with an estimate.",
-        ].join("\n"),
-      },
+      ...BUILTIN_SKILLS,
       {
         id: "s_pool",
         name: "Analyze liquidity pool",
@@ -257,6 +234,7 @@ export function seedState(): DashboardState {
         ].join("\n"),
       },
     ],
+    templates: [],
     apiKeys: [],
     integrations: [],
     profile: { displayName: "", company: "", bio: "", email: "" },

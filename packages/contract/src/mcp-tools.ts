@@ -99,6 +99,24 @@ export const mcpListDestinationsSchema = z.strictObject({});
 export type McpListDestinationsInput = z.infer<typeof mcpListDestinationsSchema>;
 
 /**
+ * MCP tool input for `agent_rails_request_limit_increase` (ADR-007's `request_*` pattern).
+ *
+ * It grants nothing and changes nothing: the server forwards the request to the operator's
+ * dashboard as an event, and a person decides — through the CLI or the dashboard — whether
+ * any limit moves. `amount` is what the agent says it needs, advisory only.
+ */
+export const mcpRequestLimitIncreaseSchema = z.strictObject({
+  reason: z
+    .string()
+    .min(1)
+    .max(500)
+    .describe("Why the current limits block the task, in one or two sentences"),
+  mint_ref: mintRefSchema.optional(),
+  amount: humanAmountSchema.optional(),
+});
+export type McpRequestLimitIncreaseInput = z.infer<typeof mcpRequestLimitIncreaseSchema>;
+
+/**
  * The complete set of tool names this project exposes to an agent.
  *
  * Asserted against the server's registrations in CI. The list is short on purpose: every
@@ -114,6 +132,7 @@ export const AGENT_TOOL_NAMES = [
   "agent_rails_get_payment_status",
   "agent_rails_check_payment",
   "agent_rails_execute_payment",
+  "agent_rails_request_limit_increase",
 ] as const;
 
 export type AgentToolName = (typeof AGENT_TOOL_NAMES)[number];

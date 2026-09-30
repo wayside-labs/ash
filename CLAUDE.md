@@ -23,6 +23,8 @@ agent-rails/
     ├── cli/                     # operator surface: `init` bootstrap plus day-2 treasury/policy/session commands
     ├── dashboard/               # Next.js operator dashboard (hosted tenancy, ADR-017)
     ├── adapters/vercel-ai/      # @agent-rails/adapter-vercel-ai — Vercel AI SDK tools (ADR-009)
+    ├── knowledge-mcp/           # read-only knowledge_search MCP against the dashboard (private)
+    ├── vendors/                 # three demo vendors + their MCPs + a scripted buyer (private)
     └── e2e/                     # Surfpool end-to-end suite (test pyramid layer 5, nightly)
 ```
 
@@ -102,7 +104,7 @@ Coverage thresholds enforced in CI: policy crate ≥95% lines (`cargo llvm-cov`,
 ## Key invariants to preserve when editing
 
 - **Loosening flows downhill only**: owner sets ceilings → operator sets policy ≤ ceiling → the agent sets nothing. Any code path that lets a lower-privileged role raise a limit is a bug.
-- **The agent-facing MCP/SDK surface has zero privilege-escalating tools.** `create_session`, `update_policy`, `unpause`, `withdraw`, and allowlist edits must never be exposed as agent tools — this is enforced by convention, not by the type system, so don't add them to `packages/mcp/src/tools/` or `packages/contract/src/mcp-tools.ts`.
+- **The agent-facing MCP/SDK surface has zero privilege-escalating tools.** It has seven tools; the seventh, `request_limit_increase`, only emits an event (ADR-022). `create_session`, `update_policy`, `unpause`, `withdraw`, and allowlist edits must never be exposed as agent tools — this is enforced by convention, not by the type system, so don't add them to `packages/mcp/src/tools/` or `packages/contract/src/mcp-tools.ts`.
 - **Idempotency by construction**: every payment path must go through `IntentReceipt` init-on-`intent_id`; never add a payment path that skips receipt creation.
 - **Pause is an agent kill switch, not an owner lock.** Owner withdrawal must keep working even when `paused` is true.
 - Windows are fixed epoch buckets, not rolling — don't reintroduce ring-buffer/rolling-window logic (rejected for CU cost and fuzz-resistance, see ARCHITECTURE.md §6).

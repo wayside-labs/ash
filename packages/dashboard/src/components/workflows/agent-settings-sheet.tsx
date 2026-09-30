@@ -9,6 +9,7 @@ import {
   ExternalLink,
   Gauge,
   Loader2,
+  Package,
   Pause,
   Play,
   Settings2,
@@ -45,7 +46,7 @@ import {
 import { intlLocale } from "@/i18n";
 import { useTranslation } from "@/i18n/locale-provider";
 import { isPayingAgent } from "@/lib/agent-wallet";
-import { runnerConfigFilename } from "@/lib/mcp-config";
+import { runnerBundleFilename, runnerConfigFilename } from "@/lib/mcp-config";
 import { isLikelyAddress } from "@/lib/schema";
 import { appliesToAgent, scopeBadgeLabel } from "@/lib/scope";
 import type { VaultTransferKind } from "@/lib/server/solana";
@@ -539,6 +540,35 @@ export function AgentSettingsSheet({
                     >
                       <Download className="h-3.5 w-3.5" />
                       {t("agentSettings.exportRunner")}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={exportRunner.isPending}
+                      onClick={async () => {
+                        try {
+                          const { servers, skills } = await exportRunner.mutateAsync({
+                            workflow: { id: workflow.id, name: workflow.name },
+                            agent: { id: agent.id, name: agent.name },
+                            format: "zip",
+                          });
+                          toast(
+                            t("agentSettings.exportBundleDone", {
+                              servers,
+                              skills,
+                              file: runnerBundleFilename(workflow.name, agent.name),
+                            }),
+                          );
+                        } catch (error) {
+                          toast(
+                            error instanceof Error ? error.message : t("common.failedToExport"),
+                            "error",
+                          );
+                        }
+                      }}
+                    >
+                      <Package className="h-3.5 w-3.5" />
+                      {t("agentSettings.exportBundle")}
                     </Button>
                     <Button variant="outline" size="sm" asChild>
                       <Link href="/mcps">

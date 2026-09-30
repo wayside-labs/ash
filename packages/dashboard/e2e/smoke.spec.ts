@@ -7,6 +7,7 @@ import { expect, stubChain, stubChat, stubWallet, t, test } from "./fixtures";
  * reach, because these pages are assembled from hooks and providers.
  */
 const ROUTES: { path: string; heading: string }[] = [
+  { path: "/templates", heading: t("templates.title") },
   { path: "/workflows", heading: t("workflows.title") },
   { path: "/agents", heading: t("agents.title") },
   { path: "/treasury", heading: t("treasury.title") },

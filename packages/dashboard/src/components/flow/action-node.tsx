@@ -22,7 +22,9 @@ function ActionNodeComponent({ data, selected }: NodeProps<ActionNodeType>) {
         subtitle={data.provider}
       >
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[10px] uppercase tracking-wide text-muted-foreground">MCP</span>
+          <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+            {data.shared ? "MCP · shared" : "MCP"}
+          </span>
           <Badge variant={data.enabled ? "success" : "outline"} className="text-[10px]">
             {data.enabled ? "Enabled" : "Disabled"}
           </Badge>

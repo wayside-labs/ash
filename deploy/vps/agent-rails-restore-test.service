@@ -1,0 +1,8 @@
+[Unit]
+Description=Agent Rails weekly restore test of the newest nightly dump
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/agent-rails-restore-test

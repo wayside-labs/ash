@@ -1,7 +1,7 @@
 import { isResourceName, RESOURCE_SCHEMAS } from "@/lib/schema";
 import { serverT } from "@/lib/server/i18n";
 import { assertSameOrigin } from "@/lib/server/origin";
-import { MASKED_ENV_VALUE, maskState } from "@/lib/server/present";
+import { MASKED_ENV_VALUE, maskChannelTarget, maskState } from "@/lib/server/present";
 import { checkFixedWindow } from "@/lib/server/rate-limit";
 import { stateAccessResponse } from "@/lib/server/state/access";
 import { mutateState, newId } from "@/lib/server/store";
@@ -68,6 +68,10 @@ function maskOne(resource: string, row: unknown) {
         Object.entries(mcp.env).map(([key, value]) => [key, value ? MASKED_ENV_VALUE : ""]),
       ),
     };
+  }
+  if (resource === "integrations") {
+    const channel = row as { kind: string; target: string };
+    return { ...channel, target: maskChannelTarget(channel.kind, channel.target) };
   }
   return row;
 }

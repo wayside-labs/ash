@@ -2,6 +2,7 @@ import type {
   McpCheckPaymentInput,
   McpExecutePaymentInput,
   McpGetPaymentStatusInput,
+  McpRequestLimitIncreaseInput,
 } from "@agent-rails/contract";
 
 /**
@@ -15,4 +16,6 @@ export type AgentRailsToolsBackend = {
   getPaymentStatus: (input: McpGetPaymentStatusInput) => Promise<unknown>;
   checkPayment: (input: McpCheckPaymentInput) => Promise<unknown>;
   executePayment: (input: McpExecutePaymentInput) => Promise<unknown>;
+  /** Forwards a budget request to the operator; must not change any limit. */
+  requestLimitIncrease: (input: McpRequestLimitIncreaseInput) => Promise<unknown>;
 };

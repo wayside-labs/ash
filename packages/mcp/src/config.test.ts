@@ -113,3 +113,31 @@ describe("loadConfigFromEnv", () => {
     );
   });
 });
+
+describe("ingest configuration", () => {
+  it("takes the dashboard URL and token together, trimming a trailing slash", () => {
+    const config = loadConfigFromEnv({
+      ...baseEnv,
+      AGENT_RAILS_INGEST_URL: "https://dash.example/api/ingest/",
+      AGENT_RAILS_INGEST_TOKEN: "tok",
+    });
+    expect(config.ingest).toEqual({ url: "https://dash.example/api/ingest", token: "tok" });
+  });
+
+  it("refuses one without the other", () => {
+    expect(() =>
+      loadConfigFromEnv({ ...baseEnv, AGENT_RAILS_INGEST_URL: "https://dash.example/api/ingest" }),
+    ).toThrow(/go together/);
+  });
+
+  it("refuses to send a bearer token over plain HTTP except to loopback", () => {
+    const env = { ...baseEnv, AGENT_RAILS_INGEST_TOKEN: "tok" };
+    expect(() =>
+      loadConfigFromEnv({ ...env, AGENT_RAILS_INGEST_URL: "http://dash.example/api/ingest" }),
+    ).toThrow(/https/);
+    expect(
+      loadConfigFromEnv({ ...env, AGENT_RAILS_INGEST_URL: "http://127.0.0.1:3000/api/ingest" })
+        .ingest,
+    ).toBeDefined();
+  });
+});
