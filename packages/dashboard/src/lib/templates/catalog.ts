@@ -5,7 +5,8 @@ type WorkflowTemplate = StoredWorkflowTemplate;
 export type BuiltinTemplateId =
   | "builtin:earn-bounty-hunter"
   | "builtin:dca-sol"
-  | "builtin:defi-yield-rebalance";
+  | "builtin:defi-yield-rebalance"
+  | "builtin:solana-workstation";
 
 /** Prefix for built-in ids so they never collide with stored `tpl_*` rows. */
 export const BUILTIN_TEMPLATE_PREFIX = "builtin:";
@@ -19,6 +20,30 @@ const EARN_AGENTS: TemplateAgentDef[] = [
     railsMcp: "full",
     dailyLimitUsd: 50,
     paysTo: ["RPC credits", "Inference", "Hosting"],
+  },
+];
+
+const WORKSTATION_AGENTS: TemplateAgentDef[] = [
+  {
+    name: "Orchestrator",
+    role: "Workstation lead",
+    railsMcp: "readonly",
+    dailyLimitUsd: 0,
+    paysTo: [],
+  },
+  {
+    name: "Executor",
+    role: "Capped on-chain executor",
+    railsMcp: "full",
+    dailyLimitUsd: 250,
+    paysTo: ["Swap desk", "Vendor services"],
+  },
+  {
+    name: "Analyst",
+    role: "Research and quotes",
+    railsMcp: "none",
+    dailyLimitUsd: 0,
+    paysTo: [],
   },
 ];
 
@@ -112,6 +137,30 @@ export const BUILTIN_TEMPLATES: Record<BuiltinTemplateId, WorkflowTemplate> = {
     agents: YIELD_AGENTS,
     docsPath: "examples/templates/defi-yield-rebalance/README.md",
     createdAt: "2026-09-28T00:00:00.000Z",
+  },
+  "builtin:solana-workstation": {
+    id: "builtin:solana-workstation",
+    name: "Solana agent workstation",
+    description:
+      "Orchestrator, analyst, and capped executor with Jupiter quotes and Agent Rails payments.",
+    icon: "🛰️",
+    summary:
+      "Rails governs spend; integrations MCP builds swaps that route through Raydium, Orca, and more.",
+    howItWorks: [
+      "The orchestrator reads policy headroom and coordinates tasks. The analyst pulls Jupiter quotes and ecosystem context.",
+      "The executor pays only allowlisted desks and vendors through execute_payment — never a pool vault.",
+      "Swaps sign from the desk wallet after treasury funds it; retries use reference ids tied to each plan.",
+    ].join("\n\n"),
+    setupSteps: [
+      "pnpm agent-rails init for devnet treasury with USDC/SOL limits sized for your desk.",
+      "Allowlist swap-desk and any vendor pay_to wallets (dest add).",
+      "Apply this template in the dashboard, then create sessions per role (orchestrator readonly, executor full).",
+      "pnpm build && use agent-rails-integrations mcp jupiter in the exported runner config.",
+      "Run guardian-watch on the workflow treasury before leaving the executor unattended.",
+    ],
+    agents: WORKSTATION_AGENTS,
+    docsPath: "examples/templates/solana-workstation/README.md",
+    createdAt: "2026-09-29T00:00:00.000Z",
   },
 };
 
