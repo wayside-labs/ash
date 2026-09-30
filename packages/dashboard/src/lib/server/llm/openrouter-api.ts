@@ -9,6 +9,8 @@
  * (README § Chat), and a transport that can call tools would undo that.
  */
 
+import type { TokenPrice } from "@/lib/billing";
+
 const ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
 
 /**
@@ -20,6 +22,20 @@ export const OPENROUTER_MODELS = [
   { id: "openrouter:anthropic/claude-sonnet-5.5", label: "Sonnet 5.5" },
   { id: "openrouter:anthropic/claude-haiku-4.5", label: "Haiku 4.5" },
 ] as const;
+
+/**
+ * List prices per token in micro-USD, from OpenRouter's `/api/v1/models` on
+ * 2026-09-30. Billing charges what OpenRouter reports in `usage.cost`; these
+ * only size the pre-flight balance check and price a turn whose stream ended
+ * before the usage chunk arrived. Recheck them when the allowlist changes.
+ */
+export const OPENROUTER_PRICES: Record<string, TokenPrice> = {
+  "openrouter:anthropic/claude-sonnet-5.5": { promptMicros: 2, completionMicros: 10 },
+  "openrouter:anthropic/claude-haiku-4.5": { promptMicros: 1, completionMicros: 5 },
+};
+
+/** Same ceiling as the Anthropic path: a chat reply, not a document. */
+export const OPENROUTER_MAX_TOKENS = 8192;
 
 export const OPENROUTER_DEFAULT_MODEL = OPENROUTER_MODELS[0].id;
 
@@ -47,13 +63,27 @@ export type OpenRouterOptions = {
   messages: { role: "user" | "assistant"; content: string }[];
   /** Stable per-tenant id, so OpenRouter can isolate abuse per user. */
   user?: string;
+  /**
+   * Called once with the final usage chunk. Never called when the stream ends
+   * without one (an abort, a mid-stream error) — the caller has to price that
+   * turn some other way, because OpenRouter still bills the tokens it produced.
+   */
+  onUsage?: (usage: OpenRouterUsage) => void;
   signal?: AbortSignal;
   fetchImpl?: typeof fetch;
+};
+
+export type OpenRouterUsage = {
+  promptTokens: number;
+  completionTokens: number;
+  /** Credits (USD) OpenRouter charged the platform key for this generation. */
+  cost?: number;
 };
 
 type Chunk = {
   choices?: { delta?: { content?: string | null } }[];
   error?: { code?: number | string; message?: string };
+  usage?: { prompt_tokens?: number; completion_tokens?: number; cost?: number };
 };
 
 function errorFrom(body: unknown, status: number): OpenRouterError {
@@ -97,7 +127,16 @@ export async function* parseSse(
 export async function* streamOpenRouter(
   options: OpenRouterOptions,
 ): AsyncGenerator<string, void, unknown> {
-  const { apiKey, model, systemPrompt, messages, user, signal, fetchImpl = fetch } = options;
+  const {
+    apiKey,
+    model,
+    systemPrompt,
+    messages,
+    user,
+    onUsage,
+    signal,
+    fetchImpl = fetch,
+  } = options;
   if (!isOpenRouterModel(model)) throw new OpenRouterError(`model not allowed: ${model}`, 400);
 
   const referer = process.env.OPENROUTER_SITE_URL;
@@ -113,8 +152,7 @@ export async function* streamOpenRouter(
     },
     body: JSON.stringify({
       model: model.slice(PREFIX.length),
-      // Same ceiling as the Anthropic path: a chat reply, not a document.
-      max_tokens: 8192,
+      max_tokens: OPENROUTER_MAX_TOKENS,
       stream: true,
       messages: [{ role: "system", content: systemPrompt }, ...messages],
       ...(user ? { user } : {}),
@@ -130,6 +168,15 @@ export async function* streamOpenRouter(
   for await (const chunk of parseSse(response.body)) {
     const parsed = chunk as Chunk;
     if (parsed.error) throw errorFrom(parsed, 502);
+    // Always sent on the last chunk now; the `usage: { include: true }` request
+    // flag is deprecated and a no-op, so it is not sent.
+    if (parsed.usage && onUsage) {
+      onUsage({
+        promptTokens: parsed.usage.prompt_tokens ?? 0,
+        completionTokens: parsed.usage.completion_tokens ?? 0,
+        ...(typeof parsed.usage.cost === "number" ? { cost: parsed.usage.cost } : {}),
+      });
+    }
     const text = parsed.choices?.[0]?.delta?.content;
     if (text) yield text;
   }

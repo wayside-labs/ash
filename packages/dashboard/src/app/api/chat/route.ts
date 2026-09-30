@@ -1,12 +1,30 @@
+import { randomUUID } from "node:crypto";
 import { z } from "zod";
-import { t } from "@/i18n";
+import { intlLocale, t } from "@/i18n";
+import { formatMicros } from "@/lib/billing";
 import { solanaClusterSchema } from "@/lib/schema";
+import type { BillingScope } from "@/lib/server/billing/ledger";
+import {
+  billingConfig,
+  claimTurn,
+  currentBalance,
+  debitTurn,
+  preflight,
+  priceTurn,
+  type ReportedUsage,
+  resolveBillingScope,
+} from "@/lib/server/billing/meter";
 import { getDashboardLocale, serverT } from "@/lib/server/i18n";
 import { streamAnthropicApi } from "@/lib/server/llm/anthropic-api";
 import { isClaudeCliModel, streamClaudeCli } from "@/lib/server/llm/claude-cli";
 import { buildContext } from "@/lib/server/llm/context";
 import { getDemoReply, getSystemPrompt, transcriptRoleLabel } from "@/lib/server/llm/i18n";
-import { OpenRouterError, streamOpenRouter } from "@/lib/server/llm/openrouter-api";
+import {
+  OPENROUTER_MAX_TOKENS,
+  OPENROUTER_PRICES,
+  OpenRouterError,
+  streamOpenRouter,
+} from "@/lib/server/llm/openrouter-api";
 import { fencedHistory, withContextLocalized } from "@/lib/server/llm/prompt";
 import {
   anthropicApiKey,
@@ -34,6 +52,27 @@ const requestSchema = z.object({
   cluster: solanaClusterSchema.default("devnet"),
   rpc: z.string().nullable().default(null),
 });
+
+/**
+ * Passes the stream through and, once it ends for any reason — done, upstream
+ * error, client abort — awaits `settle` with what was produced. Awaited inside
+ * the generator's `finally`, so `textStream` does not close the response (and a
+ * serverless function does not freeze) before the debit is written.
+ */
+async function* metered(
+  source: AsyncIterable<string>,
+  settle: (completionChars: number) => Promise<void>,
+): AsyncGenerator<string, void, unknown> {
+  let chars = 0;
+  try {
+    for await (const chunk of source) {
+      chars += chunk.length;
+      yield chunk;
+    }
+  } finally {
+    await settle(chars);
+  }
+}
 
 function textStream(
   source: AsyncIterable<string>,
@@ -147,18 +186,91 @@ export async function POST(req: Request) {
   }
 
   if (platform) {
+    const history = fencedHistory(locale, context, messages);
+    const promptChars = systemPrompt.length + history.reduce((sum, m) => sum + m.content.length, 0);
+    const config = billingConfig();
+    const price = OPENROUTER_PRICES[chosen];
+    let billing: { scope: BillingScope; release: () => void } | null = null;
+
+    if (config.enabled) {
+      // No price means an allowlisted model nobody priced: refusing is the
+      // only answer that does not serve it free.
+      if (!price) {
+        return Response.json({ error: t("llm.error.billingUnavailable", locale) }, { status: 503 });
+      }
+      const scope = await resolveBillingScope();
+      if (!scope) return unauthorizedStateResponse();
+
+      let balance: number;
+      try {
+        balance = await currentBalance(scope, config);
+      } catch (error) {
+        // Fail closed: a ledger we cannot read is not a licence to spend.
+        console.error("[chat] billing ledger unavailable:", error);
+        return Response.json({ error: t("llm.error.billingUnavailable", locale) }, { status: 503 });
+      }
+      const check = preflight(balance, price, promptChars, OPENROUTER_MAX_TOKENS, config.markupBps);
+      if (!check.ok) {
+        return Response.json(
+          {
+            error: t("llm.error.insufficientCredit", locale, {
+              balance: formatMicros(check.balanceMicros, intlLocale(locale)),
+              required: formatMicros(check.requiredMicros, intlLocale(locale)),
+            }),
+            code: "insufficient_credit",
+            balanceMicros: check.balanceMicros,
+            requiredMicros: check.requiredMicros,
+          },
+          { status: 402 },
+        );
+      }
+      const release = claimTurn(scope);
+      if (!release) {
+        return Response.json({ error: t("llm.error.turnInProgress", locale) }, { status: 409 });
+      }
+      billing = { scope, release };
+    }
+
     const slot = acquireSlot("chat");
-    if (slot instanceof Response) return slot;
+    if (slot instanceof Response) {
+      billing?.release();
+      return slot;
+    }
+
+    let usage: ReportedUsage | null = null;
+    const upstream = streamOpenRouter({
+      apiKey: platform.apiKey,
+      model: chosen,
+      systemPrompt,
+      messages: history,
+      onUsage: (reported) => {
+        usage = reported;
+      },
+      ...(platform.user ? { user: platform.user } : {}),
+      ...(req.signal ? { signal: req.signal } : {}),
+    });
+
+    const turn = billing;
+    const source =
+      turn && price
+        ? metered(upstream, async (completionChars) => {
+            try {
+              const priced = priceTurn(usage, price, promptChars, completionChars);
+              if (priced) {
+                await debitTurn(turn.scope, randomUUID(), chosen, priced, config.markupBps);
+              }
+            } catch (error) {
+              // The reply already went out; the one thing left to do with a
+              // failed write is make it loud. It is a turn served unpaid.
+              console.error("[chat] billing debit failed — turn not charged:", error);
+            } finally {
+              turn.release();
+            }
+          })
+        : upstream;
 
     const response = textStream(
-      streamOpenRouter({
-        apiKey: platform.apiKey,
-        model: chosen,
-        systemPrompt,
-        messages: fencedHistory(locale, context, messages),
-        ...(platform.user ? { user: platform.user } : {}),
-        ...(req.signal ? { signal: req.signal } : {}),
-      }),
+      source,
       (error) => {
         console.error("[chat] openrouter error:", error);
         // Localized text only: the upstream message is about the operator's

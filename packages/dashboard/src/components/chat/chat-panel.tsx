@@ -1,5 +1,6 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { Bot, Loader2, Send, Square } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Markdown } from "@/components/chat/markdown";
@@ -17,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { BILLING_QUERY_KEY } from "@/hooks/use-billing";
 import { useChatProviders } from "@/hooks/use-dashboard";
 import { useTranslation } from "@/i18n/locale-provider";
 import type { ChatMessage } from "@/lib/types";
@@ -47,6 +49,7 @@ export function ChatPanel({ className }: { className?: string }) {
     if (next && next !== selectedModel) setSelectedModel(next);
   }, [available, selectedModel, setSelectedModel]);
 
+  const queryClient = useQueryClient();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -90,6 +93,7 @@ export function ChatPanel({ className }: { className?: string }) {
 
     const controller = new AbortController();
     abortRef.current = controller;
+    let creditShort = false;
 
     try {
       const res = await fetch("/api/chat", {
@@ -107,7 +111,8 @@ export function ChatPanel({ className }: { className?: string }) {
       });
 
       if (!res.ok || !res.body) {
-        const detail = (await res.json().catch(() => ({}))) as { error?: string };
+        const detail = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
+        if (detail.code === "insufficient_credit") creditShort = true;
         throw new Error(detail.error ?? t("chat.error.httpStatus", { status: res.status }));
       }
 
@@ -131,8 +136,9 @@ export function ChatPanel({ className }: { className?: string }) {
     } catch (error) {
       if ((error as Error).name === "AbortError") return;
       const message = error instanceof Error ? error.message : t("chat.error.generic");
-      const hint =
-        mode === "claude-cli"
+      const hint = creditShort
+        ? t("chat.error.addCredit")
+        : mode === "claude-cli"
           ? t("chat.error.checkSubscription")
           : mode === "openrouter-platform"
             ? t("chat.error.checkPlatform")
@@ -141,6 +147,8 @@ export function ChatPanel({ className }: { className?: string }) {
         prev.map((m) => (m.id === assistantId ? { ...m, content: `⚠️ ${message}\n\n${hint}` } : m)),
       );
     } finally {
+      // A platform turn moved the balance, even an aborted one.
+      void queryClient.invalidateQueries({ queryKey: BILLING_QUERY_KEY });
       setStreaming(false);
       abortRef.current = null;
       scrollToBottom();
