@@ -1,7 +1,9 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { Bot, Loader2, Send, Square } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AddBalanceButton } from "@/components/billing/add-balance-button";
 import { Markdown } from "@/components/chat/markdown";
 import { reconcileSelectedModel, selectableProviders } from "@/components/chat/model-selection";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { BILLING_QUERY_KEY } from "@/hooks/use-billing";
 import { useChatProviders } from "@/hooks/use-dashboard";
 import { useTranslation } from "@/i18n/locale-provider";
 import type { ChatMessage } from "@/lib/types";
@@ -47,10 +50,13 @@ export function ChatPanel({ className }: { className?: string }) {
     if (next && next !== selectedModel) setSelectedModel(next);
   }, [available, selectedModel, setSelectedModel]);
 
+  const queryClient = useQueryClient();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [mode, setMode] = useState<string | null>(null);
+  /** The reply the server refused for want of credit; it carries the top-up button. */
+  const [creditShortId, setCreditShortId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -90,6 +96,7 @@ export function ChatPanel({ className }: { className?: string }) {
 
     const controller = new AbortController();
     abortRef.current = controller;
+    let creditShort = false;
 
     try {
       const res = await fetch("/api/chat", {
@@ -107,7 +114,8 @@ export function ChatPanel({ className }: { className?: string }) {
       });
 
       if (!res.ok || !res.body) {
-        const detail = (await res.json().catch(() => ({}))) as { error?: string };
+        const detail = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
+        if (detail.code === "insufficient_credit") creditShort = true;
         throw new Error(detail.error ?? t("chat.error.httpStatus", { status: res.status }));
       }
 
@@ -131,12 +139,20 @@ export function ChatPanel({ className }: { className?: string }) {
     } catch (error) {
       if ((error as Error).name === "AbortError") return;
       const message = error instanceof Error ? error.message : t("chat.error.generic");
-      const hint =
-        mode === "claude-cli" ? t("chat.error.checkSubscription") : t("chat.error.checkApiKey");
+      if (creditShort) setCreditShortId(assistantId);
+      const hint = creditShort
+        ? t("chat.error.addCredit")
+        : mode === "claude-cli"
+          ? t("chat.error.checkSubscription")
+          : mode === "openrouter-platform"
+            ? t("chat.error.checkPlatform")
+            : t("chat.error.checkApiKey");
       setMessages((prev) =>
         prev.map((m) => (m.id === assistantId ? { ...m, content: `⚠️ ${message}\n\n${hint}` } : m)),
       );
     } finally {
+      // A platform turn moved the balance, even an aborted one.
+      void queryClient.invalidateQueries({ queryKey: BILLING_QUERY_KEY });
       setStreaming(false);
       abortRef.current = null;
       scrollToBottom();
@@ -162,6 +178,9 @@ export function ChatPanel({ className }: { className?: string }) {
           <Badge variant="success">{t("chat.badge.claudeSubscription")}</Badge>
         )}
         {mode === "anthropic-api" && <Badge variant="outline">{t("chat.badge.tokenApi")}</Badge>}
+        {mode === "openrouter-platform" && (
+          <Badge variant="outline">{t("chat.badge.platform")}</Badge>
+        )}
       </div>
 
       <ScrollArea className="flex-1 px-4">
@@ -180,7 +199,10 @@ export function ChatPanel({ className }: { className?: string }) {
                 )}
               >
                 {msg.content ? (
-                  <Markdown content={msg.content} />
+                  <>
+                    <Markdown content={msg.content} />
+                    {msg.id === creditShortId && <AddBalanceButton className="mt-2" />}
+                  </>
                 ) : (
                   <span className="flex items-center gap-2 text-muted-foreground">
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />

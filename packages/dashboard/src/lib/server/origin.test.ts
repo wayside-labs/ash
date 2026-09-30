@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { assertSameOrigin } from "./origin";
+import { assertSameOrigin, publicOrigin } from "./origin";
 
 const ALLOWED = "http://localhost:3000";
 
@@ -71,5 +71,31 @@ describe("assertSameOrigin", () => {
     expect(assertSameOrigin(request({ origin: ALLOWED, host: "localhost:3000" }))?.status).toBe(
       403,
     );
+  });
+});
+
+describe("publicOrigin", () => {
+  afterEach(() => {
+    delete process.env.DASHBOARD_PUBLIC_URL;
+  });
+
+  it("prefers the declared public URL over the loopback the proxy forwards to", () => {
+    process.env.DASHBOARD_PUBLIC_URL = "https://console.example/";
+    expect(publicOrigin(new Request("http://localhost:3000/auth/callback"))).toBe(
+      "https://console.example",
+    );
+  });
+
+  it("falls back to the request's origin when nothing is declared", () => {
+    expect(publicOrigin(new Request("http://localhost:3000/auth/callback"))).toBe(
+      "http://localhost:3000",
+    );
+  });
+
+  it("ignores a forged Host header", () => {
+    const req = new Request("http://localhost:3000/auth/callback", {
+      headers: { host: "evil.example", "x-forwarded-host": "evil.example" },
+    });
+    expect(publicOrigin(req)).toBe("http://localhost:3000");
   });
 });

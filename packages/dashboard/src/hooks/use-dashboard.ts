@@ -10,6 +10,7 @@ import {
   resolveAgentSessionAddress,
   resolveAgentSigningKey,
 } from "@/lib/agent-wallet";
+import { HttpError } from "@/lib/http-error";
 import { runnerBundleFilename, runnerConfigFilename } from "@/lib/mcp-config";
 import type { ResourceName, SolanaCluster } from "@/lib/schema";
 import type { MaskedState } from "@/lib/server/present";
@@ -38,7 +39,11 @@ export async function request<T>(url: string, init?: RequestInit): Promise<T> {
   });
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(body.error ?? `${res.status} ${res.statusText}`);
+    throw new HttpError(
+      res.status,
+      body.error ?? null,
+      body.error ?? `${res.status} ${res.statusText}`,
+    );
   }
   return (await res.json()) as T;
 }
@@ -214,7 +219,9 @@ export function useSolPrice() {
     queryKey: ["sol-price"],
     queryFn: () => request<SolPrice>("/api/solana/price"),
     staleTime: 15_000,
-    refetchInterval: 15_000,
+    // Every upstream refusing is not fixed by asking again in 15s; back off until one answers.
+    refetchInterval: (query) => (query.state.status === "error" ? 60_000 : 15_000),
+    retry: false,
     placeholderData: (previousData) => previousData,
   });
 }
@@ -549,7 +556,7 @@ export function describeWalletError(error: unknown, t: (key: string) => string):
 }
 
 export type ProviderStatus = {
-  id: "claude-cli" | "anthropic-api" | "demo";
+  id: "claude-cli" | "anthropic-api" | "openrouter-platform" | "demo";
   label: string;
   available: boolean;
   detail: string;

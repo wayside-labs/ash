@@ -23,6 +23,16 @@ const api = {
   ],
 };
 
+const platform = {
+  id: "openrouter-platform" as const,
+  label: "Agent Rails assistant",
+  detail: "hosted",
+  models: [
+    { id: "openrouter:anthropic/claude-sonnet-5.5", label: "Sonnet 5.5" },
+    { id: "openrouter:anthropic/claude-haiku-4.5", label: "Haiku 4.5" },
+  ],
+};
+
 const demo = {
   id: "demo" as const,
   label: "Demo",
@@ -50,6 +60,16 @@ describe("reconcileSelectedModel", () => {
 
   it("promotes demo to the API default when CLI is absent", () => {
     expect(reconcileSelectedModel("demo", [api, demo])).toBe("claude-sonnet-5");
+  });
+
+  it("promotes demo to the platform default when only the platform key is available", () => {
+    expect(reconcileSelectedModel("demo", [platform, demo])).toBe(
+      "openrouter:anthropic/claude-sonnet-5.5",
+    );
+  });
+
+  it("prefers a key the user brought over the platform key", () => {
+    expect(reconcileSelectedModel("", [api, platform, demo])).toBe("claude-sonnet-5");
   });
 
   it("keeps demo when no real provider exists", () => {

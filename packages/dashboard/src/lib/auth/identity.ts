@@ -5,10 +5,11 @@ import type { User } from "@supabase/supabase-js";
  *
  * `subject` is what `identities.subject` stores and what `unique (provider,
  * subject)` dedupes on, so it has to be stable across sign-ins: Google's `sub`
- * never changes, and a wallet address is the wallet.
+ * never changes, a wallet address is the wallet, and a magic-link account is
+ * its auth user id — the address it was sent to can change, the user cannot.
  */
 export type ResolvedIdentity = {
-  provider: "google" | "wallet";
+  provider: "google" | "wallet" | "email";
   subject: string;
   displayName: string;
   email: string;
@@ -53,6 +54,20 @@ export function resolveIdentity(user: User): ResolvedIdentity {
     const sub = asRecord(google.identity_data).sub;
     return {
       provider: "google",
+      subject: typeof sub === "string" && sub.length > 0 ? sub : user.id,
+      displayName: displayNameFor(user, null),
+      email: user.email ?? "",
+    };
+  }
+
+  // After Google: when the same verified address later arrives through Google,
+  // GoTrue links both identities to one auth user, and the first door recorded
+  // is the one `identities` already keys on.
+  const email = identities.find((row) => row.provider === "email");
+  if (email) {
+    const sub = asRecord(email.identity_data).sub;
+    return {
+      provider: "email",
       subject: typeof sub === "string" && sub.length > 0 ? sub : user.id,
       displayName: displayNameFor(user, null),
       email: user.email ?? "",
