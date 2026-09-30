@@ -46,6 +46,36 @@ describe("parseSse", () => {
 });
 
 describe("streamOpenRouter", () => {
+  it("reports the final usage chunk, cost included, exactly once", async () => {
+    const usage = `data: ${JSON.stringify({
+      choices: [{ delta: { content: "" } }],
+      usage: { prompt_tokens: 812, completion_tokens: 64, total_tokens: 876, cost: 0.002264 },
+    })}\n\n`;
+    const fetchImpl = fakeFetch(
+      new Response(sseBody(`${delta("hi")}${usage}data: [DONE]\n\n`), { status: 200 }),
+    );
+    const onUsage = vi.fn();
+    expect(await collect(streamOpenRouter({ ...BASE, onUsage, fetchImpl }))).toEqual(["hi"]);
+    expect(onUsage).toHaveBeenCalledTimes(1);
+    expect(onUsage).toHaveBeenCalledWith({
+      promptTokens: 812,
+      completionTokens: 64,
+      cost: 0.002264,
+    });
+  });
+
+  it("never reports usage for a stream that ended without it", async () => {
+    const fetchImpl = fakeFetch(new Response(sseBody(`${delta("hi")}`), { status: 200 }));
+    const onUsage = vi.fn();
+    await collect(streamOpenRouter({ ...BASE, onUsage, fetchImpl }));
+    expect(onUsage).not.toHaveBeenCalled();
+  });
+
+  it("prices every allowlisted model, so none can be served unmetered", async () => {
+    const { OPENROUTER_MODELS, OPENROUTER_PRICES } = await import("./openrouter-api");
+    for (const m of OPENROUTER_MODELS) expect(OPENROUTER_PRICES[m.id]).toBeDefined();
+  });
+
   it("yields content deltas in order", async () => {
     const fetchImpl = fakeFetch(
       new Response(sseBody(`${delta("Hel")}${delta("lo")}data: [DONE]\n\n`), { status: 200 }),
