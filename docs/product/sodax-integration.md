@@ -73,8 +73,32 @@ USDC (Arbitrum); unsigned builds for a Solana→Arbitrum swap, a USDC Solana→A
 the swap and bridge builds return the ERC-20 `approve` first; vault APRs (including a negative
 net APR) and 31 reserves read; unlisted recipients refused before any SDK call.
 
+Differential test against SODAX's own Builders MCP (`https://builders.sodax.com/mcp`, an
+independent view of the same system), 14/14: chain list, Solana swap and money-market tokens, the
+31 reserves; a built intent's relay chain ids and hub assets; our quote vs the solver's own quote
+(0 bps apart); a token listed after the SDK release (PUMP) builds with the right hub asset; our
+status for a filled and a cancelled real intent matches Builders' record. The relay-packet
+comparison only covered a tx with no packets on either side.
+
+Rerun it with `pnpm --filter @agent-rails/integrations check:sodax`
+(`packages/integrations/scripts/sodax-builders-diff.mjs`) before bumping `@sodax/*`, or when the
+connector starts refusing tokens or chains. Mainnet reads and unsigned builds only; it needs
+network access, is not part of `pnpm test`, and exits non-zero on any mismatch.
+
 Not yet verified: a signed transaction through submit/relay to `solved`. That needs a funded
 mainnet desk and a person at the keys.
+
+## Live token list
+
+@sodax/sdk 2.1.0 validates tokens against the snapshot it shipped with, and its `initialize()`
+fetches nothing — so tokens SODAX listed after the release (ten on Solana: PUMP, cbBTC, JLP, USD1,
+PYUSD, USDG, JupUSD, USDe, ETH, USELESS) were refused. At startup the connector reads the live
+list from the Swaps API (`/swaps/tokens`, which carries each token's `hubAsset` and `vault`) and
+layers it over the snapshot; if that read fails it logs to stderr and keeps the snapshot. The
+backend's `config/all` cannot be used for this: its token entries lack `hubAsset`/`vault`.
+
+The connector also sets the relay endpoint to `https://api.sodax.com/v1/relay` — 2.1.0 still
+defaults to the legacy `xcall-relay.nw.iconblockchain.xyz`, which answers the same today.
 
 ## Gaps against the docs
 

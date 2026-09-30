@@ -14,7 +14,8 @@
   "scripts": {
     "build": "tsdown",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "check:sodax": "tsdown && node scripts/sodax-builders-diff.mjs"
   },
   "dependencies": {
     "@agent-rails/contract": "workspace:*",
