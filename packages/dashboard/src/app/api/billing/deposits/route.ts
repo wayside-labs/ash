@@ -3,7 +3,7 @@ import { usdToMicros } from "@/lib/billing";
 import { billingConfig, resolveBillingScope } from "@/lib/server/billing/meter";
 import { createDepositIntent, solanaPayConfig } from "@/lib/server/billing/rails";
 import { serverT } from "@/lib/server/i18n";
-import { assertSameOrigin } from "@/lib/server/origin";
+import { assertSameOrigin, publicOrigin } from "@/lib/server/origin";
 import { checkFixedWindow } from "@/lib/server/rate-limit";
 import { unauthorizedStateResponse } from "@/lib/server/state/context";
 import { MAX_DEPOSIT_MICROS, MIN_DEPOSIT_MICROS } from "@/lib/solana-pay";
@@ -40,6 +40,6 @@ export async function POST(req: Request) {
     return Response.json({ error: await serverT("deposit.error.amount") }, { status: 422 });
   }
 
-  const intent = await createDepositIntent(scope, config, amountMicros);
+  const intent = await createDepositIntent(scope, config, amountMicros, publicOrigin(req));
   return Response.json({ intent }, { status: 201 });
 }

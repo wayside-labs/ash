@@ -27,7 +27,7 @@ async function stubRails(page: Page, enabled = true) {
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({
-        solanaPay: { enabled, cluster: "mainnet-beta" },
+        solanaPay: { enabled, cluster: "mainnet-beta", feeCovered: true },
         pix: { enabled: false },
       }),
     }),

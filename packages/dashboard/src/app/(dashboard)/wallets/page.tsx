@@ -7,10 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/components/ui/toast";
+import { ExternalWalletCard } from "@/components/wallet/external-wallet-card";
+import { PlatformWalletCard } from "@/components/wallet/platform-wallet-card";
 import { useWallets } from "@/hooks/use-dashboard";
 import { intlLocale } from "@/i18n";
 import { useTranslation } from "@/i18n/locale-provider";
 import { explorerUrl } from "@/lib/solana";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
 import type { WalletInfo } from "@/lib/types";
 import { copyToClipboard, formatMoney, formatUsd, moneyTone, truncateAddress } from "@/lib/utils";
 import { useAppStore, useBalancesHidden } from "@/stores/app-store";
@@ -65,6 +68,12 @@ export default function WalletsPage() {
   return (
     <div>
       <PageHeader wallet title={t("wallets.title")} description={t("wallets.descriptionLong")} />
+
+      {/* Moved from Account: the customer path shows no wallets, the operator's does. */}
+      <div className="mb-6 grid gap-4 md:grid-cols-2">
+        {isSupabaseConfigured() && <PlatformWalletCard />}
+        <ExternalWalletCard />
+      </div>
 
       {wallets.length === 0 && (
         <EmptyState

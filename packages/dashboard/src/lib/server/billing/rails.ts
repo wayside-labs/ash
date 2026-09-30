@@ -14,11 +14,14 @@ import {
   type ParsedTransaction,
   type PayCluster,
   receivedBaseUnits,
+  transactionRequestUrl,
   transferRequestUrl,
   USDC_MINTS,
 } from "@/lib/solana-pay";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { type BillingScope, ledgerFor } from "./ledger";
+import { feePayer } from "./sponsored-deposit";
 
 /**
  * Deposit and withdrawal rails for the assistant credit. The ledger (`ledger.ts`) stays the one
@@ -61,7 +64,11 @@ export function solanaPayConfig(): SolanaPayConfig | null {
 export function railsConfig(): RailsConfig {
   const pay = solanaPayConfig();
   return {
-    solanaPay: { enabled: pay !== null, cluster: pay?.cluster ?? "mainnet-beta" },
+    solanaPay: {
+      enabled: pay !== null,
+      cluster: pay?.cluster ?? "mainnet-beta",
+      feeCovered: pay !== null && feePayer() !== null,
+    },
     pix: { enabled: false },
   };
 }
@@ -79,6 +86,8 @@ type WithdrawalRecord = WithdrawalRequestView & { holdIdempotencyKey: string };
 interface RailsStore {
   insertIntent(scope: BillingScope, intent: IntentRecord): Promise<void>;
   getIntent(scope: BillingScope, id: string): Promise<IntentRecord | null>;
+  /** By id alone, for the wallet's transaction request, which carries no session. */
+  findIntent(id: string): Promise<IntentRecord | null>;
   /** False when the signature already confirmed an intent (this one or another). */
   confirmIntent(scope: BillingScope, id: string, sig: string, credited: number): Promise<boolean>;
   insertWithdrawal(scope: BillingScope, request: WithdrawalRecord): Promise<void>;
@@ -145,6 +154,18 @@ const postgresRails: RailsStore = {
         "id, rail, cluster, reference, recipient, mint, amount_micros, status, signature, credited_micros, created_at",
       )
       .eq("org_id", orgId)
+      .eq("id", id)
+      .maybeSingle();
+    if (error) throw error;
+    return data ? intentFromRow(data as IntentRow) : null;
+  },
+
+  async findIntent(id) {
+    const { data, error } = await createAdminClient()
+      .from("credit_deposit_intents")
+      .select(
+        "id, rail, cluster, reference, recipient, mint, amount_micros, status, signature, credited_micros, created_at",
+      )
       .eq("id", id)
       .maybeSingle();
     if (error) throw error;
@@ -255,6 +276,9 @@ const jsonRails: RailsStore = {
   async getIntent(_scope, id) {
     return (await readRails()).intents.find((i) => i.id === id) ?? null;
   },
+  async findIntent(id) {
+    return (await readRails()).intents.find((i) => i.id === id) ?? null;
+  },
   async confirmIntent(_scope, id, sig, credited) {
     return mutateRails((rails) => {
       if (rails.intents.some((i) => i.signature === sig)) return false;
@@ -284,19 +308,25 @@ function railsFor(scope: BillingScope): RailsStore {
 // ---------------------------------------------------------------------------------------------
 // Deposits
 
-function toView(intent: IntentRecord): DepositIntentView {
+/**
+ * With a fee wallet configured, the QR is a transaction request: the wallet fetches a
+ * transaction our server built and already signed as fee payer, so the customer pays no network
+ * fee. Without one, it is a plain transfer request and the wallet pays the fee.
+ */
+function toView(intent: IntentRecord, origin?: string): DepositIntentView {
   const { mint, createdAt: _, ...rest } = intent;
-  return {
-    ...rest,
-    url: transferRequestUrl({
-      recipient: intent.recipient,
-      amountMicros: intent.amountMicros,
-      mint,
-      reference: intent.reference,
-      label: "Agent Rails",
-      message: "Assistant credit",
-    }),
-  };
+  const url =
+    origin && feePayer()
+      ? transactionRequestUrl(`${origin}/api/billing/deposits/${intent.id}/tx`)
+      : transferRequestUrl({
+          recipient: intent.recipient,
+          amountMicros: intent.amountMicros,
+          mint,
+          reference: intent.reference,
+          label: "Agent Rails",
+          message: "Assistant credit",
+        });
+  return { ...rest, url };
 }
 
 /** A fresh keypair's public half would do; 32 random bytes are the same thing without the key. */
@@ -308,6 +338,7 @@ export async function createDepositIntent(
   scope: BillingScope,
   config: SolanaPayConfig,
   amountMicros: number,
+  origin?: string,
 ): Promise<DepositIntentView> {
   const intent: IntentRecord = {
     id: randomUUID(),
@@ -321,7 +352,7 @@ export async function createDepositIntent(
     createdAt: new Date().toISOString(),
   };
   await railsFor(scope).insertIntent(scope, intent);
-  return toView(intent);
+  return toView(intent, origin);
 }
 
 /**
@@ -381,6 +412,17 @@ export async function checkDepositIntent(
     });
   }
   return toView(intent);
+}
+
+/**
+ * The pending intent a wallet's transaction request names. Scope-less on purpose — the wallet
+ * has no session — so the id's 122 random bits are the only key, and all it unlocks is a
+ * transaction that pays the operator this intent's amount.
+ */
+export async function findPendingIntent(id: string) {
+  const store = isSupabaseConfigured() ? postgresRails : jsonRails;
+  const intent = await store.findIntent(id);
+  return intent?.status === "pending" ? intent : null;
 }
 
 // ---------------------------------------------------------------------------------------------

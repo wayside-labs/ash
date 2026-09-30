@@ -12,8 +12,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/components/ui/toast";
-import { ExternalWalletCard } from "@/components/wallet/external-wallet-card";
-import { PlatformWalletCard } from "@/components/wallet/platform-wallet-card";
 import { useAuth } from "@/hooks/use-auth";
 import { useTranslation } from "@/i18n/locale-provider";
 
@@ -55,9 +53,8 @@ export default function AccountPage() {
       <PageHeader title={t("account.title")} description={t("account.description")} />
 
       {!configured ? (
-        // Local JSON mode: no accounts, so no platform wallet; the extension is the signer.
-        <div className="grid gap-4 md:grid-cols-2">
-          <ExternalWalletCard />
+        // Local JSON mode: no accounts. Linking a wallet is an operator task, on Advanced › Wallets.
+        <div className="grid max-w-2xl gap-4">
           <Card>
             <CardContent className="flex items-start gap-2 p-4">
               <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
@@ -94,8 +91,9 @@ export default function AccountPage() {
           </CardContent>
         </Card>
       ) : (
+        // The customer's account is who they are and their credit. Wallets — the platform one
+        // and linking one's own — are on-chain matters and live under Advanced › Wallets.
         <div className="grid gap-4 md:grid-cols-2">
-          <PlatformWalletCard />
           <Card>
             <CardHeader>
               <CardTitle>{t("account.identity")}</CardTitle>
@@ -118,12 +116,7 @@ export default function AccountPage() {
               </Button>
             </CardContent>
           </Card>
-          <div className="md:col-span-2">
-            <CreditCard />
-          </div>
-          <div className="md:col-span-2">
-            <ExternalWalletCard />
-          </div>
+          <CreditCard />
         </div>
       )}
     </div>

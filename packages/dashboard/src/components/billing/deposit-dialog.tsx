@@ -141,7 +141,11 @@ export function DepositDialog() {
                       <span>
                         <span className="block font-medium">{t(`deposit.rail.${id}`)}</span>
                         <span className="block text-xs text-muted-foreground">
-                          {t(`deposit.rail.${id}.hint`)}
+                          {t(
+                            id === "solana_pay_usdc" && !solanaPay?.feeCovered
+                              ? "deposit.rail.solana_pay_usdc.hintFee"
+                              : `deposit.rail.${id}.hint`,
+                          )}
                         </span>
                       </span>
                     </span>
