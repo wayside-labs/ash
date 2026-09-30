@@ -37,12 +37,18 @@ describe("signInUrl", () => {
 });
 
 describe("safeNext", () => {
-  it.each(["https://evil.example", "//evil.example", "/\\evil.example", null, undefined, ""])(
-    "rejects %s",
-    (next) => {
-      expect(safeNext(next)).toBe("/account");
-    },
-  );
+  it.each([
+    "https://evil.example",
+    "//evil.example",
+    "/\\evil.example",
+    "/\t/evil.example",
+    "/\n/evil.example",
+    null,
+    undefined,
+    "",
+  ])("rejects %s", (next) => {
+    expect(safeNext(next)).toBe("/account");
+  });
 
   it("accepts a same-site path", () => {
     expect(safeNext("/treasury?tab=1")).toBe("/treasury?tab=1");

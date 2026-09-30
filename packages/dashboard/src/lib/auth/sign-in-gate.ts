@@ -1,11 +1,21 @@
 /** Where a signed-out visitor is sent: the account page carries both sign-in doors. */
 export const SIGN_IN_PATH = "/account";
 
-/** Only a same-site path: `//evil.example` or an absolute URL in `next` would leave the site. */
+const SAME_SITE = "http://same-site.invalid";
+
+/**
+ * Only a same-site path. Prefix checks alone are not enough: the URL parser treats `\` as `/`
+ * and strips tabs and newlines, so `/\evil.example` and `/\t/evil.example` both resolve off-site.
+ * Resolving against a placeholder origin and comparing asks the parser itself.
+ */
 export function safeNext(next: string | null | undefined, fallback = SIGN_IN_PATH): string {
-  return next?.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\")
-    ? next
-    : fallback;
+  if (!next?.startsWith("/")) return fallback;
+  try {
+    const url = new URL(next, SAME_SITE);
+    return url.origin === SAME_SITE ? `${url.pathname}${url.search}${url.hash}` : fallback;
+  } catch {
+    return fallback;
+  }
 }
 
 /**
