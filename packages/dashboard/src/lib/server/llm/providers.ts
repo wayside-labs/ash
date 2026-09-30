@@ -1,13 +1,17 @@
 import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
 import { promisify } from "node:util";
 import { type Locale, t } from "@/i18n";
+import { getSessionUser } from "@/lib/server/auth/session";
 import { getDashboardLocale } from "@/lib/server/i18n";
 import { readState, StateAccessError } from "@/lib/server/store";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { ANTHROPIC_API_MODELS } from "./anthropic-api";
+import { OPENROUTER_DEFAULT_MODEL, OPENROUTER_MODELS } from "./openrouter-api";
 
 const run = promisify(execFile);
 
-export type ProviderId = "claude-cli" | "anthropic-api" | "demo";
+export type ProviderId = "claude-cli" | "anthropic-api" | "openrouter-platform" | "demo";
 
 export type ProviderStatus = {
   id: ProviderId;
@@ -51,9 +55,37 @@ export async function anthropicApiKey(): Promise<string | undefined> {
   }
 }
 
+export type PlatformAccess =
+  | { granted: true; apiKey: string; user?: string }
+  | { granted: false; reason: "unconfigured" | "signed-out" };
+
+/**
+ * The platform key spends the operator's money, so who may use it is decided
+ * here and nowhere else. Hosted (Supabase configured): a signed-in session, or
+ * nothing — the tenant snapshot also 401s without one, but that is
+ * `buildContext`'s side effect and not a gate this key may rest on. Local JSON
+ * mode has no sessions; setting the env var there is the operator opting in,
+ * exactly as `ANTHROPIC_API_KEY` already is.
+ */
+export async function openrouterPlatformAccess(): Promise<PlatformAccess> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) return { granted: false, reason: "unconfigured" };
+  if (!isSupabaseConfigured()) return { granted: true, apiKey };
+  const session = await getSessionUser();
+  if (!session) return { granted: false, reason: "signed-out" };
+  // Hashed so the auth uuid never leaves for a third party; stable, so
+  // OpenRouter's per-user abuse isolation still has something to key on.
+  const user = createHash("sha256").update(session.id).digest("hex").slice(0, 32);
+  return { granted: true, apiKey, user };
+}
+
 export async function listProviders(locale?: Locale): Promise<ProviderStatus[]> {
   const lang = locale ?? (await getDashboardLocale());
-  const [cliVersion, apiKey] = await Promise.all([probeClaudeCli(), anthropicApiKey()]);
+  const [cliVersion, apiKey, platform] = await Promise.all([
+    probeClaudeCli(),
+    anthropicApiKey(),
+    openrouterPlatformAccess(),
+  ]);
 
   return [
     {
@@ -79,6 +111,17 @@ export async function listProviders(locale?: Locale): Promise<ProviderStatus[]> 
       models: ANTHROPIC_API_MODELS.map((m) => ({ ...m })),
     },
     {
+      id: "openrouter-platform",
+      label: t("providers.openrouterPlatform.label", lang),
+      available: platform.granted,
+      detail: platform.granted
+        ? t("providers.openrouterPlatform.detailAvailable", lang)
+        : platform.reason === "signed-out"
+          ? t("providers.openrouterPlatform.detailSignedOut", lang)
+          : t("providers.openrouterPlatform.detailUnconfigured", lang),
+      models: OPENROUTER_MODELS.map((m) => ({ ...m })),
+    },
+    {
       id: "demo",
       label: t("providers.demo.label", lang),
       available: true,
@@ -90,7 +133,9 @@ export async function listProviders(locale?: Locale): Promise<ProviderStatus[]> 
 
 /**
  * The local CLI wins by default: it costs the user nothing extra and needs no
- * key. An explicitly chosen model always overrides this.
+ * key. A key the user brought comes next, and the platform key last before
+ * demo — it is the one path where the operator pays. An explicitly chosen model
+ * always overrides this.
  */
 export async function resolveProvider(requestedModel: string | undefined): Promise<{
   provider: ProviderId;
@@ -111,6 +156,9 @@ export async function resolveProvider(requestedModel: string | undefined): Promi
   }
   if (byId.get("anthropic-api")?.available) {
     return { provider: "anthropic-api", model: "claude-sonnet-5" };
+  }
+  if (byId.get("openrouter-platform")?.available) {
+    return { provider: "openrouter-platform", model: OPENROUTER_DEFAULT_MODEL };
   }
   return { provider: "demo", model: "demo" };
 }

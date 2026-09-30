@@ -6,6 +6,7 @@ import { Suspense, useEffect } from "react";
 import { EmailSignInForm } from "@/components/auth/email-sign-in-form";
 import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
 import { WalletSignInButton } from "@/components/auth/wallet-sign-in-button";
+import { CreditCard } from "@/components/billing/credit-card";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -117,6 +118,9 @@ export default function AccountPage() {
               </Button>
             </CardContent>
           </Card>
+          <div className="md:col-span-2">
+            <CreditCard />
+          </div>
           <div className="md:col-span-2">
             <ExternalWalletCard />
           </div>
