@@ -81,3 +81,29 @@ export function receivedBaseUnits(tx: ParsedTransaction, recipient: string, mint
   }
   return received > 0n ? received : 0n;
 }
+
+// ---------------------------------------------------------------------------------------------
+// Transaction requests: the platform builds the transfer and pays its fee.
+
+export const TOKEN_PROGRAM = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
+export const ASSOCIATED_TOKEN_PROGRAM = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL";
+export const SYSTEM_PROGRAM = "11111111111111111111111111111111";
+export const USDC_DECIMALS = 6;
+
+/** `solana:<https link>` — a wallet fetches the transaction from the link instead of building it. */
+export function transactionRequestUrl(link: string): string {
+  return `solana:${encodeURIComponent(link)}`;
+}
+
+/** SPL Token `TransferChecked`: tag 12, amount as little-endian u64, then the mint's decimals. */
+export function transferCheckedData(amount: bigint, decimals: number): Uint8Array {
+  if (amount <= 0n || amount >= 2n ** 64n) throw new RangeError(`bad token amount: ${amount}`);
+  const data = new Uint8Array(10);
+  data[0] = 12;
+  new DataView(data.buffer).setBigUint64(1, amount, true);
+  data[9] = decimals;
+  return data;
+}
+
+/** Associated Token Account `CreateIdempotent`: tag 1, no arguments. A no-op when it exists. */
+export const CREATE_ATA_IDEMPOTENT_DATA = new Uint8Array([1]);

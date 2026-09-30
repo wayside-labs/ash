@@ -72,7 +72,8 @@ export type WithdrawalRequestView = {
 
 /** Which rails this server can actually take, independent of the viewer's region. */
 export type RailsConfig = {
-  solanaPay: { enabled: boolean; cluster: "mainnet-beta" | "devnet" };
+  /** `feeCovered`: the platform's fee wallet pays the network fee (transaction requests). */
+  solanaPay: { enabled: boolean; cluster: "mainnet-beta" | "devnet"; feeCovered: boolean };
   /** No PIX provider is integrated yet; the modal lists it as coming soon for Brazil. */
   pix: { enabled: false };
 };

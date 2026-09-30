@@ -108,6 +108,7 @@ applies everything `config.toml` declares.
 | `SOLANA_PAY_RECIPIENT` | none | The operator's own wallet; its USDC token account receives deposits. Unset turns the deposit rail off (the modal says so). |
 | `SOLANA_PAY_CLUSTER` | `mainnet-beta` | `devnet` takes Circle's devnet USDC, which has no value — for trying the flow only. |
 | `SOLANA_PAY_RPC_URL` | public RPC | A dedicated RPC for the deposit check (`getSignaturesForAddress` + `getTransaction`). |
+| `SOLANA_PAY_FEE_PAYER_KEY` | none | The platform's fee wallet, as `solana-keygen`'s 64-byte JSON array. Set: the QR is a transaction request and the platform pays the network fee (and opens the recipient's USDC account once). Unset: a plain transfer request, the customer's wallet pays the fee. Keep a few dollars of SOL in it and nothing else — it is a hot key. |
 
 ## Deposits (Solana Pay USDC)
 
@@ -126,6 +127,19 @@ as coming soon: no PSP is integrated) and USDC; everyone else sees USDC.
    intent citing the same transaction credits nothing more.
 
 USDC has 6 decimals, so one base unit is one micro-USD: no price is read at deposit time.
+
+**Network fee covered.** With `SOLANA_PAY_FEE_PAYER_KEY` set, the QR is
+`solana:https://<host>/api/billing/deposits/<id>/tx`. The wallet POSTs its address there and
+gets back a transaction our server built and signed as fee payer: create the recipient's USDC
+account if missing, then `transferChecked` of exactly the intent's amount with the reference
+attached. The customer signs only the transfer. That route takes no session (wallets send no
+cookie), so it serves only a pending intent by its unguessable id and never pays out anything
+but the operator; `route-guard.test.ts` pins that under `WALLET_ROUTES`. Each deposit costs the
+fee wallet ~0.000005 SOL, plus ~0.002 SOL once for the recipient's USDC account.
+
+**Customer-facing wording.** The customer path (top bar, deposit, withdraw, chat, balance,
+account) never names a chain: the option reads "Crypto wallet", the currency USDC. Wallet
+cards live on Advanced › Wallets.
 
 ## Withdrawals (paid by hand)
 
