@@ -39,3 +39,26 @@ regexes = [
   '''^9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM$''',
   '''^5LwWtPdEvVUSbYCTv5zvhP9gkt3nKANLGkvD2xa6jvvD$''',
 ]
+
+# An EVM address is 20 bytes and public by construction; a private key is 32 bytes (64 hex).
+# `generic-api-key` reads `token_src: '0x…'` as a credential, so SODAX's token contracts in
+# the vendored skills and the integrations tests trip it on entropy alone.
+[[allowlists]]
+description = "EVM contract/account addresses, not credentials"
+regexTarget = "secret"
+regexes = ['''^0x[0-9a-fA-F]{40}$''']
+
+# Read and confirmed: a Solana pubkey used as the vault create key in the bootstrap test, and
+# a line of prose in a vendored SODAX skill.
+[[allowlists]]
+description = "Non-secret values flagged by generic-api-key"
+condition = "AND"
+paths = [
+  '''packages/dashboard/src/app/api/solana/bootstrap/bootstrap\.test\.ts''',
+  '''\.claude/skills/sodax-sdk/leverage-yield/SKILL\.md''',
+]
+regexTarget = "secret"
+regexes = [
+  '''^7v5FqEj8DaCbvJPEqpUtZXKyLBtrHuxhG2tWayTaJd4C$''',
+  '''^deposit/withdraw/vaultSwap$''',
+]
