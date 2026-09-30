@@ -6,6 +6,8 @@ import type {
   StoredWorkflow,
   StoredWorkflowTemplate,
 } from "@/lib/schema";
+import { isBuiltinTemplateId } from "@/lib/templates/catalog";
+import { WORKSTATION_INTEGRATION_MCPS } from "@/lib/templates/workstation-integrations";
 
 export type ApplyTemplateInput = {
   template: StoredWorkflowTemplate;
@@ -103,6 +105,28 @@ export function applyTemplateToState(
       demo: false,
     };
     state.mcps.push(mcp);
+  }
+
+  if (isBuiltinTemplateId(input.template.id)) {
+    const integrationSpecs = WORKSTATION_INTEGRATION_MCPS[input.template.id] ?? [];
+    for (const spec of integrationSpecs) {
+      const mcpId = input.newId("mcp");
+      mcpIds.push(mcpId);
+      const scopeName = spec.scope === "workflow" ? workflow.name : spec.scopeName;
+      const mcp: StoredMcp = {
+        id: mcpId,
+        name: spec.name,
+        description: spec.description,
+        enabled: true,
+        scope: spec.scope,
+        scopeName,
+        command: spec.command,
+        args: spec.args,
+        env: spec.env,
+        demo: false,
+      };
+      state.mcps.push(mcp);
+    }
   }
 
   return { workflowId, agentIds, mcpIds };

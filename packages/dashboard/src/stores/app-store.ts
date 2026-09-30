@@ -22,6 +22,8 @@ interface AppState {
   /** The post-login wallet offer (ADR-018) is made once, not every visit. */
   walletPromptDismissed: boolean;
   sidebarCollapsed: boolean;
+  /** Whether the sidebar's Advanced section is expanded. Closed for a newcomer. */
+  advancedNavOpen: boolean;
   selectedModel: string;
   /** UI language — persisted so i18n does not wait on /api/state. */
   locale: Locale;
@@ -40,6 +42,7 @@ interface AppState {
   setWallet: (address: string | null, name?: string | null) => void;
   dismissWalletPrompt: () => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
+  setAdvancedNavOpen: (open: boolean) => void;
   setSelectedModel: (model: string) => void;
   setLocale: (locale: Locale) => void;
   setBalancesHidden: (hidden: boolean) => void;
@@ -60,6 +63,7 @@ export const useAppStore = create<AppState>()(
       walletPromptDismissed: false,
       // Closed by default: below lg the sidebar is an overlay drawer.
       sidebarCollapsed: true,
+      advancedNavOpen: false,
       // Empty means "let the server pick the best available provider".
       selectedModel: "",
       locale: "en",
@@ -74,6 +78,7 @@ export const useAppStore = create<AppState>()(
       setWallet: (walletAddress, walletName = null) => set({ walletAddress, walletName }),
       dismissWalletPrompt: () => set({ walletPromptDismissed: true }),
       setSidebarCollapsed: (sidebarCollapsed) => set({ sidebarCollapsed }),
+      setAdvancedNavOpen: (advancedNavOpen) => set({ advancedNavOpen }),
       setSelectedModel: (selectedModel) => set({ selectedModel }),
       setLocale: (locale) => set({ locale }),
       setBalancesHidden: (balancesHidden) => set({ balancesHidden }),
@@ -108,6 +113,7 @@ export const useAppStore = create<AppState>()(
         locale: state.locale,
         balancesHidden: state.balancesHidden,
         walletPromptDismissed: state.walletPromptDismissed,
+        advancedNavOpen: state.advancedNavOpen,
         homeLayout: state.homeLayout,
       }),
       onRehydrateStorage: () => (state) => {

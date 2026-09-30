@@ -386,15 +386,20 @@ function useTreasuryMap(addresses: string[], enabled: boolean) {
       enabled: enabled && Boolean(address),
     })),
   });
+  // `useQueries` returns a new `queries` array every render; depend on `data` only so
+  // downstream useMemos (e.g. workflow canvas) are not reset in a setState loop.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `queries` is the unstable array this memo exists to avoid; its `data` entries are listed instead
+  const treasuryViews = useMemo(
+    () => unique.map((address, i) => ({ address, view: queries[i]?.data })),
+    [unique, ...queries.map((query) => query.data)],
+  );
   return useMemo(() => {
     const map = new Map<string, TreasuryView>();
-    for (let i = 0; i < unique.length; i++) {
-      const view = queries[i]?.data;
-      const addr = unique[i];
-      if (view && addr) map.set(addr, view);
+    for (const { address, view } of treasuryViews) {
+      if (view) map.set(address, view);
     }
     return map;
-  }, [unique, queries]);
+  }, [treasuryViews]);
 }
 
 export type VaultTransferInput = {
@@ -551,7 +556,7 @@ export function describeWalletError(error: unknown, t: (key: string) => string):
 }
 
 export type ProviderStatus = {
-  id: "claude-cli" | "anthropic-api" | "demo";
+  id: "claude-cli" | "anthropic-api" | "openrouter-platform" | "demo";
   label: string;
   available: boolean;
   detail: string;
