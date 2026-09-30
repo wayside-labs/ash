@@ -73,7 +73,6 @@ export default defineConfig({
       ANTHROPIC_API_KEY: "",
       // Both pinned so a developer's .env.local cannot flip what `/` renders or start
       // metering the chat; specs that need a balance stub `/api/billing` instead.
-      NEXT_PUBLIC_DASHBOARD_SHELL: "",
       BILLING_ENABLED: "",
     },
   },

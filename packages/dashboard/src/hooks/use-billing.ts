@@ -1,7 +1,13 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import type { BillingSummary } from "@/lib/billing";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type {
+  BillingSummary,
+  DepositIntentView,
+  RailsConfig,
+  WithdrawalDestinationKind,
+  WithdrawalRequestView,
+} from "@/lib/billing";
 
 async function fetchBilling(): Promise<BillingSummary> {
   const res = await fetch("/api/billing", { headers: { "Content-Type": "application/json" } });
@@ -16,4 +22,65 @@ export const BILLING_QUERY_KEY = ["billing"] as const;
 
 export function useBilling(enabled = true) {
   return useQuery({ queryKey: BILLING_QUERY_KEY, queryFn: fetchBilling, enabled });
+}
+
+async function send<T>(url: string, init: RequestInit): Promise<T> {
+  const res = await fetch(url, {
+    ...init,
+    headers: { "Content-Type": "application/json", ...init.headers },
+  });
+  const body = (await res.json().catch(() => ({}))) as T & { error?: string };
+  if (!res.ok) throw new Error(body.error ?? `${res.status} ${res.statusText}`);
+  return body;
+}
+
+export function useRails(enabled = true) {
+  return useQuery({
+    queryKey: ["billing", "rails"],
+    queryFn: () => send<RailsConfig>("/api/billing/rails", { method: "GET" }),
+    enabled,
+    staleTime: 5 * 60_000,
+  });
+}
+
+export const WITHDRAWALS_QUERY_KEY = ["billing", "withdrawals"] as const;
+
+export function useWithdrawals(enabled = true) {
+  return useQuery({
+    queryKey: WITHDRAWALS_QUERY_KEY,
+    queryFn: () =>
+      send<{ requests: WithdrawalRequestView[] }>("/api/billing/withdrawals", { method: "GET" }),
+    enabled,
+  });
+}
+
+export function createDeposit(amountUsd: string) {
+  return send<{ intent: DepositIntentView }>("/api/billing/deposits", {
+    method: "POST",
+    body: JSON.stringify({ amountUsd }),
+  });
+}
+
+export function checkDeposit(id: string) {
+  return send<{ intent: DepositIntentView }>(`/api/billing/deposits/${id}/check`, {
+    method: "POST",
+  });
+}
+
+export function useRequestWithdrawal() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      amountUsd: string;
+      destinationKind: WithdrawalDestinationKind;
+      destination: string;
+    }) =>
+      send<{ request: WithdrawalRequestView }>("/api/billing/withdrawals", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: BILLING_QUERY_KEY });
+    },
+  });
 }

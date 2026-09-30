@@ -105,11 +105,55 @@ applies everything `config.toml` declares.
 | `BILLING_ENABLED` | off locally | Ignored when Supabase is configured: hosted is always metered. |
 | `BILLING_MARKUP_BPS` | `2000` | Integer from 0 to 10000. |
 | `BILLING_STARTER_CREDIT_USD` | none | Granted once per org. Below one worst-case reply (~$0.06 on Haiku 4.5, ~$0.12 on Sonnet 5.5) it grants credit no message can use. Every new Google account farms it, so keep it small. |
+| `SOLANA_PAY_RECIPIENT` | none | The operator's own wallet; its USDC token account receives deposits. Unset turns the deposit rail off (the modal says so). |
+| `SOLANA_PAY_CLUSTER` | `mainnet-beta` | `devnet` takes Circle's devnet USDC, which has no value — for trying the flow only. |
+| `SOLANA_PAY_RPC_URL` | public RPC | A dedicated RPC for the deposit check (`getSignaturesForAddress` + `getTransaction`). |
 
-## Granting credit by hand (until deposits ship)
+## Deposits (Solana Pay USDC)
 
-No HTTP route adds credit, on purpose. Until the Solana Pay / PIX rails land, an operator
-grants credit in the Supabase SQL editor, which runs as the service role:
+The top bar's **Deposit** opens a modal whose rails follow the viewer's region: `CF-IPCountry`
+from the Cloudflare tunnel, else the browser's time zone and language. Brazil sees PIX (listed
+as coming soon: no PSP is integrated) and USDC; everyone else sees USDC.
+
+1. `POST /api/billing/deposits {amountUsd}` stores an intent in `credit_deposit_intents` with a
+   random one-time `reference` and returns a `solana:` transfer request (shown as a QR and an
+   "open in wallet" link).
+2. The modal polls `POST /api/billing/deposits/<id>/check`. The server finds transactions by the
+   reference (`finalized` only) and measures what reached `SOLANA_PAY_RECIPIENT`'s USDC token
+   accounts from the token balances, not from the instructions.
+3. What arrived is appended as a `deposit` row keyed `solana-pay:<signature>`, and the intent
+   is marked confirmed with that signature (unique). A second poll, a second tab or a second
+   intent citing the same transaction credits nothing more.
+
+USDC has 6 decimals, so one base unit is one micro-USD: no price is read at deposit time.
+
+## Withdrawals (paid by hand)
+
+**Withdraw** records a request in `credit_withdrawal_requests` and, in the same step, appends a
+`withdrawal` ledger row for the amount, so held credit cannot also be spent in chat. Nothing is
+sent automatically. The operator pays out and closes the request in the SQL editor:
+
+```sql
+-- Paid: send the USDC or the PIX, then:
+update public.credit_withdrawal_requests
+set status = 'paid', resolved_at = now(), note = '<tx signature or PIX end-to-end id>'
+where id = '<request uuid>' and status = 'pending';
+
+-- Declined: give the held amount back, then close it.
+insert into public.credit_ledger (org_id, kind, amount_micros, note, idempotency_key)
+select org_id, 'adjustment', amount_micros, 'withdrawal declined: ' || id, 'withdrawal-refund:' || id
+from public.credit_withdrawal_requests where id = '<request uuid>' and status = 'pending';
+update public.credit_withdrawal_requests
+set status = 'rejected', resolved_at = now(), note = '<reason>'
+where id = '<request uuid>' and status = 'pending';
+```
+
+Pending requests: `select * from public.credit_withdrawal_requests where status = 'pending' order by created_at;`
+
+## Granting credit by hand
+
+No HTTP route mints credit. An operator can still grant it in the Supabase SQL editor, which
+runs as the service role:
 
 ```sql
 insert into public.credit_ledger (org_id, kind, amount_micros, note, idempotency_key)
@@ -141,6 +185,6 @@ To find an org by email, join `profiles.email → memberships.account_id → org
 - An atomic hold / settle in Postgres, to close the cross-instance overdraft.
 - A fallback to the `/api/v1/generation?id=` lookup for aborted streams, instead of the
   character estimate.
-- Deposits (Solana Pay, PIX) as `deposit` rows with the provider's transaction id as the
-  idempotency key.
-- A balance in the chat header (the "Conta-simple" shell).
+- PIX deposits and payouts through a PSP (Mercado Pago, Efí, …): a verified webhook appending a
+  `deposit` row keyed by the end-to-end id.
+- Automatic withdrawal payouts.

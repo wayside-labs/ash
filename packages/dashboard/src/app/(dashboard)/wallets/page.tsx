@@ -53,7 +53,7 @@ export default function WalletsPage() {
   if (isLoading) {
     return (
       <div>
-        <PageHeader title={t("wallets.title")} description={t("wallets.descriptionShort")} />
+        <PageHeader wallet title={t("wallets.title")} description={t("wallets.descriptionShort")} />
         <div className="flex items-center gap-2 py-12 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
           {t("common.loading")}
@@ -64,7 +64,7 @@ export default function WalletsPage() {
 
   return (
     <div>
-      <PageHeader title={t("wallets.title")} description={t("wallets.descriptionLong")} />
+      <PageHeader wallet title={t("wallets.title")} description={t("wallets.descriptionLong")} />
 
       {wallets.length === 0 && (
         <EmptyState

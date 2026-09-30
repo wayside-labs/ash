@@ -22,6 +22,10 @@ interface AppState {
   /** The post-login wallet offer (ADR-018) is made once, not every visit. */
   walletPromptDismissed: boolean;
   sidebarCollapsed: boolean;
+  /** Desktop only: the sidebar folded away behind the header's menu button. */
+  sidebarHidden: boolean;
+  /** Which money dialog is open; one of them at a time, opened from anywhere. */
+  moneyDialog: "deposit" | "withdraw" | null;
   /** Whether the sidebar's Advanced section is expanded. Closed for a newcomer. */
   advancedNavOpen: boolean;
   selectedModel: string;
@@ -42,6 +46,8 @@ interface AppState {
   setWallet: (address: string | null, name?: string | null) => void;
   dismissWalletPrompt: () => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
+  setSidebarHidden: (hidden: boolean) => void;
+  setMoneyDialog: (dialog: "deposit" | "withdraw" | null) => void;
   setAdvancedNavOpen: (open: boolean) => void;
   setSelectedModel: (model: string) => void;
   setLocale: (locale: Locale) => void;
@@ -63,6 +69,8 @@ export const useAppStore = create<AppState>()(
       walletPromptDismissed: false,
       // Closed by default: below lg the sidebar is an overlay drawer.
       sidebarCollapsed: true,
+      sidebarHidden: false,
+      moneyDialog: null,
       advancedNavOpen: false,
       // Empty means "let the server pick the best available provider".
       selectedModel: "",
@@ -78,6 +86,8 @@ export const useAppStore = create<AppState>()(
       setWallet: (walletAddress, walletName = null) => set({ walletAddress, walletName }),
       dismissWalletPrompt: () => set({ walletPromptDismissed: true }),
       setSidebarCollapsed: (sidebarCollapsed) => set({ sidebarCollapsed }),
+      setSidebarHidden: (sidebarHidden) => set({ sidebarHidden }),
+      setMoneyDialog: (moneyDialog) => set({ moneyDialog }),
       setAdvancedNavOpen: (advancedNavOpen) => set({ advancedNavOpen }),
       setSelectedModel: (selectedModel) => set({ selectedModel }),
       setLocale: (locale) => set({ locale }),
@@ -114,6 +124,7 @@ export const useAppStore = create<AppState>()(
         balancesHidden: state.balancesHidden,
         walletPromptDismissed: state.walletPromptDismissed,
         advancedNavOpen: state.advancedNavOpen,
+        sidebarHidden: state.sidebarHidden,
         homeLayout: state.homeLayout,
       }),
       onRehydrateStorage: () => (state) => {

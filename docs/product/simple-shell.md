@@ -1,5 +1,11 @@
 # Simple shell: sign in → add balance → ask
 
+> **Superseded (2026-10-01).** `/` is chat beside the workflows panel again, and the top bar
+> carries only the client's money: balance (BRL in Brazil, USD elsewhere), **Deposit** and
+> **Withdraw**. The simple/operator shell modes and `NEXT_PUBLIC_DASHBOARD_SHELL` are gone;
+> `/advanced` redirects to `/`. Deposits and withdrawals are in
+> `docs/runbooks/chat-credit-billing.md`. Kept below as the record of what shipped in #86.
+
 Status: implemented on `feat/simple-shell` (2026-09-30). Prompt 4 of the hosted-chat series:
 Prompt 1 metering is billing, #81. Prompt 3 covers deposit rails and is not built yet.
 

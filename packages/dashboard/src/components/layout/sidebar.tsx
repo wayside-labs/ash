@@ -7,22 +7,21 @@ import { useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { useExternalWalletsAllowed } from "@/hooks/use-account-wallet";
 import { useTranslation } from "@/i18n/locale-provider";
-import { isSimpleRoute, type ShellMode } from "@/lib/shell";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/stores/app-store";
 import { isActiveHref, isAdvancedPath, type NavGroupDef, navTierDefs } from "./nav-items";
 
-export function Sidebar({ shellMode }: { shellMode: ShellMode }) {
+export function Sidebar() {
   const pathname = usePathname();
   const {
     sidebarCollapsed,
+    sidebarHidden,
     setSidebarCollapsed,
-    operationMode,
     advancedNavOpen,
     setAdvancedNavOpen,
   } = useAppStore();
   const { t } = useTranslation();
-  const tiers = useMemo(() => navTierDefs(shellMode), [shellMode]);
+  const tiers = useMemo(() => navTierDefs(), []);
   // Collapsing the section must never hide the page the reader is on.
   const insideAdvanced = isAdvancedPath(pathname, tiers);
   const advancedOpen = advancedNavOpen || insideAdvanced;
@@ -42,6 +41,8 @@ export function Sidebar({ shellMode }: { shellMode: ShellMode }) {
         className={cn(
           "fixed inset-y-0 left-0 z-50 flex w-56 flex-col border-r border-sidebar-border bg-sidebar transition-transform lg:static lg:translate-x-0",
           sidebarCollapsed ? "-translate-x-full" : "translate-x-0",
+          // Desktop: folded away behind the header's menu button.
+          sidebarHidden && "lg:hidden",
         )}
       >
         <div className="flex h-16 items-center border-b border-sidebar-border px-4">
@@ -75,24 +76,6 @@ export function Sidebar({ shellMode }: { shellMode: ShellMode }) {
             )}
           </div>
         </nav>
-
-        {/* The payment mode is operator framing; the header drops it on simple routes, and so
-            does this footer. */}
-        {!isSimpleRoute(pathname, shellMode) && (
-          <div className="border-t border-sidebar-border p-3">
-            <p className="text-[11px] text-faint-foreground">{t("common.mode")}</p>
-            <p className="flex items-center gap-1.5 text-xs text-foreground">
-              <span
-                className={cn(
-                  "h-1.5 w-1.5 rounded-full",
-                  operationMode === "agent-rails" ? "bg-primary" : "bg-border-strong",
-                )}
-                aria-hidden
-              />
-              {operationMode === "native" ? t("mode.native") : t("mode.agentRails")}
-            </p>
-          </div>
-        )}
       </aside>
     </>
   );

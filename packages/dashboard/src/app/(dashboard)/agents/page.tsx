@@ -52,6 +52,7 @@ export default function AgentsPage() {
   return (
     <div>
       <PageHeader
+        wallet
         title={t("agents.title")}
         description={t("agents.description")}
         action={

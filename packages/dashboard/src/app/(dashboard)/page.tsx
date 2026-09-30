@@ -1,9 +1,8 @@
 export const dynamic = "force-dynamic";
 
 import { HomeLayout } from "@/components/home/home-layout";
-import { SimpleHome } from "@/components/home/simple-home";
-import { SHELL_MODE } from "@/lib/shell";
 
+/** Chat on the left, the workflows panel on the right; the client's balance is in the top bar. */
 export default function HomePage() {
-  return SHELL_MODE === "simple" ? <SimpleHome /> : <HomeLayout />;
+  return <HomeLayout />;
 }
