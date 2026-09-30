@@ -29,9 +29,13 @@ dump() {
   local dir=$1
   mkdir -p "$dir"
   # CREATE SCHEMA → IF NOT EXISTS: a fresh Supabase already has public, and ON_ERROR_STOP on
-  # restore would otherwise abort on the first line.
+  # restore would otherwise abort on the first line. Default ACLs owned by supabase_admin are
+  # dropped: the restore runs as postgres, which may not alter another role's defaults, and
+  # the Supabase image already sets the same ones. Hosted dumps carry them; the cutover
+  # stopped halfway on the first.
   pg_dump --schema-only --no-owner "${own_schemas[@]}" |
-    sed -E 's/^CREATE SCHEMA ([a-z_]+);/CREATE SCHEMA IF NOT EXISTS \1;/' >"$dir/schema.sql"
+    sed -E -e 's/^CREATE SCHEMA ([a-z_]+);/CREATE SCHEMA IF NOT EXISTS \1;/' \
+      -e '/^ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin /d' >"$dir/schema.sql"
   pg_dump -Fc --data-only --no-owner "${data_schemas[@]}" "${skip_data[@]}" -f "$dir/data.dump"
   counts >"$dir/counts.tsv"
   {
