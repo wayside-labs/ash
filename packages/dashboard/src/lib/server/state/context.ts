@@ -22,8 +22,18 @@ export function missingAccountResponse(): Response {
   return Response.json({ error: "account not provisioned" }, { status: 403 });
 }
 
-/** Resolves the caller's org when hosted tenancy is enabled. */
-export async function resolvePostgresContext(): Promise<PostgresStateContext | null> {
+export type PostgresContextResult =
+  | { kind: "ok"; ctx: PostgresStateContext }
+  | { kind: "anonymous" }
+  | { kind: "unprovisioned" };
+
+/**
+ * Resolves the caller's org when hosted tenancy is enabled.
+ *
+ * "No session" and "a session whose account setup never finished" are kept apart: both used
+ * to answer 401, and the client could not tell "sign in" from "your account is broken".
+ */
+export async function resolvePostgresContext(): Promise<PostgresContextResult | null> {
   if (!isSupabaseConfigured()) return null;
 
   const supabase = await createClient();
@@ -31,14 +41,15 @@ export async function resolvePostgresContext(): Promise<PostgresStateContext | n
     data: { user },
     error: userError,
   } = await supabase.auth.getUser();
-  if (userError || !user) return null;
+  if (userError || !user) return { kind: "anonymous" };
 
   const { data: identity, error: identityError } = await supabase
     .from("identities")
     .select("account_id")
     .eq("auth_user_id", user.id)
     .maybeSingle();
-  if (identityError || !identity?.account_id) return null;
+  if (identityError) throw identityError;
+  if (!identity?.account_id) return { kind: "unprovisioned" };
 
   const { data: membership, error: membershipError } = await supabase
     .from("memberships")
@@ -47,19 +58,18 @@ export async function resolvePostgresContext(): Promise<PostgresStateContext | n
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
-  if (membershipError || !membership?.org_id) return null;
+  if (membershipError) throw membershipError;
+  if (!membership?.org_id) return { kind: "unprovisioned" };
 
   return {
-    supabase,
-    accountId: identity.account_id,
-    orgId: membership.org_id,
+    kind: "ok",
+    ctx: { supabase, accountId: identity.account_id, orgId: membership.org_id },
   };
 }
 
 export async function requirePostgresContext(): Promise<PostgresStateContext> {
-  const ctx = await resolvePostgresContext();
-  if (!ctx) {
-    throw new StateAccessError(unauthorizedStateResponse());
-  }
-  return ctx;
+  const result = await resolvePostgresContext();
+  if (result?.kind === "ok") return result.ctx;
+  if (result?.kind === "unprovisioned") throw new StateAccessError(missingAccountResponse());
+  throw new StateAccessError(unauthorizedStateResponse());
 }
