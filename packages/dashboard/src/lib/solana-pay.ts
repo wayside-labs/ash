@@ -90,9 +90,20 @@ export const ASSOCIATED_TOKEN_PROGRAM = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJ
 export const SYSTEM_PROGRAM = "11111111111111111111111111111111";
 export const USDC_DECIMALS = 6;
 
-/** `solana:<https link>` — a wallet fetches the transaction from the link instead of building it. */
+/**
+ * `solana:<https link>` — a wallet fetches the transaction from the link instead of building it.
+ *
+ * The spec's link is *conditionally* URL-encoded: only a link with query parameters is encoded,
+ * so the wallet can tell its own `?` from the link's. A plain link goes in as-is — encoding it
+ * anyway turns `https://` into `https%3A%2F%2F`, which Phantom's scanner reads as a malformed
+ * address ("not a valid address"). Same rule as `@solana/pay`'s `encodeURL`.
+ */
 export function transactionRequestUrl(link: string): string {
-  return `solana:${encodeURIComponent(link)}`;
+  const url = new URL(link);
+  if (url.protocol !== "https:") throw new Error("a transaction request link must be https");
+  return url.search
+    ? `solana:${encodeURIComponent(url.toString().replace(/\/\?/, "?"))}`
+    : `solana:${url.toString().replace(/\/$/, "")}`;
 }
 
 /** SPL Token `TransferChecked`: tag 12, amount as little-endian u64, then the mint's decimals. */
