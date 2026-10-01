@@ -1,5 +1,15 @@
 import type { Page } from "@playwright/test";
-import { clickUntil, expect, stubBilling, stubChain, stubChat, t, test } from "./fixtures";
+import {
+  ADDR,
+  clickUntil,
+  expect,
+  stubBilling,
+  stubChain,
+  stubChat,
+  stubWallet,
+  t,
+  test,
+} from "./fixtures";
 
 /**
  * The dashboard's shape since 2026-10: chat + workflows at `/`, and a top bar that carries only
@@ -121,6 +131,54 @@ test.describe("money bar", () => {
     await expect(page.getByTestId("deposit-confirmed")).toContainText("$25.00", {
       timeout: 15_000,
     });
+  });
+
+  test("a connected wallet pays the deposit itself, no QR needed", async ({ page }) => {
+    await money(page);
+    await stubRegion(page, "US");
+    await stubRails(page);
+    await stubWallet(page);
+    const intent = {
+      id: "22222222-2222-4222-8222-222222222222",
+      rail: "solana_pay_usdc",
+      cluster: "devnet",
+      amountMicros: 5_000_000,
+      url: "solana:https://example.test/api/billing/deposits/2222/tx",
+      reference: RECIPIENT,
+      recipient: RECIPIENT,
+      status: "pending",
+    };
+    await page.route("**/api/billing/deposits", (route) =>
+      route.fulfill({
+        status: 201,
+        contentType: "application/json",
+        body: JSON.stringify({ intent }),
+      }),
+    );
+    let txRequest: unknown = null;
+    await page.route("**/api/billing/deposits/*/tx", async (route) => {
+      txRequest = route.request().postDataJSON();
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ transaction: "AQID", message: "Assistant credit" }),
+      });
+    });
+
+    await page.goto("/");
+    await page.getByRole("button", { name: t("header.deposit") }).click();
+    await page.getByRole("button", { name: "$5", exact: true }).click();
+    await page.getByRole("button", { name: t("deposit.create") }).click();
+
+    const pay = page.getByRole("button", {
+      name: t("deposit.payWithWallet", { wallet: "Phantom" }),
+    });
+    await clickUntil(pay, page.getByText(t("deposit.sentFromWallet")));
+    expect(txRequest).toEqual({ account: ADDR.wallet });
+    const signed = await page.evaluate(
+      () => (window as unknown as { __signed?: unknown[] }).__signed,
+    );
+    expect(signed).toHaveLength(1);
   });
 
   test("deposits say so when the server has no Solana Pay recipient", async ({ page }) => {

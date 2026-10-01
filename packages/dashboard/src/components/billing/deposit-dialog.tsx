@@ -1,7 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Copy, ExternalLink, Loader2, Zap } from "lucide-react";
+import { CheckCircle2, Copy, ExternalLink, Loader2, Wallet, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,12 +14,20 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/toast";
-import { BILLING_QUERY_KEY, checkDeposit, createDeposit, useRails } from "@/hooks/use-billing";
+import {
+  BILLING_QUERY_KEY,
+  checkDeposit,
+  createDeposit,
+  depositTransaction,
+  useRails,
+} from "@/hooks/use-billing";
+import { describeWalletError } from "@/hooks/use-dashboard";
 import { useRegion } from "@/hooks/use-region";
 import { intlLocale } from "@/i18n";
 import { useLocale, useTranslation } from "@/i18n/locale-provider";
 import type { DepositIntentView } from "@/lib/billing";
 import { formatBalance } from "@/lib/region";
+import { getConnectedProvider, signAndSendTransaction } from "@/lib/solana";
 import { useAppStore } from "@/stores/app-store";
 import { QrCode } from "./qr-code";
 
@@ -45,12 +53,17 @@ export function DepositDialog() {
   const [intent, setIntent] = useState<DepositIntentView | null>(null);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const walletAddress = useAppStore((s) => s.walletAddress);
+  const walletName = useAppStore((s) => s.walletName);
+  const [paying, setPaying] = useState(false);
+  const [sent, setSent] = useState(false);
 
   // A fresh dialog each time: an old QR must never be paid twice by mistake.
   useEffect(() => {
     if (!open) {
       setIntent(null);
       setError(null);
+      setSent(false);
     }
   }, [open]);
 
@@ -83,6 +96,28 @@ export function DepositDialog() {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setCreating(false);
+    }
+  };
+
+  // The traditional web3 path: the connected wallet signs the same fee-covered transaction a
+  // scanning wallet would fetch, so no QR or camera is involved.
+  const payWithWallet = async () => {
+    if (!intent || !walletAddress) return;
+    const provider = getConnectedProvider(walletAddress);
+    if (!provider) {
+      setError(t("deposit.walletGone"));
+      return;
+    }
+    setPaying(true);
+    setError(null);
+    try {
+      const { transaction } = await depositTransaction(intent.id, walletAddress);
+      await signAndSendTransaction(provider, transaction);
+      setSent(true);
+    } catch (err) {
+      setError(describeWalletError(err, t));
+    } finally {
+      setPaying(false);
     }
   };
 
@@ -176,6 +211,21 @@ export function DepositDialog() {
 
         {intent?.status === "pending" && (
           <div className="flex flex-col items-center gap-3 text-center">
+            {walletAddress && !sent && (
+              <>
+                <Button className="w-full" onClick={payWithWallet} disabled={paying}>
+                  {paying ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Wallet className="h-4 w-4" />
+                  )}
+                  {t("deposit.payWithWallet", { wallet: walletName ?? t("deposit.wallet") })}
+                </Button>
+                {error && <p className="text-sm text-destructive">{error}</p>}
+                <p className="text-xs text-muted-foreground">{t("deposit.orScan")}</p>
+              </>
+            )}
+            {sent && <p className="text-sm text-primary">{t("deposit.sentFromWallet")}</p>}
             <QrCode value={intent.url} label={t("deposit.qrLabel")} />
             <p className="text-sm">
               {t("deposit.scan", {

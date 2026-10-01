@@ -1069,5 +1069,10 @@
   "withdraw.error.insufficient": "Isso é mais do que o seu saldo disponível.",
   "withdraw.error.busy": "Outro pedido de saque está sendo processado. Tente de novo em instantes.",
   "deposit.rail.solana_pay_usdc.hintFee": "Solana Pay pela Phantom, Solflare, Backpack ou qualquer carteira Solana.",
-  "header.network": "Rede"
+  "header.network": "Rede",
+  "deposit.payWithWallet": "Pagar com {wallet}",
+  "deposit.wallet": "carteira conectada",
+  "deposit.orScan": "ou escaneie o QR com o celular",
+  "deposit.sentFromWallet": "Pagamento enviado pela sua carteira. Confirmando…",
+  "deposit.walletGone": "Sua carteira não está mais conectada. Conecte de novo pela barra superior."
 }

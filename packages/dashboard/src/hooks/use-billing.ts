@@ -84,3 +84,11 @@ export function useRequestWithdrawal() {
     },
   });
 }
+
+/** The fee-covered transaction for a connected wallet: the same one a scanning wallet gets. */
+export function depositTransaction(id: string, account: string) {
+  return send<{ transaction: string; message: string }>(`/api/billing/deposits/${id}/tx`, {
+    method: "POST",
+    body: JSON.stringify({ account }),
+  });
+}

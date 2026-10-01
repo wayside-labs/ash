@@ -25,7 +25,14 @@ export function OPTIONS() {
   return new Response(null, { status: 204, headers: CORS });
 }
 
+// One line per wallet hit: the only way to see whether a scanning wallet reached us at all,
+// and where it stopped. No secrets — the account is a public address.
+function trace(req: Request, what: string) {
+  console.info(`[billing] deposit tx ${what} ua=${JSON.stringify(req.headers.get("user-agent"))}`);
+}
+
 export function GET(req: Request) {
+  trace(req, "GET");
   return Response.json(
     { label: "Agent Rails", icon: `${publicOrigin(req)}/icon.svg` },
     { headers: CORS },
@@ -48,6 +55,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const body = (await req.json().catch(() => null)) as { account?: unknown } | null;
   const account = typeof body?.account === "string" ? body.account : "";
+  trace(req, `POST intent=${id} account=${account || "-"}`);
   if (!isAddress(account)) return fail(400, "account must be a Solana address");
 
   try {
