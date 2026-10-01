@@ -1069,5 +1069,10 @@
   "withdraw.error.insufficient": "That is more than your available balance.",
   "withdraw.error.busy": "Another withdrawal request is being processed. Try again in a moment.",
   "deposit.rail.solana_pay_usdc.hintFee": "Solana Pay from Phantom, Solflare, Backpack or any Solana wallet.",
-  "header.network": "Network"
+  "header.network": "Network",
+  "deposit.payWithWallet": "Pay with {wallet}",
+  "deposit.wallet": "connected wallet",
+  "deposit.orScan": "or scan the QR with your phone",
+  "deposit.sentFromWallet": "Payment sent from your wallet. Confirming…",
+  "deposit.walletGone": "Your wallet is no longer connected. Connect it again from the top bar."
 }
