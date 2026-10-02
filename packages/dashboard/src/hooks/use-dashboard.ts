@@ -2,6 +2,7 @@
 
 import { NATIVE_MINT } from "@agent-rails/contract/constants";
 import { knownMint } from "@agent-rails/contract/mints";
+import { getBase64Decoder, getBase64Encoder } from "@solana/kit";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { useTranslation } from "@/i18n/locale-provider";
@@ -26,8 +27,8 @@ import type {
   VaultBalances,
   VaultTransferKind,
 } from "@/lib/server/solana";
-import { getConnectedProvider, signAndSendTransaction } from "@/lib/solana";
 import type { Agent, Money, VaultAsset, WalletInfo, Workflow } from "@/lib/types";
+import { signWithStandardWallet, solanaChain } from "@/lib/wallet-standard";
 import { useAppStore } from "@/stores/app-store";
 
 const LAMPORTS_PER_SOL = 1_000_000_000;
@@ -485,16 +486,13 @@ export type CreateSessionMutationResult = {
  * wallet, confirm on the server — same choreography as vault transfer.
  */
 export function useCreateSession() {
-  const { cluster, customRpc, walletAddress } = useAppStore();
+  const { cluster, customRpc, walletAddress, walletName } = useAppStore();
   const queryClient = useQueryClient();
   const { t } = useTranslation();
 
   return useMutation({
     mutationFn: async (input: CreateSessionInput): Promise<CreateSessionMutationResult> => {
-      const provider = getConnectedProvider(walletAddress);
-      if (!walletAddress || !provider) {
-        throw new Error(t("createSession.error.walletNotConnected"));
-      }
+      if (!walletAddress) throw new Error(t("createSession.error.walletNotConnected"));
 
       const built = await request<BuiltCreateSession>("/api/solana/create-session", {
         method: "POST",
@@ -514,12 +512,14 @@ export function useCreateSession() {
         return { built, signature: null, status: "skipped" };
       }
 
-      let signature: string;
-      try {
-        signature = await signAndSendTransaction(provider, built.transaction);
-      } catch (error) {
-        throw new Error(describeWalletError(error, t));
-      }
+      const signature = await signAndSend({
+        cluster,
+        customRpc,
+        walletAddress,
+        walletName,
+        transaction: built.transaction,
+        t,
+      });
 
       const confirmation = await request<ConfirmationResult>("/api/solana/confirm", {
         method: "POST",
@@ -541,14 +541,13 @@ export function useCreateSession() {
 }
 
 export function useVaultTransfer() {
-  const { cluster, customRpc, walletAddress } = useAppStore();
+  const { cluster, customRpc, walletAddress, walletName } = useAppStore();
   const queryClient = useQueryClient();
   const { t } = useTranslation();
 
   return useMutation({
     mutationFn: async ({ kind, treasury, mint, amount }: VaultTransferInput) => {
-      const provider = getConnectedProvider(walletAddress);
-      if (!walletAddress || !provider) throw new Error(t("vaultTransfer.error.walletNotConnected"));
+      if (!walletAddress) throw new Error(t("vaultTransfer.error.walletNotConnected"));
 
       const built = await request<BuiltTransaction>("/api/solana/vault-transfer", {
         method: "POST",
@@ -563,12 +562,14 @@ export function useVaultTransfer() {
         }),
       });
 
-      let signature: string;
-      try {
-        signature = await signAndSendTransaction(provider, built.transaction);
-      } catch (error) {
-        throw new Error(describeWalletError(error, t));
-      }
+      const signature = await signAndSend({
+        cluster,
+        customRpc,
+        walletAddress,
+        walletName,
+        transaction: built.transaction,
+        t,
+      });
 
       const confirmation = await request<ConfirmationResult>("/api/solana/confirm", {
         method: "POST",
@@ -606,11 +607,56 @@ export function describeWalletError(error: unknown, t: (key: string) => string):
         ? fields.message
         : String(error);
   if (message === "WALLET_CANNOT_SIGN") return t("vaultTransfer.error.walletCannotSign");
+  if (message === "WALLET_NOT_FOUND") return t("vaultTransfer.error.walletNotConnected");
   // 4001 is EIP-1193's "user rejected", which the Solana wallets reuse.
   if (fields.code === 4001 || /user rejected|denied|cancel/i.test(message)) {
     return t("vaultTransfer.error.rejected");
   }
   return message;
+}
+
+const base64Bytes = getBase64Encoder();
+const base64Text = getBase64Decoder();
+
+/**
+ * The one way the dashboard has a wallet sign a server-built transaction. The wallet signs
+ * first, through the Wallet Standard; a key the browser holds (`coSign`) signs after it; and
+ * `/api/solana/send` puts it on the dashboard's own cluster. Phantom asks for that order
+ * whenever a transaction has more than one signer, since it may add instructions of its own,
+ * and a wallet that sent the transaction itself would send it on whatever network it is set
+ * to. Returns the signature for `/api/solana/confirm`; a wallet error comes back readable.
+ */
+export async function signAndSend(input: {
+  cluster: SolanaCluster;
+  customRpc: string;
+  walletAddress: string;
+  walletName: string | null;
+  transaction: string;
+  coSign?: (signedByWallet: string) => Promise<string>;
+  t: (key: string) => string;
+}): Promise<string> {
+  let signed: string;
+  try {
+    signed = base64Text.decode(
+      await signWithStandardWallet({
+        address: input.walletAddress,
+        transaction: new Uint8Array(base64Bytes.encode(input.transaction)),
+        chain: solanaChain(input.cluster),
+        walletName: input.walletName,
+      }),
+    );
+  } catch (error) {
+    throw new Error(describeWalletError(error, input.t));
+  }
+  const { signature } = await request<{ signature: string }>("/api/solana/send", {
+    method: "POST",
+    body: JSON.stringify({
+      cluster: input.cluster,
+      rpc: input.customRpc || null,
+      transaction: input.coSign ? await input.coSign(signed) : signed,
+    }),
+  });
+  return signature;
 }
 
 export type ProviderStatus = {

@@ -142,3 +142,27 @@ Still deferred (wave 2B+): allowlist editor, policy editor, pause/unpause, sessi
 ceiling and guardian management, SPL mints in the wizard, and mainnet in the browser. The
 consequence *"until then the handoff and README keep pointing at `agent-rails init`"* no
 longer holds for devnet and testnet.
+
+## Amendment (2026-10-02): wallets sign first; the dashboard sends
+
+The wave 2A **Keys** paragraph had the browser sign the treasury stage with the `create_key`
+*before* the wallet, because the wallet was asked to sign *and send*. Both halves are reversed
+for every transaction the dashboard puts in front of a wallet — vault transfer, session
+create, the bootstrap stages, and the fee-covered credit deposit:
+
+1. **The wallet signs first, through the Wallet Standard** (`solana:signTransaction`, wire bytes
+   in and out). Phantom asks for that order whenever a transaction has more than one signer: a
+   wallet may add instructions of its own (Lighthouse assertions, a compute budget), and a
+   signature taken earlier no longer matches the message. The injected `request()` path it
+   replaces documents only a legacy message, not the v0 wire bytes the server builds.
+2. **Any key the browser holds signs after it** — the `create_key`, for the treasury stage.
+3. **The dashboard sends**, through `POST /api/solana/send`, on the workflow's own cluster. A
+   wallet that sends picks the network it is set to, and a devnet transaction from a wallet
+   left on mainnet never lands. The route signs nothing and adds nothing; it refuses a
+   transaction with a signature missing.
+
+What forced it: on 2026-10-01 six devnet deposits reached the server from a connected wallet
+and none reached the chain, and no wallet-signed dashboard transaction had ever landed on the
+program — every one of its devnet transactions to date was signed by a CLI key. The
+Playwright suite could not have caught it: it stubs the wallet. A human Phantom smoke on
+devnet remains the only proof, as wave 2A already noted.

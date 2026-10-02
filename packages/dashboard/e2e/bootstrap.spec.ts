@@ -1,4 +1,4 @@
-import { getBase58Encoder, getTransactionDecoder, type SignatureBytes } from "@solana/kit";
+import { getBase64Encoder, getTransactionDecoder } from "@solana/kit";
 import {
   ADDR,
   BOOTSTRAP_VENDOR,
@@ -15,7 +15,7 @@ import {
  * ADR-021 wave 2A, end to end with the chain stubbed: a workflow with no treasury gets
  * one from the Treasury page, without a terminal. What is asserted is what the browser
  * does that nothing else can — generate the create_key, sign the treasury stage with it
- * before the wallet does, send only public keys to the server, and link the workflow —
+ * after the wallet does, send only public keys to the server, and link the workflow —
  * plus that the loop walks every stage the server hands out. Which stages exist, and in
  * what order, is `buildStages`' business and is tested in `packages/cli` and in
  * `lib/server/bootstrap.test.ts` against real encodings.
@@ -98,19 +98,23 @@ test.describe("treasury bootstrap wizard", () => {
     // The session key crosses the wire as a public key and nothing else (ADR-017/018).
     expect(Object.keys(first?.session ?? {}).sort()).toEqual(["feeBudgetLamports", "key", "label"]);
 
-    // The treasury stage reached the wallet already carrying the create_key signature.
+    // The wallet signs first: the treasury stage reached it without the create_key's
+    // signature, and the create_key signed after it, before the dashboard sent it.
+    const decode = (wire: string) =>
+      getTransactionDecoder().decode(getBase64Encoder().encode(wire));
     const signed = await page.evaluate(
-      () => (window as unknown as { __signed: { message: string }[] }).__signed,
+      () => (window as unknown as { __signed: { transaction: string }[] }).__signed,
     );
     expect(signed).toHaveLength(3);
-    const firstSigned = getTransactionDecoder().decode(
-      getBase58Encoder().encode((signed[0] as { message: string }).message),
+    const createKey = first?.createKey as string;
+    const atWallet = decode(signed[0]?.transaction ?? "");
+    expect(atWallet.signatures[createKey as keyof typeof atWallet.signatures]).toBeNull();
+    const sends = chain.calls.filter((call) => call.url === "/api/solana/send");
+    expect(sends).toHaveLength(3);
+    const sent = decode(
+      (sends[0]?.body as { transaction?: string } | undefined)?.transaction ?? "",
     );
-    const createKeySignature = firstSigned.signatures[
-      first?.createKey as keyof typeof firstSigned.signatures
-    ] as SignatureBytes | null;
-    expect(createKeySignature).not.toBeNull();
-    expect(firstSigned.signatures[ADDR.wallet as keyof typeof firstSigned.signatures]).toBeNull();
+    expect(sent.signatures[createKey as keyof typeof sent.signatures]).not.toBeNull();
 
     // The workflow now points at the new treasury, so the card shows the vault.
     await dialog.getByRole("link", { name: t("bootstrap.done.openTreasury") }).click();

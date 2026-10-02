@@ -6,10 +6,10 @@ import { getWallets } from "@wallet-standard/app";
 import type { Wallet, WalletAccount } from "@wallet-standard/base";
 import { StandardConnect, type StandardConnectFeature } from "@wallet-standard/features";
 
-export type SolanaChain = "solana:devnet" | "solana:mainnet";
+export type SolanaChain = "solana:devnet" | "solana:testnet" | "solana:mainnet";
 
-export function solanaChain(cluster: "devnet" | "mainnet-beta"): SolanaChain {
-  return cluster === "devnet" ? "solana:devnet" : "solana:mainnet";
+export function solanaChain(cluster: "devnet" | "testnet" | "mainnet-beta"): SolanaChain {
+  return cluster === "mainnet-beta" ? "solana:mainnet" : `solana:${cluster}`;
 }
 
 function signerFor(address: string): { wallet: Wallet; account: WalletAccount } | null {

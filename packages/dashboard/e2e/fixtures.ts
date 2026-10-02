@@ -288,6 +288,8 @@ export async function stubChain(
           remaining: BOOTSTRAP_ORDER.length - stub.bootstrapStages.length + 1,
         });
       }
+      case "/api/solana/send":
+        return json({ signature: STUB_SIGNATURE });
       case "/api/solana/confirm":
         return json({
           signature: STUB_SIGNATURE,
@@ -594,17 +596,15 @@ export async function stubBilling(
 }
 
 /**
- * A Phantom-shaped provider on `window`, injected before any script runs so the
- * header's eager `connect({ onlyIfTrusted: true })` finds it on first paint.
+ * A Phantom-shaped wallet, injected before any script runs so the header's eager
+ * `connect({ onlyIfTrusted: true })` finds it on first paint.
  *
- * `request({ method: "signAndSendTransaction" })` is the entry point
- * `signAndSendTransaction` in `lib/solana.ts` prefers, so stubbing that one
- * covers the path the dashboard actually takes. `rejectSigning` drives the
- * other branch the UI has to handle: a user who clicks "reject" in the wallet.
- *
- * The same wallet also registers through the Wallet Standard, as Phantom does,
- * with `solana:signTransaction` — the deposit's sign-first path. It returns the
- * bytes it was given; what the server does with them is the route's own test.
+ * Transactions are signed through the Wallet Standard face it registers, as
+ * Phantom does: `solana:signTransaction`, the only signing path the dashboard
+ * takes. It records what it was asked to sign (`window.__signed`, base64) and
+ * hands the bytes back unchanged; what happens to them next is the routes' own
+ * tests. `rejectSigning` drives the other branch the UI has to handle: a user
+ * who clicks "reject" in the wallet.
  */
 export async function stubWallet(
   page: Page,
@@ -615,7 +615,7 @@ export async function stubWallet(
   const trusted = options.trusted ?? true;
 
   await page.addInitScript(
-    ({ address, rejectSigning, trusted, signature }) => {
+    ({ address, rejectSigning, trusted }) => {
       const key = { toBase58: () => address };
       const provider = {
         isPhantom: true,
@@ -631,14 +631,6 @@ export async function stubWallet(
         on: () => {},
         removeListener: () => {},
         signMessage: async (message: Uint8Array) => message,
-        request: async ({ method, params }: { method: string; params?: unknown }) => {
-          if (method !== "signAndSendTransaction") throw new Error(`unstubbed: ${method}`);
-          if (rejectSigning) throw new Error("User rejected the request.");
-          // Kept for tests that assert what the dashboard asked the wallet to sign.
-          const w = window as unknown as { __signed?: unknown[] };
-          w.__signed = [...(w.__signed ?? []), params];
-          return { signature };
-        },
       };
       Object.defineProperty(window, "phantom", { value: { solana: provider }, writable: true });
 
@@ -674,7 +666,11 @@ export async function stubWallet(
               for (const input of inputs) {
                 w.__signed = [
                   ...(w.__signed ?? []),
-                  { address: input.account.address, chain: input.chain },
+                  {
+                    address: input.account.address,
+                    chain: input.chain,
+                    transaction: btoa(String.fromCharCode(...input.transaction)),
+                  },
                 ];
               }
               return inputs.map((input) => ({ signedTransaction: input.transaction }));
@@ -691,7 +687,7 @@ export async function stubWallet(
         new CustomEvent("wallet-standard:register-wallet", { detail: register }),
       );
     },
-    { address, rejectSigning, trusted, signature: STUB_SIGNATURE },
+    { address, rejectSigning, trusted },
   );
 }
 

@@ -90,7 +90,8 @@ test.describe("vault deposit and withdraw", () => {
 
     await expect(page.getByText(t("vaultTransfer.error.rejected"))).toBeVisible();
     expect(chain.calls.some((call) => call.url === "/api/solana/vault-transfer")).toBe(true);
-    // Nothing was confirmed, because nothing was ever submitted.
+    // Nothing was sent or confirmed, because the wallet signed nothing.
+    expect(chain.calls.some((call) => call.url === "/api/solana/send")).toBe(false);
     expect(chain.calls.some((call) => call.url === "/api/solana/confirm")).toBe(false);
   });
 
