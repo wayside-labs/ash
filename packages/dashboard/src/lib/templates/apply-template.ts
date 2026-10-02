@@ -36,6 +36,47 @@ function railsMcpEnv(mode: "readonly" | "full"): Record<string, string> {
   };
 }
 
+/** One MCP row a template materializes; `scopeName: null` on a workflow-scoped row means "this workflow". */
+export type TemplateMcpSpec = {
+  name: string;
+  description: string;
+  scope: StoredMcp["scope"];
+  scopeName: string | null;
+  command: string;
+  args: string[];
+  env: Record<string, string>;
+  /** Set for the per-agent rails MCP so a preview can attach it to that agent. */
+  agentName?: string;
+};
+
+/**
+ * Every MCP row applying `template` creates, in creation order. Apply and the template
+ * builder's preview both read this, so the canvas cannot show a tool Use would not make.
+ */
+export function templateMcpSpecs(template: StoredWorkflowTemplate): TemplateMcpSpec[] {
+  const specs: TemplateMcpSpec[] = [];
+  for (const agent of template.agents) {
+    if (agent.railsMcp === "none") continue;
+    specs.push({
+      name: "Agent Rails Payments",
+      description:
+        agent.railsMcp === "readonly"
+          ? "Read-only policy and session checks for this agent"
+          : "Capped payments for this agent",
+      scope: "agent",
+      scopeName: agent.name,
+      command: "agent-rails-mcp",
+      args: [],
+      env: railsMcpEnv(agent.railsMcp),
+      agentName: agent.name,
+    });
+  }
+  if (isBuiltinTemplateId(template.id)) {
+    specs.push(...(WORKSTATION_INTEGRATION_MCPS[template.id] ?? []));
+  }
+  return specs;
+}
+
 /**
  * Materializes a workflow, its agents, and per-agent rails MCP rows from a template.
  * Privileged on-chain steps (init, policy, session create) stay outside — the returned
@@ -84,49 +125,24 @@ export function applyTemplateToState(
       createdAt: input.now,
     };
     state.agents.push(agent);
+  }
 
-    if (spec.railsMcp === "none") continue;
-
+  for (const spec of templateMcpSpecs(input.template)) {
     const mcpId = input.newId("mcp");
     mcpIds.push(mcpId);
     const mcp: StoredMcp = {
       id: mcpId,
-      name: "Agent Rails Payments",
-      description:
-        spec.railsMcp === "readonly"
-          ? "Read-only policy and session checks for this agent"
-          : "Capped payments for this agent",
+      name: spec.name,
+      description: spec.description,
       enabled: true,
-      scope: "agent",
-      scopeName: spec.name,
-      command: "agent-rails-mcp",
-      args: [],
-      env: railsMcpEnv(spec.railsMcp),
+      scope: spec.scope,
+      scopeName: spec.scope === "workflow" ? workflow.name : spec.scopeName,
+      command: spec.command,
+      args: spec.args,
+      env: spec.env,
       demo: false,
     };
     state.mcps.push(mcp);
-  }
-
-  if (isBuiltinTemplateId(input.template.id)) {
-    const integrationSpecs = WORKSTATION_INTEGRATION_MCPS[input.template.id] ?? [];
-    for (const spec of integrationSpecs) {
-      const mcpId = input.newId("mcp");
-      mcpIds.push(mcpId);
-      const scopeName = spec.scope === "workflow" ? workflow.name : spec.scopeName;
-      const mcp: StoredMcp = {
-        id: mcpId,
-        name: spec.name,
-        description: spec.description,
-        enabled: true,
-        scope: spec.scope,
-        scopeName,
-        command: spec.command,
-        args: spec.args,
-        env: spec.env,
-        demo: false,
-      };
-      state.mcps.push(mcp);
-    }
   }
 
   return { workflowId, agentIds, mcpIds };
