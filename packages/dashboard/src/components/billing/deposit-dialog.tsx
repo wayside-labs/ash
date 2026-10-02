@@ -1,5 +1,6 @@
 "use client";
 
+import { getBase64Decoder, getBase64Encoder } from "@solana/kit";
 import { useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Copy, ExternalLink, Loader2, Wallet, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -18,7 +19,8 @@ import {
   BILLING_QUERY_KEY,
   checkDeposit,
   createDeposit,
-  depositTransaction,
+  prepareDepositPayment,
+  submitDepositPayment,
   useRails,
 } from "@/hooks/use-billing";
 import { describeWalletError } from "@/hooks/use-dashboard";
@@ -27,12 +29,14 @@ import { intlLocale } from "@/i18n";
 import { useLocale, useTranslation } from "@/i18n/locale-provider";
 import type { DepositIntentView } from "@/lib/billing";
 import { formatBalance } from "@/lib/region";
-import { getConnectedProvider, signAndSendTransaction } from "@/lib/solana";
+import { signWithStandardWallet, solanaChain } from "@/lib/wallet-standard";
 import { useAppStore } from "@/stores/app-store";
 import { QrCode } from "./qr-code";
 
 const POLL_MS = 5_000;
 const PRESETS = ["5", "10", "25", "50"];
+const base64Bytes = getBase64Encoder();
+const base64Text = getBase64Decoder();
 
 /**
  * Deposit, opened from the header (or any "add balance" prompt): USDC on Solana through Solana
@@ -99,23 +103,28 @@ export function DepositDialog() {
     }
   };
 
-  // The traditional web3 path: the connected wallet signs the same fee-covered transaction a
-  // scanning wallet would fetch, so no QR or camera is involved.
+  // The traditional web3 path, fee covered: the wallet signs first, and the server adds the fee
+  // payer's signature and sends it to the deposit's cluster — whatever network the wallet is on.
   const payWithWallet = async () => {
     if (!intent || !walletAddress) return;
-    const provider = getConnectedProvider(walletAddress);
-    if (!provider) {
-      setError(t("deposit.walletGone"));
-      return;
-    }
     setPaying(true);
     setError(null);
     try {
-      const { transaction } = await depositTransaction(intent.id, walletAddress);
-      await signAndSendTransaction(provider, transaction);
+      const { transaction } = await prepareDepositPayment(intent.id, walletAddress);
+      const signed = await signWithStandardWallet({
+        address: walletAddress,
+        transaction: new Uint8Array(base64Bytes.encode(transaction)),
+        chain: solanaChain(intent.cluster),
+        walletName,
+      });
+      await submitDepositPayment(intent.id, base64Text.decode(signed));
       setSent(true);
     } catch (err) {
-      setError(describeWalletError(err, t));
+      setError(
+        err instanceof Error && err.message === "WALLET_NOT_FOUND"
+          ? t("deposit.walletGone")
+          : describeWalletError(err, t),
+      );
     } finally {
       setPaying(false);
     }
@@ -211,7 +220,7 @@ export function DepositDialog() {
 
         {intent?.status === "pending" && (
           <div className="flex flex-col items-center gap-3 text-center">
-            {walletAddress && !sent && (
+            {walletAddress && !sent && solanaPay?.feeCovered && (
               <>
                 <Button className="w-full" onClick={payWithWallet} disabled={paying}>
                   {paying ? (
@@ -236,6 +245,7 @@ export function DepositDialog() {
                 ),
               })}
             </p>
+            <p className="text-xs text-muted-foreground">{t("deposit.scanFee")}</p>
             <div className="flex w-full flex-col gap-2 sm:flex-row">
               <Button asChild className="flex-1">
                 <a href={intent.url}>

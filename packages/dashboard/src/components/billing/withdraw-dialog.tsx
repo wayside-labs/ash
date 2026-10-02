@@ -42,6 +42,7 @@ export function WithdrawDialog() {
   const [destination, setDestination] = useState("");
   const [sent, setSent] = useState(false);
 
+  // Runs on open only: `request.reset` is a stable reference, so listing it costs no re-run.
   useEffect(() => {
     if (open) {
       setSent(false);
@@ -49,8 +50,7 @@ export function WithdrawDialog() {
       setDestination("");
       request.reset();
     }
-    // Reset on open only; `request.reset` is stable.
-  }, [open]);
+  }, [open, request.reset]);
 
   const usd = { ...region, currency: "USD" as const, usdRate: 1 };
   const available = billing?.balanceMicros ?? 0;

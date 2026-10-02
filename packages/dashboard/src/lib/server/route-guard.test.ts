@@ -27,14 +27,6 @@ const BEARER_ROUTES = new Set([
   "ingest/knowledge/route.ts",
 ]);
 
-/**
- * Called by a customer's wallet (Solana Pay transaction requests), which sends no cookie and
- * often no browser origin, so there is no session for a cross-site request to ride. Each must
- * select what it serves by an unguessable id alone and never resolve a session: the rule below
- * holds it to that, instead of letting it escape the sweep.
- */
-const WALLET_ROUTES = new Set(["billing/deposits/[id]/tx/route.ts"]);
-
 /** Read-only, and still guarded: it is the one route that emits whole env values. */
 const GUARDED_READS = [["export/runner-config/route.ts", "GET"]] as const;
 
@@ -60,10 +52,9 @@ function handlerBody(source: string, method: string): string | null {
 describe("every mutating route handler calls assertSameOrigin", () => {
   const files = routeFiles(API_ROOT);
 
-  it("lists only bearer and wallet routes that exist", () => {
+  it("lists only bearer routes that exist", () => {
     const relatives = new Set(files.map((file) => file.slice(API_ROOT.length + 1)));
-    for (const route of [...BEARER_ROUTES, ...WALLET_ROUTES])
-      expect(relatives.has(route)).toBe(true);
+    for (const route of BEARER_ROUTES) expect(relatives.has(route)).toBe(true);
   });
 
   it("finds the routes at all, so an empty sweep cannot pass silently", () => {
@@ -78,11 +69,6 @@ describe("every mutating route handler calls assertSameOrigin", () => {
       const body = handlerBody(source, method);
       if (body === null) continue;
       it(`${method} ${relative}`, () => {
-        if (WALLET_ROUTES.has(relative)) {
-          expect(body).toContain("findPendingIntent(");
-          expect(body).not.toMatch(/resolveBillingScope|resolvePostgresContext|createClient\(/);
-          return;
-        }
         expect(body).toContain(
           BEARER_ROUTES.has(relative) ? "authenticateIngest(req)" : "assertSameOrigin(req)",
         );

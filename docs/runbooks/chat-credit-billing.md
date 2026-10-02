@@ -108,7 +108,7 @@ applies everything `config.toml` declares.
 | `SOLANA_PAY_RECIPIENT` | none | The operator's own wallet; its USDC token account receives deposits. Unset turns the deposit rail off (the modal says so). |
 | `SOLANA_PAY_CLUSTER` | `mainnet-beta` | `devnet` takes Circle's devnet USDC, which has no value — for trying the flow only. |
 | `SOLANA_PAY_RPC_URL` | public RPC | A dedicated RPC for the deposit check (`getSignaturesForAddress` + `getTransaction`). |
-| `SOLANA_PAY_FEE_PAYER_KEY` | none | The platform's fee wallet, as `solana-keygen`'s 64-byte JSON array. Set: the QR is a transaction request and the platform pays the network fee (and opens the recipient's USDC account once). Unset: a plain transfer request, the customer's wallet pays the fee. Keep a few dollars of SOL in it and nothing else — it is a hot key. |
+| `SOLANA_PAY_FEE_PAYER_KEY` | none | The platform's fee wallet, as `solana-keygen`'s 64-byte JSON array. Set: **Pay with &lt;wallet&gt;** appears and the platform pays that payment's network fee, and the fee wallet opens the recipient's USDC account on the first deposit request. Unset: the QR alone, where the customer's wallet pays the fee, and the recipient's USDC account must exist already. Keep a few dollars of SOL in it and nothing else — it is a hot key. |
 
 ## Deposits (Solana Pay USDC)
 
@@ -128,14 +128,34 @@ as coming soon: no PSP is integrated) and USDC; everyone else sees USDC.
 
 USDC has 6 decimals, so one base unit is one micro-USD: no price is read at deposit time.
 
-**Network fee covered.** With `SOLANA_PAY_FEE_PAYER_KEY` set, the QR is
-`solana:https://<host>/api/billing/deposits/<id>/tx`. The wallet POSTs its address there and
-gets back a transaction our server built and signed as fee payer: create the recipient's USDC
-account if missing, then `transferChecked` of exactly the intent's amount with the reference
-attached. The customer signs only the transfer. That route takes no session (wallets send no
-cookie), so it serves only a pending intent by its unguessable id and never pays out anything
-but the operator; `route-guard.test.ts` pins that under `WALLET_ROUTES`. Each deposit costs the
-fee wallet ~0.000005 SOL, plus ~0.002 SOL once for the recipient's USDC account.
+**The QR is always a transfer request.** It used to be a transaction request
+(`solana:https://<host>/api/billing/deposits/<id>/tx`) so the platform could pay the fee.
+Phantom's in-app scanner answers one with "not a valid address" — encoded or not — and never
+fetches the link: Phantom opens transaction requests only from a tapped link or the phone's
+camera app. The route logged no wallet GET at all while devnet deposits were being tried
+(2026-10-01). A transfer request is read by every wallet's scanner; the payer's wallet pays a
+network fee of a fraction of a cent.
+
+**Network fee covered: Pay with &lt;wallet&gt;.** With `SOLANA_PAY_FEE_PAYER_KEY` set, the modal
+offers the connected wallet. The order is the one Phantom asks for when a transaction has more
+than one signer — the wallet first, everyone else after — because a wallet may add instructions
+(Lighthouse assertions, a compute budget) and a signature taken earlier would no longer match:
+
+1. `POST /api/billing/deposits/<id>/pay {account}` returns the transfer **unsigned**, with the
+   fee wallet as fee payer: create the recipient's USDC account if missing, then
+   `transferChecked` of exactly the intent's amount with the reference attached.
+2. The browser has the wallet sign it through the Wallet Standard (`solana:signTransaction`),
+   without sending it.
+3. `POST /api/billing/deposits/<id>/submit {transaction}` checks what came back before the fee
+   wallet signs anything (`verifySponsoredDeposit`): exactly two signers, the fee wallet first and
+   still unsigned, a valid customer signature, the two instructions above and nothing else
+   except a compute budget under a priority-fee cap and Lighthouse assertions that never name
+   the fee wallet. Then it adds the fee wallet's signature and sends it with preflight on, to
+   the deposit's own cluster — whatever network the wallet happens to be set to.
+
+Both routes take the session and the caller's own pending intent; no route signs anything for a
+caller without one. Credit still lands only through `check`. Each deposit costs the fee wallet
+~0.00001 SOL (two signatures), plus ~0.002 SOL once for the recipient's USDC account.
 
 **Customer-facing wording.** The customer path (top bar, deposit, withdraw, chat, balance,
 account) never names a chain: the option reads "Crypto wallet", the currency USDC. Wallet

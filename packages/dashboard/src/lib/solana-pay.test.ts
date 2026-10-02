@@ -3,7 +3,6 @@ import {
   microsToDecimal,
   type ParsedTransaction,
   receivedBaseUnits,
-  transactionRequestUrl,
   transferRequestUrl,
   USDC_MINTS,
 } from "./solana-pay";
@@ -96,23 +95,5 @@ describe("receivedBaseUnits", () => {
       },
     };
     expect(receivedBaseUnits(tx, RECIPIENT, MINT)).toBe(0n);
-  });
-});
-
-describe("transactionRequestUrl", () => {
-  it("leaves a link without query parameters unencoded, as wallets expect", () => {
-    expect(transactionRequestUrl("https://console.ash.app.br/api/billing/deposits/abc/tx")).toBe(
-      "solana:https://console.ash.app.br/api/billing/deposits/abc/tx",
-    );
-  });
-
-  it("encodes a link that carries its own query, so the wallet cannot split it wrong", () => {
-    expect(transactionRequestUrl("https://example.com/tx?id=1&x=2")).toBe(
-      `solana:${encodeURIComponent("https://example.com/tx?id=1&x=2")}`,
-    );
-  });
-
-  it("refuses anything but https", () => {
-    expect(() => transactionRequestUrl("http://example.com/tx")).toThrow();
   });
 });

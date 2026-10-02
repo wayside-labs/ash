@@ -192,6 +192,9 @@ importers:
       '@solana/kit':
         specifier: ^8.2.0
         version: 8.2.0(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(utf-8-validate@6.0.6)
+      '@solana/wallet-standard-features':
+        specifier: ^1.5.0
+        version: 1.5.0
       '@supabase/ssr':
         specifier: ^0.6.1
         version: 0.6.1(@supabase/supabase-js@2.116.0(@opentelemetry/api@1.9.0))
@@ -201,6 +204,15 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.90.2
         version: 5.103.1(react@19.3.0)
+      '@wallet-standard/app':
+        specifier: ^1.1.1
+        version: 1.1.1
+      '@wallet-standard/base':
+        specifier: ^1.1.1
+        version: 1.1.1
+      '@wallet-standard/features':
+        specifier: ^1.1.1
+        version: 1.1.1
       '@xyflow/react':
         specifier: ^12.11.6
         version: 12.11.6(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -2562,6 +2574,10 @@ packages:
       typescript:
         optional: true
 
+  '@solana/wallet-standard-features@1.5.0':
+    resolution: {integrity: sha512-gxlLaEfPAqbhd3LNkK0Ks2pbVvDm1SDGqBK/ynDQy13Gu+qiURLpRCfSPjbtrw5bmqQsZ6rS2YJHL31bY/Koag==}
+    engines: {node: '>=22'}
+
   '@solana/web3.js@1.98.0':
     resolution: {integrity: sha512-nz3Q5OeyGFpFCR+erX2f6JPt3sKhzhYcSycBCSPkWjzSVDh/Rr1FqTVMRe58FKO16/ivTUcuJjeS5MyBvpkbzA==}
 
@@ -2858,6 +2874,18 @@ packages:
 
   '@vitest/utils@4.1.11':
     resolution: {integrity: sha512-zTCVGpyFsGWBhllOyKlTw/vnr6D9qxsfSDyfbyZmTyjHw5N/VuvzHpHoQjm2ZJzn4RJgx5w4r7V0er69CmLgPQ==}
+
+  '@wallet-standard/app@1.1.1':
+    resolution: {integrity: sha512-WDGwoByhP5gwHH01r5EaLgQdLVkACPCdOMQhmhn8rsm10h/siSgTorShzBxrn0ExSPof+Lu+C3TfgqBrPa1xoQ==}
+    engines: {node: '>=22'}
+
+  '@wallet-standard/base@1.1.1':
+    resolution: {integrity: sha512-gggIHTtxicF9XFMQ12DkfS6NAG92Ak795JeSA7f2whAQ6Y3AkMWWuCMxSZXG2NIPN42kEaZSNVjqMsJRaJRxMQ==}
+    engines: {node: '>=22'}
+
+  '@wallet-standard/features@1.1.1':
+    resolution: {integrity: sha512-aCWYmVeSCGViyEU5k7GMoW8zxE4Gs+C1s1Pp2XLesvSNlnZ4PMES9HUnTB3hl0b3RVj7C61yze3IWyrncqg4MA==}
+    engines: {node: '>=22'}
 
   '@workflow/serde@4.1.0':
     resolution: {integrity: sha512-pav4F2BoirECWR7Nf1TKt+2eETcBj7jj4cBefQ8VXQCA6NPkaKeLfj/zMgi+3zYV5ZIBT4GuUiphsj0/b9hPQQ==}
@@ -7436,6 +7464,11 @@ snapshots:
     transitivePeerDependencies:
       - fastestsmallesttextencoderdecoder
 
+  '@solana/wallet-standard-features@1.5.0':
+    dependencies:
+      '@wallet-standard/base': 1.1.1
+      '@wallet-standard/features': 1.1.1
+
   '@solana/web3.js@1.98.0(bufferutil@4.1.0)(utf-8-validate@6.0.6)':
     dependencies:
       '@babel/runtime': 7.29.7
@@ -7770,6 +7803,16 @@ snapshots:
       '@vitest/pretty-format': 4.1.11
       convert-source-map: 2.0.0
       tinyrainbow: 3.1.1
+
+  '@wallet-standard/app@1.1.1':
+    dependencies:
+      '@wallet-standard/base': 1.1.1
+
+  '@wallet-standard/base@1.1.1': {}
+
+  '@wallet-standard/features@1.1.1':
+    dependencies:
+      '@wallet-standard/base': 1.1.1
 
   '@workflow/serde@4.1.0': {}
 

@@ -73,7 +73,7 @@ export type WithdrawalRequestView = {
 
 /** Which rails this server can actually take, independent of the viewer's region. */
 export type RailsConfig = {
-  /** `feeCovered`: the platform's fee wallet pays the network fee (transaction requests). */
+  /** `feeCovered`: the platform's fee wallet pays the network fee on the connected-wallet path. */
   solanaPay: { enabled: boolean; cluster: "mainnet-beta" | "devnet"; feeCovered: boolean };
 };
 
