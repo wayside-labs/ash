@@ -42,14 +42,26 @@ async function probeClaudeCli(): Promise<string | null> {
   return version;
 }
 
+/**
+ * The server's own `ANTHROPIC_API_KEY` is the operator's money, and `anthropic-api` is not
+ * metered. Hosted, it is therefore ignored: a visitor reaches the operator's models only
+ * through `openrouter-platform`, which debits a prepaid balance. A key a tenant stored
+ * themselves is theirs and still counts. Local JSON mode has one operator who is also the
+ * user, so the env var stays as it was.
+ */
+function serverAnthropicKey(): string | undefined {
+  if (isSupabaseConfigured()) return undefined;
+  return process.env.ANTHROPIC_API_KEY || undefined;
+}
+
 export async function anthropicApiKey(): Promise<string | undefined> {
   try {
     const state = await readState();
     const stored = state.apiKeys.find((k) => k.provider.toLowerCase() === "anthropic")?.secret;
-    return stored || process.env.ANTHROPIC_API_KEY || undefined;
+    return stored || serverAnthropicKey();
   } catch (error) {
     if (error instanceof StateAccessError) {
-      return process.env.ANTHROPIC_API_KEY || undefined;
+      return serverAnthropicKey();
     }
     throw error;
   }
@@ -81,8 +93,11 @@ export async function openrouterPlatformAccess(): Promise<PlatformAccess> {
 
 export async function listProviders(locale?: Locale): Promise<ProviderStatus[]> {
   const lang = locale ?? (await getDashboardLocale());
+  // Hosted, `claude` would run on the operator's own subscription for every visitor, unbilled
+  // and outside Anthropic's terms for a consumer login; it is never probed, never offered.
+  const hosted = isSupabaseConfigured();
   const [cliVersion, apiKey, platform] = await Promise.all([
-    probeClaudeCli(),
+    hosted ? Promise.resolve(null) : probeClaudeCli(),
     anthropicApiKey(),
     openrouterPlatformAccess(),
   ]);
@@ -94,7 +109,9 @@ export async function listProviders(locale?: Locale): Promise<ProviderStatus[]> 
       available: cliVersion !== null,
       detail: cliVersion
         ? t("providers.claudeCli.detailAvailable", lang, { version: cliVersion })
-        : t("providers.claudeCli.detailUnavailable", lang),
+        : hosted
+          ? t("providers.claudeCli.detailHosted", lang)
+          : t("providers.claudeCli.detailUnavailable", lang),
       models: [
         { id: "claude-cli:opus", label: t("providers.model.opus", lang) },
         { id: "claude-cli:sonnet", label: t("providers.model.sonnet", lang) },
@@ -135,7 +152,8 @@ export async function listProviders(locale?: Locale): Promise<ProviderStatus[]> 
  * The local CLI wins by default: it costs the user nothing extra and needs no
  * key. A key the user brought comes next, and the platform key last before
  * demo — it is the one path where the operator pays. An explicitly chosen model
- * always overrides this.
+ * overrides this, but only among providers that are available: hosted, that
+ * never includes the CLI.
  */
 export async function resolveProvider(requestedModel: string | undefined): Promise<{
   provider: ProviderId;

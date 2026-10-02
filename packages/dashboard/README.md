@@ -85,9 +85,9 @@ sink (`GET /api/metrics/history/export`).
 
 | Provider | Needs | Cost |
 |---|---|---|
-| `claude-cli` | Claude Code installed and logged in | your Claude subscription |
-| `anthropic-api` | an Anthropic key in *My APIs* or `ANTHROPIC_API_KEY` | per token |
-| `openrouter-platform` | `OPENROUTER_API_KEY` on the server, and a signed-in session when hosted | per token, paid by the operator |
+| `claude-cli` | Claude Code installed and logged in; **local JSON mode only**, never offered hosted | your Claude subscription |
+| `anthropic-api` | an Anthropic key in *My APIs*, or `ANTHROPIC_API_KEY` in local JSON mode only | per token, the key owner's |
+| `openrouter-platform` | `OPENROUTER_API_KEY` on the server, and a signed-in session when hosted | per token, paid by the operator and billed to the org with the service fee |
 | `demo` | nothing | fixed replies |
 
 The CLI wins by default: it needs no key and adds no per-token cost. A key the

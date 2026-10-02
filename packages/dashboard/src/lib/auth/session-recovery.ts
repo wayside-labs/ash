@@ -1,6 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { isUnauthorized, isUnprovisioned } from "@/lib/http-error";
-import { SIGN_IN_PATH, signInUrl } from "./sign-in-gate";
+import { needsSignIn, SIGN_IN_PATH, signInUrl } from "./sign-in-gate";
 
 /** One provisioning attempt per page load; a second failure is not fixed by a third. */
 let reprovision: Promise<boolean> | null = null;
@@ -15,7 +15,9 @@ export function recoverFromAuthError(error: unknown, queryClient: QueryClient): 
   const { pathname, search } = window.location;
 
   if (isUnauthorized(error)) {
-    if (pathname === SIGN_IN_PATH) return;
+    // The root providers read `/api/state` on every page, public ones included; a signed-out
+    // visitor on `/terms` gets a 401 there and must be left reading, not bounced.
+    if (!needsSignIn(pathname)) return;
     window.location.assign(signInUrl(pathname, search));
     return;
   }
