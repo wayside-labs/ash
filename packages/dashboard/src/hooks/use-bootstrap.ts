@@ -2,12 +2,11 @@
 
 import type { KeyPairSigner } from "@solana/kit";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { describeWalletError, request } from "@/hooks/use-dashboard";
+import { request, signAndSend } from "@/hooks/use-dashboard";
 import { useTranslation } from "@/i18n/locale-provider";
 import type { BootstrapPlanView, BootstrapStepResult } from "@/lib/server/bootstrap";
 import type { ConfirmationResult } from "@/lib/server/solana";
 import type { VendorPreset } from "@/lib/server/vendors";
-import { getConnectedProvider, signAndSendTransaction } from "@/lib/solana";
 import { signWithCreateKey } from "@/lib/wallet/create-key";
 import { useAppStore } from "@/stores/app-store";
 
@@ -78,7 +77,7 @@ export function useBootstrapPlan() {
  * what actually landed rather than from what this tab believes happened.
  */
 export function useRunBootstrap() {
-  const { cluster, customRpc, walletAddress } = useAppStore();
+  const { cluster, customRpc, walletAddress, walletName } = useAppStore();
   const queryClient = useQueryClient();
   const { t } = useTranslation();
 
@@ -91,8 +90,7 @@ export function useRunBootstrap() {
       /** Called once, as soon as the treasury is known to exist on-chain. */
       onTreasury: (treasury: string) => Promise<void>;
     }): Promise<{ treasury: string }> => {
-      const provider = getConnectedProvider(walletAddress);
-      if (!walletAddress || !provider) throw new Error(t("bootstrap.error.walletNotConnected"));
+      if (!walletAddress) throw new Error(t("bootstrap.error.walletNotConnected"));
 
       let treasury = input.treasury;
       const learnTreasury = async (address: string) => {
@@ -118,19 +116,25 @@ export function useRunBootstrap() {
           return { treasury: built.treasury };
         }
 
-        input.onProgress({ stepId: built.stepId, phase: "signing" });
-        let transaction = built.transaction;
-        if (built.needsCreateKeySignature) {
-          if (!input.createKey) throw new Error(t("bootstrap.error.createKeyLost"));
-          transaction = await signWithCreateKey(transaction, input.createKey);
+        // Checked before the wallet is asked: a signature the stage cannot use is one too many.
+        const createKey = built.needsCreateKeySignature ? input.createKey : null;
+        if (built.needsCreateKeySignature && !createKey) {
+          throw new Error(t("bootstrap.error.createKeyLost"));
         }
 
-        let signature: string;
-        try {
-          signature = await signAndSendTransaction(provider, transaction);
-        } catch (error) {
-          throw new Error(describeWalletError(error, t));
-        }
+        input.onProgress({ stepId: built.stepId, phase: "signing" });
+        // The wallet signs first and the create_key after it (see `signAndSend`).
+        const signature = await signAndSend({
+          cluster,
+          customRpc,
+          walletAddress,
+          walletName,
+          transaction: built.transaction,
+          ...(createKey
+            ? { coSign: (signed: string) => signWithCreateKey(signed, createKey) }
+            : {}),
+          t,
+        });
 
         input.onProgress({ stepId: built.stepId, phase: "confirming" });
         const confirmation = await request<ConfirmationResult>("/api/solana/confirm", {

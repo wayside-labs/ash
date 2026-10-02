@@ -17,12 +17,12 @@ export async function generateCreateKey(): Promise<KeyPairSigner> {
 }
 
 /**
- * Adds the `create_key` signature to a server-built wire transaction before the wallet
- * sees it.
+ * Adds the `create_key` signature to a wire transaction the wallet has already signed.
  *
- * Before, not after: `signAndSendTransaction` submits as soon as the wallet signs, and a
- * wallet that finds a transaction already partially signed leaves its instructions alone
- * rather than appending its own — which would invalidate the signature added here.
+ * After, not before: the wallet only signs (`solana:signTransaction`) and the dashboard sends,
+ * so nothing is submitted until this key has signed too. Signing last is what Phantom asks for
+ * with several signers: a wallet may add instructions of its own, and a signature taken before
+ * that would no longer match the message.
  */
 export async function signWithCreateKey(
   base64Transaction: string,

@@ -39,7 +39,8 @@ lifecycle (wave 1), and the treasury bootstrap (wave 2A).
   changes with it. `build-step` returns the next stage the chain lacks, so the client loop
   is resumable by construction.
 - The browser holds the `create_key` (`lib/wallet/create-key.ts`) and signs the treasury
-  stage with it *before* the wallet. Only public keys cross the wire.
+  stage with it *after* the wallet (wallets sign first, the dashboard sends — see the
+  2026-10-02 amendment). Only public keys cross the wire.
 - The wizard lives on `/treasury` for rows with no `treasuryAddress`, and as *Finish setup*
   in the drawer for a treasury with no policy. Mainnet is refused in the UI.
 - Still out of scope: allowlist/policy editors, pause, revoke (waves 2B/2C).

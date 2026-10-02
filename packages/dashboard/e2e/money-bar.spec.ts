@@ -194,7 +194,7 @@ test.describe("money bar", () => {
     const signed = await page.evaluate(
       () => (window as unknown as { __signed?: unknown[] }).__signed,
     );
-    expect(signed).toEqual([{ address: ADDR.wallet, chain: "solana:devnet" }]);
+    expect(signed).toEqual([{ address: ADDR.wallet, chain: "solana:devnet", transaction: "AQID" }]);
   });
 
   test("a wallet that refuses to sign says so, and nothing is submitted", async ({ page }) => {
