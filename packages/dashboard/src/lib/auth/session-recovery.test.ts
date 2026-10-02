@@ -34,6 +34,13 @@ describe("recoverFromAuthError", () => {
     vi.unstubAllGlobals();
   });
 
+  it.each(["/terms", "/privacy"])("leaves a signed-out reader on %s", async (path) => {
+    stubLocation(path);
+    const { recoverFromAuthError, unauthorized } = await load();
+    recoverFromAuthError(unauthorized, client);
+    expect(assign).not.toHaveBeenCalled();
+  });
+
   it("sends a 401 to sign in, remembering where it was", async () => {
     stubLocation("/apis", "?q=1");
     const { recoverFromAuthError, unauthorized } = await load();

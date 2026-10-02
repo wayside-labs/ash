@@ -1,6 +1,12 @@
 /** Where a signed-out visitor is sent: the account page carries both sign-in doors. */
 export const SIGN_IN_PATH = "/account";
 
+/**
+ * Readable before signing in: the sign-in screen links to them and the agreement is only
+ * meaningful if a visitor can read it first. Exact paths, so nothing beneath them opens up.
+ */
+export const LEGAL_PATHS: readonly string[] = ["/terms", "/privacy"];
+
 const SAME_SITE = "http://same-site.invalid";
 
 /**
@@ -23,11 +29,12 @@ export function safeNext(next: string | null | undefined, fallback = SIGN_IN_PAT
  * instead of rendering a dashboard whose every `/api/state` read answers 401.
  *
  * API routes keep answering JSON 401 — a redirect there would hand `fetch` an HTML page.
- * The sign-in page itself and the OAuth callback must stay reachable, and anything with a
+ * The sign-in page itself, the OAuth callback and the legal pages must stay reachable, and anything with a
  * file extension is an asset or a browser probe (`manifest.json`, `robots.txt`).
  */
 export function needsSignIn(pathname: string): boolean {
   if (pathname === SIGN_IN_PATH || pathname.startsWith(`${SIGN_IN_PATH}/`)) return false;
+  if (LEGAL_PATHS.includes(pathname)) return false;
   if (pathname === "/api" || pathname.startsWith("/api/")) return false;
   if (pathname === "/auth" || pathname.startsWith("/auth/")) return false;
   if (pathname.startsWith("/_next/")) return false;

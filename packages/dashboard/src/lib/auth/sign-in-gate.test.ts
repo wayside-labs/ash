@@ -8,6 +8,8 @@ describe("needsSignIn", () => {
 
   it.each([
     "/account",
+    "/terms",
+    "/privacy",
     "/api/state",
     "/api/state/apiKeys",
     "/api/solana/price",
@@ -18,6 +20,12 @@ describe("needsSignIn", () => {
     "/icon.svg",
   ])("lets %s through", (path) => {
     expect(needsSignIn(path)).toBe(false);
+  });
+
+  it("opens the legal pages by exact path only", () => {
+    expect(needsSignIn("/terms/")).toBe(true);
+    expect(needsSignIn("/terms/extra")).toBe(true);
+    expect(needsSignIn("/privacy-settings")).toBe(true);
   });
 
   it("does not treat a prefix as the sign-in page", () => {

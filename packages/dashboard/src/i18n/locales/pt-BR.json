@@ -612,6 +612,7 @@
   "providers.claudeCli.label": "Claude Code (sua assinatura)",
   "providers.claudeCli.detailAvailable": "CLI {version} — usa sua assinatura Claude, sem custo por token",
   "providers.claudeCli.detailUnavailable": "Claude Code não encontrado no PATH deste servidor",
+  "providers.claudeCli.detailHosted": "Indisponível no serviço hospedado",
   "providers.anthropicApi.label": "API Anthropic",
   "providers.anthropicApi.detailAvailable": "Chave configurada — cobrado por token",
   "providers.anthropicApi.detailUnavailable": "Nenhuma chave Anthropic em Minhas APIs",
@@ -1084,5 +1085,12 @@
   "deposit.wallet": "carteira conectada",
   "deposit.orScan": "ou escaneie o QR com o celular",
   "deposit.sentFromWallet": "Pagamento enviado pela sua carteira. Confirmando…",
-  "deposit.walletGone": "Sua carteira não está mais conectada. Conecte de novo pela barra superior."
+  "deposit.walletGone": "Sua carteira não está mais conectada. Conecte de novo pela barra superior.",
+  "legal.nav": "Legal",
+  "legal.terms.link": "Termos de Serviço",
+  "legal.privacy.link": "Política de Privacidade",
+  "legal.updated": "Última atualização: {date}",
+  "legal.agree.prefix": "Ao continuar, você concorda com os",
+  "legal.agree.and": "e a",
+  "legal.agree.suffix": "."
 }

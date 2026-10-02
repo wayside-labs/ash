@@ -6,24 +6,32 @@ const isSupabaseConfigured = vi.fn();
 vi.mock("@/lib/server/auth/session", () => ({ getSessionUser }));
 vi.mock("@/lib/supabase/env", () => ({ isSupabaseConfigured }));
 vi.mock("@/lib/server/i18n", () => ({ getDashboardLocale: async () => "en" }));
+const apiKeys: { provider: string; secret: string }[] = [];
 vi.mock("@/lib/server/store", () => ({
-  readState: async () => ({ apiKeys: [] }),
+  readState: async () => ({ apiKeys }),
   StateAccessError: class extends Error {},
 }));
-// The developer running the suite may well have Claude Code installed; the
-// probe must not see it, or the CLI wins every resolution below.
+// The probe always finds a CLI, whatever the machine running the suite has: hosted
+// resolution must refuse it on policy, not because it happened to be missing.
 vi.mock("node:child_process", () => ({
-  execFile: (_cmd: string, _args: string[], _opts: unknown, cb: (e: Error) => void) =>
-    cb(new Error("not found")),
+  execFile: (
+    _cmd: string,
+    _args: string[],
+    _opts: unknown,
+    cb: (e: Error | null, out?: { stdout: string }) => void,
+  ) => cb(null, { stdout: "9.9.9" }),
 }));
 
-const { openrouterPlatformAccess, resolveProvider } = await import("./providers");
+const { anthropicApiKey, listProviders, openrouterPlatformAccess, resolveProvider } = await import(
+  "./providers"
+);
 
 beforeEach(() => {
   vi.stubEnv("ANTHROPIC_API_KEY", "");
   vi.stubEnv("OPENROUTER_API_KEY", "sk-or-test");
   isSupabaseConfigured.mockReturnValue(true);
   getSessionUser.mockResolvedValue(null);
+  apiKeys.length = 0;
 });
 
 afterEach(() => {
@@ -72,8 +80,43 @@ describe("resolveProvider", () => {
   });
 
   it("prefers a key the user brought over the platform key", async () => {
-    vi.stubEnv("ANTHROPIC_API_KEY", "sk-ant-test");
+    apiKeys.push({ provider: "Anthropic", secret: "sk-ant-tenant" });
     getSessionUser.mockResolvedValue({ id: "u", email: null });
     expect((await resolveProvider(undefined)).provider).toBe("anthropic-api");
+  });
+
+  it("never runs the operator's Claude CLI hosted, even when it is installed and asked for", async () => {
+    getSessionUser.mockResolvedValue({ id: "u", email: null });
+    expect((await resolveProvider("claude-cli:sonnet")).provider).toBe("openrouter-platform");
+    const cli = (await listProviders("en")).find((p) => p.id === "claude-cli");
+    expect(cli?.available).toBe(false);
+  });
+
+  it("falls to demo hosted when only the CLI exists: no signed-in platform key, no free ride", async () => {
+    expect(await resolveProvider("claude-cli:opus")).toEqual({ provider: "demo", model: "demo" });
+  });
+
+  it("keeps the CLI first in local JSON mode, where the operator is the user", async () => {
+    isSupabaseConfigured.mockReturnValue(false);
+    expect((await resolveProvider(undefined)).provider).toBe("claude-cli");
+  });
+});
+
+describe("anthropicApiKey", () => {
+  it("ignores the server's ANTHROPIC_API_KEY hosted: it is unmetered operator money", async () => {
+    vi.stubEnv("ANTHROPIC_API_KEY", "sk-ant-operator");
+    expect(await anthropicApiKey()).toBeUndefined();
+  });
+
+  it("still returns a key the tenant stored themselves", async () => {
+    vi.stubEnv("ANTHROPIC_API_KEY", "sk-ant-operator");
+    apiKeys.push({ provider: "anthropic", secret: "sk-ant-tenant" });
+    expect(await anthropicApiKey()).toBe("sk-ant-tenant");
+  });
+
+  it("reads the env var in local JSON mode", async () => {
+    isSupabaseConfigured.mockReturnValue(false);
+    vi.stubEnv("ANTHROPIC_API_KEY", "sk-ant-local");
+    expect(await anthropicApiKey()).toBe("sk-ant-local");
   });
 });

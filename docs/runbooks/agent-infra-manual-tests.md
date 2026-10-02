@@ -183,13 +183,15 @@ Depois de `bootstrap.sh`, `vendors/install.sh` e `agent-rails-deploy main`.
 | H.10 | `agent-rails-deploy <sha-antigo>` | troca de symlink quase instantânea (release em cache); vendors reiniciados |
 | H.11 | Deploy de um ref que quebra o build/start | rollback automático para o release anterior, saída mostra `rolling back` |
 | H.12 | Reboot da VPS | dashboard, vendors e timers voltam sozinhos; invoices persistidos |
-| H.13 | Chat com CLI na VPS: `sudo npm i -g @anthropic-ai/claude-code`, `CLAUDE_CODE_OAUTH_TOKEN` em `dashboard.env`, `systemctl restart agent-rails-dashboard` | provider "Claude CLI" disponível no dashboard hospedado; G.2–G.6 passam lá |
+| H.13 | ~~Chat com CLI na VPS~~ — **removido (2026-10-02).** Hospedado, `claude-cli` nunca é oferecido e `CLAUDE_CODE_OAUTH_TOKEN` não deve existir em `dashboard.env`. Em vez disso: `OPENROUTER_API_KEY` em `dashboard.env`, `systemctl restart agent-rails-dashboard`, conversar logado | provider "OpenRouter" disponível, a resposta debita o crédito; "Claude CLI" aparece como indisponível; G.2–G.6 passam lá |
 | H.14 🔒 | Visitante anônimo (janela anônima) no chat da VPS | sem acesso ao contexto do tenant (401) e sem gastar a assinatura; ver nota abaixo |
 | H.15 | `ALLOWED_ORIGINS` sem o domínio novo | escritas retornam 403 |
 
-**Nota H.13/H.14.** O `claude-cli` na VPS usa a *sua* assinatura para todo usuário logado que
-alcançar o chat. Para testes, mantenha o dashboard restrito a você; para usuários reais, o
-caminho é `ANTHROPIC_API_KEY` (ou a chave do próprio usuário em `/apis`), não o CLI.
+**Nota H.13/H.14.** O `claude-cli` não é mais oferecido hospedado: ele usava a *sua* assinatura
+para todo usuário logado que alcançasse o chat, o que custa dinheiro seu e foge dos termos da
+Anthropic para um login pessoal. Hospedado, o caminho é a `OPENROUTER_API_KEY` (medida e
+cobrada por org) ou a chave do próprio usuário em `/apis`. H.14 agora confere que o visitante
+anônimo não alcança nem o contexto do tenant (401) nem a chave da plataforma.
 
 ## I. Soak (deixar rodando)
 

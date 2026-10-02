@@ -105,6 +105,7 @@ applies everything `config.toml` declares.
 | `BILLING_ENABLED` | off locally | Ignored when Supabase is configured: hosted is always metered. |
 | `BILLING_MARKUP_BPS` | `2000` | Integer from 0 to 10000. |
 | `BILLING_STARTER_CREDIT_USD` | none | Granted once per org. Below one worst-case reply (~$0.06 on Haiku 4.5, ~$0.12 on Sonnet 5.5) it grants credit no message can use. Every new Google account farms it, so keep it small. |
+| `LEGAL_ENTITY_NAME`, `LEGAL_CONTACT_EMAIL`, `LEGAL_GOVERNING_LAW` | none | Printed in `/terms` and `/privacy`. Unset, each page shows a bracketed gap naming the variable, so an unfinished deployment is visible and does not publish terms with no named party. |
 | `SOLANA_PAY_RECIPIENT` | none | The operator's own wallet; its USDC token account receives deposits. Unset turns the deposit rail off (the modal says so). |
 | `SOLANA_PAY_CLUSTER` | `mainnet-beta` | `devnet` takes Circle's devnet USDC, which has no value — for trying the flow only. |
 | `SOLANA_PAY_RPC_URL` | public RPC | A dedicated RPC for the deposit check (`getSignaturesForAddress` + `getTransaction`). |
@@ -195,6 +196,43 @@ values ('<org uuid>', 'adjustment', 5000000, 'manual top-up: $5', 'manual:<org>:
 ```
 
 To find an org by email, join `profiles.email → memberships.account_id → org_id`.
+
+## Production readiness (OpenRouter and Anthropic terms)
+
+Why these exist: OpenRouter's terms (§5.2) make us require our customers to follow OpenRouter's
+terms and the model provider's, and §7 bars reselling API access. Anthropic's Commercial Terms
+allow powering a product for your own customers and bar resale "except as expressly approved".
+Research and the margin arithmetic: `docs/runbooks/openrouter-chat-integration.md` and the
+2026-10-02 session.
+
+**Done in code (this branch):**
+
+- [x] `/terms` — Terms of Service, English and Portuguese. It bars competing models, scraping and
+      resale or proxying, says prompts and outputs are processed by OpenRouter and Anthropic, and
+      requires compliance with Anthropic's Commercial Terms and Usage Policy and OpenRouter's terms.
+      `src/lib/legal/legal.test.ts` fails if a rewording drops one of those provisions.
+- [x] `/privacy` — Privacy Policy, English and Portuguese. Each factual claim in it was checked
+      against the code; the list is in the header comment of `src/lib/legal/privacy.ts`.
+- [x] Both linked from the dashboard footer and under the sign-in card, and readable signed out
+      (`LEGAL_PATHS` in `sign-in-gate.ts`; the client's 401 recovery no longer bounces a reader).
+- [x] Hosted (Supabase configured) never offers `claude-cli` and ignores the server's
+      `ANTHROPIC_API_KEY`: the only key the server spends there is `OPENROUTER_API_KEY`, metered
+      against the org's credit. Local JSON mode is unchanged. A key a tenant stored in My APIs is
+      theirs and still works, unmetered.
+
+**Still to do, by a human (none of this can be seen from the repository):**
+
+- [ ] On the VPS, delete `CLAUDE_CODE_OAUTH_TOKEN` from `/etc/agent-rails/dashboard.env`, set
+      `OPENROUTER_API_KEY` (with a spend limit on the key) and the three `LEGAL_*` variables,
+      redeploy this branch and `sudo systemctl restart agent-rails-dashboard`.
+- [ ] After that, `GET /api/chat/providers` signed in shows Claude CLI unavailable and
+      OpenRouter available, and one reply debits the ledger.
+- [ ] Have counsel read both pages. They are standard SaaS copy, not legal advice, and say things
+      only the operator can vouch for (the withdrawal process, the fee, retention).
+- [ ] Get OpenRouter's written confirmation that this product is not "reselling API access".
+- [ ] Keep OpenRouter's "use of inputs/outputs" setting **off**: the privacy page says it is.
+- [ ] Decide the canvas generator (`complete.ts`): it has no OpenRouter path, so hosted it says
+      no model is connected. Adding one without metering would spend the platform key free.
 
 ## Test plan
 

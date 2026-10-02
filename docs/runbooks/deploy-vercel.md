@@ -101,8 +101,10 @@ As quatro:
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | chave legada `anon` |
 | `SUPABASE_SERVICE_ROLE_KEY` | chave legada `service_role` |
 | `ALLOWED_ORIGINS` | a URL de produção (ver abaixo) |
-| `ANTHROPIC_API_KEY` | opcional; sem ela o chat cai no modo demo |
-| `OPENROUTER_API_KEY` | opcional; chat pago pela plataforma, só para sessões logadas. Defina um limite de gasto na chave |
+| `OPENROUTER_API_KEY` | necessária para o chat responder: é a única chave que o servidor gasta quando hospedado, cobrada do crédito de cada org. Só para sessões logadas. Defina um limite de gasto na chave |
+| `LEGAL_ENTITY_NAME`, `LEGAL_CONTACT_EMAIL`, `LEGAL_GOVERNING_LAW` | impressas em `/terms` e `/privacy`; sem elas a página mostra um buraco entre colchetes |
+
+`ANTHROPIC_API_KEY` não entra na lista: hospedado, o servidor a ignora (o caminho não é medido). Uma chave que o próprio tenant guarda em Minhas APIs continua valendo.
 
 `ALLOWED_ORIGINS` tem um problema de ordem. Em produção, `allowedOrigins()` devolve **apenas** o que a variável declara — os localhost de desenvolvimento são deliberadamente descartados quando `NODE_ENV === "production"`. Vazia, `assertSameOrigin` nega tudo com `forbidden: no allowed origin configured`. Só que a URL não existe antes do primeiro deploy:
 
@@ -171,7 +173,7 @@ Depois, no navegador: aba Conta → Entrar com Google.
 
 **Fixe a versão da CLI ao automatizar.** `npx vercel@latest` já quebrou aqui com `No matching version found for @vercel/elysia@10.0.0` numa release nova. Num script isso aparece como deploy que não aconteceu, sem erro visível se a saída estiver filtrada.
 
-**O provedor `claude-cli` nunca vai estar disponível.** `providers.ts` faz `execFile("claude", ["--version"])` e não há binário numa função Vercel; o probe sempre devolve `null`. Em produção as vias pagas são a `ANTHROPIC_API_KEY` e a `OPENROUTER_API_KEY` (esta paga pelo operador, liberada só para quem está logado).
+**O provedor `claude-cli` nunca vai estar disponível.** `providers.ts` faz `execFile("claude", ["--version"])` e não há binário numa função Vercel; o probe sempre devolve `null`. Em produção a via paga pelo operador é a `OPENROUTER_API_KEY`, liberada só para quem está logado e debitada do crédito da org; a `ANTHROPIC_API_KEY` do ambiente é ignorada.
 
 **O build do dashboard não é cacheado pelo turbo.** `turbo.json` declara `outputs: ["dist/**"]` e o Next escreve em `.next/**`; o próprio turbo avisa (`no output files found for task @agent-rails/dashboard#build`). Consertável com um override por pacote; ainda não feito.
 
