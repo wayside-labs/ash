@@ -85,10 +85,18 @@ export function useRequestWithdrawal() {
   });
 }
 
-/** The fee-covered transaction for a connected wallet: the same one a scanning wallet gets. */
-export function depositTransaction(id: string, account: string) {
-  return send<{ transaction: string; message: string }>(`/api/billing/deposits/${id}/tx`, {
+/** The unsigned fee-covered transfer, for the connected wallet to sign first. */
+export function prepareDepositPayment(id: string, account: string) {
+  return send<{ transaction: string }>(`/api/billing/deposits/${id}/pay`, {
     method: "POST",
     body: JSON.stringify({ account }),
+  });
+}
+
+/** The wallet-signed transfer: the server adds the fee payer's signature and sends it. */
+export function submitDepositPayment(id: string, transaction: string) {
+  return send<{ signature: string }>(`/api/billing/deposits/${id}/submit`, {
+    method: "POST",
+    body: JSON.stringify({ transaction }),
   });
 }

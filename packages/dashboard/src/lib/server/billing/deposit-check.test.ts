@@ -55,6 +55,22 @@ describe("checkDepositIntent", () => {
     rmSync(home, { recursive: true, force: true });
   });
 
+  it("offers a transfer request every wallet's scanner reads, fee wallet or not", async () => {
+    const saved = process.env.SOLANA_PAY_FEE_PAYER_KEY;
+    // Any well-formed key: the view must not depend on it. Phantom's scanner answers a
+    // `solana:https://…` transaction request with "not a valid address".
+    process.env.SOLANA_PAY_FEE_PAYER_KEY = JSON.stringify(Array.from({ length: 64 }, () => 7));
+    try {
+      const intent = await createDepositIntent(LOCAL, CONFIG, 10_000_000);
+      expect(intent.url).toMatch(new RegExp(`^solana:${RECIPIENT}\\?amount=10&spl-token=${MINT}&`));
+      expect(intent.url).toContain(`reference=${intent.reference}`);
+    } finally {
+      // Assigning `undefined` to process.env stores the string "undefined".
+      if (saved === undefined) delete process.env.SOLANA_PAY_FEE_PAYER_KEY;
+      else process.env.SOLANA_PAY_FEE_PAYER_KEY = saved;
+    }
+  });
+
   it("stays pending and credits nothing until a transfer is found", async () => {
     const intent = await createDepositIntent(LOCAL, CONFIG, 10_000_000);
     const checked = await checkDepositIntent(LOCAL, CONFIG, intent.id);

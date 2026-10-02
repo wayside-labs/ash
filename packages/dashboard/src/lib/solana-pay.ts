@@ -83,28 +83,17 @@ export function receivedBaseUnits(tx: ParsedTransaction, recipient: string, mint
 }
 
 // ---------------------------------------------------------------------------------------------
-// Transaction requests: the platform builds the transfer and pays its fee.
+// The connected-wallet path: the platform builds the transfer and pays its fee.
+//
+// Not as a Solana Pay transaction request (`solana:https://…`). Phantom's in-app scanner answers
+// one with "not a valid address" whether the link is URL-encoded or not, and never fetches it —
+// Phantom only opens transaction requests from a tapped link or the phone's camera app. The QR
+// stays a transfer request, which every wallet's scanner reads.
 
 export const TOKEN_PROGRAM = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 export const ASSOCIATED_TOKEN_PROGRAM = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL";
 export const SYSTEM_PROGRAM = "11111111111111111111111111111111";
 export const USDC_DECIMALS = 6;
-
-/**
- * `solana:<https link>` — a wallet fetches the transaction from the link instead of building it.
- *
- * The spec's link is *conditionally* URL-encoded: only a link with query parameters is encoded,
- * so the wallet can tell its own `?` from the link's. A plain link goes in as-is — encoding it
- * anyway turns `https://` into `https%3A%2F%2F`, which Phantom's scanner reads as a malformed
- * address ("not a valid address"). Same rule as `@solana/pay`'s `encodeURL`.
- */
-export function transactionRequestUrl(link: string): string {
-  const url = new URL(link);
-  if (url.protocol !== "https:") throw new Error("a transaction request link must be https");
-  return url.search
-    ? `solana:${encodeURIComponent(url.toString().replace(/\/\?/, "?"))}`
-    : `solana:${url.toString().replace(/\/$/, "")}`;
-}
 
 /** SPL Token `TransferChecked`: tag 12, amount as little-endian u64, then the mint's decimals. */
 export function transferCheckedData(amount: bigint, decimals: number): Uint8Array {

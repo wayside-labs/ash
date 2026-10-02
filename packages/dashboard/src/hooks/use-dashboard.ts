@@ -591,11 +591,25 @@ export function useVaultTransfer() {
   });
 }
 
-/** Wallet rejections are routine, not failures worth a stack trace. */
+/**
+ * Wallet rejections are routine, not failures worth a stack trace. Injected wallets reject with
+ * plain `{ code, message }` objects as often as with Errors, and `String()` of one is
+ * "[object Object]" — all a failed payment used to show.
+ */
 export function describeWalletError(error: unknown, t: (key: string) => string): string {
-  const message = error instanceof Error ? error.message : String(error);
+  const fields =
+    typeof error === "object" && error !== null ? (error as Record<string, unknown>) : {};
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof fields.message === "string"
+        ? fields.message
+        : String(error);
   if (message === "WALLET_CANNOT_SIGN") return t("vaultTransfer.error.walletCannotSign");
-  if (/user rejected|denied|cancel/i.test(message)) return t("vaultTransfer.error.rejected");
+  // 4001 is EIP-1193's "user rejected", which the Solana wallets reuse.
+  if (fields.code === 4001 || /user rejected|denied|cancel/i.test(message)) {
+    return t("vaultTransfer.error.rejected");
+  }
   return message;
 }
 

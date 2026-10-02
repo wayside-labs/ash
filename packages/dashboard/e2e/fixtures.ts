@@ -601,6 +601,10 @@ export async function stubBilling(
  * `signAndSendTransaction` in `lib/solana.ts` prefers, so stubbing that one
  * covers the path the dashboard actually takes. `rejectSigning` drives the
  * other branch the UI has to handle: a user who clicks "reject" in the wallet.
+ *
+ * The same wallet also registers through the Wallet Standard, as Phantom does,
+ * with `solana:signTransaction` — the deposit's sign-first path. It returns the
+ * bytes it was given; what the server does with them is the route's own test.
  */
 export async function stubWallet(
   page: Page,
@@ -637,6 +641,55 @@ export async function stubWallet(
         },
       };
       Object.defineProperty(window, "phantom", { value: { solana: provider }, writable: true });
+
+      const chains = ["solana:devnet", "solana:mainnet"] as const;
+      const account = {
+        address,
+        publicKey: new Uint8Array(32),
+        chains,
+        features: ["solana:signTransaction"],
+      };
+      const standard = {
+        version: "1.0.0",
+        name: "Phantom",
+        icon: "data:image/svg+xml;base64,PHN2Zy8+",
+        chains,
+        get accounts() {
+          return provider.publicKey ? [account] : [];
+        },
+        features: {
+          "standard:connect": {
+            version: "1.0.0",
+            connect: async () => ({ accounts: provider.publicKey ? [account] : [] }),
+          },
+          "standard:events": { version: "1.0.0", on: () => () => {} },
+          "solana:signTransaction": {
+            version: "1.0.0",
+            supportedTransactionVersions: ["legacy", 0],
+            signTransaction: async (
+              ...inputs: { account: { address: string }; chain?: string; transaction: Uint8Array }[]
+            ) => {
+              if (rejectSigning) throw new Error("User rejected the request.");
+              const w = window as unknown as { __signed?: unknown[] };
+              for (const input of inputs) {
+                w.__signed = [
+                  ...(w.__signed ?? []),
+                  { address: input.account.address, chain: input.chain },
+                ];
+              }
+              return inputs.map((input) => ({ signedTransaction: input.transaction }));
+            },
+          },
+        },
+      };
+      const register = ({ register }: { register: (wallet: unknown) => void }) =>
+        register(standard);
+      window.addEventListener("wallet-standard:app-ready", (event) =>
+        register((event as CustomEvent).detail),
+      );
+      window.dispatchEvent(
+        new CustomEvent("wallet-standard:register-wallet", { detail: register }),
+      );
     },
     { address, rejectSigning, trusted, signature: STUB_SIGNATURE },
   );

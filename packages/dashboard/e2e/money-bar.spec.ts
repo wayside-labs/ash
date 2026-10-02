@@ -133,17 +133,14 @@ test.describe("money bar", () => {
     });
   });
 
-  test("a connected wallet pays the deposit itself, no QR needed", async ({ page }) => {
-    await money(page);
-    await stubRegion(page, "US");
-    await stubRails(page);
-    await stubWallet(page);
+  /** A pending devnet intent, as the server hands it out: a transfer request in the QR. */
+  async function pendingIntent(page: Page) {
     const intent = {
       id: "22222222-2222-4222-8222-222222222222",
       rail: "solana_pay_usdc",
       cluster: "devnet",
       amountMicros: 5_000_000,
-      url: "solana:https://example.test/api/billing/deposits/2222/tx",
+      url: `solana:${RECIPIENT}?amount=5&spl-token=4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU&reference=${RECIPIENT}`,
       reference: RECIPIENT,
       recipient: RECIPIENT,
       status: "pending",
@@ -155,13 +152,29 @@ test.describe("money bar", () => {
         body: JSON.stringify({ intent }),
       }),
     );
-    let txRequest: unknown = null;
-    await page.route("**/api/billing/deposits/*/tx", async (route) => {
-      txRequest = route.request().postDataJSON();
+  }
+
+  test("a connected wallet signs first; the server adds the fee and sends it", async ({ page }) => {
+    await money(page);
+    await stubRegion(page, "US");
+    await stubRails(page);
+    await stubWallet(page);
+    await pendingIntent(page);
+    const asked: { pay?: unknown; submit?: unknown } = {};
+    await page.route("**/api/billing/deposits/*/pay", async (route) => {
+      asked.pay = route.request().postDataJSON();
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ transaction: "AQID", message: "Assistant credit" }),
+        body: JSON.stringify({ transaction: "AQID" }),
+      });
+    });
+    await page.route("**/api/billing/deposits/*/submit", async (route) => {
+      asked.submit = route.request().postDataJSON();
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ signature: "sig" }),
       });
     });
 
@@ -169,16 +182,48 @@ test.describe("money bar", () => {
     await page.getByRole("button", { name: t("header.deposit") }).click();
     await page.getByRole("button", { name: "$5", exact: true }).click();
     await page.getByRole("button", { name: t("deposit.create") }).click();
+    await expect(page.getByText(t("deposit.scanFee"))).toBeVisible();
 
     const pay = page.getByRole("button", {
       name: t("deposit.payWithWallet", { wallet: "Phantom" }),
     });
     await clickUntil(pay, page.getByText(t("deposit.sentFromWallet")));
-    expect(txRequest).toEqual({ account: ADDR.wallet });
+    expect(asked.pay).toEqual({ account: ADDR.wallet });
+    // What the wallet signed goes back unsent: the server sends it, on the deposit's cluster.
+    expect(asked.submit).toEqual({ transaction: "AQID" });
     const signed = await page.evaluate(
       () => (window as unknown as { __signed?: unknown[] }).__signed,
     );
-    expect(signed).toHaveLength(1);
+    expect(signed).toEqual([{ address: ADDR.wallet, chain: "solana:devnet" }]);
+  });
+
+  test("a wallet that refuses to sign says so, and nothing is submitted", async ({ page }) => {
+    await money(page);
+    await stubRegion(page, "US");
+    await stubRails(page);
+    await stubWallet(page, { rejectSigning: true });
+    await pendingIntent(page);
+    let submitted = false;
+    await page.route("**/api/billing/deposits/*/pay", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ transaction: "AQID" }),
+      }),
+    );
+    await page.route("**/api/billing/deposits/*/submit", (route) => {
+      submitted = true;
+      return route.abort();
+    });
+
+    await page.goto("/");
+    await page.getByRole("button", { name: t("header.deposit") }).click();
+    await page.getByRole("button", { name: t("deposit.create") }).click();
+    const pay = page.getByRole("button", {
+      name: t("deposit.payWithWallet", { wallet: "Phantom" }),
+    });
+    await clickUntil(pay, page.getByText(t("vaultTransfer.error.rejected")));
+    expect(submitted).toBe(false);
   });
 
   test("deposits say so when the server has no Solana Pay recipient", async ({ page }) => {
