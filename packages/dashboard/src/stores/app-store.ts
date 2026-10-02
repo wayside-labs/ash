@@ -7,6 +7,8 @@ import type { OperationMode, SolanaCluster } from "@/lib/types";
 
 export type HomePanelId = "chat" | "workflows";
 export type HomeLayoutDirection = "horizontal" | "vertical";
+/** The templates page: builder with a side list, or the card gallery. */
+export type TemplatesView = "list" | "cards";
 
 export const DEFAULT_HOME_LAYOUT = {
   direction: "horizontal" as HomeLayoutDirection,
@@ -39,6 +41,7 @@ interface AppState {
   homeLayout: typeof DEFAULT_HOME_LAYOUT;
   /** Bumped on layout reset to remount panels with default sizes. */
   homeLayoutResetCounter: number;
+  templatesView: TemplatesView;
 
   setCluster: (cluster: SolanaCluster) => void;
   setCustomRpc: (rpc: string) => void;
@@ -53,6 +56,7 @@ interface AppState {
   setLocale: (locale: Locale) => void;
   setBalancesHidden: (hidden: boolean) => void;
   setHasHydrated: (hydrated: boolean) => void;
+  setTemplatesView: (view: TemplatesView) => void;
   swapHomePanels: () => void;
   setHomeLayoutDirection: (direction: HomeLayoutDirection) => void;
   resetHomeLayout: () => void;
@@ -79,6 +83,7 @@ export const useAppStore = create<AppState>()(
       hasHydrated: false,
       homeLayout: DEFAULT_HOME_LAYOUT,
       homeLayoutResetCounter: 0,
+      templatesView: "list",
 
       setCluster: (cluster) => set({ cluster }),
       setCustomRpc: (customRpc) => set({ customRpc }),
@@ -93,6 +98,7 @@ export const useAppStore = create<AppState>()(
       setLocale: (locale) => set({ locale }),
       setBalancesHidden: (balancesHidden) => set({ balancesHidden }),
       setHasHydrated: (hasHydrated) => set({ hasHydrated }),
+      setTemplatesView: (templatesView) => set({ templatesView }),
       swapHomePanels: () =>
         set((state) => ({
           homeLayout: {
@@ -126,6 +132,7 @@ export const useAppStore = create<AppState>()(
         advancedNavOpen: state.advancedNavOpen,
         sidebarHidden: state.sidebarHidden,
         homeLayout: state.homeLayout,
+        templatesView: state.templatesView,
       }),
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);
