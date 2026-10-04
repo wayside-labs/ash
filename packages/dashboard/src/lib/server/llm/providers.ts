@@ -79,15 +79,23 @@ export async function openrouterPlatformAccess(): Promise<PlatformAccess> {
   return { granted: true, apiKey, user };
 }
 
+/**
+ * `claude-cli` drives the host's own `claude` login, so on a hosted install every
+ * visitor would spend the operator's subscription (ADR-017, ADR-019: it is a
+ * development-only provider and stays off for hosted tenants). It is therefore not
+ * listed, not probed and never resolved there — which also covers a browser that still
+ * remembers a `claude-cli:*` model, since `resolveProvider` only honours listed ones.
+ */
 export async function listProviders(locale?: Locale): Promise<ProviderStatus[]> {
   const lang = locale ?? (await getDashboardLocale());
+  const hosted = isSupabaseConfigured();
   const [cliVersion, apiKey, platform] = await Promise.all([
-    probeClaudeCli(),
+    hosted ? null : probeClaudeCli(),
     anthropicApiKey(),
     openrouterPlatformAccess(),
   ]);
 
-  return [
+  const all: ProviderStatus[] = [
     {
       id: "claude-cli",
       label: t("providers.claudeCli.label", lang),
@@ -129,6 +137,7 @@ export async function listProviders(locale?: Locale): Promise<ProviderStatus[]> 
       models: [{ id: "demo", label: t("providers.model.demo", lang) }],
     },
   ];
+  return hosted ? all.filter((p) => p.id !== "claude-cli") : all;
 }
 
 /**

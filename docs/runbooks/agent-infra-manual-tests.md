@@ -183,13 +183,14 @@ Depois de `bootstrap.sh`, `vendors/install.sh` e `agent-rails-deploy main`.
 | H.10 | `agent-rails-deploy <sha-antigo>` | troca de symlink quase instantânea (release em cache); vendors reiniciados |
 | H.11 | Deploy de um ref que quebra o build/start | rollback automático para o release anterior, saída mostra `rolling back` |
 | H.12 | Reboot da VPS | dashboard, vendors e timers voltam sozinhos; invoices persistidos |
-| H.13 | Chat com CLI na VPS: `sudo npm i -g @anthropic-ai/claude-code`, `CLAUDE_CODE_OAUTH_TOKEN` em `dashboard.env`, `systemctl restart agent-rails-dashboard` | provider "Claude CLI" disponível no dashboard hospedado; G.2–G.6 passam lá |
+| H.13 | Chat na VPS com `claude` instalado e `CLAUDE_CODE_OAUTH_TOKEN` em `dashboard.env` (não recomendado) | o seletor **não** lista "Claude CLI" no dashboard hospedado (ADR-017/019); o chat usa a chave da plataforma (`OPENROUTER_API_KEY`); G.2–G.6 só se aplicam a dashboards locais |
 | H.14 🔒 | Visitante anônimo (janela anônima) no chat da VPS | sem acesso ao contexto do tenant (401) e sem gastar a assinatura; ver nota abaixo |
 | H.15 | `ALLOWED_ORIGINS` sem o domínio novo | escritas retornam 403 |
 
-**Nota H.13/H.14.** O `claude-cli` na VPS usa a *sua* assinatura para todo usuário logado que
-alcançar o chat. Para testes, mantenha o dashboard restrito a você; para usuários reais, o
-caminho é `ANTHROPIC_API_KEY` (ou a chave do próprio usuário em `/apis`), não o CLI.
+**Nota H.13/H.14.** O dashboard hospedado nunca oferece o `claude-cli`: ele usaria a *sua*
+assinatura para todo usuário logado que alcançasse o chat. Para usuários reais, o caminho é a
+chave da plataforma (`OPENROUTER_API_KEY`, cobrada por org), `ANTHROPIC_API_KEY` ou a chave do
+próprio usuário em `/apis`.
 
 ## I. Soak (deixar rodando)
 
