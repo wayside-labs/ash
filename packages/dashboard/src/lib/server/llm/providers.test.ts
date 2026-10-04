@@ -13,17 +13,19 @@ vi.mock("@/lib/server/store", () => ({
 // The developer running the suite may well have Claude Code installed; the
 // probe must not see it unless a test asks, or the CLI would shape every
 // resolution below.
-const cli = vi.hoisted(() => ({ installed: false }));
+const cli = vi.hoisted(() => ({ installed: false, probes: 0 }));
 vi.mock("node:child_process", () => ({
   execFile: (
     _cmd: string,
     _args: string[],
     _opts: unknown,
     done: (e: Error | null, out?: { stdout: string }) => void,
-  ) =>
-    cli.installed
+  ) => {
+    cli.probes += 1;
+    return cli.installed
       ? done(null, { stdout: "2.1.289 (Claude Code)\n" })
-      : done(new Error("not found")),
+      : done(new Error("not found"));
+  },
 }));
 
 const { openrouterPlatformAccess, resolveProvider } = await import("./providers");
@@ -38,6 +40,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllEnvs();
   cli.installed = false;
+  cli.probes = 0;
 });
 
 describe("openrouterPlatformAccess", () => {
@@ -89,10 +92,11 @@ describe("resolveProvider", () => {
 
   // The probe caches for a minute, so a CLI that "runs" needs a fresh module.
   it("ranks the platform key above a CLI that runs, and callers can opt out of it", async () => {
+    // Local mode: the CLI is only ever a development provider.
+    isSupabaseConfigured.mockReturnValue(false);
     cli.installed = true;
     vi.resetModules();
     const fresh = await import("./providers");
-    getSessionUser.mockResolvedValue({ id: "u", email: null });
 
     expect(await fresh.resolveProvider(undefined)).toEqual({
       provider: "openrouter-platform",
@@ -107,5 +111,29 @@ describe("resolveProvider", () => {
       (await fresh.resolveProvider("openrouter:anthropic/claude-haiku-4.5", { platform: false }))
         .provider,
     ).toBe("claude-cli");
+  });
+
+  // ADR-017 / ADR-019: a hosted visitor never gets the host's subscription, even when the
+  // box has a working `claude` and a browser still remembers a CLI model.
+  it("never lists, probes or resolves the CLI on a hosted install", async () => {
+    cli.installed = true;
+    vi.resetModules();
+    const fresh = await import("./providers");
+    getSessionUser.mockResolvedValue({ id: "u", email: null });
+
+    const ids = (await fresh.listProviders("en")).map((p) => p.id);
+    expect(ids).toEqual(["anthropic-api", "openrouter-platform", "demo"]);
+    expect(cli.probes).toBe(0);
+
+    // A stale persisted choice falls through to the platform default.
+    expect(await fresh.resolveProvider("claude-cli:sonnet")).toEqual({
+      provider: "openrouter-platform",
+      model: "openrouter:anthropic/claude-haiku-4.5",
+    });
+    // Without a key of their own or the platform key, the answer is demo, not the CLI.
+    expect(await fresh.resolveProvider("claude-cli:sonnet", { platform: false })).toEqual({
+      provider: "demo",
+      model: "demo",
+    });
   });
 });

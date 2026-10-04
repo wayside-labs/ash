@@ -85,7 +85,7 @@ sink (`GET /api/metrics/history/export`).
 
 | Provider | Needs | Cost |
 |---|---|---|
-| `claude-cli` | Claude Code installed and logged in | your Claude subscription |
+| `claude-cli` | Claude Code installed and logged in; **local dashboards only** — never offered when Supabase is configured (ADR-017, ADR-019) | your Claude subscription |
 | `anthropic-api` | an Anthropic key in *My APIs* or `ANTHROPIC_API_KEY` | per token |
 | `openrouter-platform` | `OPENROUTER_API_KEY` on the server, and a signed-in session when hosted | per token, paid by the operator |
 | `demo` | nothing | fixed replies |
@@ -150,8 +150,12 @@ token: that token is scoped to `user:sessions:claude_code`, so lifting it and
 calling the API directly would be both a terms violation and technically wrong.
 The CLI is the licensed client, so the dashboard drives the client.
 
-This only works when the dashboard runs on the same machine as the CLI. A
-deployed instance will not see it and falls back to the API key or demo mode.
+This only works when the dashboard runs on the same machine as the CLI, in local
+JSON mode. A hosted install (Supabase configured) never lists it, never probes
+for it and never resolves to it, even if `claude` is installed on the box and a
+`CLAUDE_CODE_OAUTH_TOKEN` is set: every visitor would otherwise spend the
+operator's subscription. There it falls back to the platform key, a key the user
+brought, or demo mode.
 
 ### Why the subprocess is safe
 
