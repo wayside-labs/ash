@@ -19,8 +19,10 @@ const ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
  * only as good as the model's instruction-following — Claude-class models only.
  */
 export const OPENROUTER_MODELS = [
-  { id: "openrouter:anthropic/claude-sonnet-5.5", label: "Sonnet 5.5" },
+  // First is the default (`OPENROUTER_DEFAULT_MODEL`): the chat has no tools and only
+  // reads a snapshot, so the cheaper model is enough until it proves otherwise.
   { id: "openrouter:anthropic/claude-haiku-4.5", label: "Haiku 4.5" },
+  { id: "openrouter:anthropic/claude-sonnet-5.5", label: "Sonnet 5.5" },
 ] as const;
 
 /**

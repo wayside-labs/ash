@@ -132,16 +132,25 @@ export async function listProviders(locale?: Locale): Promise<ProviderStatus[]> 
 }
 
 /**
- * The local CLI wins by default: it costs the user nothing extra and needs no
- * key. A key the user brought comes next, and the platform key last before
- * demo — it is the one path where the operator pays. An explicitly chosen model
- * always overrides this.
+ * A key the user brought wins: it is theirs to spend. The platform key comes
+ * next, ahead of the local CLI — the probe only proves the binary runs, not that
+ * its login still works, so a CLI with an expired session would otherwise
+ * outrank a key that does. Demo is last. An explicitly chosen model always
+ * overrides this.
+ *
+ * `platform: false` is for callers that cannot meter the platform key
+ * (`complete.ts`); the chat route is the only one that charges for it.
  */
-export async function resolveProvider(requestedModel: string | undefined): Promise<{
+export async function resolveProvider(
+  requestedModel: string | undefined,
+  options: { platform?: boolean } = {},
+): Promise<{
   provider: ProviderId;
   model: string;
 }> {
-  const providers = await listProviders();
+  const providers = (await listProviders()).filter(
+    (p) => options.platform !== false || p.id !== "openrouter-platform",
+  );
   const byId = new Map(providers.map((p) => [p.id, p]));
 
   if (requestedModel) {
@@ -151,14 +160,14 @@ export async function resolveProvider(requestedModel: string | undefined): Promi
     if (owner) return { provider: owner.id, model: requestedModel };
   }
 
-  if (byId.get("claude-cli")?.available) {
-    return { provider: "claude-cli", model: "claude-cli:sonnet" };
-  }
   if (byId.get("anthropic-api")?.available) {
     return { provider: "anthropic-api", model: "claude-sonnet-5" };
   }
   if (byId.get("openrouter-platform")?.available) {
     return { provider: "openrouter-platform", model: OPENROUTER_DEFAULT_MODEL };
+  }
+  if (byId.get("claude-cli")?.available) {
+    return { provider: "claude-cli", model: "claude-cli:sonnet" };
   }
   return { provider: "demo", model: "demo" };
 }

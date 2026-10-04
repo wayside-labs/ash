@@ -11,10 +11,19 @@ vi.mock("@/lib/server/store", () => ({
   StateAccessError: class extends Error {},
 }));
 // The developer running the suite may well have Claude Code installed; the
-// probe must not see it, or the CLI wins every resolution below.
+// probe must not see it unless a test asks, or the CLI would shape every
+// resolution below.
+const cli = vi.hoisted(() => ({ installed: false }));
 vi.mock("node:child_process", () => ({
-  execFile: (_cmd: string, _args: string[], _opts: unknown, cb: (e: Error) => void) =>
-    cb(new Error("not found")),
+  execFile: (
+    _cmd: string,
+    _args: string[],
+    _opts: unknown,
+    done: (e: Error | null, out?: { stdout: string }) => void,
+  ) =>
+    cli.installed
+      ? done(null, { stdout: "2.1.289 (Claude Code)\n" })
+      : done(new Error("not found")),
 }));
 
 const { openrouterPlatformAccess, resolveProvider } = await import("./providers");
@@ -28,6 +37,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllEnvs();
+  cli.installed = false;
 });
 
 describe("openrouterPlatformAccess", () => {
@@ -67,7 +77,7 @@ describe("resolveProvider", () => {
     getSessionUser.mockResolvedValue({ id: "u", email: null });
     expect(await resolveProvider(undefined)).toEqual({
       provider: "openrouter-platform",
-      model: "openrouter:anthropic/claude-sonnet-5.5",
+      model: "openrouter:anthropic/claude-haiku-4.5",
     });
   });
 
@@ -75,5 +85,27 @@ describe("resolveProvider", () => {
     vi.stubEnv("ANTHROPIC_API_KEY", "sk-ant-test");
     getSessionUser.mockResolvedValue({ id: "u", email: null });
     expect((await resolveProvider(undefined)).provider).toBe("anthropic-api");
+  });
+
+  // The probe caches for a minute, so a CLI that "runs" needs a fresh module.
+  it("ranks the platform key above a CLI that runs, and callers can opt out of it", async () => {
+    cli.installed = true;
+    vi.resetModules();
+    const fresh = await import("./providers");
+    getSessionUser.mockResolvedValue({ id: "u", email: null });
+
+    expect(await fresh.resolveProvider(undefined)).toEqual({
+      provider: "openrouter-platform",
+      model: "openrouter:anthropic/claude-haiku-4.5",
+    });
+    expect(await fresh.resolveProvider(undefined, { platform: false })).toEqual({
+      provider: "claude-cli",
+      model: "claude-cli:sonnet",
+    });
+    // An explicit platform model is refused too when the caller opted out.
+    expect(
+      (await fresh.resolveProvider("openrouter:anthropic/claude-haiku-4.5", { platform: false }))
+        .provider,
+    ).toBe("claude-cli");
   });
 });

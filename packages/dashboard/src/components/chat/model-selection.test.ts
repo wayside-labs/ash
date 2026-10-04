@@ -64,12 +64,24 @@ describe("reconcileSelectedModel", () => {
 
   it("promotes demo to the platform default when only the platform key is available", () => {
     expect(reconcileSelectedModel("demo", [platform, demo])).toBe(
-      "openrouter:anthropic/claude-sonnet-5.5",
+      "openrouter:anthropic/claude-haiku-4.5",
     );
   });
 
   it("prefers a key the user brought over the platform key", () => {
     expect(reconcileSelectedModel("", [api, platform, demo])).toBe("claude-sonnet-5");
+  });
+
+  it("prefers the platform key over the CLI, whose login the probe cannot vouch for", () => {
+    expect(reconcileSelectedModel("", [cli, platform, demo])).toBe(
+      "openrouter:anthropic/claude-haiku-4.5",
+    );
+  });
+
+  it("keeps a persisted CLI choice even when the platform key is available", () => {
+    expect(reconcileSelectedModel("claude-cli:sonnet", [cli, platform, demo])).toBe(
+      "claude-cli:sonnet",
+    );
   });
 
   it("keeps demo when no real provider exists", () => {
