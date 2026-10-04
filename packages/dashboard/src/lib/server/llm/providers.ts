@@ -80,18 +80,21 @@ export async function openrouterPlatformAccess(): Promise<PlatformAccess> {
 }
 
 /**
- * `claude-cli` drives the host's own `claude` login, so on a hosted install every
- * visitor would spend the operator's subscription (ADR-017, ADR-019: it is a
- * development-only provider and stays off for hosted tenants). It is therefore not
- * listed, not probed and never resolved there — which also covers a browser that still
- * remembers a `claude-cli:*` model, since `resolveProvider` only honours listed ones.
+ * Providers that only make sense on the operator's own machine. `claude-cli` drives the
+ * host's `claude` login, so hosted it would hand every visitor the operator's subscription
+ * (ADR-019); `anthropic-api` runs on a key stored in *My APIs*, which hosted chat no longer
+ * reads (ADR-026). A hosted install lists neither, never probes the CLI and never reads the
+ * stored key — and because `resolveProvider` only honours listed providers, a browser that
+ * still remembers a `claude-cli:*` or Anthropic model falls through to the platform default.
  */
+const LOCAL_ONLY: ReadonlySet<ProviderId> = new Set(["claude-cli", "anthropic-api"]);
+
 export async function listProviders(locale?: Locale): Promise<ProviderStatus[]> {
   const lang = locale ?? (await getDashboardLocale());
   const hosted = isSupabaseConfigured();
   const [cliVersion, apiKey, platform] = await Promise.all([
     hosted ? null : probeClaudeCli(),
-    anthropicApiKey(),
+    hosted ? undefined : anthropicApiKey(),
     openrouterPlatformAccess(),
   ]);
 
@@ -137,7 +140,7 @@ export async function listProviders(locale?: Locale): Promise<ProviderStatus[]> 
       models: [{ id: "demo", label: t("providers.model.demo", lang) }],
     },
   ];
-  return hosted ? all.filter((p) => p.id !== "claude-cli") : all;
+  return hosted ? all.filter((p) => !LOCAL_ONLY.has(p.id)) : all;
 }
 
 /**

@@ -1,3 +1,28 @@
+import type { MessageKey } from "@/i18n";
+
+/**
+ * The hint under a failed turn, keyed on the provider the user selected rather than on the
+ * `x-agent-rails-mode` of an earlier reply. A request that dies before any headers — a 502
+ * from the tunnel while the service restarts — never sets a mode, and a fallback of "check
+ * your API key" would blame the one thing that was not wrong.
+ */
+export function chatErrorHintKey(failure: {
+  creditShort: boolean;
+  provider: string | null | undefined;
+}): MessageKey {
+  if (failure.creditShort) return "chat.error.addCredit";
+  switch (failure.provider) {
+    case "claude-cli":
+      return "chat.error.checkSubscription";
+    case "openrouter-platform":
+      return "chat.error.checkPlatform";
+    case "anthropic-api":
+      return "chat.error.checkApiKey";
+    default:
+      return "chat.error.tryAgain";
+  }
+}
+
 export type ChatProviderOption = {
   id: "claude-cli" | "anthropic-api" | "openrouter-platform" | "demo";
   label: string;
