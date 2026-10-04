@@ -18,7 +18,10 @@ export async function completeText(input: {
   model?: string;
   signal?: AbortSignal;
 }): Promise<Completion> {
-  const { provider, model } = await resolveProvider(input.model);
+  // No platform key here: this path has no per-user limit and no credit meter, so it
+  // would spend the operator's money unbilled. Wiring it in means moving the route's
+  // access check and metering alongside, not a branch.
+  const { provider, model } = await resolveProvider(input.model, { platform: false });
   let source: AsyncIterable<string>;
   if (provider === "claude-cli" && isClaudeCliModel(model)) {
     source = streamClaudeCli({

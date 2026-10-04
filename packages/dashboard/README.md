@@ -90,10 +90,13 @@ sink (`GET /api/metrics/history/export`).
 | `openrouter-platform` | `OPENROUTER_API_KEY` on the server, and a signed-in session when hosted | per token, paid by the operator |
 | `demo` | nothing | fixed replies |
 
-The CLI wins by default: it needs no key and adds no per-token cost. A key the
-user brought comes next, the platform key after that — it is the one path where
-the operator pays, so it is last before demo. Pick a specific model in the chat
-footer to override.
+The default order is a key the user brought, then the platform key, then the
+CLI, then demo. The CLI is below the platform key because the probe only checks
+that `claude --version` runs, not that its login still works — an expired
+session would otherwise outrank a key that does. The platform key is the one
+path where the operator pays (metered when hosted, see below). The chat footer's
+model choice is persisted per browser and overrides all of this; the canvas
+generator (`complete.ts`) never uses the platform key, since it has no meter.
 
 ### The platform key
 
