@@ -35,6 +35,7 @@ import { assertSameOrigin } from "@/lib/server/origin";
 import { acquireSlot, checkFixedWindow } from "@/lib/server/rate-limit";
 import { stateAccessResponse } from "@/lib/server/state/access";
 import { unauthorizedStateResponse } from "@/lib/server/state/context";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -116,7 +117,7 @@ export async function POST(req: Request) {
   const { provider, model: chosen } = await resolveProvider(model);
 
   if (provider === "demo") {
-    return new Response(getDemoReply(locale, last), {
+    return new Response(getDemoReply(locale, last, { hosted: isSupabaseConfigured() }), {
       headers: { "content-type": "text/plain; charset=utf-8", "x-agent-rails-mode": "demo" },
     });
   }
@@ -292,7 +293,7 @@ export async function POST(req: Request) {
 
   const apiKey = await anthropicApiKey();
   if (!apiKey) {
-    return new Response(getDemoReply(locale, last), {
+    return new Response(getDemoReply(locale, last, { hosted: isSupabaseConfigured() }), {
       headers: { "content-type": "text/plain; charset=utf-8", "x-agent-rails-mode": "demo" },
     });
   }

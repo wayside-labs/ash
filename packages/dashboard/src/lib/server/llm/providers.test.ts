@@ -84,9 +84,9 @@ describe("resolveProvider", () => {
     });
   });
 
-  it("prefers a key the user brought over the platform key", async () => {
+  it("prefers a key the user brought over the platform key in local mode", async () => {
+    isSupabaseConfigured.mockReturnValue(false);
     vi.stubEnv("ANTHROPIC_API_KEY", "sk-ant-test");
-    getSessionUser.mockResolvedValue({ id: "u", email: null });
     expect((await resolveProvider(undefined)).provider).toBe("anthropic-api");
   });
 
@@ -113,27 +113,34 @@ describe("resolveProvider", () => {
     ).toBe("claude-cli");
   });
 
-  // ADR-017 / ADR-019: a hosted visitor never gets the host's subscription, even when the
-  // box has a working `claude` and a browser still remembers a CLI model.
-  it("never lists, probes or resolves the CLI on a hosted install", async () => {
+  // ADR-019 / ADR-026: a hosted install chats on the platform key only. Not the host's CLI
+  // login (even a working one), not a stored or env Anthropic key — and a browser that still
+  // remembers either model falls through to the platform default.
+  it("lists, probes and resolves only the platform key on a hosted install", async () => {
     cli.installed = true;
+    vi.stubEnv("ANTHROPIC_API_KEY", "sk-ant-test");
     vi.resetModules();
     const fresh = await import("./providers");
     getSessionUser.mockResolvedValue({ id: "u", email: null });
 
-    const ids = (await fresh.listProviders("en")).map((p) => p.id);
-    expect(ids).toEqual(["anthropic-api", "openrouter-platform", "demo"]);
+    const providers = await fresh.listProviders("en");
+    expect(providers.map((p) => p.id)).toEqual(["openrouter-platform", "demo"]);
     expect(cli.probes).toBe(0);
 
-    // A stale persisted choice falls through to the platform default.
-    expect(await fresh.resolveProvider("claude-cli:sonnet")).toEqual({
+    const platformDefault = {
       provider: "openrouter-platform",
       model: "openrouter:anthropic/claude-haiku-4.5",
-    });
-    // Without a key of their own or the platform key, the answer is demo, not the CLI.
-    expect(await fresh.resolveProvider("claude-cli:sonnet", { platform: false })).toEqual({
-      provider: "demo",
-      model: "demo",
-    });
+    };
+    expect(await fresh.resolveProvider(undefined)).toEqual(platformDefault);
+    expect(await fresh.resolveProvider("claude-cli:sonnet")).toEqual(platformDefault);
+    expect(await fresh.resolveProvider("claude-sonnet-5")).toEqual(platformDefault);
+
+    // A caller that cannot use the platform key gets demo, never a leftover local provider.
+    for (const stale of ["claude-cli:sonnet", "claude-sonnet-5"]) {
+      expect(await fresh.resolveProvider(stale, { platform: false })).toEqual({
+        provider: "demo",
+        model: "demo",
+      });
+    }
   });
 });

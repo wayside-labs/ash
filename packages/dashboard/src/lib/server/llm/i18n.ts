@@ -12,36 +12,59 @@ const DEMO_REPLIES: Record<Locale, { defi: string; vendor: string; default: stri
       "**0 of 1 DeFi mandates can execute** — demo mode only.\n\n" +
       "Design path: **Treasury** → **Analysis Agent** (read-only) → **Kamino Action** → **Executor Agent** (session-bound). " +
       "I orchestrate phases; agents execute; you sign allowlist/policy in Phantom.\n\n" +
-      "⚠️ **Demo mode** — no LLM connected. Install Claude Code or add a key in **My APIs**.",
+      "⚠️ **Demo mode** — no LLM connected. {connect}",
     vendor:
       "**0 of N payments can execute** — demo mode only.\n\n" +
       "Enterprise batch design: parse CSV → allowlist preflight (atomic) → auditor quarantine → owner signs → Payment Agent runs approved subset.\n\n" +
       "⚠️ **Demo mode** — no LLM connected.",
     default:
       "I'm the Agent Rails **Chief of Staff**, but **demo mode** is active — no model available.\n\n" +
-      "Install **Claude Code** (subscription) or add an Anthropic key in **My APIs**.",
+      "{connect}",
   },
   "pt-BR": {
     defi:
       "**0 de 1 mandates DeFi podem executar** — apenas modo demo.\n\n" +
       "Caminho de design: **Treasury** → **Analysis Agent** (somente leitura) → **Kamino Action** → **Executor Agent** (sessão). " +
       "Eu orquestro fases; agentes executam; você assina allowlist/policy no Phantom.\n\n" +
-      "⚠️ **Modo demo** — nenhum LLM conectado. Instale Claude Code ou adicione chave em **Minhas APIs**.",
+      "⚠️ **Modo demo** — nenhum LLM conectado. {connect}",
     vendor:
       "**0 de N pagamentos podem executar** — apenas modo demo.\n\n" +
       "Design enterprise: parse CSV → preflight allowlist (atômico) → quarentena auditor → owner assina → Payment Agent executa subset aprovado.\n\n" +
       "⚠️ **Modo demo** — nenhum LLM conectado.",
     default:
       "Sou o **Chief of Staff** do Agent Rails, mas o **modo demo** está ativo — nenhum modelo disponível.\n\n" +
-      "Instale **Claude Code** (assinatura) ou adicione chave Anthropic em **Minhas APIs**.",
+      "{connect}",
   },
 };
 
-export function getDemoReply(locale: Locale, message: string): string {
+/**
+ * What to do about "no model". Local installs can run the CLI or a stored key; a hosted one
+ * offers neither (ADR-019, ADR-026) and only a signed-in session reaches the platform key,
+ * so telling a hosted visitor to install Claude Code or fill in My APIs sends them nowhere.
+ */
+const DEMO_CONNECT: Record<Locale, { local: string; hosted: string }> = {
+  en: {
+    local: "Install **Claude Code** (subscription) or add an Anthropic key in **My APIs**.",
+    hosted: "Sign in to use the hosted assistant.",
+  },
+  "pt-BR": {
+    local:
+      "Instale o **Claude Code** (assinatura) ou adicione uma chave Anthropic em **Minhas APIs**.",
+    hosted: "Entre na sua conta para usar o assistente hospedado.",
+  },
+};
+
+export function getDemoReply(
+  locale: Locale,
+  message: string,
+  options: { hosted?: boolean } = {},
+): string {
   const lower = message.toLowerCase();
   const replies = DEMO_REPLIES[locale] ?? DEMO_REPLIES.en;
+  const connect = (DEMO_CONNECT[locale] ?? DEMO_CONNECT.en)[options.hosted ? "hosted" : "local"];
+  const pick = (reply: string) => reply.replace("{connect}", connect);
   if (lower.includes("defi") || lower.includes("trading") || lower.includes("kamino")) {
-    return replies.defi;
+    return pick(replies.defi);
   }
   if (
     lower.includes("vendor") ||
@@ -49,9 +72,9 @@ export function getDemoReply(locale: Locale, message: string): string {
     lower.includes("payment") ||
     lower.includes("csv")
   ) {
-    return replies.vendor;
+    return pick(replies.vendor);
   }
-  return replies.default;
+  return pick(replies.default);
 }
 
 export function transcriptRoleLabel(locale: Locale, role: "user" | "assistant"): string {

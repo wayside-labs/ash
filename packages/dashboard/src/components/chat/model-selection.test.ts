@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { reconcileSelectedModel, selectableProviders } from "./model-selection";
+import { chatErrorHintKey, reconcileSelectedModel, selectableProviders } from "./model-selection";
 
 const cli = {
   id: "claude-cli" as const,
@@ -94,5 +94,33 @@ describe("reconcileSelectedModel", () => {
 
   it("keeps an explicit non-default model", () => {
     expect(reconcileSelectedModel("claude-cli:opus", [cli, demo])).toBe("claude-cli:opus");
+  });
+});
+
+describe("chatErrorHintKey", () => {
+  it("asks for balance when the turn was refused for credit, whatever the provider", () => {
+    expect(chatErrorHintKey({ creditShort: true, provider: "openrouter-platform" })).toBe(
+      "chat.error.addCredit",
+    );
+  });
+
+  it("points each provider at its own remedy", () => {
+    expect(chatErrorHintKey({ creditShort: false, provider: "openrouter-platform" })).toBe(
+      "chat.error.checkPlatform",
+    );
+    expect(chatErrorHintKey({ creditShort: false, provider: "claude-cli" })).toBe(
+      "chat.error.checkSubscription",
+    );
+    expect(chatErrorHintKey({ creditShort: false, provider: "anthropic-api" })).toBe(
+      "chat.error.checkApiKey",
+    );
+  });
+
+  // A 502 from the tunnel mid-restart arrives with no `x-agent-rails-mode` and no provider
+  // known to the page yet; it used to be blamed on "your API key in My APIs".
+  it("never blames an API key when it does not know which provider failed", () => {
+    for (const provider of [null, undefined, "demo", "something-new"]) {
+      expect(chatErrorHintKey({ creditShort: false, provider })).toBe("chat.error.tryAgain");
+    }
   });
 });

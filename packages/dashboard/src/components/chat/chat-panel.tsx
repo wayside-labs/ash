@@ -7,7 +7,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AddBalanceButton } from "@/components/billing/add-balance-button";
 import { ConnectorProposalCard, withoutConnectorBlocks } from "@/components/chat/connector-card";
 import { Markdown } from "@/components/chat/markdown";
-import { reconcileSelectedModel, selectableProviders } from "@/components/chat/model-selection";
+import {
+  chatErrorHintKey,
+  reconcileSelectedModel,
+  selectableProviders,
+} from "@/components/chat/model-selection";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -142,13 +146,7 @@ export function ChatPanel({ className }: { className?: string }) {
       if ((error as Error).name === "AbortError") return;
       const message = error instanceof Error ? error.message : t("chat.error.generic");
       if (creditShort) setCreditShortId(assistantId);
-      const hint = creditShort
-        ? t("chat.error.addCredit")
-        : mode === "claude-cli"
-          ? t("chat.error.checkSubscription")
-          : mode === "openrouter-platform"
-            ? t("chat.error.checkPlatform")
-            : t("chat.error.checkApiKey");
+      const hint = t(chatErrorHintKey({ creditShort, provider: activeProvider?.id ?? mode }));
       setMessages((prev) =>
         prev.map((m) => (m.id === assistantId ? { ...m, content: `⚠️ ${message}\n\n${hint}` } : m)),
       );

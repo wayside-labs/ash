@@ -86,9 +86,14 @@ sink (`GET /api/metrics/history/export`).
 | Provider | Needs | Cost |
 |---|---|---|
 | `claude-cli` | Claude Code installed and logged in; **local dashboards only** — never offered when Supabase is configured (ADR-017, ADR-019) | your Claude subscription |
-| `anthropic-api` | an Anthropic key in *My APIs* or `ANTHROPIC_API_KEY` | per token |
+| `anthropic-api` | an Anthropic key in *My APIs* or `ANTHROPIC_API_KEY`; **local dashboards only** — never offered when Supabase is configured (ADR-026) | per token |
 | `openrouter-platform` | `OPENROUTER_API_KEY` on the server, and a signed-in session when hosted | per token, paid by the operator |
 | `demo` | nothing | fixed replies |
+
+A hosted install (Supabase configured) chats on the platform key only: it lists
+`openrouter-platform` and `demo`, never reads a stored or env Anthropic key, and
+never probes for the CLI (ADR-019, ADR-026). The rest of this section is the
+local order.
 
 The default order is a key the user brought, then the platform key, then the
 CLI, then demo. The CLI is below the platform key because the probe only checks
