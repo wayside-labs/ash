@@ -14,11 +14,20 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // `.next` unless told otherwise. The browser suite sets its own, because `next build` empties
+  // the directory and a `pnpm dashboard` running beside it keeps writing there: each corrupts the
+  // other (MODULE_NOT_FOUND for a vendor chunk) and the loser is whichever you were watching.
+  distDir: process.env.NEXT_DIST_DIR?.trim() || ".next",
   async headers() {
     return [{ source: "/(.*)", headers: securityHeaders }];
   },
   // Workspace packages ship TypeScript sources, not prebuilt browser bundles.
-  transpilePackages: ["@agent-rails/sdk", "@agent-rails/client", "@agent-rails/contract"],
+  transpilePackages: [
+    "@agent-rails/sdk",
+    "@agent-rails/client",
+    "@agent-rails/contract",
+    "@agent-rails/cloak",
+  ],
   // A stray package-lock.json above the repo makes Next infer the wrong root
   // and trace the wrong files; pin it to the monorepo.
   outputFileTracingRoot: resolve(here, "../.."),

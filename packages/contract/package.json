@@ -79,6 +79,10 @@
     "./connector-import": {
       "types": "./dist/connector-import.d.ts",
       "import": "./dist/connector-import.js"
+    },
+    "./template-run": {
+      "types": "./dist/template-run.d.ts",
+      "import": "./dist/template-run.js"
     }
   },
   "files": [

@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@agent-rails/cli": "workspace:*",
+    "@agent-rails/cloak": "workspace:*",
     "@agent-rails/contract": "workspace:*",
     "@agent-rails/sdk": "workspace:*",
     "@anthropic-ai/sdk": "^0.127.0",

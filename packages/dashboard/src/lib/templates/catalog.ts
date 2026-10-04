@@ -6,7 +6,8 @@ export type BuiltinTemplateId =
   | "builtin:earn-bounty-hunter"
   | "builtin:dca-sol"
   | "builtin:defi-yield-rebalance"
-  | "builtin:solana-workstation";
+  | "builtin:solana-workstation"
+  | "builtin:cloak-private-payout";
 
 /** Prefix for built-in ids so they never collide with stored `tpl_*` rows. */
 export const BUILTIN_TEMPLATE_PREFIX = "builtin:";
@@ -62,6 +63,28 @@ const YIELD_AGENTS: TemplateAgentDef[] = [
     railsMcp: "full",
     dailyLimitUsd: 100,
     paysTo: ["Venue desk A", "Venue desk B"],
+  },
+];
+
+/**
+ * The "desk" is the operator's own mainnet wallet: nothing here is paid from the vault, which is
+ * on devnet. `dailyLimitUsd` is the template's cap (0.10 SOL a run) rounded up, a label like the
+ * others, not a limit anything enforces.
+ */
+const CLOAK_AGENTS: TemplateAgentDef[] = [
+  {
+    name: "Payout planner",
+    role: "Drafts the payout list in chat; holds no keys",
+    railsMcp: "none",
+    dailyLimitUsd: 0,
+    paysTo: [],
+  },
+  {
+    name: "Cloak desk",
+    role: "Your own wallet: shields, then pays privately through Cloak",
+    railsMcp: "none",
+    dailyLimitUsd: 15,
+    paysTo: ["SOL payee", "ZEC payee"],
   },
 ];
 
@@ -162,10 +185,35 @@ export const BUILTIN_TEMPLATES: Record<BuiltinTemplateId, WorkflowTemplate> = {
     docsPath: "examples/templates/solana-workstation/README.md",
     createdAt: "2026-09-29T00:00:00.000Z",
   },
+  "builtin:cloak-private-payout": {
+    id: "builtin:cloak-private-payout",
+    name: "Private payout desk (Cloak + Zcash)",
+    description:
+      "Pay people in SOL or ZEC with no direct on-chain link to your wallet. Ask in chat, approve in your wallet.",
+    icon: "🕶️",
+    summary:
+      "You ask in chat and the model only drafts. Your wallet approves, and your browser pays through Cloak on mainnet.",
+    howItWorks: [
+      'Ask the assistant to pay someone privately, for example "pay 0.02 SOL to <address> and 0.02 SOL in ZEC to <address>". It answers with a payout card; nothing moves until you approve it in your wallet.',
+      "Your browser shields the SOL into Cloak's pool, then pays each payee from the pool: SOL straight out, ZEC through a private swap. There is no direct on-chain link between the deposit and the payouts, though amounts and timing can still be matched.",
+      "This is not a vault payment: it runs from your own wallet on mainnet, with small caps. The CSV for your accountant is built in your browser from a viewing key derived from your wallet. Cloak's relay receives that viewing key too, and for these notes it is enough to rebuild their keys, so the caps are what bound that trust.",
+    ].join("\n\n"),
+    setupSteps: [
+      "Set NEXT_PUBLIC_CLOAK_MAINNET=1, NEXT_PUBLIC_CLOAK_RPC_URL and NEXT_PUBLIC_CLOAK_ALLOWED_WALLETS, then rebuild.",
+      "Use a throwaway wallet with about 0.1 SOL: this runs on mainnet with real funds.",
+      "Connect that wallet in the header, with Phantom on mainnet.",
+      'Ask in the chat: "pay 0.02 SOL to <address> and 0.02 SOL in ZEC to <address>".',
+      "Check every address on the card, approve, and sign each wallet prompt.",
+      "Download the proof pack and the CSV when it finishes.",
+    ],
+    agents: CLOAK_AGENTS,
+    docsPath: "examples/templates/cloak-private-payout/README.md",
+    createdAt: "2026-10-04T00:00:00.000Z",
+  },
 };
 
 export function isBuiltinTemplateId(id: string): id is BuiltinTemplateId {
-  return id in BUILTIN_TEMPLATES;
+  return Object.hasOwn(BUILTIN_TEMPLATES, id);
 }
 
 export function listBuiltinTemplates(): WorkflowTemplate[] {

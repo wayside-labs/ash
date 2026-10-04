@@ -1,6 +1,10 @@
 "use client";
 
 import { extractConnectorProposals } from "@agent-rails/contract/connector-bundle";
+import {
+  extractTemplateRunProposals,
+  withoutTemplateRunBlocks,
+} from "@agent-rails/contract/template-run";
 import { useQueryClient } from "@tanstack/react-query";
 import { Bot, Loader2, Send, Square } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -12,6 +16,7 @@ import {
   reconcileSelectedModel,
   selectableProviders,
 } from "@/components/chat/model-selection";
+import { TemplateRunCard } from "@/components/chat/template-run-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -284,17 +289,26 @@ export function ChatPanel({ className }: { className?: string }) {
 
 /**
  * Only closed fences are parsed, so a block still streaming in shows as text until its
- * closing backticks arrive and then becomes a card.
+ * closing backticks arrive and then becomes a card. Two kinds of block can arrive: a connector
+ * the operator may add, and a private payout the operator may approve.
  */
 function AssistantContent({ content }: { content: string }) {
-  const proposals = useMemo(() => extractConnectorProposals(content), [content]);
-  if (proposals.length === 0) return <Markdown content={content} />;
+  const payouts = useMemo(() => extractTemplateRunProposals(content), [content]);
+  // Payouts come out first: a payout written under the connector fence must not also show up as a
+  // connector that failed validation.
+  const rest = useMemo(() => withoutTemplateRunBlocks(content), [content]);
+  const connectors = useMemo(() => extractConnectorProposals(rest), [rest]);
+  if (connectors.length === 0 && payouts.length === 0) return <Markdown content={content} />;
   return (
     <>
-      <Markdown content={withoutConnectorBlocks(content)} />
-      {proposals.map((proposal, index) => (
+      <Markdown content={withoutConnectorBlocks(rest)} />
+      {connectors.map((proposal, index) => (
         // biome-ignore lint/suspicious/noArrayIndexKey: blocks have no identity beyond order
-        <ConnectorProposalCard key={index} proposal={proposal} />
+        <ConnectorProposalCard key={`connector-${index}`} proposal={proposal} />
+      ))}
+      {payouts.map((proposal, index) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: blocks have no identity beyond order
+        <TemplateRunCard key={`payout-${index}`} proposal={proposal} />
       ))}
     </>
   );

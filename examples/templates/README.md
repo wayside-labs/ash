@@ -1,9 +1,13 @@
 # Agent templates
 
-Four starter setups that show a real product using Agent Rails as its **spend authority**:
-the layer that decides whether money may move, not the layer that decides what to buy. Each
-template is docs, config snippets, and at most a thin shell script. None of them adds a
-program instruction, an MCP tool, or a package.
+Five starter setups. Four show a real product using Agent Rails as its **spend authority**:
+the layer that decides whether money may move, not the layer that decides what to buy. Each of
+those is docs, config snippets, and at most a thin shell script, and none of them adds a
+program instruction, an MCP tool, or a package. The fifth, `cloak-private-payout/`, is the
+exception: it pays from the operator's own wallet, outside the vault. It adds a package
+(`packages/cloak`) and a contract module (`@agent-rails/contract/template-run`), runs on mainnet
+only, and is triggered from the dashboard chat. It still adds no program instruction and no MCP
+tool.
 
 | Template | What the agent does | Where the payment moment is | Who runs it |
 |---|---|---|---|
@@ -11,9 +15,13 @@ program instruction, an MCP tool, or a package.
 | [`dca-sol/`](dca-sol/) | Nothing — no model in the loop | Cron moves a fixed USDC slice to an allowlisted swap desk each period | `cron` + `agent-rails pay` |
 | [`defi-yield-rebalance/`](defi-yield-rebalance/) | Reads rates, proposes a capped rebalance | Executor moves USDC to an allowlisted per-venue desk wallet | Script scout, planner agent, executor agent, guardian |
 | [`solana-workstation/`](solana-workstation/) | Orchestrate Solana tasks, Jupiter quotes | Executor pays desks/vendors; desk signs swaps | Orchestrator, analyst, executor |
+| [`cloak-private-payout/`](cloak-private-payout/) | Drafts a payout list in the chat; holds no key | The operator's own wallet shields into Cloak's pool and pays each payee from it, in SOL or ZEC (**mainnet**, no vault) | Chat model drafts, the operator approves a card and each wallet prompt, a browser runner executes |
 
-Devnet first, all three. Nothing here is a mainnet promise; see the trust phases in the root
-`README.md` before pointing any of it at real funds.
+Devnet first for the four vault-backed templates. Nothing here is a mainnet promise; see the trust
+phases in the root `README.md` before pointing any of it at real funds. `cloak-private-payout/` is
+the other case: mainnet only (the published Cloak SDK has no devnet), real funds in small amounts
+from a throwaway wallet, off unless its flag is set. It never touches the vault or the program,
+which is what the trust phases are about; its README says what applies to it instead.
 
 ## How templates relate to the rest of the repo
 
@@ -40,7 +48,13 @@ Devnet first, all three. Nothing here is a mainnet promise; see the trust phases
                         (vendors, a swap desk, per-venue yield desks)
 ```
 
-Every template keeps to the same three rules:
+The diagram and the rules below describe the four vault-backed templates. The Cloak template sits
+outside the picture: no vault, ceiling, policy, allowlist or session. It keeps the first two rules
+in spirit (no model holds a key, and every step that moves funds is a person's approval in a
+wallet), has no rails MCP and no `reference`, so the third does not apply, and has rules of its own
+in [its README](cloak-private-payout/README.md) and ADR-027.
+
+The four vault-backed templates keep to the same three rules:
 
 1. **Only the role that pays gets `agent-rails-mcp` with `AGENT_RAILS_TOOLS=full`.** Scouts and
    planners use fetch/search MCPs, or `AGENT_RAILS_TOOLS=readonly` on the rails MCP (check/list
@@ -68,6 +82,9 @@ Every template keeps to the same three rules:
   (`/api/export/runner-config`); Cursor, Claude Desktop or your own process runs it.
 
 ## Wiring a template
+
+This table is for the four vault-backed templates. `cloak-private-payout/` has its own setup, a
+throwaway wallet and three public environment variables, in its README.
 
 | Step | Surface | Command / page |
 |---|---|---|

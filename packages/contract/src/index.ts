@@ -13,4 +13,5 @@ export * from "./payment-build.js";
 export * from "./reason-codes.js";
 export * from "./security.js";
 export * from "./solana-dapps.js";
+export * from "./template-run.js";
 export * from "./units.js";

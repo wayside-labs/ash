@@ -56,8 +56,12 @@ no Colosseum quanto na Earn.
 É o preço de uma postura que vale mais no pitch principal do que os três somados —
 mas é uma escolha, e deve ser dita como escolha.
 
-**Não existe side track da Cloak** (a Cloak é um time brasileiro que venceu o side
-track do Cypherpunk e entrou no acelerador — é referência, não patrocinador).
+**Existe um Privacy Sprint da Superteam Brasil (Cloak + Zcash), fora da tabela acima:**
+10 × 100 USDC, prazo 05/10 às 04:00 BRT, para quem participa do Hackathon da Colosseum e é do
+the/Garage. O plano está em `docs/strategy/privacy-sprint-plano-execucao.md`. A linha "Zcash —
+Fora" acima segue valendo para o Hackathon principal; marcar a rede Zcash na inscrição continua
+decisão em aberto (§11, item 7 daquele plano). A Cloak é um time brasileiro que venceu o side
+track do Cypherpunk e entrou no acelerador.
 
 ### Submissão — checklist do Superteam Brasil
 

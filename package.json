@@ -12,6 +12,8 @@
     "test": "turbo run test",
     "verify": "scripts/verify.sh",
     "agent-rails": "node packages/cli/dist/cli.js",
+    "cloak-smoke": "node packages/cloak/dist/smoke.js",
+    "verify-hash": "node --experimental-strip-types --no-warnings packages/cloak/src/verify-hash.ts",
     "typecheck": "turbo run typecheck",
     "lint": "biome check .",
     "format": "biome check --write .",

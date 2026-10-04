@@ -17,6 +17,7 @@ export default defineConfig({
     "src/solana-dapps.ts",
     "src/connector-bundle.ts",
     "src/connector-import.ts",
+    "src/template-run.ts",
   ],
   format: ["esm"],
   dts: true,

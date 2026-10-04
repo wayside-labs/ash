@@ -1,0 +1,52 @@
+{
+  "name": "@agent-rails/cloak",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Private payouts through Cloak: plan, policy, runner and the SDK adapter behind the cloak-private-payout template.",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./adapter": {
+      "types": "./dist/adapter.d.ts",
+      "import": "./dist/adapter.js"
+    },
+    "./node": {
+      "types": "./dist/node.d.ts",
+      "import": "./dist/node.js"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "import": "./dist/testing.js"
+    }
+  },
+  "bin": {
+    "agent-rails-cloak-smoke": "./dist/smoke.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@agent-rails/contract": "workspace:*",
+    "@cloak.dev/sdk": "0.2.5",
+    "@noble/hashes": "^1.8.0",
+    "@solana-program/token": "0.16.1",
+    "@solana/kit": "8.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsdown": "^0.15.0",
+    "vitest": "^4.0.0"
+  }
+}
