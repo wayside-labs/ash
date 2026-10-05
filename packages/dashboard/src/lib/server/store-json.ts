@@ -2,15 +2,16 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import { ashHome } from "@ash/contract/legacy-env";
 import { type DashboardState, dashboardStateSchema } from "@/lib/schema";
 import { seedState } from "./seed";
 
 /**
- * Same home directory the CLI writes its manifests to, so `agent-rails init`
+ * Same home directory the CLI writes its manifests to, so `ash init`
  * and the dashboard describe one deployment instead of two.
  */
 export function storePath(): string {
-  const home = process.env.AGENT_RAILS_HOME ?? join(homedir(), ".agent-rails");
+  const home = ashHome();
   return join(home, "dashboard.json");
 }
 

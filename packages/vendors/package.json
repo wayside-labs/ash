@@ -1,8 +1,8 @@
 {
-  "name": "@agent-rails/vendors",
+  "name": "@ash/vendors",
   "version": "0.1.0",
   "private": true,
-  "description": "Three pay-per-use vendor services, their MCP servers and a scripted buyer: real counterparties for exercising Agent Rails end to end.",
+  "description": "Three pay-per-use vendor services, their MCP servers and a scripted buyer: real counterparties for exercising ASH end to end.",
   "license": "Apache-2.0",
   "engines": {
     "node": ">=22"
@@ -18,9 +18,9 @@
     "start": "node dist/cli.js"
   },
   "dependencies": {
-    "@agent-rails/client": "workspace:*",
-    "@agent-rails/contract": "workspace:*",
-    "@agent-rails/sdk": "workspace:*",
+    "@ash/client": "workspace:*",
+    "@ash/contract": "workspace:*",
+    "@ash/sdk": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.30.0",
     "@solana/kit": "^8.2.0",
     "zod": "^4.0.0"

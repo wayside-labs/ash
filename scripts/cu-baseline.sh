@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Re-measures the payment paths and reports how far the committed baselines in
-# programs/agent_rails/tests/cu-baselines.txt have moved; `--write` applies the
+# programs/ash/tests/cu-baselines.txt have moved; `--write` applies the
 # measurements to that file.
 #
 # This is a helper, not a gate. The gate is `tests/budget.rs`, which CI already runs
@@ -22,7 +22,7 @@
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 
-baselines=programs/agent_rails/tests/cu-baselines.txt
+baselines=programs/ash/tests/cu-baselines.txt
 write=false
 case "${1:-}" in
 "") ;;
@@ -36,8 +36,8 @@ esac
 # `--test-threads=1` because the measurements print interleaved otherwise, and `|| true`
 # because a run that fails its gate is exactly the run whose new number you need to see:
 # budget.rs prints the machine-readable line before it asserts.
-echo "▸ measuring (cargo test -p agent_rails --test budget)"
-output=$(cargo test -p agent_rails --test budget -- --nocapture --test-threads=1 2>&1)
+echo "▸ measuring (cargo test -p ash --test budget)"
+output=$(cargo test -p ash --test budget -- --nocapture --test-threads=1 2>&1)
 status=$?
 
 # Unanchored: libtest prints `test <name> ... ` without a newline, so the marker lands

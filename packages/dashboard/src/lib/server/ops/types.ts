@@ -1,4 +1,4 @@
-import type { AgentEvent } from "@agent-rails/contract/alerts";
+import type { AgentEvent } from "@ash/contract/alerts";
 
 /**
  * Operational records that arrive from agent-side processes, not from the operator:

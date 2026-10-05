@@ -1,5 +1,5 @@
 {
-  "name": "agent-rails",
+  "name": "ash",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@10.6.5",
@@ -11,19 +11,21 @@
     "build": "turbo run build",
     "test": "turbo run test",
     "verify": "scripts/verify.sh",
-    "agent-rails": "node packages/cli/dist/cli.js",
+    "ash": "node packages/cli/dist/cli.js",
+    "cloak-smoke": "node packages/cloak/dist/smoke.js",
+    "verify-hash": "node --experimental-strip-types --no-warnings packages/cloak/src/verify-hash.ts",
     "typecheck": "turbo run typecheck",
     "lint": "biome check .",
     "format": "biome check --write .",
-    "idl:build": "CARGO_TARGET_DIR=\"${CARGO_TARGET_DIR:-$PWD/target}\" NO_DNA=1 anchor idl build -p agent_rails -o idl/agent_rails.json -- --lib --features idl-build",
-    "codegen": "pnpm --filter @agent-rails/client run codegen",
+    "idl:build": "CARGO_TARGET_DIR=\"${CARGO_TARGET_DIR:-$PWD/target}\" NO_DNA=1 anchor idl build -p ash -o idl/ash.json -- --lib --features idl-build",
+    "codegen": "pnpm --filter @ash/client run codegen",
     "idl:sync": "pnpm idl:build && pnpm codegen && pnpm build",
     "codegen:check": "pnpm codegen && git diff --exit-code packages/client/src/generated",
     "coverage": "turbo run coverage",
     "guardian-watch": "node --experimental-strip-types scripts/guardian-watch.ts",
     "test:guardian-watch": "node --experimental-strip-types --test scripts/guardian-roll-window.test.ts",
-    "dashboard": "pnpm --filter @agent-rails/dashboard dev",
-    "dashboard:build": "pnpm --filter @agent-rails/dashboard build",
+    "dashboard": "pnpm --filter @ash/dashboard dev",
+    "dashboard:build": "pnpm --filter @ash/dashboard build",
     "alert-watch": "node --experimental-strip-types scripts/alert-watch.ts",
     "vendors": "node --env-file-if-exists=examples/agent-infra/vendors.env packages/vendors/dist/cli.js serve all",
     "vendor": "node --env-file-if-exists=examples/agent-infra/vendors.env packages/vendors/dist/cli.js",
@@ -43,7 +45,17 @@
   },
   "pnpm": {
     "overrides": {
-      "postcss": "^8.5.23"
+      "postcss": "^8.5.23",
+      "axios": ">=1.20.0",
+      "ws@>=8.0.0 <8.21.0": ">=8.21.0",
+      "underscore@<=1.13.7": ">=1.13.8"
+    },
+    "auditConfig": {
+      "ignoreGhsas": [
+        "GHSA-3gc7-fjrx-p6mg",
+        "GHSA-82x6-q7mm-w9cf",
+        "GHSA-v5mp-jgw5-2x6j"
+      ]
     }
   }
 }

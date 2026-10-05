@@ -1,8 +1,8 @@
-# Parecer — Viabilidade de portar o Agent Rails para EVM
+# Parecer — Viabilidade de portar o ASH para EVM
 
 **Data:** 25 de setembro de 2026
 **Árvore analisada:** `main` em `561b7c0`
-**Escopo:** o que custaria operar o Agent Rails em redes EVM (Arbitrum, Base, Robinhood Chain), o que do código atravessa a fronteira, o que precisa ser reescrito, e o que muda de natureza em vez de mudar de sintaxe.
+**Escopo:** o que custaria operar o ASH em redes EVM (Arbitrum, Base, Robinhood Chain), o que do código atravessa a fronteira, o que precisa ser reescrito, e o que muda de natureza em vez de mudar de sintaxe.
 **Fontes:** código e testes desta árvore; uma compilação verificada do crate de policy para `wasm32-unknown-unknown`; o corpus [ethskills](https://github.com/austintgriffith/ethskills) para o lado EVM; `docs/research/crypto-worlds-fair-parecer-2026-09-21.md` e `docs/strategy/*` para o enquadramento de produto.
 
 > **Decisão em vigor: não migrar.** Este parecer é registro, não plano de execução. Ele existe para que a pergunta, quando voltar, comece de um inventário medido em vez de uma estimativa nova.
@@ -13,7 +13,7 @@
 
 **É viável, e não é uma refatoração.** É um port do contrato mais uma camada de abstração de cadeia nos pacotes TypeScript. O programa Anchor não sobrevive em Solidity; o resto do repositório sobrevive melhor do que se esperaria, porque a fronteira que o ADR-008 traçou por motivos de testabilidade acabou sendo a fronteira certa de portabilidade.
 
-Estimativa: **8–12 semanas de engenharia focada até paridade funcional**, sem contar auditoria. Isso confirma, com números, o que a §4 do parecer de 21/09 já classificava como Tier 3 — "exige portar contrato ou bridges; Agent Rails é Solana-specific".
+Estimativa: **8–12 semanas de engenharia focada até paridade funcional**, sem contar auditoria. Isso confirma, com números, o que a §4 do parecer de 21/09 já classificava como Tier 3 — "exige portar contrato ou bridges; ASH é Solana-specific".
 
 Os três achados que mudam a conversa:
 
@@ -27,10 +27,10 @@ E duas objeções que pesam mais que as técnicas: o calendário do Colosseum e 
 
 ## 1. O fato verificado: o núcleo é portável
 
-`crates/agent-rails-policy` compila limpo para WebAssembly em `no_std`, sem nenhuma dependência de Solana:
+`crates/ash-policy` compila limpo para WebAssembly em `no_std`, sem nenhuma dependência de Solana:
 
 ```bash
-cd crates/agent-rails-policy
+cd crates/ash-policy
 cargo build --release --target wasm32-unknown-unknown --no-default-features
 #    Finished `release` profile [optimized] target(s) in 11.00s
 ```
@@ -45,9 +45,9 @@ O crate tem uma única dependência opcional (`sha2`), `#![forbid(unsafe_code)]`
 
 | Camada | Linhas | Destino |
 |---|---:|---|
-| `crates/agent-rails-policy` | 2.101 | **100% reutilizável** (§1) |
-| `programs/agent_rails` — `src` | 5.337 | **Reescrever** |
-| `programs/agent_rails` — `tests` | 8.652 | Reescrever; os *casos* se traduzem, o harness não |
+| `crates/ash-policy` | 2.101 | **100% reutilizável** (§1) |
+| `programs/ash` — `src` | 5.337 | **Reescrever** |
+| `programs/ash` — `tests` | 8.652 | Reescrever; os *casos* se traduzem, o harness não |
 | `packages/contract` | 1.116 | ~85% — só nomenclatura (`mint` → `token`, `Pubkey` → `address`) |
 | `packages/client` | 14.439 | **Descartar** — 100% gerado por Codama do IDL; em EVM vira wagmi/viem a partir do ABI |
 | `packages/sdk` | 3.638 | ~50% — 24 de 30 arquivos importam `@solana/kit` |
@@ -56,7 +56,7 @@ O crate tem uma única dependência opcional (`sha2`), `#![forbid(unsafe_code)]`
 | `packages/dashboard` | 15.367 | **~95%** — apenas 3 arquivos importam `@solana/kit` |
 | `packages/e2e` | 1.015 | Reescrever (Surfpool → Anvil/fork) |
 
-O dashboard quase não sente o port. Isso é consequência direta de `@agent-rails/contract` ser a âncora de compatibilidade que o `CLAUDE.md` raiz descreve: schemas, reason codes e event shapes já vivem num pacote que não conhece a cadeia.
+O dashboard quase não sente o port. Isso é consequência direta de `@ash/contract` ser a âncora de compatibilidade que o `CLAUDE.md` raiz descreve: schemas, reason codes e event shapes já vivem num pacote que não conhece a cadeia.
 
 `packages/client` ser descartável inteiro é boa notícia disfarçada de má: são 14 mil linhas, mas nenhuma delas é escrita à mão, e o equivalente EVM também é gerado. O custo é trocar um pipeline de codegen por outro, não reescrever 14 mil linhas.
 
@@ -126,7 +126,7 @@ O gate de CI traduz bem, e até melhora: `forge snapshot` cobre o mesmo papel qu
 
 ### 5.5 Manter sha256; não trocar por keccak256
 
-Keccak é o idioma da EVM e custa 30 gas contra 60 + 12/word do precompile sha256 em `0x02`. A diferença é irrelevante no total da transação. Trocar invalidaria `tests/audit_vectors.rs`, os domínios `agent-rails/audit/v1` e `agent-rails/intent/v1`, e a compatibilidade do crate. **Manter sha256** é a escolha certa: a portabilidade dos vetores vale mais que o gas.
+Keccak é o idioma da EVM e custa 30 gas contra 60 + 12/word do precompile sha256 em `0x02`. A diferença é irrelevante no total da transação. Trocar invalidaria `tests/audit_vectors.rs`, os domínios `ash/audit/v1` e `ash/intent/v1`, e a compatibilidade do crate. **Manter sha256** é a escolha certa: a portabilidade dos vetores vale mais que o gas.
 
 Decisão associada: `Key = [u8; 32]` contra `address` de 20 bytes. Recomendo manter 32 bytes com padding (`bytes32(uint256(uint160(addr)))`), o que preserva o crate e os vetores intactos.
 
@@ -154,7 +154,7 @@ CREATE2 com o mesmo salt dá o mesmo endereço nas duas, o que vale a pena garan
 
 ### Um ativo que só existe do lado EVM
 
-**ERC-8004** (registro de identidade e reputação de agentes, em mainnet desde 29/01/2026, mesmo endereço em mais de 20 cadeias) e **x402** encaixam de forma complementar, não concorrente: x402 paga **APIs inbound**, o Agent Rails guarda o **treasury outbound**. O parecer de 21/09 já propunha esse posicionamento como narrativa; em EVM ele deixa de ser narrativa e vira integração demonstrável.
+**ERC-8004** (registro de identidade e reputação de agentes, em mainnet desde 29/01/2026, mesmo endereço em mais de 20 cadeias) e **x402** encaixam de forma complementar, não concorrente: x402 paga **APIs inbound**, o ASH guarda o **treasury outbound**. O parecer de 21/09 já propunha esse posicionamento como narrativa; em EVM ele deixa de ser narrativa e vira integração demonstrável.
 
 ---
 

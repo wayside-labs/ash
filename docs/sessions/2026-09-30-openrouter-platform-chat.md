@@ -99,7 +99,7 @@ server.
 
 ## Verification
 
-- `pnpm --filter @agent-rails/dashboard test`: 170 passed. New files:
+- `pnpm --filter @ash/dashboard test`: 170 passed. New files:
   `openrouter-api.test.ts` (SSE split across reads, comments, `[DONE]`, request shape,
   allowlist refusal before any fetch, 402 mapping, mid-stream error), `prompt.test.ts`,
   `providers.test.ts` (the CLI probe is mocked, since the developer's machine may have

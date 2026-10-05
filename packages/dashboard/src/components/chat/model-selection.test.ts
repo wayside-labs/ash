@@ -25,7 +25,7 @@ const api = {
 
 const platform = {
   id: "openrouter-platform" as const,
-  label: "Agent Rails assistant",
+  label: "ASH assistant",
   detail: "hosted",
   models: [
     { id: "openrouter:anthropic/claude-sonnet-5.5", label: "Sonnet 5.5" },
@@ -116,7 +116,7 @@ describe("chatErrorHintKey", () => {
     );
   });
 
-  // A 502 from the tunnel mid-restart arrives with no `x-agent-rails-mode` and no provider
+  // A 502 from the tunnel mid-restart arrives with no `x-ash-mode` and no provider
   // known to the page yet; it used to be blamed on "your API key in My APIs".
   it("never blames an API key when it does not know which provider failed", () => {
     for (const provider of [null, undefined, "demo", "something-new"]) {

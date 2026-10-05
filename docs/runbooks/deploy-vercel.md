@@ -7,7 +7,7 @@
 | | |
 |---|---|
 | URL de produção | <https://agent-rails-virid.vercel.app> |
-| Projeto Vercel | `agent-rails`, escopo `0xcf02s-projects`, plano hobby |
+| Projeto Vercel | `ash`, escopo `0xcf02s-projects`, plano hobby |
 | Região da função | `gru1` (São Paulo) |
 | Projeto Supabase | ref `rjevwiebjrclgjaumdds`, org `0xcf02's Org`, região `sa-east-1` |
 
@@ -17,7 +17,7 @@ Os passos abaixo estão escritos para reprodução — recriar o ambiente do zer
 
 ## 0. Leia isto antes de tudo: Supabase não é opcional aqui
 
-Fora da Vercel o dashboard roda em modo JSON e grava em `~/.agent-rails/dashboard.json` (`store-json.ts`). **Esse modo não funciona em serverless.** O filesystem da função é somente-leitura fora de `/tmp`, e `/tmp` é por instância e efêmero. Um deploy sem Supabase sobe, serve as páginas, e perde qualquer escrita.
+Fora da Vercel o dashboard roda em modo JSON e grava em `~/.ash/dashboard.json` (`store-json.ts`). **Esse modo não funciona em serverless.** O filesystem da função é somente-leitura fora de `/tmp`, e `/tmp` é por instância e efêmero. Um deploy sem Supabase sobe, serve as páginas, e perde qualquer escrita.
 
 O gate é `isSupabaseConfigured()`, que só olha as variáveis públicas. Com elas presentes, `store.ts` despacha para o Postgres; sem elas, para o JSON.
 
@@ -28,7 +28,7 @@ O gate é `isSupabaseConfigured()`, que só olha as variáveis públicas. Com el
 ```bash
 npx supabase login                      # precisa de TTY — não funciona pelo agente
 npx supabase orgs list
-npx supabase projects create agent-rails --org-id <org> --region sa-east-1 --db-password "$PW"
+npx supabase projects create ash --org-id <org> --region sa-east-1 --db-password "$PW"
 cd packages/dashboard
 npx supabase link --project-ref <ref>
 SUPABASE_DB_PASSWORD=<senha> npx supabase db push
@@ -36,7 +36,7 @@ SUPABASE_DB_PASSWORD=<senha> npx supabase db push
 
 > **Nunca passe segredo em `argv` quando o runner for `npx`.** O `npm notice run` imprime a linha de comando **já expandida pelo shell**, então `--db-password "$(cat arquivo)"` vaza o valor no log. Use variável de ambiente (`SUPABASE_DB_PASSWORD`), que não aparece em `argv`. Isso já custou uma rotação de senha aqui.
 
-A senha do banco vive em `~/.agent-rails/supabase-db-password` (`0600`), fora do repositório. Ela **não** é usada pela aplicação — só por `db push` e conexão direta. O app fala com o Supabase pela API, com as chaves.
+A senha do banco vive em `~/.ash/supabase-db-password` (`0600`), fora do repositório. Ela **não** é usada pela aplicação — só por `db push` e conexão direta. O app fala com o Supabase pela API, com as chaves.
 
 Depois, no painel (a CLI não faz nenhum dos dois):
 
@@ -54,7 +54,7 @@ Não precisa ligar no GitHub. `vercel deploy` sobe os arquivos do diretório loc
 
 ```bash
 cd <raiz do repo>
-npx vercel link --project agent-rails --yes
+npx vercel link --project ash --yes
 ```
 
 Duas configurações que o `vercel.json` não consegue declarar e precisam ir por API:
@@ -78,7 +78,7 @@ Sem ele o upload tenta levar **12G** — `target/` sozinho é 11G de artefato Ru
 | Campo | Por quê |
 |---|---|
 | `installCommand` | `cd ../..` pelo lockfile na raiz. **`--ignore-scripts`** porque o `prepare` da raiz roda `lefthook install`, que exige um repositório git — e o build da Vercel não tem `.git`. Sem a flag o install sai com 1. O pnpm já bloqueia script de dependência por padrão, então a flag só derruba esse `prepare`. |
-| `buildCommand` | `turbo run build --filter=@agent-rails/dashboard` constrói `contract` → `client` → `sdk` → `dashboard` na ordem. `next build` sozinho falha: as deps `workspace:*` não estão compiladas. |
+| `buildCommand` | `turbo run build --filter=@ash/dashboard` constrói `contract` → `client` → `sdk` → `dashboard` na ordem. `next build` sozinho falha: as deps `workspace:*` não estão compiladas. |
 | `headers` | `X-Frame-Options: DENY` complementa o piso de CSRF do `assertSameOrigin`. Nem a aba Conta nem o Tesouro têm caso legítimo de embed. |
 
 ---
@@ -173,7 +173,7 @@ Depois, no navegador: aba Conta → Entrar com Google.
 
 **O provedor `claude-cli` nunca vai estar disponível.** `providers.ts` faz `execFile("claude", ["--version"])` e não há binário numa função Vercel; o probe sempre devolve `null`. Em produção as vias pagas são a `ANTHROPIC_API_KEY` e a `OPENROUTER_API_KEY` (esta paga pelo operador, liberada só para quem está logado).
 
-**O build do dashboard não é cacheado pelo turbo.** `turbo.json` declara `outputs: ["dist/**"]` e o Next escreve em `.next/**`; o próprio turbo avisa (`no output files found for task @agent-rails/dashboard#build`). Consertável com um override por pacote; ainda não feito.
+**O build do dashboard não é cacheado pelo turbo.** `turbo.json` declara `outputs: ["dist/**"]` e o Next escreve em `.next/**`; o próprio turbo avisa (`no output files found for task @ash/dashboard#build`). Consertável com um override por pacote; ainda não feito.
 
 **Segredos ficam no state.** `readState()` devolve chaves de API cruas; `maskState()` é o que as esconde nas respostas. A rota de export de runner-config é a única autorizada a emitir env inteiras. Qualquer campo novo exposto ao cliente precisa passar por `maskState`.
 

@@ -36,7 +36,7 @@ import {
   getAccountMetaFactory,
   type ResolvedInstructionAccount,
 } from "@solana/program-client-core";
-import { AGENT_RAILS_PROGRAM_ADDRESS } from "../programs/index.js";
+import { ASH_PROGRAM_ADDRESS } from "../programs/index.js";
 
 export const CLOSE_POLICY_DISCRIMINATOR: ReadonlyUint8Array = new Uint8Array([
   55, 42, 248, 229, 222, 138, 26, 252,
@@ -49,7 +49,7 @@ export function getClosePolicyDiscriminatorBytes(): ReadonlyUint8Array {
 }
 
 export type ClosePolicyInstruction<
-  TProgram extends string = typeof AGENT_RAILS_PROGRAM_ADDRESS,
+  TProgram extends string = typeof ASH_PROGRAM_ADDRESS,
   TAccountOperator extends string | AccountMeta<string> = string,
   TAccountTreasury extends string | AccountMeta<string> = string,
   TAccountPolicy extends string | AccountMeta<string> = string,
@@ -135,7 +135,7 @@ export function getClosePolicyInstruction<
   TAccountRentDestination extends string,
   TAccountEventAuthority extends string,
   TAccountProgram extends string,
-  TProgramAddress extends Address = typeof AGENT_RAILS_PROGRAM_ADDRESS,
+  TProgramAddress extends Address = typeof ASH_PROGRAM_ADDRESS,
 >(
   input: ClosePolicyInput<
     TAccountOperator,
@@ -156,7 +156,7 @@ export function getClosePolicyInstruction<
   TAccountProgram
 > {
   // Program address.
-  const programAddress = config?.programAddress ?? AGENT_RAILS_PROGRAM_ADDRESS;
+  const programAddress = config?.programAddress ?? ASH_PROGRAM_ADDRESS;
 
   // Original accounts.
   const originalAccounts = {
@@ -196,7 +196,7 @@ export function getClosePolicyInstruction<
 }
 
 export type ParsedClosePolicyInstruction<
-  TProgram extends string = typeof AGENT_RAILS_PROGRAM_ADDRESS,
+  TProgram extends string = typeof ASH_PROGRAM_ADDRESS,
   TAccountMetas extends readonly AccountMeta[] = readonly AccountMeta[],
 > = {
   programAddress: Address<TProgram>;

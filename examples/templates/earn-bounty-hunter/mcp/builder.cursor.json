@@ -1,16 +1,16 @@
 {
   "mcpServers": {
-    "agent-rails": {
+    "ash": {
       "command": "npx",
-      "args": ["-y", "@agent-rails/mcp"],
+      "args": ["-y", "@ash/mcp"],
       "env": {
-        "AGENT_RAILS_RPC": "https://api.devnet.solana.com",
-        "AGENT_RAILS_SESSION": "<session PDA from `session create --label earn-<bounty-slug>`>",
-        "AGENT_RAILS_SIGNER": "~/.agent-rails/earn/<label>-session-keypair.json",
-        "AGENT_RAILS_FEE_PAYER": "~/.agent-rails/earn/fee-payer-keypair.json",
-        "AGENT_RAILS_SECURITY": "balanced",
-        "AGENT_RAILS_SINK": "~/.agent-rails/earn/payments.jsonl",
-        "AGENT_RAILS_ALERT_WEBHOOK_URL": "<optional: https webhook for payment_denied>"
+        "ASH_RPC": "https://api.devnet.solana.com",
+        "ASH_SESSION": "<session PDA from `session create --label earn-<bounty-slug>`>",
+        "ASH_SIGNER": "~/.ash/earn/<label>-session-keypair.json",
+        "ASH_FEE_PAYER": "~/.ash/earn/fee-payer-keypair.json",
+        "ASH_SECURITY": "balanced",
+        "ASH_SINK": "~/.ash/earn/payments.jsonl",
+        "ASH_ALERT_WEBHOOK_URL": "<optional: https webhook for payment_denied>"
       }
     }
   }

@@ -84,7 +84,7 @@ describe("POST /api/chat on the platform key", () => {
       { role: "assistant", content: "reply" },
       { role: "user", content: "second" },
     ]);
-    expect(res.headers.get("x-agent-rails-mode")).toBe("openrouter-platform");
+    expect(res.headers.get("x-ash-mode")).toBe("openrouter-platform");
     expect(await res.text()).toBe("ok");
 
     const options = streamOpenRouter.mock.calls[0]?.[0] as OpenRouterOptions;

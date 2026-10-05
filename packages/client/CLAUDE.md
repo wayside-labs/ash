@@ -1,4 +1,4 @@
-# @agent-rails/client
+# @ash/client
 
 100% Codama-generated. Nothing here is hand-written except `src/index.ts`, which re-exports
 the generated barrel, and `src/index.test.ts`.
@@ -21,7 +21,7 @@ The failure is invisible from inside this package, because `include: ["src"]` pu
 file into the program directly and nothing has to resolve. Seen from sdk and mcp, which
 consume this package through the `types` condition, the barrel fails to resolve and every
 symbol re-exported through it looks absent — 7 errors here once produced 77 there, all
-reading "@agent-rails/client has no exported member".
+reading "@ash/client has no exported member".
 
 **`dts: false` with `types` pointing at `src/generated/index.ts`.** Consumers typecheck
 against the generated source rather than an emitted `.d.ts`. That is deliberate: the
@@ -32,7 +32,7 @@ ships anyway. It does mean errors in generated code surface in *every* consumer'
 **`@solana/program-client-core` must track `@solana/kit`.** `@solana/kit` bundles its own
 copy of that package. Declaring a different major here puts two copies in the tree, and two
 copies means two sets of nominal brands: the `ClientWithRpc<T>` the generated plugin
-imports stops unifying with the client kit hands it, and `agentRailsProgram()` becomes
+imports stops unifying with the client kit hands it, and `ashProgram()` becomes
 untypeable for reasons no renderer setting can fix. Bump the two together.
 
 ## Upgrading the renderer

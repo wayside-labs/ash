@@ -27,14 +27,14 @@ builds, the desk signs. Neither holds a key or touches the vault.
 
 ```
 agent ──sodax_quote / sodax_vault_quote / sodax_bridge_info ─▶ (free reads)
-agent ──agent_rails_execute_payment ─────────────────────────▶ vault → desk (policy + receipt)
+agent ──ash_execute_payment ─────────────────────────▶ vault → desk (policy + receipt)
 agent ──sodax_build_* ───────────────────────────────────────▶ unsigned tx (+ approval) + relay_data
 desk  ──sign + broadcast on src_chain_key
 agent ──sodax_submit (swap, bridge) | sodax_relay (mm, vault, cancel, fallback)
 agent ──sodax_status (poll) ─────────────────────────────────▶ solved | failed → cancel if needed
 ```
 
-## Tools (`agent-rails-integrations mcp sodax`)
+## Tools (`ash-integrations mcp sodax`)
 
 | Tool | Does | Moves funds |
 |---|---|---|
@@ -80,7 +80,7 @@ independent view of the same system), 14/14: chain list, Solana swap and money-m
 status for a filled and a cancelled real intent matches Builders' record. The relay-packet
 comparison only covered a tx with no packets on either side.
 
-Rerun it with `pnpm --filter @agent-rails/integrations check:sodax`
+Rerun it with `pnpm --filter @ash/integrations check:sodax`
 (`packages/integrations/scripts/sodax-builders-diff.mjs`) before bumping `@sodax/*`, or when the
 connector starts refusing tokens or chains. Mainnet reads and unsigned builds only; it needs
 network access, is not part of `pnpm test`, and exits non-zero on any mismatch.

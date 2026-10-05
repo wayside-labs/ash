@@ -3,7 +3,7 @@ import {
   SECURITY_PRESET_NAMES,
   type SecurityPosture,
   type SecurityPresetName,
-} from "@agent-rails/contract";
+} from "@ash/contract";
 import { type Address, createSolanaRpc, type Rpc, type SolanaRpcApi } from "@solana/kit";
 
 /**
@@ -76,12 +76,12 @@ function parseAliases(raw: string | undefined): Record<string, string> {
     if (!trimmed) continue;
     const separator = trimmed.indexOf(":");
     if (separator === -1) {
-      throw new Error(`AGENT_RAILS_MINT_ALIASES entry "${trimmed}" must be SYMBOL:address`);
+      throw new Error(`ASH_MINT_ALIASES entry "${trimmed}" must be SYMBOL:address`);
     }
     const symbol = trimmed.slice(0, separator).trim().toUpperCase();
     const address = trimmed.slice(separator + 1).trim();
     if (!symbol || !address) {
-      throw new Error(`AGENT_RAILS_MINT_ALIASES entry "${trimmed}" must be SYMBOL:address`);
+      throw new Error(`ASH_MINT_ALIASES entry "${trimmed}" must be SYMBOL:address`);
     }
     aliases[symbol] = address;
   }
@@ -98,43 +98,43 @@ function parsePositiveInt(raw: string | undefined, fallback: number, name: strin
 }
 
 export function loadConfigFromEnv(env: NodeJS.ProcessEnv = process.env): McpServerConfig {
-  const rpcUrl = env.AGENT_RAILS_RPC;
-  const session = env.AGENT_RAILS_SESSION;
-  const signerKeypairPath = env.AGENT_RAILS_SIGNER ?? env.AGENT_RAILS_SESSION_SIGNER;
-  const feePayerKeypairPath = env.AGENT_RAILS_FEE_PAYER;
+  const rpcUrl = env.ASH_RPC;
+  const session = env.ASH_SESSION;
+  const signerKeypairPath = env.ASH_SIGNER ?? env.ASH_SESSION_SIGNER;
+  const feePayerKeypairPath = env.ASH_FEE_PAYER;
 
   if (!rpcUrl) {
-    throw new Error("AGENT_RAILS_RPC is required");
+    throw new Error("ASH_RPC is required");
   }
   if (!session) {
     throw new Error(
-      "AGENT_RAILS_SESSION (AgentSession PDA) is required: the server binds to one session " +
+      "ASH_SESSION (AgentSession PDA) is required: the server binds to one session " +
         "at startup and will not accept one as a tool argument",
     );
   }
-  const remoteSignerUrl = env.AGENT_RAILS_REMOTE_SIGNER_URL;
-  const remoteSignerAddress = env.AGENT_RAILS_REMOTE_SIGNER_ADDRESS;
+  const remoteSignerUrl = env.ASH_REMOTE_SIGNER_URL;
+  const remoteSignerAddress = env.ASH_REMOTE_SIGNER_ADDRESS;
 
   if (remoteSignerUrl && !remoteSignerAddress) {
     throw new Error(
-      "AGENT_RAILS_REMOTE_SIGNER_ADDRESS is required with AGENT_RAILS_REMOTE_SIGNER_URL: " +
+      "ASH_REMOTE_SIGNER_ADDRESS is required with ASH_REMOTE_SIGNER_URL: " +
         "the signer's public key is checked against the on-chain session key at startup",
     );
   }
   if (!remoteSignerUrl && !signerKeypairPath) {
     throw new Error(
-      "A session signer is required: set AGENT_RAILS_SIGNER (keypair path) or " +
-        "AGENT_RAILS_REMOTE_SIGNER_URL with AGENT_RAILS_REMOTE_SIGNER_ADDRESS",
+      "A session signer is required: set ASH_SIGNER (keypair path) or " +
+        "ASH_REMOTE_SIGNER_URL with ASH_REMOTE_SIGNER_ADDRESS",
     );
   }
 
   const intentTtlSeconds = parsePositiveInt(
-    env.AGENT_RAILS_INTENT_TTL_SECONDS,
+    env.ASH_INTENT_TTL_SECONDS,
     DEFAULT_INTENT_TTL_SECONDS,
-    "AGENT_RAILS_INTENT_TTL_SECONDS",
+    "ASH_INTENT_TTL_SECONDS",
   );
   if (intentTtlSeconds < 5 || intentTtlSeconds > 3_600) {
-    throw new Error("AGENT_RAILS_INTENT_TTL_SECONDS must be between 5 and 3600");
+    throw new Error("ASH_INTENT_TTL_SECONDS must be between 5 and 3600");
   }
 
   const config: McpServerConfig = {
@@ -143,38 +143,36 @@ export function loadConfigFromEnv(env: NodeJS.ProcessEnv = process.env): McpServ
     signerKeypairPath: signerKeypairPath ?? "",
     intentTtlSeconds,
     confirmTimeoutMs: parsePositiveInt(
-      env.AGENT_RAILS_CONFIRM_TIMEOUT_MS,
+      env.ASH_CONFIRM_TIMEOUT_MS,
       DEFAULT_CONFIRM_TIMEOUT_MS,
-      "AGENT_RAILS_CONFIRM_TIMEOUT_MS",
+      "ASH_CONFIRM_TIMEOUT_MS",
     ),
-    securityPreset: parsePreset(env.AGENT_RAILS_SECURITY),
+    securityPreset: parsePreset(env.ASH_SECURITY),
     securityOverrides: parseSecurityOverrides(env),
-    mintAliases: parseAliases(env.AGENT_RAILS_MINT_ALIASES),
+    mintAliases: parseAliases(env.ASH_MINT_ALIASES),
     toolsMode: "full",
   };
   if (remoteSignerUrl && remoteSignerAddress) {
     config.remoteSigner = {
       url: remoteSignerUrl,
       address: remoteSignerAddress,
-      ...(env.AGENT_RAILS_REMOTE_SIGNER_TOKEN
-        ? { token: env.AGENT_RAILS_REMOTE_SIGNER_TOKEN }
-        : {}),
+      ...(env.ASH_REMOTE_SIGNER_TOKEN ? { token: env.ASH_REMOTE_SIGNER_TOKEN } : {}),
     };
   }
   if (feePayerKeypairPath) {
     config.feePayerKeypairPath = feePayerKeypairPath;
   }
-  if (env.AGENT_RAILS_SINK) {
-    config.sinkPath = env.AGENT_RAILS_SINK;
+  if (env.ASH_SINK) {
+    config.sinkPath = env.ASH_SINK;
   }
-  const alertWebhook = env.AGENT_RAILS_ALERT_WEBHOOK_URL?.trim();
+  const alertWebhook = env.ASH_ALERT_WEBHOOK_URL?.trim();
   if (alertWebhook) {
     config.alertWebhookUrl = alertWebhook;
   }
-  const ingestUrl = env.AGENT_RAILS_INGEST_URL?.trim();
-  const ingestToken = env.AGENT_RAILS_INGEST_TOKEN?.trim();
+  const ingestUrl = env.ASH_INGEST_URL?.trim();
+  const ingestToken = env.ASH_INGEST_TOKEN?.trim();
   if (Boolean(ingestUrl) !== Boolean(ingestToken)) {
-    throw new Error("AGENT_RAILS_INGEST_URL and AGENT_RAILS_INGEST_TOKEN go together");
+    throw new Error("ASH_INGEST_URL and ASH_INGEST_TOKEN go together");
   }
   if (ingestUrl && ingestToken) {
     const parsed = new URL(ingestUrl);
@@ -182,19 +180,17 @@ export function loadConfigFromEnv(env: NodeJS.ProcessEnv = process.env): McpServ
     // place that is not true, and it is where a local dashboard runs.
     const loopback = ["localhost", "127.0.0.1", "[::1]"].includes(parsed.hostname);
     if (parsed.protocol !== "https:" && !(parsed.protocol === "http:" && loopback)) {
-      throw new Error("AGENT_RAILS_INGEST_URL must be https (http only for localhost)");
+      throw new Error("ASH_INGEST_URL must be https (http only for localhost)");
     }
     config.ingest = { url: ingestUrl.replace(/\/+$/, ""), token: ingestToken };
   }
-  const toolsRaw = env.AGENT_RAILS_TOOLS?.trim().toLowerCase();
+  const toolsRaw = env.ASH_TOOLS?.trim().toLowerCase();
   if (toolsRaw === "readonly" || toolsRaw === "read-only") {
     config.toolsMode = "readonly";
   } else if (toolsRaw === "full" || toolsRaw === undefined || toolsRaw === "") {
     config.toolsMode = "full";
   } else {
-    throw new Error(
-      `AGENT_RAILS_TOOLS must be "full" or "readonly"; got ${JSON.stringify(toolsRaw)}`,
-    );
+    throw new Error(`ASH_TOOLS must be "full" or "readonly"; got ${JSON.stringify(toolsRaw)}`);
   }
   return config;
 }
@@ -204,7 +200,7 @@ function parsePreset(raw: string | undefined): SecurityPresetName {
   const candidate = raw.trim().toLowerCase() as SecurityPresetName;
   if (!SECURITY_PRESET_NAMES.includes(candidate)) {
     throw new Error(
-      `AGENT_RAILS_SECURITY must be one of: ${SECURITY_PRESET_NAMES.join(", ")}; got ` +
+      `ASH_SECURITY must be one of: ${SECURITY_PRESET_NAMES.join(", ")}; got ` +
         JSON.stringify(raw),
     );
   }
@@ -222,35 +218,31 @@ function parsePreset(raw: string | undefined): SecurityPresetName {
 function parseSecurityOverrides(env: NodeJS.ProcessEnv): Partial<SecurityPosture> {
   const overrides: Partial<SecurityPosture> = {};
 
-  const perMinute = env.AGENT_RAILS_MAX_PAYMENTS_PER_MINUTE;
-  const concurrent = env.AGENT_RAILS_MAX_CONCURRENT;
+  const perMinute = env.ASH_MAX_PAYMENTS_PER_MINUTE;
+  const concurrent = env.ASH_MAX_CONCURRENT;
   if (perMinute !== undefined || concurrent !== undefined) {
     overrides.velocity = {
       ...(perMinute !== undefined
         ? {
-            maxPaymentsPerMinute: parsePositiveInt(
-              perMinute,
-              0,
-              "AGENT_RAILS_MAX_PAYMENTS_PER_MINUTE",
-            ),
+            maxPaymentsPerMinute: parsePositiveInt(perMinute, 0, "ASH_MAX_PAYMENTS_PER_MINUTE"),
           }
         : {}),
       ...(concurrent !== undefined
-        ? { maxConcurrent: parsePositiveInt(concurrent, 0, "AGENT_RAILS_MAX_CONCURRENT") }
+        ? { maxConcurrent: parsePositiveInt(concurrent, 0, "ASH_MAX_CONCURRENT") }
         : {}),
     } as SecurityPosture["velocity"];
   }
 
-  const attempts = env.AGENT_RAILS_RESOLVE_ATTEMPTS;
-  const interval = env.AGENT_RAILS_RESOLVE_INTERVAL_MS;
+  const attempts = env.ASH_RESOLVE_ATTEMPTS;
+  const interval = env.ASH_RESOLVE_INTERVAL_MS;
   if (attempts !== undefined || interval !== undefined) {
     overrides.outcomes = {
       ...(attempts !== undefined
-        ? { resolveAttempts: parsePositiveInt(attempts, 0, "AGENT_RAILS_RESOLVE_ATTEMPTS") }
+        ? { resolveAttempts: parsePositiveInt(attempts, 0, "ASH_RESOLVE_ATTEMPTS") }
         : {}),
       ...(interval !== undefined
         ? {
-            resolveIntervalMs: parsePositiveInt(interval, 0, "AGENT_RAILS_RESOLVE_INTERVAL_MS"),
+            resolveIntervalMs: parsePositiveInt(interval, 0, "ASH_RESOLVE_INTERVAL_MS"),
           }
         : {}),
     } as SecurityPosture["outcomes"];

@@ -1,4 +1,4 @@
-You are a market researcher paying for data through Agent Rails.
+You are a market researcher paying for data through ASH.
 
 1. Buy one price quote for SOL and BTC from the Rails Oracle.
 2. Write a three-line market brief in Portuguese using only the prices you bought. State the

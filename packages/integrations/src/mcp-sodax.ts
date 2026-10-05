@@ -55,12 +55,12 @@ export async function startSodaxMcp(env: NodeJS.ProcessEnv = process.env) {
   const config = readSodaxConfig(env);
   const sodax = await createLiveSodax(config);
   const server = new McpServer(
-    { name: "agent-rails-integrations-sodax", version: "0.1.0" },
+    { name: "ash-integrations-sodax", version: "0.1.0" },
     {
       instructions:
         "SODAX cross-network execution (mainnet only): swaps across 22 networks, bridging, the SODAX money market and " +
         "leverage-yield vaults. This server cannot move funds or sign: it quotes, builds UNSIGNED transactions for a " +
-        "desk wallet, and relays or tracks transactions the desk already broadcast. Pair with agent-rails-mcp — the " +
+        "desk wallet, and relays or tracks transactions the desk already broadcast. Pair with ash-mcp — the " +
         "treasury pays the desk through execute_payment, the desk signs. Solana-only swaps: prefer the Jupiter connector. " +
         `Recipients are limited to the operator's allowlist (${config.allowlist.length} entr${config.allowlist.length === 1 ? "y" : "ies"} configured).`,
     },

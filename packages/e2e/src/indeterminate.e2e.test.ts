@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
-import { getExecutePaymentSolInstruction } from "@agent-rails/client";
-import { deriveIntentId } from "@agent-rails/contract";
-import { isAgentRailsError, sendPayment } from "@agent-rails/sdk";
+import { getExecutePaymentSolInstruction } from "@ash/client";
+import { deriveIntentId } from "@ash/contract";
+import { isAshError, sendPayment } from "@ash/sdk";
 import {
   address,
   appendTransactionMessageInstruction,
@@ -122,7 +122,7 @@ describe("a dropped confirmation over a real validator", () => {
     proxy.clearBlind();
 
     expect(failure, "a blinded confirmation must not resolve successfully").not.toBeNull();
-    if (!isAgentRailsError(failure)) throw new Error(`expected AgentRailsError, got ${failure}`);
+    if (!isAshError(failure)) throw new Error(`expected AshError, got ${failure}`);
 
     // The whole point. "denied" reads as an invitation to retry; this one must not.
     expect(failure.outcome).toBe("indeterminate");

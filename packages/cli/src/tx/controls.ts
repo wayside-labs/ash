@@ -1,8 +1,4 @@
-import {
-  AGENT_RAILS_PROGRAM_ADDRESS,
-  getPauseInstruction,
-  getUnpauseInstruction,
-} from "@agent-rails/client";
+import { ASH_PROGRAM_ADDRESS, getPauseInstruction, getUnpauseInstruction } from "@ash/client";
 import type { Address, TransactionSigner } from "@solana/kit";
 import { findEventAuthority } from "../bootstrap.js";
 
@@ -12,7 +8,7 @@ export async function buildPauseInstruction(authority: TransactionSigner, treasu
     authority,
     treasury,
     eventAuthority,
-    program: AGENT_RAILS_PROGRAM_ADDRESS,
+    program: ASH_PROGRAM_ADDRESS,
   });
 }
 
@@ -22,6 +18,6 @@ export async function buildUnpauseInstruction(owner: TransactionSigner, treasury
     owner,
     treasury,
     eventAuthority,
-    program: AGENT_RAILS_PROGRAM_ADDRESS,
+    program: ASH_PROGRAM_ADDRESS,
   });
 }

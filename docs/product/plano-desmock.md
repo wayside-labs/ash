@@ -15,10 +15,10 @@ Decisões aplicadas: **D1** Voyage (sem chave → BM25 real, rotulado "keyword")
 |---|---|---|
 | 0.1 métricas mock | ✅ virou fixture de teste (`lib/metrics/__fixtures__`), sem uso no app | o arquivo alimentava `fold.test.ts`; mover em vez de apagar |
 | 0.2 oracle | ✅ 503 antes de faturar; 503 com invoice aberto se falhar após pagamento; cache ≤ 10 min com `as_of` real | — |
-| 1.1 skills | ✅ import/download SKILL.md, bundle `.zip`, 5 skills reais no seed (teste de drift), `run-agent.sh --bundle` | `agent-rails agent pull` no CLI **não** feito: o CLI não tem sessão do dashboard hospedado; baixar o zip pela UI cobre o fluxo |
+| 1.1 skills | ✅ import/download SKILL.md, bundle `.zip`, 5 skills reais no seed (teste de drift), `run-agent.sh --bundle` | `ash agent pull` no CLI **não** feito: o CLI não tem sessão do dashboard hospedado; baixar o zip pela UI cobre o fluxo |
 | 1.2 ingestão | ✅ tokens por workflow, `/api/ingest/{events,reviews,knowledge}`, store JSON + Postgres, migration com RLS | — |
 | 1.3 canais | ✅ webhook/Slack/Telegram/e-mail, `limitAlerts` e `emailNotifications` valendo, migração do webhook antigo | — |
-| 1.4 revisões | ✅ `/reviews`, aprovação por intent id, `REVIEW_REJECTED`, `agent_rails_request_limit_increase` (7ª ferramenta), ADR-022 | — |
+| 1.4 revisões | ✅ `/reviews`, aprovação por intent id, `REVIEW_REJECTED`, `ash_request_limit_increase` (7ª ferramenta), ADR-022 | — |
 | 2.1 canvas | ✅ grafo derivado das linhas; só o layout é salvo (`workflows.canvas_layout`) | coluna jsonb no workflow em vez de recurso `workflowGraphs`: não há grafo a guardar |
 | 2.2 gerar com IA | ✅ proposta validada por zod, pré-visualização, aplica pelas rotas normais; `demo` → recusa | — |
 | 3 RAG | ✅ `/knowledge`, PDF (unpdf)/Markdown/URL com proteção de SSRF, Voyage ou BM25, `packages/knowledge-mcp`, trechos no chat | ranking em processo (jsonb `real[]`) em vez de pgvector: mesmo código nos dois stores, suficiente até 5 000 trechos por org |
@@ -48,7 +48,7 @@ Migrations novas, a aplicar no Supabase com `supabase db push` (rode `config dif
    para cada skill habilitada no escopo (mesma regra de escopo dos MCPs: global + workflow + o
    agente). `GET /api/export/runner-config?format=zip`; `format=json` continua existindo para
    quem só quer o `mcpServers`. Cabeçalho `X-Runner-Skills` com a contagem.
-3. **CLI**: `agent-rails agent pull --workflow … --agent … --out <dir>` baixa e descompacta o
+3. **CLI**: `ash agent pull --workflow … --agent … --out <dir>` baixa e descompacta o
    bundle (operador), pronto para `claude -p` rodar dentro de `<dir>`. `run-agent.sh` aceita
    `--bundle <dir>` em vez de montar tudo do repo.
 4. **Chat**: *não* injeta skills. Decisão registrada: skills descrevem uso de ferramentas e o
@@ -69,9 +69,9 @@ itens seguintes:
 
 - **`POST /api/ingest/events`**, autenticado por **token de ingestão por workflow** (gerado no
   dashboard, só o hash fica guardado, rotacionável). Aceita os eventos de
-  `@agent-rails/contract/alerts` (`payment_denied`, `headroom_low`) mais dois novos:
+  `@ash/contract/alerts` (`payment_denied`, `headroom_low`) mais dois novos:
   `payment_review_required` e `limit_increase_requested` (1.4).
-- MCP: `AGENT_RAILS_EVENTS_URL` + `AGENT_RAILS_EVENTS_TOKEN`, entregue no bundle do export. O
+- MCP: `ASH_EVENTS_URL` + `ASH_EVENTS_TOKEN`, entregue no bundle do export. O
   envio reaproveita a fila não-bloqueante de `alert-webhook.ts` (telemetria fora do ar não
   para pagamento).
 - Tabela `events` (migration Supabase + store JSON local), com `org_id`, RLS igual às demais.
@@ -84,7 +84,7 @@ itens seguintes:
 - Fan-out no servidor ao receber um evento (1.2), respeitando:
   - **`limitAlerts`** → liga/desliga `headroom_low` e `payment_denied` para todos os canais
     (é o que o toggle promete hoje e não faz). Enquanto o MCP ainda posta direto no webhook
-    legado, o export **omite** `AGENT_RAILS_ALERT_WEBHOOK_URL` quando o toggle está desligado.
+    legado, o export **omite** `ASH_ALERT_WEBHOOK_URL` quando o toggle está desligado.
   - **`emailNotifications`** → habilita o canal e-mail; o switch deixa de ser `disabled`.
 - E-mail: provedor transacional via API (decisão D2), chave em env do servidor, nunca no
   estado do tenant. Limite de envio por org.
@@ -103,7 +103,7 @@ segurança (a fronteira real é 4.1):
    `GET /api/ingest/reviews/{intent_id}` com o token; aprovado e não expirado → segue o
    caminho normal (policy on-chain continua valendo); rejeitado → `denied` `REVIEW_REJECTED`.
    Uma aprovação vale para um intent uma vez.
-4. Nova ferramenta `agent_rails_request_limit_increase(reason)` — prevista em ADR-007 para a
+4. Nova ferramenta `ash_request_limit_increase(reason)` — prevista em ADR-007 para a
    v1.1: **só emite evento**, não concede nada. Aparece em `/reviews` como pedido; quem decide
    aumentar é o operador pelo CLI/dashboard. Atualizar `AGENT_TOOL_NAMES` e o snapshot de
    schemas; `tool-surface.test` continua garantindo que nada privilegiado entrou.
@@ -152,7 +152,7 @@ Playwright com a rota stubada.
   local: SQLite + busca linear.
 - `status` real: `indexing → indexed | error` com mensagem.
 - Consumo:
-  - **MCP `agent-rails-knowledge`** (stdio, novo binário no pacote vendors ou próprio), tool
+  - **MCP `ash-knowledge`** (stdio, novo binário no pacote vendors ou próprio), tool
     somente leitura `search_knowledge(query, k)`, escopo por agente, entra no bundle de 1.1;
   - **chat**: top-k trechos do escopo global no contexto, marcados como conteúdo não confiável
     (mesma regra que `system-prompts.ts` já aplica a CSV/contexto).

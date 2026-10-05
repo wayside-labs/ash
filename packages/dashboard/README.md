@@ -1,6 +1,6 @@
-# @agent-rails/dashboard
+# @ash/dashboard
 
-Web dashboard for Agent Rails — chat-first UI to manage workflows, agents, treasuries, and limits.
+Web dashboard for ASH — chat-first UI to manage workflows, agents, treasuries, and limits.
 
 ## Stack
 
@@ -14,18 +14,18 @@ Web dashboard for Agent Rails — chat-first UI to manage workflows, agents, tre
 
 ```bash
 pnpm install
-pnpm build --filter @agent-rails/sdk       # dashboard imports the built SDK
+pnpm build --filter @ash/sdk       # dashboard imports the built SDK
 pnpm dashboard                             # dev server on :3000
 ```
 
-Production: `pnpm dashboard:build && pnpm --filter @agent-rails/dashboard start`.
+Production: `pnpm dashboard:build && pnpm --filter @ash/dashboard start`.
 
 ## Where data lives
 
 Everything you create in the UI is stored server-side in a single JSON document:
 
 ```
-~/.agent-rails/dashboard.json        # override with AGENT_RAILS_HOME
+~/.ash/dashboard.json        # override with ASH_HOME
 ```
 
 Written atomically (temp file + rename) with mode `600`. API keys are kept in that
@@ -35,7 +35,7 @@ padrões* resets to that seed.
 
 ## On-chain reads
 
-The dashboard reads the chain server-side through `@agent-rails/sdk`:
+The dashboard reads the chain server-side through `@ash/sdk`:
 
 | Endpoint | What it reads |
 |---|---|
@@ -47,7 +47,7 @@ A custom RPC is user input that reaches a server-side fetch, so it is restricted
 to `https` on a public host — private ranges fall back to the cluster default.
 
 To see real numbers, give a workflow a treasury. On devnet or testnet, **Create on-chain
-vault** on `/treasury` runs the same stages as `agent-rails init` with your wallet signing
+vault** on `/treasury` runs the same stages as `ash init` with your wallet signing
 each one (ADR-021 wave 2A):
 
 | Endpoint | What it does |
@@ -56,14 +56,14 @@ each one (ADR-021 wave 2A):
 | `POST /api/solana/bootstrap/build-step` | The next missing stage as an unsigned transaction; `{ done: true }` when none is left |
 | `GET /api/solana/bootstrap/vendors` | The VPS demo vendors' catalogs, for the first-destination preset |
 
-The stages come from `@agent-rails/cli/bootstrap`, not from a copy. The browser holds the
+The stages come from `@ash/cli/bootstrap`, not from a copy. The browser holds the
 throwaway `create_key` and the optional first session key; each signature is confirmed
 through `/api/solana/confirm`, as with vault transfer and session create. The CLI remains the
 path for mainnet and for scripts, and an existing treasury address can still be pasted into
 a workflow:
 
 ```bash
-pnpm agent-rails init --rpc https://api.devnet.solana.com --yes
+pnpm ash init --rpc https://api.devnet.solana.com --yes
 ```
 
 Rows without a treasury address show `—` rather than borrowing a number.
@@ -81,7 +81,7 @@ sink (`GET /api/metrics/history/export`).
 ## Chat
 
 `GET /api/chat/providers` reports what this machine can run the chat on.
-`POST /api/chat` streams text and names the path it took in `x-agent-rails-mode`.
+`POST /api/chat` streams text and names the path it took in `x-ash-mode`.
 
 | Provider | Needs | Cost |
 |---|---|---|
@@ -135,7 +135,7 @@ allows one metered turn per org at a time (409 for a second). The balance and
 ledger are on the Account page, from `GET /api/billing`.
 
 Always on when Supabase is configured; opt-in locally with `BILLING_ENABLED=true`
-(ledger in `~/.agent-rails/billing.json`). No route adds credit. Design, the
+(ledger in `~/.ash/billing.json`). No route adds credit. Design, the
 overdraft bound, and how to grant credit by hand:
 [`docs/runbooks/chat-credit-billing.md`](../../docs/runbooks/chat-credit-billing.md).
 
@@ -171,7 +171,7 @@ The endpoint turns chat input into a process, so the process gets nothing:
   roster changes between CLI releases, so a name list rots into a hole on the
   next upgrade.
 - `--strict-mcp-config` with no config — drops every MCP server the user has,
-  including the Agent Rails payment tools, which must never be reachable from a
+  including the ASH payment tools, which must never be reachable from a
   chat box. Verified with a canary `.mcp.json` that was not loaded.
 - cwd is an empty sandbox directory, so no `CLAUDE.md` or repo file is in scope.
 - the model id comes from a fixed map, never from request text.
@@ -242,7 +242,7 @@ light palette yet.
 
 The rest of ADR-021 wave 2: allowlist editor, policy editor, pause/unpause, session
 revoke, ceiling and guardian management (2B/2C), plus SPL mints and mainnet in the bootstrap
-wizard — use `pnpm agent-rails init --mint` / `init` against mainnet for those. Treasury
+wizard — use `pnpm ash init --mint` / `init` against mainnet for those. Treasury
 bootstrap (wave 2A), deposit/withdraw and session create already run in the browser.
 
 RAG, Harness and Integrations were removed outright rather than shipped as

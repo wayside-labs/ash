@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import type { AgentEvent } from "@agent-rails/contract/alerts";
+import type { AgentEvent } from "@ash/contract/alerts";
 import { isLive, REVIEW_TTL_MS, type Review } from "./types";
 
 export function newIngestToken(): string {

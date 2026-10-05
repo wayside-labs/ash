@@ -1,13 +1,13 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { AGENT_RAILS_PROGRAM_ADDRESS } from "@agent-rails/client";
+import { ASH_PROGRAM_ADDRESS } from "@ash/client";
 import {
   fromBaseUnits,
   MAX_SESSION_TTL_SECONDS,
   MIN_WINDOW_SECONDS,
   toBaseUnits,
-} from "@agent-rails/contract";
-import { findAssociatedTokenAddress, TOKEN_PROGRAM_ADDRESS } from "@agent-rails/sdk";
+} from "@ash/contract";
+import { findAssociatedTokenAddress, TOKEN_PROGRAM_ADDRESS } from "@ash/sdk";
 import { type Address, address, type KeyPairSigner } from "@solana/kit";
 import { formatSol, LAMPORTS_PER_SOL, SOL_DECIMALS } from "../amounts.js";
 import {
@@ -90,7 +90,7 @@ export async function runInit(options: InitOptions, ui: Ui): Promise<number> {
   const outDir = expandPath(options.out);
   const rpcUrl = options.rpc;
 
-  ui.heading("Agent Rails - devnet bootstrap");
+  ui.heading("ASH - devnet bootstrap");
   ui.blank();
 
   // ---- Preflight ------------------------------------------------------------------
@@ -99,8 +99,8 @@ export async function runInit(options: InitOptions, ui: Ui): Promise<number> {
 
   ui.start("Checking the cluster");
   const rpc = connect(rpcUrl);
-  await assertProgramDeployed(rpc, AGENT_RAILS_PROGRAM_ADDRESS, rpcUrl);
-  ui.succeed("Cluster reachable", `${rpcUrl} - program ${AGENT_RAILS_PROGRAM_ADDRESS}`);
+  await assertProgramDeployed(rpc, ASH_PROGRAM_ADDRESS, rpcUrl);
+  ui.succeed("Cluster reachable", `${rpcUrl} - program ${ASH_PROGRAM_ADDRESS}`);
 
   ui.start(`Loading wallet ${options.wallet}`);
   const wallet = await loadWallet(options.wallet);
@@ -302,7 +302,7 @@ export async function runInit(options: InitOptions, ui: Ui): Promise<number> {
   const manifest: Manifest = {
     version: 1,
     rpcUrl,
-    programId: AGENT_RAILS_PROGRAM_ADDRESS,
+    programId: ASH_PROGRAM_ADDRESS,
     treasury: plan.treasury,
     solVault: plan.solVault,
     policy: plan.policy,

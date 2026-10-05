@@ -34,8 +34,8 @@ import {
   signTransactionMessageWithSigners,
 } from "@solana/kit";
 import {
-  AGENT_RAILS_PROGRAM_ADDRESS,
   AGENT_SESSION_DISCRIMINATOR,
+  ASH_PROGRAM_ADDRESS,
   decodeAgentSession,
   fetchMaybePolicy,
   fetchMaybeTreasury,
@@ -43,6 +43,7 @@ import {
   type MintLimit,
   type SpendCounter,
 } from "../packages/client/dist/index.js";
+import { applyLegacyEnv } from "../packages/contract/dist/legacy-env.js";
 import { stringifyRpcError } from "../packages/sdk/dist/index.js";
 import { rollWindow } from "./guardian-roll-window.ts";
 
@@ -100,11 +101,10 @@ function parseArgs(argv: string[]): Options {
     i++;
   }
 
-  const rpcUrl = map.get("--rpc") ?? process.env.AGENT_RAILS_RPC ?? "https://api.devnet.solana.com";
-  const treasuryRaw = map.get("--treasury") ?? process.env.AGENT_RAILS_TREASURY;
-  const policyRaw = map.get("--policy") ?? process.env.AGENT_RAILS_POLICY;
-  const guardianKeypair =
-    map.get("--guardian-keypair") ?? process.env.AGENT_RAILS_GUARDIAN_KEYPAIR ?? "";
+  const rpcUrl = map.get("--rpc") ?? process.env.ASH_RPC ?? "https://api.devnet.solana.com";
+  const treasuryRaw = map.get("--treasury") ?? process.env.ASH_TREASURY;
+  const policyRaw = map.get("--policy") ?? process.env.ASH_POLICY;
+  const guardianKeypair = map.get("--guardian-keypair") ?? process.env.ASH_GUARDIAN_KEYPAIR ?? "";
   if (!treasuryRaw || !policyRaw) {
     throw new Error(`${usage()}\n--treasury and --policy are required`);
   }
@@ -148,7 +148,7 @@ async function loadSigner(path: string): Promise<KeyPairSigner> {
 
 async function findEventAuthority(): Promise<Address> {
   const [pda] = await getProgramDerivedAddress({
-    programAddress: AGENT_RAILS_PROGRAM_ADDRESS,
+    programAddress: ASH_PROGRAM_ADDRESS,
     seeds: [new TextEncoder().encode("__event_authority")],
   });
   return pda;
@@ -195,7 +195,7 @@ async function fetchSessions(
   treasury: Address,
 ): Promise<{ address: Address; policy: Address; spend: SpendCounter[]; live: boolean }[]> {
   const accounts = await rpc
-    .getProgramAccounts(AGENT_RAILS_PROGRAM_ADDRESS, {
+    .getProgramAccounts(ASH_PROGRAM_ADDRESS, {
       encoding: "base64",
       filters: [
         { memcmp: { offset: 0n, bytes: SESSION_DISCRIMINATOR_B58, encoding: "base58" } },
@@ -268,7 +268,7 @@ async function sendPause(
     authority: guardian,
     treasury,
     eventAuthority,
-    program: AGENT_RAILS_PROGRAM_ADDRESS,
+    program: ASH_PROGRAM_ADDRESS,
   });
 
   const { value: blockhash } = await rpc.getLatestBlockhash({ commitment: "confirmed" }).send();
@@ -376,6 +376,7 @@ async function evaluateOnce(options: Options): Promise<{ paused: boolean; breach
 }
 
 async function main(): Promise<void> {
+  applyLegacyEnv();
   process.chdir(repoRoot);
   const options = parseArgs(process.argv.slice(2));
 

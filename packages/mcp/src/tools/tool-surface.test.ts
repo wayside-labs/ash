@@ -1,4 +1,4 @@
-import { AGENT_TOOL_NAMES, FORBIDDEN_TOOL_PATTERNS } from "@agent-rails/contract";
+import { AGENT_TOOL_NAMES, FORBIDDEN_TOOL_PATTERNS } from "@ash/contract";
 import { describe, expect, it } from "vitest";
 import { REGISTERED_TOOL_NAMES, TOOL_DEFINITIONS, toolsForMode } from "./index.js";
 
@@ -25,7 +25,7 @@ describe("agent tool surface", () => {
 
   it("registers exactly one tool that moves funds", () => {
     const writers = REGISTERED_TOOL_NAMES.filter((name) => name.endsWith("execute_payment"));
-    expect(writers).toEqual(["agent_rails_execute_payment"]);
+    expect(writers).toEqual(["ash_execute_payment"]);
   });
 
   it("gives every tool a description an agent can act on", () => {
@@ -36,8 +36,8 @@ describe("agent tool surface", () => {
 
   it("readonly mode registers no tool that moves funds", () => {
     const names = toolsForMode("readonly").map((tool) => tool.name);
-    expect(names).not.toContain("agent_rails_execute_payment");
-    expect(names).toContain("agent_rails_check_payment");
+    expect(names).not.toContain("ash_execute_payment");
+    expect(names).toContain("ash_check_payment");
     expect(names.every((name) => (AGENT_TOOL_NAMES as readonly string[]).includes(name))).toBe(
       true,
     );

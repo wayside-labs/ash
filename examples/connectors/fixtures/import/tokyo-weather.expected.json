@@ -2,7 +2,7 @@
   "format": "markdown",
   "skipped": [],
   "bundle": {
-    "apiVersion": "agent-rails.connector/v1",
+    "apiVersion": "ash.connector/v1",
     "name": "tokyo-weather",
     "description": "Morning weather check that decides whether to buy forecast credits.",
     "baseUrl": "https://api.weather.example",

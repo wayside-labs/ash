@@ -1,7 +1,7 @@
 "use client";
 
-import { Menu, Shield } from "lucide-react";
-import { BalancePill } from "@/components/billing/balance-pill";
+import { Bot, Menu } from "lucide-react";
+import { SolPrice } from "@/components/layout/sol-price";
 import { HideBalancesToggle } from "@/components/shared/hide-balances-toggle";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,11 +13,12 @@ import { CLUSTER_LABELS } from "@/lib/solana";
 import type { SolanaCluster } from "@/lib/types";
 import { useAppStore } from "@/stores/app-store";
 
-const clusterVariants: Record<SolanaCluster, "secondary" | "outline" | "destructive"> = {
-  devnet: "outline",
-  testnet: "secondary",
-  "mainnet-beta": "destructive",
-};
+const clusterVariants: Record<SolanaCluster, "secondary" | "outline" | "destructive" | "success"> =
+  {
+    devnet: "outline",
+    testnet: "secondary",
+    "mainnet-beta": "success",
+  };
 
 /**
  * The top bar of a web3 dapp: which network, the client's credit with Deposit and Withdraw,
@@ -56,7 +57,7 @@ export function Header() {
         </Button>
 
         <div className="flex items-center gap-2">
-          <Shield className="h-5 w-5 text-primary" />
+          <Bot className="h-5 w-5 text-primary" />
           <span className="hidden font-semibold sm:inline">{t("header.brand")}</span>
         </div>
       </div>
@@ -79,8 +80,8 @@ export function Header() {
             <SelectItem value="mainnet-beta">{CLUSTER_LABELS["mainnet-beta"]}</SelectItem>
           </SelectContent>
         </Select>
+        <SolPrice />
         <HideBalancesToggle />
-        <BalancePill />
         <span className="hidden h-8 w-px bg-border sm:block" />
         <GatedConnectButton />
       </div>

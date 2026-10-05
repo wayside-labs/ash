@@ -21,10 +21,10 @@
 
 ### A relação formal com este repo
 
-`vendor/agent-rails` é **submódulo travado em `17c36aa`** (nosso HEAD em 17/09), apontando para `https://github.com/wayside-labs/agent-rails.git`. Regras que eles escreveram, e que nos convêm:
+`vendor/ash` é **submódulo travado em `17c36aa`** (nosso HEAD em 17/09), apontando para `https://github.com/wayside-labs/ash.git`. Regras que eles escreveram, e que nos convêm:
 
 - atualização é comando explícito, com `git log HEAD..origin/main` na tela **antes** de aceitar;
-- "nunca comitamos nem damos push dentro de `vendor/agent-rails`: é o repo dele";
+- "nunca comitamos nem damos push dentro de `vendor/ash`: é o repo dele";
 - mudança no contrato vira **ADR e PR aqui**, no nosso formato — o `DECISOES.md` deles é só o registro do lado do produto.
 
 Consequência prática imediata: **o submódulo não enxerga `org_chart.rs`**, que está sem commit deste lado. Hoje a demo mais forte do projeto é invisível para o sócio.
@@ -38,7 +38,7 @@ algumacoisa-agentica/
 ├── .claude/                      # regras, agentes, hooks, 14 skills — vindos do ai-dev-operating-system dele
 │   ├── rules/                    # code-style (200 linhas/arquivo), feature-based-architecture,
 │   │                             #   codemap, git-workflow, secrets, security-baseline, privacy-audit
-│   └── rules/adaptacoes-deste-repo.md   # declara o que NÃO se aplica dentro de vendor/agent-rails
+│   └── rules/adaptacoes-deste-repo.md   # declara o que NÃO se aplica dentro de vendor/ash
 ├── docs/
 │   ├── CONCEPCAO.md              # documento mestre — de onde veio, tese, garantias, como cada repo entra
 │   ├── PRODUTO.md                # frase, conceito, cliente, UX, marketplace, escopo
@@ -49,7 +49,7 @@ algumacoisa-agentica/
 │   └── HACKATHON.md              # Crypto World's Fair: janela, divisão de trabalho, fatia vertical
 ├── scripts/codemap.js            # gera/valida CODEMAP.md
 ├── session-log/2026-09-17-fundacao-do-projeto.md
-└── vendor/agent-rails            # submódulo → wayside-labs/agent-rails @ 17c36aa
+└── vendor/ash            # submódulo → wayside-labs/ash @ 17c36aa
 ```
 
 ---
@@ -110,7 +110,7 @@ Duas derivações independentes no mesmo desenho valem mais que qualquer um dos 
 
 | # | Decisão | Alternativa rejeitada |
 |---|---|---|
-| D-01 | Produto em repo próprio, privado, consumindo o agent-rails | copiar definições nossas (segunda fonte de verdade); esperar publicação no npm |
+| D-01 | Produto em repo próprio, privado, consumindo o ash | copiar definições nossas (segunda fonte de verdade); esperar publicação no npm |
 | D-02 | Submódulo com atualização deliberada, travado em `17c36aa` | acompanhar `main` e acordar com o produto quebrado |
 | D-03 | Uso real, não demonstração — dado on-chain correto acima de estética | — (consequência: duas fontes de dados obrigatórias) |
 | **D-04** | **Instrução genérica de chamada a programa autorizado com retorno mínimo** | instrução por protocolo — cada protocolo novo exigiria nova auditoria do núcleo |
@@ -149,7 +149,7 @@ Execução: **R-10** o risco não é velocidade, é **ordem** — a peça on-cha
 
 ### a) A peça nova não pode entrar no programa do Rails (responde P-06)
 
-O D-04 deles põe a instrução genérica dentro do `agent_rails`. CPI para programa arbitrário dentro do programa que vai ser **congelado e auditado** destrói exatamente a alegação que sustenta os dois braços. Vale a regra 1 do `product-strategy.md` §6.6: **Mandate pode depender de Rails; Rails nunca depende de Mandate.**
+O D-04 deles põe a instrução genérica dentro do `ash`. CPI para programa arbitrário dentro do programa que vai ser **congelado e auditado** destrói exatamente a alegação que sustenta os dois braços. Vale a regra 1 do `product-strategy.md` §6.6: **Mandate pode depender de Rails; Rails nunca depende de Mandate.**
 
 E a composição correta **já funciona hoje, sem código novo** — é o `org_chart.rs`: o cofre do mandato é mais um filho no organograma, uma `AllowlistEntry` com a PDA do mandato como `destination_owner`, e `execute_payment` financia a operação. Consequência de graça: **um comprometimento total do programa de mandato fica limitado pela política de Rails que o financia.**
 

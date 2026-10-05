@@ -9,7 +9,7 @@ name: UI
 # secret that leaks into a JSON response are all green under a unit suite.
 #
 # Neither a cluster nor a validator is involved. `e2e/fixtures.ts` fulfils every
-# `/api/solana/*` call inside the browser and `AGENT_RAILS_HOME` repoints the JSON store, so
+# `/api/solana/*` call inside the browser and `ASH_HOME` repoints the JSON store, so
 # this job is deterministic and offline. The chain's own behaviour is layer 5's job.
 #
 # On pull requests that touch the dashboard, plus nightly, so a change to a shared package
@@ -50,7 +50,7 @@ jobs:
       # that downloads it, so a cache hit under a different version is a wrong hit.
       - id: pw
         run: |
-          version=$(pnpm --filter @agent-rails/dashboard exec playwright --version | awk '{print $2}')
+          version=$(pnpm --filter @ash/dashboard exec playwright --version | awk '{print $2}')
           test -n "$version" || { echo "could not resolve the playwright version"; exit 1; }
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
@@ -61,11 +61,11 @@ jobs:
           key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
 
       - if: steps.browsers.outputs.cache-hit != 'true'
-        run: pnpm --filter @agent-rails/dashboard exec playwright install --with-deps chromium
+        run: pnpm --filter @ash/dashboard exec playwright install --with-deps chromium
 
       # System libraries are not in the browser cache, so they are installed even on a hit.
       - if: steps.browsers.outputs.cache-hit == 'true'
-        run: pnpm --filter @agent-rails/dashboard exec playwright install-deps chromium
+        run: pnpm --filter @ash/dashboard exec playwright install-deps chromium
 
       # VERIFY_STRICT turns the script's loud skip into a failure, for the reason spelled
       # out at the top of scripts/verify.sh: a gate that reports success because its tool is

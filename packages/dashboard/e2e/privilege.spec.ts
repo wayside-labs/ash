@@ -101,7 +101,7 @@ test.describe("privilege boundaries", () => {
     await expect(
       page.getByRole("button", { name: t("treasury.bootstrap.cta") }).first(),
     ).toBeVisible();
-    await expect(page.getByText(/pnpm agent-rails init/)).toHaveCount(0);
+    await expect(page.getByText(/pnpm ash init/)).toHaveCount(0);
     await expect(page.getByRole("button", { name: t("common.deposit") })).toHaveCount(0);
   });
 

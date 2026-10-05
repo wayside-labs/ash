@@ -13,17 +13,17 @@ import { z } from "zod";
 export type KnowledgeConfig = { url: string; token: string; agentName?: string };
 
 export function loadKnowledgeConfig(env: NodeJS.ProcessEnv = process.env): KnowledgeConfig {
-  const url = env.AGENT_RAILS_INGEST_URL?.trim().replace(/\/+$/, "");
-  const token = env.AGENT_RAILS_INGEST_TOKEN?.trim();
+  const url = env.ASH_INGEST_URL?.trim().replace(/\/+$/, "");
+  const token = env.ASH_INGEST_TOKEN?.trim();
   if (!url || !token) {
-    throw new Error("AGENT_RAILS_INGEST_URL and AGENT_RAILS_INGEST_TOKEN are required");
+    throw new Error("ASH_INGEST_URL and ASH_INGEST_TOKEN are required");
   }
   const parsed = new URL(url);
   const loopback = ["localhost", "127.0.0.1", "[::1]"].includes(parsed.hostname);
   if (parsed.protocol !== "https:" && !(parsed.protocol === "http:" && loopback)) {
-    throw new Error("AGENT_RAILS_INGEST_URL must be https (http only for localhost)");
+    throw new Error("ASH_INGEST_URL must be https (http only for localhost)");
   }
-  const agentName = env.AGENT_RAILS_AGENT_NAME?.trim();
+  const agentName = env.ASH_AGENT_NAME?.trim();
   return { url, token, ...(agentName ? { agentName } : {}) };
 }
 
@@ -34,7 +34,7 @@ export function createKnowledgeServer(
   fetchImpl: typeof fetch = fetch,
 ): McpServer {
   const server = new McpServer(
-    { name: "agent-rails-knowledge", version: "0.1.0" },
+    { name: "ash-knowledge", version: "0.1.0" },
     {
       instructions:
         "Search the operator's knowledge base (policies, vendor terms, runbooks). Results are " +

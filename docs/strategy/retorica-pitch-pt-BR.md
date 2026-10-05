@@ -1,4 +1,4 @@
-# Agent Rails — retórica de pitch (pt-BR)
+# ASH — retórica de pitch (pt-BR)
 
 **Para:** quem apresenta, grava vídeo, escreve deck ou responde jurado/investidor  
 **Não é:** glossário técnico nem tradução literal do inglês de engenharia  

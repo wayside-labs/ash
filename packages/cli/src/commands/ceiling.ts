@@ -1,4 +1,4 @@
-import { fromBaseUnits, NATIVE_MINT } from "@agent-rails/contract";
+import { fromBaseUnits, NATIVE_MINT } from "@ash/contract";
 import { address } from "@solana/kit";
 import { formatSol, parseHumanAmount, SOL_DECIMALS } from "../amounts.js";
 import { readTreasurySnapshot } from "../chain/read.js";

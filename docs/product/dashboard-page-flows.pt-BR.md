@@ -1,7 +1,7 @@
-# Agent Rails Dashboard — Fluxos por página
+# ASH Dashboard — Fluxos por página
 
 **Criado:** 2026-09-20  
-**Pacote:** `packages/dashboard` (`@agent-rails/dashboard`)
+**Pacote:** `packages/dashboard` (`@ash/dashboard`)
 
 Documento de referência que descreve **o que cada página faz** e **qual o fluxo do usuário** (carregamento, ações, persistência e integrações on-chain). Complementa o [handoff de implementação](./dashboard-handoff.md).
 
@@ -23,11 +23,11 @@ flowchart TB
   end
 
   subgraph persist [Servidor local]
-    JSON["~/.agent-rails/dashboard.json"]
+    JSON["~/.ash/dashboard.json"]
   end
 
   subgraph chain [Solana RPC]
-    Program[Program Agent Rails]
+    Program[Program ASH]
   end
 
   UI --> Zustand
@@ -44,9 +44,9 @@ flowchart TB
 
 | Camada | Onde vive | O que contém |
 |---|---|---|
-| **Estado local (Zustand)** | `src/stores/app-store.ts`, persistido no browser | Cluster (devnet/testnet/mainnet), RPC customizado, modo de operação (native / agent-rails), wallet conectada, modelo de chat selecionado |
-| **Estado do dashboard (servidor)** | `~/.agent-rails/dashboard.json` | Workflows, agentes, MCPs, skills, chaves de API (valor real), perfil, settings |
-| **Leituras on-chain** | RPC via `@agent-rails/sdk` | Saldos SOL, saldo do `sol_vault`, Treasury, Policy, AgentSession |
+| **Estado local (Zustand)** | `src/stores/app-store.ts`, persistido no browser | Cluster (devnet/testnet/mainnet), RPC customizado, modo de operação (native / ash), wallet conectada, modelo de chat selecionado |
+| **Estado do dashboard (servidor)** | `~/.ash/dashboard.json` | Workflows, agentes, MCPs, skills, chaves de API (valor real), perfil, settings |
+| **Leituras on-chain** | RPC via `@ash/sdk` | Saldos SOL, saldo do `sol_vault`, Treasury, Policy, AgentSession |
 
 ### Hooks centrais
 
@@ -86,7 +86,7 @@ Em todas as outras rotas, os controles abaixo:
 | Controle | Efeito |
 |---|---|
 | Seletor de rede | `setCluster` — altera RPC em todas as leituras on-chain |
-| Modo Solana Nativo / Agent Rails Vault | `setOperationMode` — preferência de fluxo de pagamento (UI; integração completa ainda em aberto) |
+| Modo Solana Nativo / ASH Vault | `setOperationMode` — preferência de fluxo de pagamento (UI; integração completa ainda em aberto) |
 | Connect Wallet | Phantom / Solflare / Backpack → endereço no Zustand |
 
 ---
@@ -249,7 +249,7 @@ Sem workflows → `EmptyState` com CTA para abrir `CreateWorkflowDialog`.
 ### Relação com on-chain
 
 - Workflow **off-chain** (organização lógica).
-- Campo `treasuryAddress` liga a um Treasury PDA real quando preenchido ou via CLI `pnpm agent-rails init`.
+- Campo `treasuryAddress` liga a um Treasury PDA real quando preenchido ou via CLI `pnpm ash init`.
 - Saldo exibido vem do PDA `sol_vault`, não da conta Treasury.
 
 ---
@@ -380,7 +380,7 @@ Link externo → Solana Explorer (cluster atual)
 Sem treasuryAddress (e workflow não-demo, carteira conectada):
     → Botão "Criar cofre on-chain" → BootstrapWizard (5 passos)
         1. Rede: cluster + RPC das Configurações, carteira que vira owner/operator
-           (mainnet bloqueada na UI — usar agent-rails init)
+           (mainnet bloqueada na UI — usar ash init)
         2. Limites: nome da policy, SOL por pagamento / por dia / total
            (mesmos valores viram teto do owner E policy do operator)
         3. Primeiro destino (opcional): manual (rótulo + carteira) ou
@@ -401,7 +401,7 @@ Sem treasuryAddress (e workflow não-demo, carteira conectada):
 Sem carteira: botão desabilitado + "Conecte uma carteira para criar o cofre."
 ```
 
-Os passos são os do `agent-rails init` (`@agent-rails/cli/bootstrap`), não uma cópia.
+Os passos são os do `ash init` (`@ash/cli/bootstrap`), não uma cópia.
 Se a configuração parar no meio, o drawer "Ver policy e sessões" mostra
 **Concluir configuração** enquanto a tesouraria não tiver policy; o assistente retoma a
 partir do que já existe on-chain.
@@ -787,14 +787,14 @@ Switch desabilitado (não implementado)
 
 ```
 "Exportar configuração"
-    → JSON.stringify(data) → download agent-rails-dashboard.json
+    → JSON.stringify(data) → download ash-dashboard.json
 ```
 
 #### 12.7 Restaurar padrões
 
 ```
 confirm() → DELETE /api/state
-    → Reseta ~/.agent-rails/dashboard.json para seed
+    → Reseta ~/.ash/dashboard.json para seed
     → Toast confirma
 ```
 

@@ -2,7 +2,7 @@
 
 This log records what was built and the decisions made along the way that a reader would
 otherwise have to reconstruct from the diff. The branch is `feat/chat-credit-billing` in
-worktree `../agent-rails-wt-billing`. It is cut from `feat/openrouter-chat` (PR #80) and is
+worktree `../ash-wt-billing`. It is cut from `feat/openrouter-chat` (PR #80) and is
 **uncommitted** at the time of writing. The operator reference is
 `docs/runbooks/chat-credit-billing.md`. The last section is a handoff for the next prompt
 (deposits: Solana Pay + PIX).
@@ -40,7 +40,7 @@ Reasoning → Stop conditions → Output format:
 | Layer | File | What |
 |---|---|---|
 | Pure math | `packages/dashboard/src/lib/billing.ts` | micro-USD units, `parseMarkupBps`, `chargeFor` (fee rounds up), `worstCaseChargeMicros`, `creditsToMicros`, `formatMicros`. Client-safe. |
-| Ledger | `src/lib/server/billing/ledger.ts` | `LedgerStore` with a Postgres backend (service role) and a JSON backend (`~/.agent-rails/billing.json`); `append` is idempotent |
+| Ledger | `src/lib/server/billing/ledger.ts` | `LedgerStore` with a Postgres backend (service role) and a JSON backend (`~/.ash/billing.json`); `append` is idempotent |
 | Meter | `src/lib/server/billing/meter.ts` | `billingConfig`, `resolveBillingScope`, `currentBalance` (lazy starter grant), `preflight`, `claimTurn`, `priceTurn`, `debitTurn` |
 | OpenRouter | `src/lib/server/llm/openrouter-api.ts` | `OPENROUTER_PRICES` (list prices from live `/api/v1/models`), `OPENROUTER_MAX_TOKENS`, and an `onUsage` callback for the final usage chunk |
 | Chat route | `src/app/api/chat/route.ts` | pre-flight 402/401/409/503 before the model runs; a `metered()` wrapper debits in `finally` before the response closes |
@@ -140,15 +140,15 @@ opts in. That is also how the flow is tested without Supabase.
 
 ### Separate from on-chain treasuries
 
-Agent Rails treasuries govern what agents pay vendors, in the vault, under program rules.
+ASH treasuries govern what agents pay vendors, in the vault, under program rules.
 This ledger is what the dashboard charges for its own assistant. Nothing touches
-`programs/agent_rails`, MCP or the SDK, and the program remains fee-free, which keeps the
+`programs/ash`, MCP or the SDK, and the program remains fee-free, which keeps the
 open-source/grant story intact.
 
 ## Verification
 
 - `tsc --noEmit` and `biome check` are clean, and `next build` succeeds.
-- `pnpm --filter @agent-rails/dashboard exec vitest run`: **209 passed**, including the new
+- `pnpm --filter @ash/dashboard exec vitest run`: **209 passed**, including the new
   tests:
   - `src/lib/billing.test.ts`: markup parsing and typo refusal, exact decimal conversion,
     fee rounding, float-noise handling, worst case, formatting.
@@ -163,7 +163,7 @@ open-source/grant story intact.
   - `openrouter-api.test.ts`: the usage chunk is reported once, never without one, and every
     allowlisted model is priced.
 - Local smoke against `next start` with a fake key (`BILLING_ENABLED=true`, scratch
-  `AGENT_RAILS_HOME`):
+  `ASH_HOME`):
   - $0.05 of starter credit got a 402 on Haiku ("up to $0.06") and on Sonnet ("up to
     $0.11").
   - $1 of credit with an upstream 401 got a localized error, no debit, and a second turn
@@ -223,5 +223,5 @@ What the deposit work can build on, and the constraints already settled here:
   built on Solana Pay, not the protocol spec itself. Compare it with the open Solana Pay
   spec (`https://docs.solanapay.com`) and choose on purpose: Helio brings hosted checkout
   and webhooks, while raw Solana Pay means no third party but self-verification on-chain.
-- **Out of scope for deposits:** nothing touches `programs/agent_rails`, MCP tools or the
+- **Out of scope for deposits:** nothing touches `programs/ash`, MCP tools or the
   SDK. Funding an agent's treasury vault is a different flow from funding chat credit.

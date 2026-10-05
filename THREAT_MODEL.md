@@ -1,7 +1,7 @@
-# Agent Rails — threat model
+# ASH — threat model
 
 **Status:** internal pre-audit baseline (ADR-011 point 3).  
-**Scope:** on-chain program `agent_rails`, off-chain operator surfaces (CLI, dashboard), agent surfaces (MCP, SDK).  
+**Scope:** on-chain program `ash`, off-chain operator surfaces (CLI, dashboard), agent surfaces (MCP, SDK).  
 **Not in scope:** hosted Supabase tenancy hardening beyond ADR-017, third-party RPC providers, end-user workstation compromise.
 
 This document names assets, actors, and trust boundaries so audits and reviews have a shared vocabulary. It is not a penetration-test report.
@@ -19,14 +19,14 @@ This document names assets, actors, and trust boundaries so audits and reviews h
 | Session keys | `AgentSession.session_key` | Sign `execute_payment` within an active session's policy |
 | Upgrade authority | Loader `ProgramData` | Replace program logic under every treasury using this program id |
 | Audit integrity | Per-session `audit_head`, events, `IntentReceipt` | Forged or dropped history breaks third-party verification |
-| Operator secrets | `~/.agent-rails`, dashboard env, session key files | Forged operator actions or leaked agent keys |
+| Operator secrets | `~/.ash`, dashboard env, session key files | Forged operator actions or leaked agent keys |
 
 ---
 
 ## 2. Trust boundaries
 
 ```
-Owner / Operator / Guardian  ──►  CLI, dashboard  ──►  Solana RPC  ──►  agent_rails program
+Owner / Operator / Guardian  ──►  CLI, dashboard  ──►  Solana RPC  ──►  ash program
 Agent runtime  ──►  MCP (payment tools only)  ──►  SDK  ──►  same RPC  ──►  program
 ```
 
@@ -73,7 +73,7 @@ Agent runtime  ──►  MCP (payment tools only)  ──►  SDK  ──►  s
 - **1.0.0-beta:** Squads multisig, time lock, public notice (ADR-011).
 - **1.0.0:** renounced upgrade authority after professional audit.
 
-**Residual risk:** until renounce, upgrade authority is a super-user. Users must verify `agent-rails doctor` and program hash (`scripts/program-hash.sh`).
+**Residual risk:** until renounce, upgrade authority is a super-user. Users must verify `ash doctor` and program hash (`scripts/program-hash.sh`).
 
 ### 3.4 External attacker (network, RPC, indexer)
 
@@ -116,7 +116,7 @@ Agent runtime  ──►  MCP (payment tools only)  ──►  SDK  ──►  s
 Use before engaging a professional auditor (ADR-011):
 
 - [x] This threat model reviewed against current instruction set (`docs/spec/accounts-and-instructions.md`). Record: `audits/internal/2026-09-29-pre-audit-checklist.md`.
-- [x] Sealevel-attacks checklist run on `programs/agent_rails` (account validation, signer checks, CPI targets). Record: `audits/internal/sealevel-attacks-review-2026-09-29.md`.
+- [x] Sealevel-attacks checklist run on `programs/ash` (account validation, signer checks, CPI targets). Record: `audits/internal/sealevel-attacks-review-2026-09-29.md`.
 - [x] `scripts/verify.sh rust` green (fmt, clippy, tests, CU baselines, policy coverage). Last run: 2026-09-29, `VERIFY_STRICT=1`.
 - [x] `scripts/verify.sh kani` green where `cargo-kani` is available. Last run: 2026-09-29.
 - [x] `scripts/verify.sh e2e` green (SDK + MCP handler paths on Surfpool). Last run: 2026-09-29.

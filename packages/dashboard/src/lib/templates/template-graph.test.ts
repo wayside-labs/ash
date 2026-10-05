@@ -103,7 +103,7 @@ describe("buildTemplateGraph", () => {
 describe("templateMcpSpecs", () => {
   it("emits a readonly rails MCP for readonly agents and none for 'none'", () => {
     const specs = templateMcpSpecs(BUILTIN_TEMPLATES["builtin:defi-yield-rebalance"]);
-    expect(specs.map((s) => [s.agentName, s.env.AGENT_RAILS_TOOLS])).toEqual([
+    expect(specs.map((s) => [s.agentName, s.env.ASH_TOOLS])).toEqual([
       ["Planner", "readonly"],
       ["Executor", "full"],
     ]);

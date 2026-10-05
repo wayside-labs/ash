@@ -35,9 +35,7 @@ describe("clusterSlug", () => {
   });
 
   it("names the file after the cluster, under the out dir", () => {
-    expect(manifestPath(".agent-rails", "http://127.0.0.1:8899")).toBe(
-      ".agent-rails/localnet.json",
-    );
+    expect(manifestPath(".ash", "http://127.0.0.1:8899")).toBe(".ash/localnet.json");
   });
 });
 
@@ -47,7 +45,7 @@ describe("readManifest", () => {
   });
 
   it("round-trips a manifest and never writes key material", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "agent-rails-cli-"));
+    const dir = await mkdtemp(join(tmpdir(), "ash-cli-"));
     const path = join(dir, "devnet.json");
     const manifest: Manifest = {
       version: 1,
@@ -78,7 +76,7 @@ describe("readManifest", () => {
   });
 
   it("ignores a manifest written by a future version", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "agent-rails-cli-"));
+    const dir = await mkdtemp(join(tmpdir(), "ash-cli-"));
     const path = join(dir, "devnet.json");
     await writeManifest(path, { version: 2 } as unknown as Manifest);
     await expect(readManifest(path)).resolves.toBeUndefined();

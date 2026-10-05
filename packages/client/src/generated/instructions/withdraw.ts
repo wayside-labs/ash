@@ -40,7 +40,7 @@ import {
   type ResolvedInstructionAccount,
 } from "@solana/program-client-core";
 import { findSolVaultPda } from "../pdas/index.js";
-import { AGENT_RAILS_PROGRAM_ADDRESS } from "../programs/index.js";
+import { ASH_PROGRAM_ADDRESS } from "../programs/index.js";
 
 export const WITHDRAW_DISCRIMINATOR: ReadonlyUint8Array = new Uint8Array([
   183, 18, 70, 156, 148, 109, 161, 34,
@@ -51,7 +51,7 @@ export function getWithdrawDiscriminatorBytes(): ReadonlyUint8Array {
 }
 
 export type WithdrawInstruction<
-  TProgram extends string = typeof AGENT_RAILS_PROGRAM_ADDRESS,
+  TProgram extends string = typeof ASH_PROGRAM_ADDRESS,
   TAccountOwner extends string | AccountMeta<string> = string,
   TAccountTreasury extends string | AccountMeta<string> = string,
   TAccountMint extends string | AccountMeta<string> = string,
@@ -183,7 +183,7 @@ export async function getWithdrawInstructionAsync<
   TAccountSystemProgram extends string,
   TAccountEventAuthority extends string,
   TAccountProgram extends string,
-  TProgramAddress extends Address = typeof AGENT_RAILS_PROGRAM_ADDRESS,
+  TProgramAddress extends Address = typeof ASH_PROGRAM_ADDRESS,
 >(
   input: WithdrawAsyncInput<
     TAccountOwner,
@@ -214,7 +214,7 @@ export async function getWithdrawInstructionAsync<
   >
 > {
   // Program address.
-  const programAddress = config?.programAddress ?? AGENT_RAILS_PROGRAM_ADDRESS;
+  const programAddress = config?.programAddress ?? ASH_PROGRAM_ADDRESS;
 
   // Original accounts.
   const originalAccounts = {
@@ -333,7 +333,7 @@ export function getWithdrawInstruction<
   TAccountSystemProgram extends string,
   TAccountEventAuthority extends string,
   TAccountProgram extends string,
-  TProgramAddress extends Address = typeof AGENT_RAILS_PROGRAM_ADDRESS,
+  TProgramAddress extends Address = typeof ASH_PROGRAM_ADDRESS,
 >(
   input: WithdrawInput<
     TAccountOwner,
@@ -362,7 +362,7 @@ export function getWithdrawInstruction<
   TAccountProgram
 > {
   // Program address.
-  const programAddress = config?.programAddress ?? AGENT_RAILS_PROGRAM_ADDRESS;
+  const programAddress = config?.programAddress ?? ASH_PROGRAM_ADDRESS;
 
   // Original accounts.
   const originalAccounts = {
@@ -425,7 +425,7 @@ export function getWithdrawInstruction<
 }
 
 export type ParsedWithdrawInstruction<
-  TProgram extends string = typeof AGENT_RAILS_PROGRAM_ADDRESS,
+  TProgram extends string = typeof ASH_PROGRAM_ADDRESS,
   TAccountMetas extends readonly AccountMeta[] = readonly AccountMeta[],
 > = {
   programAddress: Address<TProgram>;
@@ -479,7 +479,7 @@ export function parseWithdrawInstruction<
   };
   const getNextOptionalAccount = () => {
     const accountMeta = getNextAccount();
-    return accountMeta.address === AGENT_RAILS_PROGRAM_ADDRESS
+    return accountMeta.address === ASH_PROGRAM_ADDRESS
       ? undefined
       : accountMeta;
   };

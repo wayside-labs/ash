@@ -1,9 +1,9 @@
 import {
-  AGENT_RAILS_PROGRAM_ADDRESS,
+  ASH_PROGRAM_ADDRESS,
   getClosePolicyInstruction,
   getCloseReceiptInstruction,
   getCloseTreasuryInstructionAsync,
-} from "@agent-rails/client";
+} from "@ash/client";
 import type { Address, TransactionSigner } from "@solana/kit";
 import { findEventAuthority } from "../bootstrap.js";
 
@@ -26,7 +26,7 @@ export async function buildClosePolicyInstruction(input: {
     policy: input.policy,
     rentDestination: input.rentDestination ?? input.operator.address,
     eventAuthority: await findEventAuthority(),
-    program: AGENT_RAILS_PROGRAM_ADDRESS,
+    program: ASH_PROGRAM_ADDRESS,
   });
 }
 
@@ -42,7 +42,7 @@ export async function buildCloseTreasuryInstruction(input: {
     solVault: input.solVault,
     rentDestination: input.rentDestination ?? input.owner.address,
     eventAuthority: await findEventAuthority(),
-    program: AGENT_RAILS_PROGRAM_ADDRESS,
+    program: ASH_PROGRAM_ADDRESS,
   });
 }
 
@@ -61,6 +61,6 @@ export async function buildCloseReceiptInstruction(input: {
     receipt: input.receipt,
     feePayer: input.feePayer,
     eventAuthority: await findEventAuthority(),
-    program: AGENT_RAILS_PROGRAM_ADDRESS,
+    program: ASH_PROGRAM_ADDRESS,
   });
 }

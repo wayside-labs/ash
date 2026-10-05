@@ -1,7 +1,7 @@
-# Agent Rails Dashboard — Handoff de implementação
+# ASH Dashboard — Handoff de implementação
 
 **Criado:** 2026-09-19 · **Atualizado:** 2026-09-25
-**Pacote:** `packages/dashboard` (`@agent-rails/dashboard`)
+**Pacote:** `packages/dashboard` (`@ash/dashboard`)
 
 > ## Atualização — 2026-09-20: o dashboard deixou de ser mock
 >
@@ -9,14 +9,14 @@
 >
 > - **Program em devnet.** `4qjD6vSgYa3oBKde3KVzsH8oCcP9BKsirX1xtD5SS6BS` está
 >   deployado. A upgrade authority saiu do segredo de CI em 2026-09-25 (ADR-020) — confira
->   com `pnpm agent-rails doctor --rpc https://api.devnet.solana.com`. Antes não
+>   com `pnpm ash doctor --rpc https://api.devnet.solana.com`. Antes não
 >   estava em rede nenhuma, o que tornava impossível qualquer leitura real — e o
 >   handoff original não registrava isso.
 > - **`lib/mock-data.ts` não existe mais.** O estado vive em
->   `~/.agent-rails/dashboard.json` (escrita atômica, modo 600), servido por rotas
+>   `~/.ash/dashboard.json` (escrita atômica, modo 600), servido por rotas
 >   CRUD com validação Zod. Linhas de demonstração continuam existindo, marcadas
 >   `demo: true` e rotuladas na UI.
-> - **Leituras on-chain reais** via `@agent-rails/sdk`: saldos, Treasury, Policy e
+> - **Leituras on-chain reais** via `@ash/sdk`: saldos, Treasury, Policy e
 >   AgentSession com contadores de gasto e decimais do mint.
 > - **Chat real** com Claude, com streaming e quatro
 >   ferramentas *somente leitura*. Sem chave, cai em modo demonstração explícito.
@@ -62,8 +62,8 @@
 >   `packages/dashboard/e2e/`, rodada por `scripts/verify.sh ui` e pela workflow
 >   `.github/workflows/ui.yml` (PRs que tocam dashboard/sdk/contract, mais
 >   nightly). Nenhum teste fala com cluster: todo `/api/solana/*` é respondido
->   dentro do navegador e `AGENT_RAILS_HOME` é redirecionado, então a suíte nunca
->   toca o `~/.agent-rails` do operador. As regras estão em
+>   dentro do navegador e `ASH_HOME` é redirecionado, então a suíte nunca
+>   toca o `~/.ash` do operador. As regras estão em
 >   `packages/dashboard/CLAUDE.md`.
 > - **`privileged-surface.test.ts`**: o split é MCP versus superfícies de operador
 >   (ADR-021), não CLI versus dashboard. O dashboard só importa builders na
@@ -94,7 +94,7 @@ Dashboard web **chat-first** para usuários que não conhecem Solana nem agentes
 1. Linguagem humana — "Cofre" em vez de "Treasury PDA"
 2. Chat como porta de entrada principal
 3. Sidebar organizacional (workflows → agents → money → tools → settings)
-4. Toggle visível: **Solana Nativo** vs **Agent Rails Vault**
+4. Toggle visível: **Solana Nativo** vs **ASH Vault**
 5. Seletor de rede sempre visível: Devnet / Testnet / Mainnet
 6. Complexidade revelada progressivamente (modo avançado para Harness, RPC, etc.)
 
@@ -118,13 +118,13 @@ Dashboard web **chat-first** para usuários que não conhecem Solana nem agentes
 | Estado global | Zustand + persist | `src/stores/app-store.ts` |
 | Server state | TanStack Query | Provider em `providers.tsx`, ainda não usado |
 | Wallet | Phantom via `window.phantom.solana` | **Não** usa `@solana/kit-plugin-wallet` ainda |
-| On-chain | `@agent-rails/sdk` + `@agent-rails/contract` | Declarado como dep, **não wired** |
+| On-chain | `@ash/sdk` + `@ash/contract` | Declarado como dep, **não wired** |
 | Chat | API route demo | Respostas hardcoded; sem LLM real |
 
 ### Decisões explícitas
 
 - **React, não Flutter** — reuso do monorepo TS, SDK, MCP, hackathon speed
-- **Modo padrão hackathon:** Solana Nativo (menos fricção); Agent Rails Vault como toggle
+- **Modo padrão hackathon:** Solana Nativo (menos fricção); ASH Vault como toggle
 - **Google OAuth:** conta off-chain; wallet obrigatória para on-chain; embedded wallet opcional (Privy) — não implementado
 - **Superteam Earn:** integração futura via MCP ou aba Integrations
 
@@ -133,7 +133,7 @@ Dashboard web **chat-first** para usuários que não conhecem Solana nem agentes
 ## 3. Como rodar
 
 ```bash
-cd /home/dev0xcf02/projects/solana/agent-rails
+cd /home/dev0xcf02/projects/solana/ash
 
 # Se rede lenta (recomendado no Brasil):
 pnpm config set registry https://registry.npmmirror.com
@@ -141,8 +141,8 @@ pnpm config set fetch-timeout 600000
 pnpm config set network-concurrency 1
 
 pnpm install
-pnpm build --filter @agent-rails/sdk
-pnpm dashboard          # alias: pnpm --filter @agent-rails/dashboard dev
+pnpm build --filter @ash/sdk
+pnpm dashboard          # alias: pnpm --filter @ash/dashboard dev
 ```
 
 Abrir: http://localhost:3000
@@ -151,7 +151,7 @@ Build produção:
 
 ```bash
 pnpm dashboard:build
-pnpm --filter @agent-rails/dashboard start
+pnpm --filter @ash/dashboard start
 ```
 
 Env: copiar `packages/dashboard/.env.example` → `packages/dashboard/.env.local`
@@ -219,8 +219,8 @@ packages/dashboard/
 ### Scripts adicionados na raiz (`package.json`)
 
 ```json
-"dashboard": "pnpm --filter @agent-rails/dashboard dev",
-"dashboard:build": "pnpm --filter @agent-rails/dashboard build"
+"dashboard": "pnpm --filter @ash/dashboard dev",
+"dashboard:build": "pnpm --filter @ash/dashboard build"
 ```
 
 ---
@@ -253,7 +253,7 @@ conectado continua apontando o comando de CLI em vez de um botão que não faz n
 Arquivo: `src/components/layout/header.tsx`
 
 - Seletor cluster: devnet / testnet / mainnet-beta → `useAppStore.setCluster`
-- Seletor modo: Solana Nativo / Agent Rails Vault → `useAppStore.setOperationMode`
+- Seletor modo: Solana Nativo / ASH Vault → `useAppStore.setOperationMode`
 - Connect Wallet → Phantom via `connect-button.tsx`
 - Badge de rede colorido (warning/secondary/destructive)
 
@@ -270,7 +270,7 @@ Arquivo: `src/components/layout/sidebar.tsx` — collapse mobile, footer com mod
 
 | Feature | Onde |
 |---|---|
-| Persistência de tudo que você cria | `~/.agent-rails/dashboard.json`, escrita atômica, modo 600 |
+| Persistência de tudo que você cria | `~/.ash/dashboard.json`, escrita atômica, modo 600 |
 | CRUD com validação | `src/lib/schema.ts` (Zod) + `app/api/state/**` |
 | Saldos SOL | `POST /api/solana/balances`, revalida a cada 30s |
 | Treasury, Policy, AgentSession | `GET /api/solana/treasury` — decodifica contas reais |
@@ -288,9 +288,9 @@ Arquivo: `src/components/layout/sidebar.tsx` — collapse mobile, footer com mod
 
 | Feature | O que falta |
 |---|---|
-| Criar treasury pela UI | hoje via `pnpm agent-rails init` |
+| Criar treasury pela UI | hoje via `pnpm ash init` |
 | Derivar agentes das sessões on-chain | o casamento é por label minúsculo; `sessionAddress` existe e ninguém o preenche |
-| Snippet MCP do Agent Rails em `/mcps` | depende de um caminho de keypair `0600` que o navegador não pode conhecer |
+| Snippet MCP do ASH em `/mcps` | depende de um caminho de keypair `0600` que o navegador não pode conhecer |
 
 Login com Google e com carteira saíram desta tabela: existem desde o ADR-017
 (`#45`, `#53`).
@@ -305,7 +305,7 @@ Arquivo: `src/lib/types.ts`
 
 ```
 SolanaCluster     = devnet | testnet | mainnet-beta
-OperationMode     = native | agent-rails
+OperationMode     = native | ash
 
 Workflow          → id, name, description, icon, treasuryBalanceUsd, agents[]
 Agent             → id, name, role, workflowId, walletAddress, balanceUsd,
@@ -318,7 +318,7 @@ Skill             → id, name, description, icon, scope, enabled
 ApiKeyEntry       → id, provider, keyMasked, status
 ```
 
-### Mapeamento UI → Agent Rails on-chain
+### Mapeamento UI → ASH on-chain
 
 | UI | On-chain / off-chain |
 |---|---|
@@ -329,7 +329,7 @@ ApiKeyEntry       → id, provider, keyMasked, status
 | Wallets agent | Session key (hot) |
 | Wallets treasury | Vault ATA / sol_vault |
 | Wallets owner | Owner pubkey (Phantom) |
-| MCPs | `@agent-rails/mcp` + outros servidores |
+| MCPs | `@ash/mcp` + outros servidores |
 | Harness | Onde o agente roda (local/VPS/Docker) |
 
 ---
@@ -378,12 +378,12 @@ ApiKeyEntry       → id, provider, keyMasked, status
 
 ---
 
-## 10. Integração Agent Rails — como conectar
+## 10. Integração ASH — como conectar
 
 ### CLI existente
 
 ```bash
-pnpm agent-rails init --rpc <url> --yes
+pnpm ash init --rpc <url> --yes
 ```
 
 Cria treasury, policy, allowlist, session, imprime MCP config.  
@@ -392,10 +392,10 @@ Código: `packages/cli/src/commands/init.ts`, `packages/cli/src/bootstrap.ts`
 ### SDK
 
 ```typescript
-import { agentRails, findTreasuryPda, /* ... */ } from "@agent-rails/sdk";
+import { ash, findTreasuryPda, /* ... */ } from "@ash/sdk";
 ```
 
-Plugin: `client.use(agentRails({ session, signer, security }))`
+Plugin: `client.use(ash({ session, signer, security }))`
 
 ### Plano de integração por camada
 
@@ -405,12 +405,12 @@ Plugin: `client.use(agentRails({ session, signer, security }))`
 ├─────────────────────────────────────────────────────────┤
 │  API Routes (Next.js)                                   │
 │  - POST /api/chat                                       │
-│  - POST /api/bootstrap     ← wrap agent-rails init      │
+│  - POST /api/bootstrap     ← wrap ash init      │
 │  - GET  /api/treasury/:id  ← RPC read                   │
 │  - POST /api/treasury/deposit|withdraw                  │
-│  - CRUD /api/workflows (SQLite/Postgres ou .agent-rails)│
+│  - CRUD /api/workflows (SQLite/Postgres ou .ash)│
 ├─────────────────────────────────────────────────────────┤
-│  @agent-rails/sdk + @solana/kit                         │
+│  @ash/sdk + @solana/kit                         │
 ├─────────────────────────────────────────────────────────┤
 │  Solana (devnet/testnet/mainnet)                        │
 └─────────────────────────────────────────────────────────┘
@@ -438,7 +438,7 @@ Plugin: `client.use(agentRails({ session, signer, security }))`
 - [x] **1.0** Deploy do program em devnet (era pré-requisito não registrado)
 - [x] **1.1** Cliente Kit server-side por cluster — `src/lib/server/solana.ts`
 - [x] **1.2** Wallet: Phantom, Solflare e Backpack com detecção de provider
-- [x] **1.4** Persistência — `~/.agent-rails/dashboard.json` + rotas CRUD
+- [x] **1.4** Persistência — `~/.ash/dashboard.json` + rotas CRUD
 - [x] **1.5** Mock substituído; linhas de demonstração marcadas `demo: true`
 - [x] **1.6** Treasury lendo saldo real; Policy e Session decodificadas
 - [x] **1.7** Chat com LLM real e tools somente leitura
@@ -509,7 +509,7 @@ Plugin: `client.use(agentRails({ session, signer, security }))`
 
 ### Integrations
 
-- Toggle Solana Nativo vs Agent Rails Vault **bem visível**
+- Toggle Solana Nativo vs ASH Vault **bem visível**
 - Jupiter, Raydium, Marinade, Superteam Earn, Squads
 - Default hackathon: Solana Nativo
 
@@ -524,7 +524,7 @@ Plugin: `client.use(agentRails({ session, signer, security }))`
 
 ---
 
-## 13. Invariantes Agent Rails (NÃO violar na UI)
+## 13. Invariantes ASH (NÃO violar na UI)
 
 Do `ARCHITECTURE.md` e ADRs — qualquer implementação funcional deve respeitar:
 
@@ -545,8 +545,8 @@ Do `ARCHITECTURE.md` e ADRs — qualquer implementação funcional deve respeita
 ### Dependências workspace
 
 ```json
-"@agent-rails/contract": "workspace:*",
-"@agent-rails/sdk": "workspace:*"
+"@ash/contract": "workspace:*",
+"@ash/sdk": "workspace:*"
 ```
 
 Build order: `contract` → `client` → `sdk` → `dashboard`
@@ -574,7 +574,7 @@ Dashboard incluído no lint global (`pnpm lint`). Formato: double quotes, semico
 | Switches não persistem | **resolvido** — gravam via PATCH |
 | Copy wallet sem clipboard | **resolvido** — com toast de confirmação |
 | Chat demo only | **resolvido** — Claude com streaming; demo é fallback explícito |
-| `@agent-rails/sdk` sem uso | **resolvido** — usado em `lib/server/solana.ts` |
+| `@ash/sdk` sem uso | **resolvido** — usado em `lib/server/solana.ts` |
 | Google auth falso | **removido** — não fingir sessão que não existe |
 | Sem testes | **resolvido** — vitest sobre rotas e guardas, Playwright sobre as telas |
 | Preço em USD | **resolvido** — `/api/solana/price` com cache |
@@ -603,13 +603,13 @@ UI proposta: aba Integrations ou seção Earn — agentes buscam bounties compat
 pnpm dashboard
 
 # Typecheck dashboard only
-pnpm --filter @agent-rails/dashboard typecheck
+pnpm --filter @ash/dashboard typecheck
 
 # Lint
 pnpm lint
 
 # Bootstrap treasury manual (referência)
-pnpm agent-rails init --rpc https://api.devnet.solana.com --yes
+pnpm ash init --rpc https://api.devnet.solana.com --yes
 
 # Build production
 pnpm dashboard:build
@@ -633,7 +633,7 @@ ls packages/dashboard/node_modules/next
 - [ ] Chat cria workflow real via bootstrap (tool de escrita — decisão de segurança: não expor)
 - [x] Depositar/Sacar executam transação real, SOL e SPL
 - [x] A UI é testada em navegador contra um servidor Next de produção
-- [ ] Modo Agent Rails vs Nativo altera o fluxo de pagamento de fato
+- [ ] Modo ASH vs Nativo altera o fluxo de pagamento de fato
 
 ## 19. Referências no repo
 
@@ -653,9 +653,9 @@ ls packages/dashboard/node_modules/next
 ## 20. Resumo executivo
 
 `packages/dashboard` é um dashboard Next.js 15 / React 19 / Tailwind v4 com 15
-páginas em português. O estado do usuário persiste em `~/.agent-rails/dashboard.json`
+páginas em português. O estado do usuário persiste em `~/.ash/dashboard.json`
 através de rotas CRUD validadas por Zod; saldos, Treasury, Policy e AgentSession são
-lidos da rede via `@agent-rails/sdk`, com o program deployado em devnet. O chat roda
+lidos da rede via `@ash/sdk`, com o program deployado em devnet. O chat roda
 Claude com streaming e quatro ferramentas somente leitura — nenhuma que saque,
 altere política, despause ou crie sessão, porque a superfície voltada ao agente não
 pode escalar privilégio. O que ainda não existe (depósito/saque, criação de treasury

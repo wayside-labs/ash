@@ -1,4 +1,4 @@
-import type { ConnectorBundle } from "@agent-rails/contract/connector-bundle";
+import type { ConnectorBundle } from "@ash/contract/connector-bundle";
 import { CONNECTOR_HOST_COMMAND } from "@/lib/mcp-config";
 import type { StoredMcp } from "@/lib/schema";
 

@@ -1,6 +1,6 @@
-# Agent Rails — Account & Instruction Specification (v1)
+# ASH — Account & Instruction Specification (v1)
 
-**Program:** `agent_rails` · **Framework:** Anchor 1.x · **Serialization:** Borsh (Anchor default; no alignment padding) · **`PROGRAM_VERSION`:** `1`
+**Program:** `ash` · **Framework:** Anchor 1.x · **Serialization:** Borsh (Anchor default; no alignment padding) · **`PROGRAM_VERSION`:** `1`
 
 This document is the byte-level contract between the program, the Codama-generated clients, the indexer, and the test suite. Account layouts are snapshot-tested in CI (ADR-008); any change here is a breaking change unless it lands inside a `reserved` block.
 
@@ -24,8 +24,8 @@ Related: [`ARCHITECTURE.md`](../../ARCHITECTURE.md) · [ADRs](../adr/README.md)
 | `MAX_SESSION_TTL_SECONDS` | `31_536_000` | 365 days; `create_session` upper bound |
 | `NATIVE_MINT` | `So11111111111111111111111111111111111111112` | Sentinel for native SOL in `MintConfig` / `MintLimit` / `SpendCounter` |
 | `SOL_VAULT_FLOOR_LAMPORTS` | rent-exempt minimum for a 0-byte account (`890_880` at current rent params) | Never spendable; read from `Rent` sysvar at runtime, not hardcoded |
-| `DOMAIN_AUDIT` | `b"agent-rails/audit/v1"` | Hash-chain domain separator |
-| `DOMAIN_INTENT` | `b"agent-rails/intent/v1"` | Reserved for v1.1 signed-intent mode |
+| `DOMAIN_AUDIT` | `b"ash/audit/v1"` | Hash-chain domain separator |
+| `DOMAIN_INTENT` | `b"ash/intent/v1"` | Reserved for v1.1 signed-intent mode |
 
 ### Enumerations
 
@@ -292,7 +292,7 @@ Notation: **(s)** signer, **(w)** writable. `clock` = `Clock::get()`. `event_aut
 - Effects: CPIs the native program's `initSubscriptionAuthority` (idempotent) then `createFixedDelegation` (`nonce = NATIVE_ALLOWANCE_NONCE = 0`, `delegatee = treasury`), then sets `MintConfig.funding_mode = NativeAllowance` for this mint. One-way in v1: no `disable_native_allowance`; reverting means `remove_mint` + `add_mint`.
 - Event: `NativeAllowanceEnabled`.
 
-Funds under `NativeAllowance` never touch `vault_ata` or the program's custody at all — they stay in the owner's own wallet until `execute_payment` pulls them via the native program's `transferFixed`, which requires `delegatee` (the treasury PDA) to sign. An agent's session key can never satisfy that signature, so it cannot call the native program directly and bypass Agent Rails' policy engine — see `native_allowance.rs`'s module doc for the full argument.
+Funds under `NativeAllowance` never touch `vault_ata` or the program's custody at all — they stay in the owner's own wallet until `execute_payment` pulls them via the native program's `transferFixed`, which requires `delegatee` (the treasury PDA) to sign. An agent's session key can never satisfy that signature, so it cannot call the native program directly and bypass ASH' policy engine — see `native_allowance.rs`'s module doc for the full argument.
 
 #### `set_ceiling(mint, ceiling: MintCeilingInput, allow_any_destination, allow_create_destination_ata)`
 - Accounts: `owner` (s), `treasury` (w).
@@ -397,8 +397,8 @@ Accounts (16 with event CPI, plus 5 more `Option`al accounts when the mint's
 | 11 | `token_program` | | `key == mint_config.token_program` |
 | 12 | `associated_token_program` | | |
 | 13 | `system_program` | | |
-| 14 | `event_authority` | | Agent Rails' own self-CPI event authority (`#[event_cpi]`), unrelated to the native program's |
-| 15 | `program` | | Agent Rails itself, for `emit_cpi!` |
+| 14 | `event_authority` | | ASH' own self-CPI event authority (`#[event_cpi]`), unrelated to the native program's |
+| 15 | `program` | | ASH itself, for `emit_cpi!` |
 | 16 | `owner_source_ata` | w | `Option`; required iff `NativeAllowance`. The **owner's** ATA — never `vault_ata` |
 | 17 | `native_delegation` | w | `Option`; required iff `NativeAllowance`. Native `FixedDelegation` PDA |
 | 18 | `native_subscription_authority` | | `Option`; required iff `NativeAllowance` |
@@ -450,7 +450,7 @@ Deposits have no instruction: transfer tokens to the vault ATA or lamports to `s
 ```
 genesis:  audit_head_0 = sha256(DOMAIN_AUDIT ‖ session_pubkey)
 step:     audit_head_n = sha256(
-              DOMAIN_AUDIT            // 20 bytes
+              DOMAIN_AUDIT            // 12 bytes
             ‖ audit_head_{n-1}        // 32
             ‖ seq_n (u64 LE)          // 8   (seq after increment, i.e. n)
             ‖ intent_id               // 16
@@ -461,11 +461,11 @@ step:     audit_head_n = sha256(
           )
 ```
 
-Implemented in `agent-rails-policy::next_audit_head` using `solana_program::hash::hashv` on-chain and `sha2` off-chain; both are tested against shared vectors in `crates/agent-rails-policy/tests/vectors.json`. `verifyChain` replays `PaymentExecuted` events ordered by `seq` and compares the final head with `AgentSession.audit_head` (or the `SessionClosed` event's terminal head).
+Implemented in `ash-policy::next_audit_head` using `solana_program::hash::hashv` on-chain and `sha2` off-chain; both are tested against shared vectors in `crates/ash-policy/tests/vectors.json`. `verifyChain` replays `PaymentExecuted` events ordered by `seq` and compares the final head with `AgentSession.audit_head` (or the `SessionClosed` event's terminal head).
 
 ---
 
-## 7. Policy crate API (`agent-rails-policy`)
+## 7. Policy crate API (`ash-policy`)
 
 `#![no_std]`-compatible, `#![forbid(unsafe_code)]`, no Solana dependencies (types mirrored as plain structs with `[u8; 32]` keys).
 
@@ -532,7 +532,7 @@ Single enum, emitted via `emit_cpi!`. Every variant carries `treasury: Pubkey` a
 | `PaymentExecuted` | `session, seq, audit_head, intent_id, mint, destination_owner, amount, slot, memo_hash, receipt` |
 | `ReceiptClosed` | `session, intent_id, receipt` |
 
-Off-chain only (same schema in `@agent-rails/contract`): `PaymentDenied { session, intent, reason_code, source: "hook" | "simulation" }`.
+Off-chain only (same schema in `@ash/contract`): `PaymentDenied { session, intent, reason_code, source: "hook" | "simulation" }`.
 
 ---
 
@@ -601,7 +601,7 @@ Anchor custom errors start at 6000. `reason_code` strings are what the SDK, MCP 
 | Compute units (Token-2022 w/ TransferFee) | target ≤ 50k, gate ≤ 55k | — |
 | + destination ATA creation | +≈ 20k CU, +≈ 0.002 SOL rent | — |
 
-The gates above are design ceilings. The **measured** figures are deliberately not restated here: they live in `programs/agent_rails/tests/cu-baselines.txt`, which `budget.rs` reads and the CI regression gate enforces. Two thresholds apply per §11 — the gate above, and the committed baseline at +10%. This document carried its own copy of the measured numbers until both it and the test fell ~820 CU behind the build without a failure; one file now holds them, and `scripts/cu-baseline.sh` refreshes it.
+The gates above are design ceilings. The **measured** figures are deliberately not restated here: they live in `programs/ash/tests/cu-baselines.txt`, which `budget.rs` reads and the CI regression gate enforces. Two thresholds apply per §11 — the gate above, and the committed baseline at +10%. This document carried its own copy of the measured numbers until both it and the test fell ~820 CU behind the build without a failure; one file now holds them, and `scripts/cu-baseline.sh` refreshes it.
 
 ### 10.1 Why the native SOL gate is 35k, not 30k
 

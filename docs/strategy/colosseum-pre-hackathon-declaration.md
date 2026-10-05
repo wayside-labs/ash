@@ -6,14 +6,14 @@ Use this in the Colosseum **pre-existing work** field. The hackathon judging win
 ## Summary (short)
 
 Before 14 September 2026 we had **8 commits** on `main` establishing the on-chain program
-(22 instructions, LiteSVM integration tests), the `agent-rails-policy` crate, the checked-in
+(22 instructions, LiteSVM integration tests), the `ash-policy` crate, the checked-in
 IDL, and the first TypeScript workspace (Codama client, SDK payment builders, MCP stdio server
 with `execute_payment`). Everything after 14 September is hackathon-window work: dashboard,
 operator CLI beyond `init`, audit export, adapters, alert webhooks, demo scripts, and docs.
 
 ## Detailed declaration (long)
 
-**Repositories:** `wayside-labs/agent-rails` (monorepo).
+**Repositories:** `wayside-labs/ash` (monorepo).
 
 **Pre-window commits (8, all before 2026-09-14 UTC):**
 

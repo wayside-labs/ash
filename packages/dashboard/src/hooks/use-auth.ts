@@ -12,8 +12,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
  * Shown in the wallet before signing. Must be one line: Supabase rejects a
  * statement containing newlines, and Phantom refuses to sign without one.
  */
-const SIGN_IN_STATEMENT =
-  "Sign in to Agent Rails. This proves you control this wallet and moves no funds.";
+const SIGN_IN_STATEMENT = "Sign in to ASH. This proves you control this wallet and moves no funds.";
 
 /** Where the sign-in gate was sending this visitor, if it sent them here. */
 function pendingNext(): string | null {

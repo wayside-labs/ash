@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const USAGE = `agent-rails-integrations — Solana dApp MCP connectors
+const USAGE = `ash-integrations — Solana dApp MCP connectors
 
   mcp jupiter
       stdio MCP: ecosystem catalog, jupiter_quote, jupiter_swap_transaction.
@@ -16,7 +16,7 @@ const USAGE = `agent-rails-integrations — Solana dApp MCP connectors
 `;
 
 function fail(message: string): never {
-  console.error(`agent-rails-integrations: ${message}\n\n${USAGE}`);
+  console.error(`ash-integrations: ${message}\n\n${USAGE}`);
   process.exit(2);
 }
 

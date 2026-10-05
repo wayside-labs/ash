@@ -1,5 +1,5 @@
-import { fetchMaybePolicy } from "@agent-rails/client";
-import { fromBaseUnits, NATIVE_MINT } from "@agent-rails/contract";
+import { fetchMaybePolicy } from "@ash/client";
+import { fromBaseUnits, NATIVE_MINT } from "@ash/contract";
 import { address } from "@solana/kit";
 import { parseHumanAmount, SOL_DECIMALS } from "../amounts.js";
 import { readTreasurySnapshot } from "../chain/read.js";

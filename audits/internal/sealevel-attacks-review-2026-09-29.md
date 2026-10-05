@@ -1,8 +1,8 @@
-# Sealevel-oriented review — `programs/agent_rails`
+# Sealevel-oriented review — `programs/ash`
 
 **Date:** 2026-09-29  
-**Scope:** `programs/agent_rails` handlers and account validation (not dashboard tenancy)  
-**Method:** Maintainer walkthrough against common Solana program failure modes, cross-checked with LiteSVM integration tests and `programs/agent_rails/tests/error_codes.rs`.
+**Scope:** `programs/ash` handlers and account validation (not dashboard tenancy)  
+**Method:** Maintainer walkthrough against common Solana program failure modes, cross-checked with LiteSVM integration tests and `programs/ash/tests/error_codes.rs`.
 
 **Not** a penetration test or formal audit.
 
@@ -15,7 +15,7 @@
 | Signer / authority | Role checks enforced per instruction; agent path uses `session_key` signer; owner/operator/guardian splits tested in `admin`, `operator`, `lifecycle`. |
 | PDA derivation | Treasury, policy, session, receipt, vault PDAs re-derived in handlers; wrong seeds fail in tests. |
 | CPI targets | Token / Token-2022 / ATA / System only (ADR-001); native allowance CPIs fixed program id in `native_allowance.rs`. |
-| Arithmetic | Policy math in `agent-rails-policy` with `checked_*`; program uses policy crate results. |
+| Arithmetic | Policy math in `ash-policy` with `checked_*`; program uses policy crate results. |
 | Idempotency | `IntentReceipt` init-on-`intent_id`; double-pay covered in tests and MCP/SDK e2e. |
 | Unchecked accounts | `destination_owner` intentionally unchecked for org-chart payments; destination still gated by allowlist mode and ATA/vault wiring in handler. |
 

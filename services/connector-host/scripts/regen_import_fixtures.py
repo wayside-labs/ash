@@ -8,7 +8,7 @@ layout in this repo), and review the diff.
 import json
 from pathlib import Path
 
-from agent_rails_connector.loaders import import_text
+from ash_connector.loaders import import_text
 
 FIXTURES = Path(__file__).resolve().parents[3] / "examples" / "connectors" / "fixtures" / "import"
 

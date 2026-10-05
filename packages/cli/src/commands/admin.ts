@@ -1,4 +1,4 @@
-import { NATIVE_MINT } from "@agent-rails/contract/constants";
+import { NATIVE_MINT } from "@ash/contract/constants";
 import { address } from "@solana/kit";
 import { readTreasurySnapshot } from "../chain/read.js";
 import type { GlobalCliOptions } from "../cli-options.js";
@@ -211,7 +211,7 @@ export async function runMintRm(options: MintRmOptions, ui: Ui): Promise<number>
   // more than a balance read.
   if (ceiling.vaultBalance > 0n) {
     throw new CliError(`The vault for ${ceiling.symbol} still holds ${ceiling.vaultBalance}`, {
-      hint: `Withdraw it first: agent-rails withdraw --mint ${mint} --all`,
+      hint: `Withdraw it first: ash withdraw --mint ${mint} --all`,
     });
   }
 

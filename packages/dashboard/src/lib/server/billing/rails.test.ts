@@ -43,14 +43,14 @@ describe("validDestination", () => {
 
 describe("requestWithdrawal", () => {
   let home: string;
-  const saved = process.env.AGENT_RAILS_HOME;
+  const saved = process.env.ASH_HOME;
 
   beforeEach(() => {
     home = mkdtempSync(join(tmpdir(), "rails-"));
-    process.env.AGENT_RAILS_HOME = home;
+    process.env.ASH_HOME = home;
   });
   afterEach(() => {
-    process.env.AGENT_RAILS_HOME = saved;
+    process.env.ASH_HOME = saved;
     rmSync(home, { recursive: true, force: true });
   });
 

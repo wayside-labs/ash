@@ -2,9 +2,9 @@ import { mkdtemp } from "node:fs/promises";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { AGENT_RAILS_PROGRAM_ADDRESS } from "@agent-rails/client";
-import { deriveIntentId } from "@agent-rails/contract";
-import { findReceiptPda } from "@agent-rails/sdk";
+import { ASH_PROGRAM_ADDRESS } from "@ash/client";
+import { deriveIntentId } from "@ash/contract";
+import { findReceiptPda } from "@ash/sdk";
 import { type Address, address } from "@solana/kit";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadVendorConfig, type VendorId } from "./config.js";
@@ -42,7 +42,7 @@ class FakeChain {
     return {
       exists: true,
       address: receipt,
-      programAddress: row.owner ?? AGENT_RAILS_PROGRAM_ADDRESS,
+      programAddress: row.owner ?? ASH_PROGRAM_ADDRESS,
       data: {
         status: 1,
         session: row.session,

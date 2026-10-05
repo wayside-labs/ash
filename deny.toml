@@ -33,7 +33,7 @@ confidence-threshold = 0.9
 # made the generated client untypeable — but not worth blocking a merge over.
 multiple-versions = "warn"
 wildcards = "deny"
-# `agent-rails-policy` is a path dependency and carries no version by design; a path
+# `ash-policy` is a path dependency and carries no version by design; a path
 # dep inside the workspace is not the supply-chain risk this check is aimed at.
 allow-wildcard-paths = true
 

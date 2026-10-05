@@ -11,7 +11,7 @@ import {
  * Parsed import document → connector bundle. Pure: the caller parses YAML/JSON and splits
  * markdown frontmatter, so this module needs nothing beyond zod and runs in the browser.
  *
- * Mirrors `services/connector-host/src/agent_rails_connector/loaders.py`;
+ * Mirrors `services/connector-host/src/ash_connector/loaders.py`;
  * `examples/connectors/fixtures/import/*.expected.json` is the output both must produce.
  */
 

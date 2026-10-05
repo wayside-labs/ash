@@ -1,7 +1,8 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { toBaseUnits } from "@agent-rails/contract";
-import { NATIVE_MINT } from "@agent-rails/contract/constants";
+import { toBaseUnits } from "@ash/contract";
+import { NATIVE_MINT } from "@ash/contract/constants";
+import { ashHome as resolveAshHome } from "@ash/contract/legacy-env";
 import { type Address, address } from "@solana/kit";
 
 export const VENDOR_IDS = ["oracle", "notary", "compute"] as const;
@@ -52,8 +53,8 @@ function required(env: NodeJS.ProcessEnv, key: string): string {
   return value;
 }
 
-export function agentRailsHome(env: NodeJS.ProcessEnv = process.env): string {
-  return env.AGENT_RAILS_HOME ?? join(homedir(), ".agent-rails");
+export function ashHome(env: NodeJS.ProcessEnv = process.env): string {
+  return resolveAshHome(env);
 }
 
 /**
@@ -85,7 +86,7 @@ export function loadVendorConfig(
     id,
     port: overrides.port ?? Number(env[`${prefix}_PORT`] ?? DEFAULT_PORTS[id]),
     host: env.VENDOR_HOST ?? "127.0.0.1",
-    rpcUrl: env.AGENT_RAILS_RPC ?? env.VENDOR_RPC ?? "https://api.devnet.solana.com",
+    rpcUrl: env.ASH_RPC ?? env.VENDOR_RPC ?? "https://api.devnet.solana.com",
     payTo: address(required(env, `${prefix}_PAY_TO`)),
     mint: address(mint),
     mintSymbol: env[`${prefix}_MINT_SYMBOL`] ?? (native ? "SOL" : "USDC"),
@@ -95,7 +96,7 @@ export function loadVendorConfig(
     destinationLabel: env[`${prefix}_DESTINATION_LABEL`] ?? `vendor-${id}`,
     // Always one directory per vendor: three processes sharing one state file would each
     // overwrite the others' invoices on every save.
-    dataDir: join(env.VENDOR_DATA_DIR ?? join(agentRailsHome(env), "vendors"), id),
+    dataDir: join(env.VENDOR_DATA_DIR ?? join(ashHome(env), "vendors"), id),
     invoiceTtlSeconds: ttl,
   };
 }

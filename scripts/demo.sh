@@ -55,10 +55,10 @@ die() {
 [[ -n $WALLET ]] || die "--wallet is required"
 [[ -f $WALLET ]] || die "no keypair at $WALLET"
 [[ -f packages/cli/dist/cli.js ]] || die "the CLI is not built — run pnpm build"
-[[ -f packages/contract/dist/index.js ]] || die "@agent-rails/contract is not built — run pnpm build"
+[[ -f packages/contract/dist/index.js ]] || die "@ash/contract is not built — run pnpm build"
 
 if [[ -z $OUT ]]; then
-  OUT=$(mktemp -d -t agent-rails-demo.XXXXXX) || die "could not create a work directory"
+  OUT=$(mktemp -d -t ash-demo.XXXXXX) || die "could not create a work directory"
 fi
 mkdir -p "$OUT"
 
@@ -308,7 +308,7 @@ explorer_links=0
 [[ $explorer_links -ge 3 ]] || die "expected at least three explorer links, got $explorer_links"
 
 cat <<REPORT
-### Agent Rails devnet demo
+### ASH devnet demo
 
 | | |
 |---|---|
@@ -324,7 +324,7 @@ The MCP server exposes exactly six read/pay tools — \`withdraw\` is absent by 
 
 \`$(printf '%s' "$agent_tools" | tr -d '[]" ' | tr ',' ', ')\`
 
-Configured with \`AGENT_RAILS_RPC\` and \`AGENT_RAILS_SESSION\` (see \`$mcp_snippet\`).
+Configured with \`ASH_RPC\` and \`ASH_SESSION\` (see \`$mcp_snippet\`).
 
 #### Proof 2 — indeterminate retry without double-spend
 

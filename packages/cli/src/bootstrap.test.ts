@@ -1,4 +1,4 @@
-import { findTreasuryPda } from "@agent-rails/client";
+import { findTreasuryPda } from "@ash/client";
 import {
   type Address,
   createNoopSigner,

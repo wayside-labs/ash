@@ -1,5 +1,5 @@
 /**
- * Port of `roll_window` in `crates/agent-rails-policy/src/engine.rs`.
+ * Port of `roll_window` in `crates/ash-policy/src/engine.rs`.
  * Shared by `alert-watch.ts`, `guardian-watch.ts`, and `guardian-roll-window.test.ts`.
  */
 

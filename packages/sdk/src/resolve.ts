@@ -1,8 +1,8 @@
-import { fetchMaybeIntentReceipt, type IntentReceipt } from "@agent-rails/client";
-import { intentIdToHex } from "@agent-rails/contract";
+import { fetchMaybeIntentReceipt, type IntentReceipt } from "@ash/client";
+import { intentIdToHex } from "@ash/contract";
 import type { Address, GetSignatureStatusesApi, Rpc, Signature, SolanaRpcApi } from "@solana/kit";
 import {
-  agentRailsErrorFromCode,
+  ashErrorFromCode,
   customCodeFromTransactionError,
   stringifyRpcError,
 } from "./error-mapping.js";
@@ -42,7 +42,7 @@ export type PaymentResolution =
  */
 function describeTransactionError(err: unknown): string {
   const code = customCodeFromTransactionError(err);
-  return code === undefined ? stringifyRpcError(err) : agentRailsErrorFromCode(code, err).message;
+  return code === undefined ? stringifyRpcError(err) : ashErrorFromCode(code, err).message;
 }
 
 const DEFAULT_ATTEMPTS = 8;

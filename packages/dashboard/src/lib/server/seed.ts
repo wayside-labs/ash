@@ -84,8 +84,8 @@ export function seedState(): DashboardState {
     ],
     mcps: [
       {
-        id: "m_agent_rails",
-        name: "Agent Rails Payments",
+        id: "m_ash",
+        name: "ASH Payments",
         description: "Payments with limits and on-chain audit",
         enabled: true,
         scope: "global",
@@ -94,12 +94,12 @@ export function seedState(): DashboardState {
         // purpose: they name what the user has to fill in, and an empty value
         // is dropped from the export rather than shipped as a set-but-blank
         // variable the server would then reject for the wrong reason.
-        command: "agent-rails-mcp",
+        command: "ash-mcp",
         args: [],
         env: {
-          AGENT_RAILS_RPC: "",
-          AGENT_RAILS_SESSION: "",
-          AGENT_RAILS_SIGNER: "",
+          ASH_RPC: "",
+          ASH_SESSION: "",
+          ASH_SIGNER: "",
         },
         demo: false,
       },
@@ -128,12 +128,12 @@ export function seedState(): DashboardState {
         enabled: false,
         scope: "global" as const,
         scopeName: null,
-        // Holds no key: buying still goes through the Agent Rails payment MCP.
+        // Holds no key: buying still goes through the ASH payment MCP.
         command: "node",
         args: ["packages/vendors/dist/cli.js", "mcp", vendor],
         env: {
           [`${vendor.toUpperCase()}_URL`]: `http://127.0.0.1:${4101 + i}`,
-          AGENT_RAILS_SESSION: "",
+          ASH_SESSION: "",
         },
         demo: false,
       })),
@@ -144,7 +144,7 @@ export function seedState(): DashboardState {
         enabled: false,
         scope: "workflow",
         scopeName: "DeFi Trading",
-        command: "agent-rails-integrations",
+        command: "ash-integrations",
         args: ["mcp", "jupiter"],
         env: { JUPITER_API_BASE: "https://quote-api.jup.ag" },
         demo: true,

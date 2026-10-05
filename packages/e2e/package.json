@@ -1,5 +1,5 @@
 {
-  "name": "@agent-rails/e2e",
+  "name": "@ash/e2e",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -12,9 +12,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@agent-rails/client": "workspace:*",
-    "@agent-rails/contract": "workspace:*",
-    "@agent-rails/sdk": "workspace:*",
+    "@ash/client": "workspace:*",
+    "@ash/contract": "workspace:*",
+    "@ash/sdk": "workspace:*",
     "@solana/kit": "^8.2.0"
   },
   "devDependencies": {

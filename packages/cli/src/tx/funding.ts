@@ -1,4 +1,4 @@
-import { findSolVaultPda } from "@agent-rails/client";
+import { findSolVaultPda } from "@ash/client";
 import type { Address, TransactionSigner } from "@solana/kit";
 import { transferSol } from "../rpc.js";
 

@@ -1,12 +1,12 @@
 {
   "$schema": "https://unpkg.com/@changesets/config@3.0.0/schema.json",
-  "changelog": ["@changesets/changelog-github", { "repo": "wayside-labs/agent-rails" }],
+  "changelog": ["@changesets/changelog-github", { "repo": "wayside-labs/ash" }],
   "commit": false,
   "fixed": [],
   "linked": [],
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "ignore": ["@agent-rails/dashboard", "@agent-rails/e2e"],
+  "ignore": ["@ash/dashboard", "@ash/e2e"],
   "privatePackages": { "version": false, "tag": false }
 }

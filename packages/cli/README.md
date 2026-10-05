@@ -1,13 +1,13 @@
-# `@agent-rails/cli`
+# `@ash/cli`
 
 The operator-facing CLI. `init` bootstraps a treasury; day-2 commands manage limits, sessions,
 destinations, funding, and emergency controls. Agents pay via MCP — this package never executes
 payments.
 
 ```bash
-agent-rails init
-agent-rails status
-agent-rails doctor
+ash init
+ash status
+ash doctor
 ```
 
 ## Command reference
@@ -43,43 +43,43 @@ above. Re-running is safe: chain state drives resume, funding is shortfall-to-ta
 
 ```bash
 surfpool start --ci -n devnet -p 8899 -w 8900 --no-studio
-# deploy agent_rails.so at the declared program id (see packages/e2e)
-pnpm agent-rails init --rpc http://127.0.0.1:8899 --yes
-pnpm agent-rails status
-pnpm agent-rails session create --label agent-2 --yes
-pnpm agent-rails policy set --per-tx 0.05 --yes
-pnpm agent-rails dest add --label vendor-2 --owner <addr> --yes
-pnpm agent-rails mcp emit
+# deploy ash.so at the declared program id (see packages/e2e)
+pnpm ash init --rpc http://127.0.0.1:8899 --yes
+pnpm ash status
+pnpm ash session create --label agent-2 --yes
+pnpm ash policy set --per-tx 0.05 --yes
+pnpm ash dest add --label vendor-2 --owner <addr> --yes
+pnpm ash mcp emit
 ```
 
-Manifest path: `.agent-rails/localnet.json` for `127.0.0.1:8899`.
+Manifest path: `.ash/localnet.json` for `127.0.0.1:8899`.
 
 ## Examples
 
 ```bash
 # Observe
-agent-rails status --rpc http://127.0.0.1:8899
-agent-rails doctor
+ash status --rpc http://127.0.0.1:8899
+ash doctor
 
 # Fund (shortfall semantics — same as init --deposit)
-agent-rails deposit --amount 0.5 --yes
+ash deposit --amount 0.5 --yes
 
 # Owner withdraw
-agent-rails withdraw --amount 0.1 --to <wallet> --yes
+ash withdraw --amount 0.1 --to <wallet> --yes
 
 # Limits
-agent-rails ceiling set --mint SOL --per-tx 1 --daily 10 --yes   # owner
-agent-rails policy set --per-tx 0.05 --daily 0.5 --yes          # operator
+ash ceiling set --mint SOL --per-tx 1 --daily 10 --yes   # owner
+ash policy set --per-tx 0.05 --daily 0.5 --yes          # operator
 
 # Destinations (labels, not raw pubkeys in agent UX)
-agent-rails dest add --label vendor-1 --owner <addr> --yes
-agent-rails dest ls
+ash dest add --label vendor-1 --owner <addr> --yes
+ash dest ls
 
 # Sessions
-agent-rails session create --label billing-bot --session-ttl 48 --yes
-agent-rails session revoke --session <pda> --yes
+ash session create --label billing-bot --session-ttl 48 --yes
+ash session revoke --session <pda> --yes
 
 # Emergency
-agent-rails pause --yes
-agent-rails unpause --yes   # owner only
+ash pause --yes
+ash unpause --yes   # owner only
 ```

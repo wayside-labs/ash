@@ -1,28 +1,28 @@
-# agent-rails-connector (Python)
+# ash-connector (Python)
 
 Stdio **FastMCP** host (`mcp` 1.x — pin `<2` until we migrate to `MCPServer` in MCP SDK v2)
 that mounts **declarative** HTTP tools from a connector bundle. It does not sign
-transactions, hold session keys, or expose Agent Rails governance — see ADR-023.
+transactions, hold session keys, or expose ASH governance — see ADR-023.
 
 ## Install
 
 ```bash
 cd services/connector-host
 uv sync --extra dev             # development
-uv tool install .               # runners: puts `agent-rails-connector` on PATH
+uv tool install .               # runners: puts `ash-connector` on PATH
 ```
 
 ## Run (stdio MCP)
 
 ```bash
 # Any accepted format: bundle .yaml/.json, OpenAPI 3 .yaml/.json, .md with frontmatter
-agent-rails-connector --bundle ../../examples/connectors/sample-weather.yaml
+ash-connector --bundle ../../examples/connectors/sample-weather.yaml
 
 # Validate and print the normalized bundle (and skipped OpenAPI operations)
-agent-rails-connector --bundle petstore.openapi.yaml --check
+ash-connector --bundle petstore.openapi.yaml --check
 
 # What the dashboard's runner export does: bundle inline, no file path
-CONNECTOR_BUNDLE_JSON='{"name":"x","tools":[...]}' agent-rails-connector
+CONNECTOR_BUNDLE_JSON='{"name":"x","tools":[...]}' ash-connector
 ```
 
 The dashboard writes this for you (MCPs → *Import connector*, or *Add connector* on a chat
@@ -32,11 +32,11 @@ proposal); the exported `.mcp.json` entry looks like:
 {
   "mcpServers": {
     "sample-weather": {
-      "command": "agent-rails-connector",
+      "command": "ash-connector",
       "args": [],
       "env": {
         "WEATHER_API_KEY": "<from the MCP card>",
-        "CONNECTOR_BUNDLE_JSON": "{\"apiVersion\":\"agent-rails.connector/v1\",...}"
+        "CONNECTOR_BUNDLE_JSON": "{\"apiVersion\":\"ash.connector/v1\",...}"
       }
     }
   }
@@ -46,8 +46,8 @@ proposal); the exported `.mcp.json` entry looks like:
 ## Security
 
 - The bundle schema refuses governance/key tool names, reserved env prefixes
-  (`AGENT_RAILS_`, `SOLANA_`, `CONNECTOR_`) and unknown fields. The Zod mirror in
-  `@agent-rails/contract` applies the same rules; `examples/connectors/fixtures/` holds both
+  (`ASH_`, `SOLANA_`, `CONNECTOR_`) and unknown fields. The Zod mirror in
+  `@ash/contract` applies the same rules; `examples/connectors/fixtures/` holds both
   to them.
 - Tools see only the env names their bundle declares, never the rest of the process env.
 - https only; redirects are not followed; hosts that resolve to non-public addresses are

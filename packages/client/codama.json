@@ -1,5 +1,5 @@
 {
-  "idl": "../../idl/agent_rails.json",
+  "idl": "../../idl/ash.json",
   "scripts": {
     "js": {
       "from": "@codama/renderers-js",

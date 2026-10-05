@@ -38,7 +38,7 @@ const ALLOWED = new Set([
  * page naming it directly still fails the scan above.
  */
 const SHARED_OPERATOR_MODULES: Record<string, { source: string; reaches: Set<string> }> = {
-  "@agent-rails/cli/bootstrap": {
+  "@ash/cli/bootstrap": {
     source: resolve(SRC, "../../cli/src/bootstrap.ts"),
     reaches: new Set([
       "getCreateTreasuryInstruction",
@@ -130,7 +130,7 @@ describe("the dashboard's on-chain write surface", () => {
       }
     }
     // System and SPL builders are defined inline in `lib/server/solana.ts` and
-    // are not Agent Rails instructions, so they are matched by name here only
+    // are not ASH instructions, so they are matched by name here only
     // if they follow the same convention — which they deliberately do not.
     const unexpected = [...seen].filter((name) => !ALLOWED.has(name));
     expect(unexpected).toEqual([]);
@@ -139,13 +139,13 @@ describe("the dashboard's on-chain write surface", () => {
   it("imports no operator module outside the shared allowlist", () => {
     const imported = new Set<string>();
     for (const file of files) {
-      for (const match of readFileSync(file, "utf8").matchAll(/from "(@agent-rails\/cli[^"]*)"/g)) {
+      for (const match of readFileSync(file, "utf8").matchAll(/from "(@ash\/cli[^"]*)"/g)) {
         imported.add(match[1] as string);
       }
     }
     // Positive control: the bootstrap routes do import it, so an empty set means the
     // pattern stopped matching rather than that the dashboard stopped importing.
-    expect([...imported]).toContain("@agent-rails/cli/bootstrap");
+    expect([...imported]).toContain("@ash/cli/bootstrap");
     expect([...imported].filter((name) => !(name in SHARED_OPERATOR_MODULES))).toEqual([]);
   });
 

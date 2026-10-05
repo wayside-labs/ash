@@ -6,15 +6,15 @@ import {
   type McpExecutePaymentInput,
   type Requirement,
   toBaseUnits,
-} from "@agent-rails/contract";
+} from "@ash/contract";
 import {
-  AgentRailsError,
+  AshError,
   findReceiptPda,
   nearMisses,
   type ResolvedDestination,
   requirementsFor,
   resolveDestination,
-} from "@agent-rails/sdk";
+} from "@ash/sdk";
 import type { Address } from "@solana/kit";
 import {
   assertSessionLive,
@@ -54,7 +54,7 @@ function convertAmount(human: string, mint: BoundMint): bigint {
     return toBaseUnits(human, mint.decimals);
   } catch (error) {
     if (error instanceof AmountConversionError) {
-      throw new AgentRailsError({
+      throw new AshError({
         reasonCode: error.reason,
         message: error.message,
         outcome: "denied",
@@ -75,7 +75,7 @@ export async function preparePayment(
   const amount = convertAmount(input.amount, mint);
 
   if (amount <= 0n) {
-    throw new AgentRailsError({
+    throw new AshError({
       reasonCode: "AMOUNT_ZERO",
       message: "Payment amount must be greater than zero.",
       outcome: "denied",
@@ -94,7 +94,7 @@ export async function preparePayment(
   // The on-chain `require_memo` flag and a configured `memo` band are independent: either
   // one alone is enough, and the program enforces its own regardless of this.
   if ((context.bound.requireMemo || requirements.has("memo")) && !input.memo) {
-    throw new AgentRailsError({
+    throw new AshError({
       reasonCode: "MEMO_REQUIRED",
       message: context.bound.requireMemo
         ? "This policy requires a memo on every payment."
@@ -121,7 +121,7 @@ export async function preparePayment(
     // A miss one or two edits from a registered label is more likely an impersonation
     // attempt than a typo. The caller still gets a plain denial; the near miss goes to the
     // operator's record, because naming it in the response would hand over the real label.
-    if (error instanceof AgentRailsError) {
+    if (error instanceof AshError) {
       const distance = context.security.posture.destinations.nearMissDistance;
       const near =
         distance > 0 ? nearMisses(context.bound.destinations, input.destination_ref, distance) : [];
@@ -142,7 +142,7 @@ export async function preparePayment(
         // typo. The caller still learns nothing it did not already know — naming the real
         // label would hand it over — but the reason code distinguishes the two cases for
         // whoever reads the record.
-        throw new AgentRailsError({
+        throw new AshError({
           reasonCode: "AMBIGUOUS_DESTINATION",
           message:
             `No destination is registered under "${input.destination_ref}", and it is ` +

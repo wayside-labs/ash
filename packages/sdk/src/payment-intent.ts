@@ -1,16 +1,16 @@
 import {
-  AGENT_RAILS_PROGRAM_ADDRESS,
+  ASH_PROGRAM_ADDRESS,
   EXECUTE_PAYMENT_DISCRIMINATOR,
   EXECUTE_PAYMENT_SOL_DISCRIMINATOR,
   getExecutePaymentInstructionAsync,
   getExecutePaymentSolInstructionAsync,
-} from "@agent-rails/client";
+} from "@ash/client";
 import {
   INTENT_ID_LEN,
   NATIVE_MINT,
   type PaymentBuildInput,
   paymentBuildSchema,
-} from "@agent-rails/contract";
+} from "@ash/contract";
 import {
   type Address,
   address,
@@ -107,7 +107,7 @@ export type PaymentIntentBuildResult = {
  *
  * This used to fall back to 16 random bytes when a caller passed nothing, which quietly
  * disabled idempotency: a retry drew a new id, addressed a different receipt PDA, and paid
- * again. Ids come from `deriveIntentId` in `@agent-rails/contract`, which derives them from
+ * again. Ids come from `deriveIntentId` in `@ash/contract`, which derives them from
  * the payment being settled so a retry collides by construction (blueprint III-A).
  */
 export function createIntentId(bytes: Uint8Array): Uint8Array {
@@ -247,7 +247,7 @@ export async function buildPaymentIntent(
       destinationOwner: intent.destination,
       receipt,
       eventAuthority,
-      program: AGENT_RAILS_PROGRAM_ADDRESS,
+      program: ASH_PROGRAM_ADDRESS,
       intent: onChainIntent,
     });
     const solVaultAccount = instruction.accounts?.[6];
@@ -278,7 +278,7 @@ export async function buildPaymentIntent(
       receipt,
       tokenProgram: splTokenProgram,
       eventAuthority,
-      program: AGENT_RAILS_PROGRAM_ADDRESS,
+      program: ASH_PROGRAM_ADDRESS,
       intent: onChainIntent,
     });
 

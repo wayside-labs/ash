@@ -1,6 +1,6 @@
 # Security policy
 
-Agent Rails holds **custody logic** on Solana. Treat vulnerability reports as sensitive until fixed and disclosed.
+ASH holds **custody logic** on Solana. Treat vulnerability reports as sensitive until fixed and disclosed.
 
 This policy implements ADR-011 (audit and bug bounty) at the **0.x** trust phase. Bounty amounts scale with deployment phase and TVL; details below are placeholders until mainnet-beta.
 
@@ -20,14 +20,14 @@ Do not deploy funds you cannot lose on **0.x**. The README trust table is author
 
 ## Reporting a vulnerability
 
-**Preferred:** [GitHub private vulnerability reporting](https://github.com/wayside-labs/agent-rails/security/advisories/new) for `wayside-labs/agent-rails`.
+**Preferred:** [GitHub private vulnerability reporting](https://github.com/wayside-labs/ash/security/advisories/new) for `wayside-labs/ash`.
 
 **Alternative:** email the maintainers listed in the repository commit history (do not open a public issue for exploit details).
 
 Include:
 
 - Description and impact (funds at risk, privilege escalation, audit break)  
-- Affected component (`programs/agent_rails`, `crates/agent-rails-policy`, MCP, SDK, dashboard)  
+- Affected component (`programs/ash`, `crates/ash-policy`, MCP, SDK, dashboard)  
 - Reproduction steps or proof-of-concept  
 - Suggested fix, if any  
 
@@ -49,7 +49,7 @@ We may ask for a short extension for complex on-chain fixes. We credit reporters
 - Attacks requiring compromise of the reporter's own keys or RPC endpoints  
 - Social engineering of individual operators  
 - Denial of service against public RPC without impact on on-chain safety properties  
-- Issues in third-party dependencies without a demonstrated impact on Agent Rails custody  
+- Issues in third-party dependencies without a demonstrated impact on ASH custody  
 - Hosted dashboard deployments you do not operate (report to that operator; our scope is the open-source tree)
 
 ---
@@ -71,7 +71,7 @@ Professional audit reports belong in `audits/`; they are not bounty submissions.
 
 Contributors: read `CONTRIBUTING.md` (agent no-go zones), `THREAT_MODEL.md`, and `GOVERNANCE.md`. Custody changes require review per `CODEOWNERS`.
 
-Operators: run `agent-rails doctor`, verify program hash (`scripts/program-hash.sh compare`), keep upgrade authority off CI (ADR-020), and use guardian pause for incident response (`docs/runbooks/guardian-watch.md`).
+Operators: run `ash doctor`, verify program hash (`scripts/program-hash.sh compare`), keep upgrade authority off CI (ADR-020), and use guardian pause for incident response (`docs/runbooks/guardian-watch.md`).
 
 ---
 

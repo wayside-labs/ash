@@ -83,5 +83,5 @@ jobs:
       # proves the committed IDL matches the program — the half that goes stale when
       # someone changes an instruction and skips the regeneration step.
       - run: pnpm idl:build
-      - run: git diff --exit-code -- idl/agent_rails.json
+      - run: git diff --exit-code -- idl/ash.json
       - run: pnpm codegen:check

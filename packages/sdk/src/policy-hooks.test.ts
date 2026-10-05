@@ -1,6 +1,6 @@
 import type { Address } from "@solana/kit";
 import { describe, expect, it, vi } from "vitest";
-import { AgentRailsError } from "./errors.js";
+import { AshError } from "./errors.js";
 import type { PolicyHook, PolicyHookRequest } from "./policy-hooks.js";
 import { runPolicyHooks } from "./policy-hooks.js";
 
@@ -60,8 +60,8 @@ describe("runPolicyHooks", () => {
       [hook("budget", { evaluate: () => ({ allow: false }) })],
       REQUEST,
     ).catch((e: unknown) => e);
-    expect(error).toBeInstanceOf(AgentRailsError);
-    const denial = error as AgentRailsError;
+    expect(error).toBeInstanceOf(AshError);
+    const denial = error as AshError;
     expect(denial.reasonCode).toBe("HOOK_DENIED");
     expect(denial.outcome).toBe("denied");
     expect(denial.source).toBe("hook");
@@ -81,7 +81,7 @@ describe("runPolicyHooks", () => {
         }),
       ],
       REQUEST,
-    ).catch((e: unknown) => e)) as AgentRailsError;
+    ).catch((e: unknown) => e)) as AshError;
     expect(error.reasonCode).toBe("REVIEW_REQUIRED");
     expect(error.message).toBe("above the band a person approves");
   });
@@ -96,7 +96,7 @@ describe("runPolicyHooks", () => {
         ],
         REQUEST,
       ),
-    ).rejects.toBeInstanceOf(AgentRailsError);
+    ).rejects.toBeInstanceOf(AshError);
     expect(later).not.toHaveBeenCalled();
   });
 
@@ -112,7 +112,7 @@ describe("runPolicyHooks", () => {
         }),
       ],
       REQUEST,
-    ).catch((e: unknown) => e)) as AgentRailsError;
+    ).catch((e: unknown) => e)) as AshError;
     expect(error.reasonCode).toBe("HOOK_UNAVAILABLE");
     expect(error.outcome).toBe("denied");
     expect(error.message).toContain("connection refused");
@@ -122,7 +122,7 @@ describe("runPolicyHooks", () => {
     const error = (await runPolicyHooks(
       [hook("odd", { evaluate: () => Promise.reject("just a string") })],
       REQUEST,
-    ).catch((e: unknown) => e)) as AgentRailsError;
+    ).catch((e: unknown) => e)) as AshError;
     expect(error.reasonCode).toBe("HOOK_UNAVAILABLE");
     expect(error.message).toContain("just a string");
   });
@@ -131,7 +131,7 @@ describe("runPolicyHooks", () => {
     const error = (await runPolicyHooks(
       [hook("slow", { timeoutMs: 5, evaluate: stalls })],
       REQUEST,
-    ).catch((e: unknown) => e)) as AgentRailsError;
+    ).catch((e: unknown) => e)) as AshError;
     expect(error.reasonCode).toBe("HOOK_UNAVAILABLE");
     expect(error.message).toContain("timed out");
   });
@@ -163,6 +163,6 @@ describe("runPolicyHooks", () => {
         [hook("advisory", { failOpen: true, evaluate: () => ({ allow: false }) })],
         REQUEST,
       ),
-    ).rejects.toBeInstanceOf(AgentRailsError);
+    ).rejects.toBeInstanceOf(AshError);
   });
 });

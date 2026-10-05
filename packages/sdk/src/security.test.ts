@@ -1,4 +1,4 @@
-import { describeSecurity, IMMUTABLE_GUARANTEES, SECURITY_PRESETS } from "@agent-rails/contract";
+import { describeSecurity, IMMUTABLE_GUARANTEES, SECURITY_PRESETS } from "@ash/contract";
 import { describe, expect, it } from "vitest";
 import {
   type ChainFacts,

@@ -1,9 +1,9 @@
 import {
-  AGENT_RAILS_PROGRAM_ADDRESS,
+  ASH_PROGRAM_ADDRESS,
   findTreasuryPda,
   getTreasuryEncoder,
   type MintConfigArgs,
-} from "@agent-rails/sdk";
+} from "@ash/sdk";
 import {
   type Address,
   generateKeyPairSigner,
@@ -55,7 +55,7 @@ function fakeRpc(accounts: Map<string, FakeAccount>, balances: Record<string, bi
 }
 
 const PROGRAM: [string, FakeAccount] = [
-  AGENT_RAILS_PROGRAM_ADDRESS,
+  ASH_PROGRAM_ADDRESS,
   {
     data: new Uint8Array(0),
     owner: "BPFLoaderUpgradeab1e11111111111111111111111",
@@ -126,7 +126,7 @@ function treasuryAccount(input: {
     createdAt: 0n,
     reserved: new Uint8Array(128),
   });
-  return { data: new Uint8Array(data), owner: AGENT_RAILS_PROGRAM_ADDRESS };
+  return { data: new Uint8Array(data), owner: ASH_PROGRAM_ADDRESS };
 }
 
 let wallet: KeyPairSigner;

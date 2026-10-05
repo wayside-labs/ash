@@ -3,7 +3,8 @@ import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
-import { NATIVE_MINT } from "@agent-rails/contract/constants";
+import { NATIVE_MINT } from "@ash/contract/constants";
+import { applyLegacyEnv } from "@ash/contract/legacy-env";
 import { createSolanaRpc } from "@solana/kit";
 import {
   DEFAULT_PORTS,
@@ -17,15 +18,15 @@ import { startVendorMcp } from "./mcp.js";
 import { createVendorServer } from "./server.js";
 import { VENDORS } from "./vendors/index.js";
 
-const USAGE = `agent-rails-vendor — demo counterparties for Agent Rails
+const USAGE = `agent-rails-vendor — demo counterparties for ASH
 
   serve <oracle|notary|compute|all> [--port N]
       HTTP vendor. Needs <VENDOR>_PAY_TO (receiving wallet, public key only).
   mcp <oracle|notary|compute>
-      stdio MCP for one vendor. Needs <VENDOR>_URL and AGENT_RAILS_SESSION.
+      stdio MCP for one vendor. Needs <VENDOR>_URL and ASH_SESSION.
   buy <oracle|notary|compute> [--symbols SOL,BTC] [--text "..."] [--packs N]
-      [--url http://127.0.0.1:4101] [--session PDA] -- <agent-rails pay flags>
-      Scripted buyer, no model: invoice → \`agent-rails pay\` → redeem.
+      [--url http://127.0.0.1:4101] [--session PDA] -- <ash pay flags>
+      Scripted buyer, no model: invoice → \`ash pay\` → redeem.
 `;
 
 function fail(message: string): never {
@@ -81,13 +82,13 @@ async function serve(which: string, port: number | undefined): Promise<void> {
 
 function defaultCliEntry(): string {
   const local = fileURLToPath(new URL("../../cli/dist/cli.js", import.meta.url));
-  return process.env.AGENT_RAILS_CLI ?? local;
+  return process.env.ASH_CLI ?? local;
 }
 
 function runPay(args: string[]): Promise<{ code: number; stdout: string }> {
   const entry = defaultCliEntry();
   if (!existsSync(entry)) {
-    fail(`agent-rails CLI not found at ${entry}; run pnpm build or set AGENT_RAILS_CLI`);
+    fail(`ash CLI not found at ${entry}; run pnpm build or set ASH_CLI`);
   }
   return new Promise((resolve) => {
     const child = spawn(process.execPath, [entry, ...args], {
@@ -107,14 +108,14 @@ async function buy(
   payFlags: string[],
 ): Promise<number> {
   const url = (opts.url ?? `http://127.0.0.1:${DEFAULT_PORTS[vendor]}`).replace(/\/+$/, "");
-  const session = opts.session ?? process.env.AGENT_RAILS_SESSION;
-  if (!session) fail("--session or AGENT_RAILS_SESSION is required");
+  const session = opts.session ?? process.env.ASH_SESSION;
+  if (!session) fail("--session or ASH_SESSION is required");
 
   const request: Record<string, unknown> = { session };
   if (vendor === "oracle") request.symbols = (opts.symbols ?? "SOL").split(",");
   if (vendor === "notary") {
     const { createHash } = await import("node:crypto");
-    const text = opts.text ?? `agent-rails vendor smoke ${new Date().toISOString()}`;
+    const text = opts.text ?? `ash vendor smoke ${new Date().toISOString()}`;
     request.sha256 = createHash("sha256").update(text).digest("hex");
     request.label = "buy-smoke";
   }
@@ -172,6 +173,7 @@ async function buy(
 }
 
 async function main(): Promise<void> {
+  applyLegacyEnv();
   const argv = process.argv.slice(2);
   const dashdash = argv.indexOf("--");
   const own = dashdash === -1 ? argv : argv.slice(0, dashdash);

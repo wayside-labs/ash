@@ -8,7 +8,7 @@ const LOADER = "BPFLoaderUpgradeab1e11111111111111111111111";
  * directly through Surfpool's `surfnet_setAccount` cheatcode.
  *
  * `solana program deploy` cannot do this job. It deploys at whatever address the keypair
- * file names, and `target/deploy/agent_rails-keypair.json` is gitignored — correctly, since
+ * file names, and `target/deploy/ash-keypair.json` is gitignored — correctly, since
  * `.gitignore` refuses to carry raw secret keys and ADR-011 governs the program id. On a
  * developer's machine that file happens to hold the key for `declare_id!`; on a fresh
  * checkout `cargo build-sbf` mints a new one, the deploy lands at a random address, and

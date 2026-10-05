@@ -148,7 +148,7 @@ export async function* streamOpenRouter(
       authorization: `Bearer ${apiKey}`,
       "content-type": "application/json",
       ...(referer ? { "http-referer": referer } : {}),
-      "x-openrouter-title": process.env.OPENROUTER_APP_TITLE || "Agent Rails Dashboard",
+      "x-openrouter-title": process.env.OPENROUTER_APP_TITLE || "ASH Dashboard",
       // No public app page listing what treasury operators ask about.
       "x-openrouter-app-visibility": "hidden",
     },

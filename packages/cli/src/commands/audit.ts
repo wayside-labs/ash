@@ -1,10 +1,5 @@
-import { fetchMaybeAgentSession } from "@agent-rails/client";
-import {
-  auditHeadToHex,
-  loadReceipts,
-  type ReceiptRecord,
-  verifyAuditChain,
-} from "@agent-rails/sdk";
+import { fetchMaybeAgentSession } from "@ash/client";
+import { auditHeadToHex, loadReceipts, type ReceiptRecord, verifyAuditChain } from "@ash/sdk";
 import { type Address, address } from "@solana/kit";
 import type { GlobalCliOptions } from "../cli-options.js";
 import { loadContext } from "../context.js";
@@ -88,7 +83,7 @@ export async function runAuditExport(options: AuditExportOptions, ui: Ui): Promi
       ? address(ctx.manifest.session)
       : (() => {
           throw new CliError("No session recorded for this cluster", {
-            hint: "Pass --session <pda>, or run `agent-rails init` first.",
+            hint: "Pass --session <pda>, or run `ash init` first.",
           });
         })();
 

@@ -120,7 +120,7 @@ export async function startSurfnet(options?: {
   const wsPort = await freePort();
   const network = options?.network ?? "devnet";
   const rpcUrl = `http://127.0.0.1:${port}`;
-  const dir = mkdtempSync(join(tmpdir(), "agent-rails-e2e-"));
+  const dir = mkdtempSync(join(tmpdir(), "ash-e2e-"));
 
   const child: ChildProcess = spawn(
     "surfpool",
@@ -164,7 +164,7 @@ export async function startSurfnet(options?: {
     ]);
     await run("solana", ["airdrop", "100", "--keypair", payerKeypairPath, "--url", rpcUrl]);
 
-    await installProgram(rpcUrl, PROGRAM_ID, join(REPO_ROOT, "target/deploy/agent_rails.so"));
+    await installProgram(rpcUrl, PROGRAM_ID, join(REPO_ROOT, "target/deploy/ash.so"));
 
     // Poll rather than read once. `solana program deploy` returns when the final
     // transaction is confirmed, but the account read that follows can still be served from

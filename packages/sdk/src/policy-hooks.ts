@@ -1,6 +1,6 @@
-import type { AnyReasonCode } from "@agent-rails/contract";
+import type { AnyReasonCode } from "@ash/contract";
 import type { Address } from "@solana/kit";
-import { AgentRailsError } from "./errors.js";
+import { AshError } from "./errors.js";
 
 /**
  * Soft policy hooks (ADR-005 section 6; blueprint L4).
@@ -67,7 +67,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number, name: string): Promise<
 /**
  * Run every hook in order, stopping at the first denial.
  *
- * Throws `AgentRailsError` rather than returning a verdict so a caller cannot proceed by
+ * Throws `AshError` rather than returning a verdict so a caller cannot proceed by
  * forgetting to check the return value — the same reason the outcome field on the error
  * type is mandatory.
  */
@@ -89,7 +89,7 @@ export async function runPolicyHooks(
       if (hook.failOpen) {
         continue;
       }
-      throw new AgentRailsError({
+      throw new AshError({
         reasonCode: "HOOK_UNAVAILABLE",
         message:
           `Policy hook "${hook.name}" could not be evaluated: ` +
@@ -102,7 +102,7 @@ export async function runPolicyHooks(
     }
 
     if (!verdict.allow) {
-      throw new AgentRailsError({
+      throw new AshError({
         reasonCode: verdict.reasonCode ?? "HOOK_DENIED",
         message: verdict.message ?? `Policy hook "${hook.name}" denied this payment.`,
         outcome: "denied",

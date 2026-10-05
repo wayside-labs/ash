@@ -17,7 +17,7 @@ describe("link message", () => {
   });
 
   it.each([
-    ["an unrelated statement", "Sign in to Agent Rails."],
+    ["an unrelated statement", "Sign in to ASH."],
     ["a bad date", linkMessage(ACCOUNT, ISSUED).replace("2026-10-01T12:00:00.000Z", "yesterday")],
     [
       "text wedged into the account id",

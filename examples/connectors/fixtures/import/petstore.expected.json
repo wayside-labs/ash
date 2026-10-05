@@ -2,7 +2,7 @@
   "format": "openapi",
   "skipped": ["create_session: forbidden term 'session'"],
   "bundle": {
-    "apiVersion": "agent-rails.connector/v1",
+    "apiVersion": "ash.connector/v1",
     "name": "petstore-lite",
     "description": "Subset of the classic petstore, used as the OpenAPI import fixture.",
     "baseUrl": "https://petstore.example/api",

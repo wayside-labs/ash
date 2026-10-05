@@ -1,8 +1,5 @@
-import {
-  type McpRequestLimitIncreaseInput,
-  mcpRequestLimitIncreaseSchema,
-} from "@agent-rails/contract";
-import { isAgentRailsError } from "@agent-rails/sdk";
+import { type McpRequestLimitIncreaseInput, mcpRequestLimitIncreaseSchema } from "@ash/contract";
+import { isAshError } from "@ash/sdk";
 import { resolveMint } from "../bound-context.js";
 import type { ServerContext } from "../context.js";
 import { emitAgentEvent } from "../ingest.js";
@@ -38,7 +35,7 @@ export async function handleRequestLimitIncrease(
     try {
       mint = String(resolveMint(context.bound, input.mint_ref).mint);
     } catch (error) {
-      if (!isAgentRailsError(error)) throw error;
+      if (!isAshError(error)) throw error;
       return { requested: false, routed: false, message: error.message };
     }
   }

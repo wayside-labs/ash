@@ -1,4 +1,4 @@
-import { agentEventSchema, agentEventTreasury } from "@agent-rails/contract/alerts";
+import { agentEventSchema, agentEventTreasury } from "@ash/contract/alerts";
 import { fanOut, readNotifyConfig, recordDeliveries } from "@/lib/server/notify";
 import { authenticateIngest, opsStore } from "@/lib/server/ops";
 import { hashToken } from "@/lib/server/ops/logic";

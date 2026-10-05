@@ -1,5 +1,5 @@
 import {
-  AGENT_RAILS_PROGRAM_ADDRESS,
+  ASH_PROGRAM_ADDRESS,
   fetchMaybePolicy,
   fetchMaybeTreasury,
   findEntryPda,
@@ -13,8 +13,8 @@ import {
   getCreateSessionInstruction,
   getCreateTreasuryInstruction,
   getUpdatePolicyInstruction,
-} from "@agent-rails/client";
-import { AUTH_MODE_DIRECT_SIGNER, NATIVE_MINT } from "@agent-rails/contract";
+} from "@ash/client";
+import { AUTH_MODE_DIRECT_SIGNER, NATIVE_MINT } from "@ash/contract";
 import {
   type Address,
   address,
@@ -49,7 +49,7 @@ const DESTINATION_MODE_ALLOWLIST = 1;
  */
 export async function findEventAuthority(): Promise<Address> {
   const [pda] = await getProgramDerivedAddress({
-    programAddress: AGENT_RAILS_PROGRAM_ADDRESS,
+    programAddress: ASH_PROGRAM_ADDRESS,
     seeds: [new TextEncoder().encode("__event_authority")],
   });
   return pda;
@@ -384,7 +384,7 @@ function addMintInstruction(
     owner: input.wallet,
     treasury: plan.treasury,
     eventAuthority: input.eventAuthority,
-    program: AGENT_RAILS_PROGRAM_ADDRESS,
+    program: ASH_PROGRAM_ADDRESS,
     mint: mint.mint,
     // Native SOL takes none of the token accounts; the program stores the System program in
     // `MintConfig.token_program` on that path and creates no ATA.
@@ -440,7 +440,7 @@ export function buildStages(
         treasury: plan.treasury,
         solVault: plan.solVault,
         eventAuthority: input.eventAuthority,
-        program: AGENT_RAILS_PROGRAM_ADDRESS,
+        program: ASH_PROGRAM_ADDRESS,
         owner: input.wallet.address,
         // Same key as owner for a first run. The roles are separate in the account, so an
         // operator can be handed off later with `set_roles` without recreating anything.
@@ -524,7 +524,7 @@ export function buildStages(
         treasury: plan.treasury,
         policy: plan.policy,
         eventAuthority: input.eventAuthority,
-        program: AGENT_RAILS_PROGRAM_ADDRESS,
+        program: ASH_PROGRAM_ADDRESS,
         name: input.policyName,
         args: policyArgs,
       }),
@@ -540,7 +540,7 @@ export function buildStages(
         treasury: plan.treasury,
         policy: plan.policy,
         eventAuthority: input.eventAuthority,
-        program: AGENT_RAILS_PROGRAM_ADDRESS,
+        program: ASH_PROGRAM_ADDRESS,
         args: policyArgs,
       }),
     );
@@ -554,7 +554,7 @@ export function buildStages(
         policy: plan.policy,
         entry: plan.allowlistEntry,
         eventAuthority: input.eventAuthority,
-        program: AGENT_RAILS_PROGRAM_ADDRESS,
+        program: ASH_PROGRAM_ADDRESS,
         destinationOwner: input.destination,
         label: input.destinationLabel,
         // 0 is the sentinel for "no per-destination override" (state.rs, `effective_per_tx`).
@@ -576,7 +576,7 @@ export function buildStages(
         policy: plan.policy,
         session: plan.session,
         eventAuthority: input.eventAuthority,
-        program: AGENT_RAILS_PROGRAM_ADDRESS,
+        program: ASH_PROGRAM_ADDRESS,
         sessionKey: input.sessionKey.address,
         label: input.sessionLabel,
         expiresAt: input.sessionExpiresAt,

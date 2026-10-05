@@ -639,7 +639,7 @@ export async function stubWallet(
         address,
         publicKey: new Uint8Array(32),
         chains,
-        features: ["solana:signTransaction"],
+        features: ["solana:signTransaction", "solana:signMessage"],
       };
       const standard = {
         version: "1.0.0",
@@ -655,6 +655,25 @@ export async function stubWallet(
             connect: async () => ({ accounts: provider.publicKey ? [account] : [] }),
           },
           "standard:events": { version: "1.0.0", on: () => () => {} },
+          // Deterministic like a real Ed25519 wallet, so key derivation from it is repeatable.
+          // Counted in `window.__messages` so a spec can say how many prompts a flow raised.
+          "solana:signMessage": {
+            version: "1.0.0",
+            signMessage: async (
+              ...inputs: { account: { address: string }; message: Uint8Array }[]
+            ) => {
+              if (rejectSigning) throw new Error("User rejected the request.");
+              const w = window as unknown as { __messages?: number };
+              w.__messages = (w.__messages ?? 0) + inputs.length;
+              return inputs.map((input) => ({
+                signedMessage: input.message,
+                signature: Uint8Array.from(
+                  { length: 64 },
+                  (_, i) => ((input.message[i % input.message.length] ?? 0) + i * 7) % 256,
+                ),
+              }));
+            },
+          },
           "solana:signTransaction": {
             version: "1.0.0",
             supportedTransactionVersions: ["legacy", 0],

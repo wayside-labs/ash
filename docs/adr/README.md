@@ -29,6 +29,7 @@ Each ADR captures one decision from the v1 design session: the context, the opti
 | [024](ADR-024-email-first-login-and-platform-wallet.md) | Email-first sign-in, a platform wallet per account, self-custody wallets as Pro | Proposed |
 | [025](ADR-025-cross-network-connector-desk-signed.md) | Cross-network execution through a desk-signed connector with an off-chain recipient allowlist | Proposed |
 | [026](ADR-026-hosted-chat-runs-on-the-platform-key.md) | Hosted chat runs on the platform key only; the CLI and stored keys stay local | Accepted |
+| [027](ADR-027-private-payouts-through-cloak-in-the-operators-browser.md) | Private payouts through Cloak, run in the operator's browser | Proposed |
 
 016 is reserved by issue #23 (the per-session ceiling) and lands with it.
 

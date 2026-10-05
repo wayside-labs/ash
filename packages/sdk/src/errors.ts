@@ -1,7 +1,7 @@
-import type { AnyReasonCode, DecisionSource, PaymentOutcome } from "@agent-rails/contract";
+import type { AnyReasonCode, DecisionSource, PaymentOutcome } from "@ash/contract";
 import type { Address } from "@solana/kit";
 
-export type AgentRailsErrorOptions = {
+export type AshErrorOptions = {
   reasonCode: AnyReasonCode;
   message: string;
   /**
@@ -27,7 +27,7 @@ export type AgentRailsErrorOptions = {
 };
 
 /** Typed error surfaced by the SDK, MCP tools, and adapters. */
-export class AgentRailsError extends Error {
+export class AshError extends Error {
   readonly reasonCode: AnyReasonCode;
   readonly outcome: PaymentOutcome;
   readonly source?: DecisionSource;
@@ -36,9 +36,9 @@ export class AgentRailsError extends Error {
   readonly signature?: string;
   readonly remaining?: bigint;
 
-  constructor(options: AgentRailsErrorOptions) {
+  constructor(options: AshErrorOptions) {
     super(options.message, { cause: options.cause });
-    this.name = "AgentRailsError";
+    this.name = "AshError";
     this.reasonCode = options.reasonCode;
     this.outcome = options.outcome;
     if (options.source !== undefined) this.source = options.source;
@@ -49,12 +49,8 @@ export class AgentRailsError extends Error {
   }
 
   /** Copy with payment identity attached, for layers that learn it after the throw. */
-  withContext(context: {
-    intentId?: string;
-    receipt?: Address;
-    signature?: string;
-  }): AgentRailsError {
-    return new AgentRailsError({
+  withContext(context: { intentId?: string; receipt?: Address; signature?: string }): AshError {
+    return new AshError({
       reasonCode: this.reasonCode,
       message: this.message,
       outcome: this.outcome,
@@ -74,11 +70,11 @@ export class AgentRailsError extends Error {
   }
 }
 
-export function isAgentRailsError(error: unknown): error is AgentRailsError {
-  return error instanceof AgentRailsError;
+export function isAshError(error: unknown): error is AshError {
+  return error instanceof AshError;
 }
 
 /** True when the transfer may already be on-chain and the caller must resolve before retrying. */
 export function isIndeterminate(error: unknown): boolean {
-  return isAgentRailsError(error) && error.outcome === "indeterminate";
+  return isAshError(error) && error.outcome === "indeterminate";
 }

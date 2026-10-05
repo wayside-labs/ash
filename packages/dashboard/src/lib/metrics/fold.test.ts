@@ -1,5 +1,5 @@
-import { NATIVE_MINT } from "@agent-rails/contract/constants";
-import { USDC_MINT_DEVNET } from "@agent-rails/contract/mints";
+import { NATIVE_MINT } from "@ash/contract/constants";
+import { USDC_MINT_DEVNET } from "@ash/contract/mints";
 import { describe, expect, it } from "vitest";
 import type { SolPrice } from "@/lib/server/price";
 import type { SessionView, TreasuryView, VaultBalance } from "@/lib/server/solana";

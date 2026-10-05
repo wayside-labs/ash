@@ -1,4 +1,4 @@
-import { fetchMaybeAgentSession } from "@agent-rails/client";
+import { fetchMaybeAgentSession } from "@ash/client";
 import type { ServerContext } from "../context.js";
 import { serializeAgentSession } from "./serialize.js";
 

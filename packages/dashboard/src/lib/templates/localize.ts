@@ -8,6 +8,7 @@ const BUILTIN_I18N_KEY: Record<BuiltinTemplateId, string> = {
   "builtin:dca-sol": "dcaSol",
   "builtin:defi-yield-rebalance": "defiYieldRebalance",
   "builtin:solana-workstation": "solanaWorkstation",
+  "builtin:cloak-private-payout": "cloakPrivatePayout",
 };
 
 function setupStepsFromLocale(t: Translate, prefix: string): string[] {

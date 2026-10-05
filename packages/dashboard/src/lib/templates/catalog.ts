@@ -6,7 +6,8 @@ export type BuiltinTemplateId =
   | "builtin:earn-bounty-hunter"
   | "builtin:dca-sol"
   | "builtin:defi-yield-rebalance"
-  | "builtin:solana-workstation";
+  | "builtin:solana-workstation"
+  | "builtin:cloak-private-payout";
 
 /** Prefix for built-in ids so they never collide with stored `tpl_*` rows. */
 export const BUILTIN_TEMPLATE_PREFIX = "builtin:";
@@ -66,6 +67,28 @@ const YIELD_AGENTS: TemplateAgentDef[] = [
 ];
 
 /**
+ * The "desk" is the operator's own mainnet wallet: nothing here is paid from the vault, which is
+ * on devnet. `dailyLimitUsd` is the template's cap (0.10 SOL a run) rounded up, a label like the
+ * others, not a limit anything enforces.
+ */
+const CLOAK_AGENTS: TemplateAgentDef[] = [
+  {
+    name: "Payout planner",
+    role: "Drafts the payout list in chat; holds no keys",
+    railsMcp: "none",
+    dailyLimitUsd: 0,
+    paysTo: [],
+  },
+  {
+    name: "Cloak desk",
+    role: "Your own wallet: shields, then pays privately through Cloak",
+    railsMcp: "none",
+    dailyLimitUsd: 15,
+    paysTo: ["SOL payee", "ZEC payee"],
+  },
+];
+
+/**
  * English copy for the server apply path and as the fallback when i18n keys are missing.
  * The templates page overlays locale strings from `templates.catalog.*`.
  */
@@ -79,11 +102,11 @@ export const BUILTIN_TEMPLATES: Record<BuiltinTemplateId, WorkflowTemplate> = {
       "Three roles: scout and research never pay; only the builder spends on allowlisted vendors.",
     howItWorks: [
       "Scout lists up to three Earn bounties. Research writes a brief for the bounty you approve.",
-      "The builder pays RPC, inference, and hosting through Agent Rails — not a hot wallet.",
+      "The builder pays RPC, inference, and hosting through ASH — not a hot wallet.",
       "You submit on Earn; the agents never widen their own limits.",
     ].join("\n\n"),
     setupSteps: [
-      "Run pnpm agent-rails init for a devnet treasury and USDC/SOL policy.",
+      "Run pnpm ash init for a devnet treasury and USDC/SOL policy.",
       "Add labelled destinations for RPC credits, inference, and hosting (dest add).",
       "Create one session per bounty for the Builder agent.",
       "Download per-agent MCP config from Agents → MCP (builder gets full rails tools).",
@@ -98,12 +121,11 @@ export const BUILTIN_TEMPLATES: Record<BuiltinTemplateId, WorkflowTemplate> = {
     name: "DCA into SOL",
     description: "Scheduled USDC slices to an allowlisted swap desk — no model timer.",
     icon: "📅",
-    summary:
-      "Cron + agent-rails pay moves a fixed amount each period; swaps happen from your desk wallet.",
+    summary: "Cron + ash pay moves a fixed amount each period; swaps happen from your desk wallet.",
     howItWorks: [
-      "A treasury holds USDC. A cron script calls agent-rails pay on a schedule.",
+      "A treasury holds USDC. A cron script calls ash pay on a schedule.",
       "Each payment uses a reference tied to the period so retries cannot double-pay.",
-      "The swap desk is an allowlisted owner you control; Agent Rails does not swap on-chain.",
+      "The swap desk is an allowlisted owner you control; ASH does not swap on-chain.",
     ].join("\n\n"),
     setupSteps: [
       "Init treasury with token limits sized for your DCA amount.",
@@ -141,8 +163,7 @@ export const BUILTIN_TEMPLATES: Record<BuiltinTemplateId, WorkflowTemplate> = {
   "builtin:solana-workstation": {
     id: "builtin:solana-workstation",
     name: "Solana agent workstation",
-    description:
-      "Orchestrator, analyst, and capped executor with Jupiter quotes and Agent Rails payments.",
+    description: "Orchestrator, analyst, and capped executor with Jupiter quotes and ASH payments.",
     icon: "🛰️",
     summary:
       "Rails governs spend; integrations MCP builds swaps that route through Raydium, Orca, and more.",
@@ -152,20 +173,45 @@ export const BUILTIN_TEMPLATES: Record<BuiltinTemplateId, WorkflowTemplate> = {
       "Swaps sign from the desk wallet after treasury funds it; retries use reference ids tied to each plan.",
     ].join("\n\n"),
     setupSteps: [
-      "pnpm agent-rails init for devnet treasury with USDC/SOL limits sized for your desk.",
+      "pnpm ash init for devnet treasury with USDC/SOL limits sized for your desk.",
       "Allowlist swap-desk and any vendor pay_to wallets (dest add).",
       "Apply this template in the dashboard, then create sessions per role (orchestrator readonly, executor full).",
-      "pnpm build && use agent-rails-integrations mcp jupiter in the exported runner config.",
+      "pnpm build && use ash-integrations mcp jupiter in the exported runner config.",
       "Run guardian-watch on the workflow treasury before leaving the executor unattended.",
     ],
     agents: WORKSTATION_AGENTS,
     docsPath: "examples/templates/solana-workstation/README.md",
     createdAt: "2026-09-29T00:00:00.000Z",
   },
+  "builtin:cloak-private-payout": {
+    id: "builtin:cloak-private-payout",
+    name: "Private payout desk (Cloak + Zcash)",
+    description:
+      "Pay people in SOL or ZEC with no direct on-chain link to your wallet. Ask in chat, approve in your wallet.",
+    icon: "🕶️",
+    summary:
+      "You ask in chat and the model only drafts. Your wallet approves, and your browser pays through Cloak on mainnet.",
+    howItWorks: [
+      'Ask the assistant to pay someone privately, for example "pay 0.02 SOL to <address> and 0.02 SOL in ZEC to <address>". It answers with a payout card; nothing moves until you approve it in your wallet.',
+      "Your browser shields the SOL into Cloak's pool, then pays each payee from the pool: SOL straight out, ZEC through a private swap. There is no direct on-chain link between the deposit and the payouts, though amounts and timing can still be matched.",
+      "This is not a vault payment: it runs from your own wallet on mainnet, with small caps. The CSV for your accountant is built in your browser from a viewing key derived from your wallet. Cloak's relay receives that viewing key too, and for these notes it is enough to rebuild their keys, so the caps are what bound that trust.",
+    ].join("\n\n"),
+    setupSteps: [
+      "Set NEXT_PUBLIC_CLOAK_MAINNET=1, NEXT_PUBLIC_CLOAK_RPC_URL and NEXT_PUBLIC_CLOAK_ALLOWED_WALLETS, then rebuild.",
+      "Use a throwaway wallet with about 0.1 SOL: this runs on mainnet with real funds.",
+      "Connect that wallet in the header, with Phantom on mainnet.",
+      'Ask in the chat: "pay 0.02 SOL to <address> and 0.02 SOL in ZEC to <address>".',
+      "Check every address on the card, approve, and sign each wallet prompt.",
+      "Download the proof pack and the CSV when it finishes.",
+    ],
+    agents: CLOAK_AGENTS,
+    docsPath: "examples/templates/cloak-private-payout/README.md",
+    createdAt: "2026-10-04T00:00:00.000Z",
+  },
 };
 
 export function isBuiltinTemplateId(id: string): id is BuiltinTemplateId {
-  return id in BUILTIN_TEMPLATES;
+  return Object.hasOwn(BUILTIN_TEMPLATES, id);
 }
 
 export function listBuiltinTemplates(): WorkflowTemplate[] {

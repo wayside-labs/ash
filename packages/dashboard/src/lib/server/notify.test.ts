@@ -1,4 +1,4 @@
-import type { AgentEvent } from "@agent-rails/contract/alerts";
+import type { AgentEvent } from "@ash/contract/alerts";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { integrationSchema, type StoredIntegration } from "@/lib/schema";
 import { channelsFor, describeEvent, fanOut } from "./notify";

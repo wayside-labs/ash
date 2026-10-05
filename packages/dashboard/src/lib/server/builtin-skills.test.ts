@@ -8,7 +8,7 @@ const EXAMPLES = join(__dirname, "../../../../../examples/skills");
 
 describe("builtin skills", () => {
   it.each(BUILTIN_SKILLS.map((s) => [s.name, s] as const))(
-    "%s matches examples/skills (run: pnpm --filter @agent-rails/dashboard skills:sync)",
+    "%s matches examples/skills (run: pnpm --filter @ash/dashboard skills:sync)",
     (name, skill) => {
       const parsed = parseSkillMarkdown(readFileSync(join(EXAMPLES, name, "SKILL.md"), "utf8"));
       expect(parsed.ok).toBe(true);

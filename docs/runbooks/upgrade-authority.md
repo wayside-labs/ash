@@ -7,7 +7,7 @@ being able to replace the program.
 
 **Done on 2026-09-25.** Upgrade authority is now
 `F2zW3818bfDpAapLo9Z9mgfttYjkkK23JAnkpnWNcSmP`, held offline at
-`~/.config/solana/agent-rails-upgrade.json` (never in the repo or in GitHub secrets). The CI key
+`~/.config/solana/ash-upgrade.json` (never in the repo or in GitHub secrets). The CI key
 `5eznzq18xdeVaagEkyo7DYb8v12mAWmYcz6AdWTnH8JQ` still pays for smokes only — run step 3 with
 `devnet-ci-keypair.json` and confirm the line does **not** say `(this wallet)`.
 
@@ -32,8 +32,8 @@ lives only on the maintainer's machine — and somewhere private to write twelve
 ## 1. Generate the new authority
 
 ```bash
-solana-keygen new -o ~/.config/solana/agent-rails-upgrade.json
-solana-keygen pubkey ~/.config/solana/agent-rails-upgrade.json
+solana-keygen new -o ~/.config/solana/ash-upgrade.json
+solana-keygen pubkey ~/.config/solana/ash-upgrade.json
 ```
 
 **Write the seed phrase on paper before continuing.** Losing this key does not lose money; it
@@ -42,7 +42,7 @@ id — `declare_id!`, `Anchor.toml`, the IDL, `pnpm codegen`, a redeploy at ~3.5
 programdata rent, and every manifest that names the old id. ADR-020 spells out why the backup
 is part of the decision rather than an operational nicety.
 
-The file must not go into `.agent-rails/`, into the repository, or into a GitHub secret.
+The file must not go into `.ash/`, into the repository, or into a GitHub secret.
 
 ## 2. Transfer
 
@@ -50,7 +50,7 @@ The file must not go into `.agent-rails/`, into the repository, or into a GitHub
 solana program set-upgrade-authority 4qjD6vSgYa3oBKde3KVzsH8oCcP9BKsirX1xtD5SS6BS \
   --url devnet \
   --upgrade-authority devnet-ci-keypair.json \
-  --new-upgrade-authority ~/.config/solana/agent-rails-upgrade.json
+  --new-upgrade-authority ~/.config/solana/ash-upgrade.json
 ```
 
 Pass the **file**, not the pubkey. Both keys then sign and the loader runs
@@ -63,7 +63,7 @@ Check the flags against your own CLI first: they have moved between Agave releas
 ## 3. Verify with our own tooling
 
 ```bash
-pnpm agent-rails doctor --rpc https://api.devnet.solana.com --wallet devnet-ci-keypair.json
+pnpm ash doctor --rpc https://api.devnet.solana.com --wallet devnet-ci-keypair.json
 ```
 
 The line must read:

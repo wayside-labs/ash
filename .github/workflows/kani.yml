@@ -1,6 +1,6 @@
 name: Kani
 
-# Bounded model checking of crates/agent-rails-policy (ADR-008 layer 1, ADR-015).
+# Bounded model checking of crates/ash-policy (ADR-008 layer 1, ADR-015).
 #
 # Separate from CI, and deliberately NOT a required status check. ADR-008 scoped Kani as
 # non-blocking, and idl.yml already recorded what happens when a path-filtered job is
@@ -17,14 +17,14 @@ on:
   push:
     branches: [main]
     paths:
-      - "crates/agent-rails-policy/**"
+      - "crates/ash-policy/**"
       - "scripts/verify.sh"
       - ".github/workflows/kani.yml"
   pull_request:
     # Spelled out rather than shared with an anchor: GitHub's workflow parser does not
     # resolve YAML aliases, and it drops them quietly rather than erroring.
     paths:
-      - "crates/agent-rails-policy/**"
+      - "crates/ash-policy/**"
       - "scripts/verify.sh"
       - ".github/workflows/kani.yml"
   # ADR-008's nightly, kept: a proof can start failing without the crate changing, when a

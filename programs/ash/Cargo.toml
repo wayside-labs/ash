@@ -1,0 +1,56 @@
+[package]
+name = "ash"
+description = "Programmable spending rails for autonomous agents on Solana"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "ash"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+anchor-debug = ["anchor-lang/anchor-debug"]
+custom-heap = []
+custom-panic = []
+
+# Anchor's `#[program]` macro expands to `cfg(target_os = "solana")`, which rustc does not
+# know about on a host build. Declaring it keeps the CI `-D warnings` gate meaningful.
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }
+
+[dependencies]
+anchor-lang = { workspace = true, features = ["event-cpi", "init-if-needed"] }
+anchor-spl = { workspace = true }
+# `default-features = false` keeps the software SHA-256 out of the SBF binary: on-chain we
+# hash `audit_preimage` with the `sol_sha256` syscall instead.
+ash-policy = { workspace = true }
+solana-sha256-hasher = "3"
+
+[dev-dependencies]
+anchor-litesvm = "0.4"
+anchor-spl = { workspace = true }
+# `anchor-litesvm` pulls the SPL programs in as libraries, and each one exports an
+# `entrypoint` symbol that collides with ours when the tests link natively. Feature
+# unification is additive, so requesting `no-entrypoint` here strips those symbols from the
+# shared build and leaves `ash` as the only definition.
+spl-token = { version = "9", features = ["no-entrypoint"] }
+spl-associated-token-account = { version = "8", features = ["no-entrypoint"] }
+# Integration tests link only the crate under test plus dev-dependencies, so `anchor_lang`
+# has to be listed again for the Borsh round-trips in `tests/layout.rs`.
+anchor-lang = { workspace = true }
+# The host-side test build wants the software hash so it can cross-check the syscall.
+ash-policy = { workspace = true, features = ["std", "hash"] }
+# `litesvm::set_account` takes a `solana_account::Account`, which anchor-litesvm does not
+# re-export. The payment tests use it to seed `Policy` / `AgentSession` / `AllowlistEntry`
+# until `create_policy` and `create_session` exist.
+solana-account = "3"
+# Cross-checks the on-chain `sol_sha256` syscall against a software implementation.
+sha2 = "0.10"

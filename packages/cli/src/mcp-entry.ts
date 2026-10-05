@@ -24,9 +24,7 @@ export function resolveMcpEntry(explicit: string | undefined, ui: Ui): string {
   if (found) return found;
 
   ui.warn("The MCP server is not built - the config below points at a file that does not exist");
-  ui.info(
-    ui.dim("  Build it with `pnpm --filter @agent-rails/mcp build`, or pass --mcp-entry <path>."),
-  );
+  ui.info(ui.dim("  Build it with `pnpm --filter @ash/mcp build`, or pass --mcp-entry <path>."));
   return candidates[candidates.length - 1] as string;
 }
 

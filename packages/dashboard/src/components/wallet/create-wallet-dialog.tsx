@@ -108,7 +108,7 @@ export function CreateWalletDialog({
     const url = URL.createObjectURL(new Blob([body], { type: "text/plain;charset=utf-8" }));
     const a = document.createElement("a");
     a.href = url;
-    a.download = `agent-rails-recovery-${generated.address.slice(0, 8)}.txt`;
+    a.download = `ash-recovery-${generated.address.slice(0, 8)}.txt`;
     a.click();
     URL.revokeObjectURL(url);
     setConfirmingDownload(false);

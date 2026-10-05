@@ -28,10 +28,10 @@ function state() {
     mcps: [
       {
         id: "rails",
-        name: "agent-rails",
+        name: "ash",
         enabled: true,
-        command: "agent-rails-mcp",
-        env: { AGENT_RAILS_SESSION: "abc" },
+        command: "ash-mcp",
+        env: { ASH_SESSION: "abc" },
       },
     ],
     skills: [
@@ -58,10 +58,10 @@ describe("GET /api/export/runner-config", () => {
       "README.txt",
     ]);
     const config = JSON.parse(files[".mcp.json"] as string);
-    expect(config.mcpServers["agent-rails"].env).toMatchObject({
-      AGENT_RAILS_SESSION: "abc",
-      AGENT_RAILS_INGEST_URL: "http://localhost:3000/api/ingest",
-      AGENT_RAILS_INGEST_TOKEN: "art_test",
+    expect(config.mcpServers["ash"].env).toMatchObject({
+      ASH_SESSION: "abc",
+      ASH_INGEST_URL: "http://localhost:3000/api/ingest",
+      ASH_INGEST_TOKEN: "art_test",
     });
   });
 

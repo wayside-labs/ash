@@ -1,7 +1,7 @@
 //! Test-only fixture, never deployed anywhere but LiteSVM (ADR-014 verification).
 //!
 //! Exists to answer one narrow question without deploying the real Squads V4 program and
-//! its full multisig/proposal/voting machinery: does `agent_rails::enable_native_allowance`
+//! its full multisig/proposal/voting machinery: does `ash::enable_native_allowance`
 //! (and, by the same mechanism, every other `owner: Signer` instruction) accept a signature
 //! that arrives via CPI from a program-owned PDA, the way Squads' and Realms' vault-execute
 //! instructions do when a vault PDA "signs" on the multisig's behalf?
@@ -13,7 +13,7 @@
 //! whatever instruction it's handed as its own PDA (seeds `[OWNER_SEED]`) and forwards it
 //! unmodified. It carries no multisig logic, no member list, no proposals — those are
 //! Squads/Realms business logic, orthogonal to the one thing actually being verified here:
-//! that Agent Rails' account constraints have nothing that rejects a PDA in the `owner`
+//! that ASH' account constraints have nothing that rejects a PDA in the `owner`
 //! slot beyond the signature itself.
 //!
 //! Instruction data: `[bump: u8][target_program: 32 bytes][inner instruction data: rest]`.

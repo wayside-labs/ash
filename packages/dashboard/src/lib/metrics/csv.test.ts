@@ -1,4 +1,4 @@
-import { USDC_MINT_DEVNET } from "@agent-rails/contract/mints";
+import { USDC_MINT_DEVNET } from "@ash/contract/mints";
 import { describe, expect, it } from "vitest";
 import { PAYMENT_RECORD_CSV_COLUMNS, paymentsToCsv, paymentsToJson } from "./csv";
 import { toPaymentRecord } from "./history-aggregate";

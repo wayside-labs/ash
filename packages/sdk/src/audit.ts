@@ -1,9 +1,9 @@
 import { createHash } from "node:crypto";
 import {
-  AGENT_RAILS_PROGRAM_ADDRESS,
+  ASH_PROGRAM_ADDRESS,
   getIntentReceiptDecoder,
   INTENT_RECEIPT_DISCRIMINATOR,
-} from "@agent-rails/client";
+} from "@ash/client";
 import {
   type Address,
   type Base58EncodedBytes,
@@ -23,15 +23,15 @@ import {
  * property the product sells could not be run by the person being asked to trust it.
  *
  * This file is a second implementation, not a binding. It is pinned to the same vectors as
- * `crates/agent-rails-policy/tests/audit_vectors.rs` — if the two ever disagree, one of
+ * `crates/ash-policy/tests/audit_vectors.rs` — if the two ever disagree, one of
  * them is wrong and the test says so, which is the entire point of writing it twice.
  */
 
-/** 20 bytes. Matches `DOMAIN_AUDIT` in the policy crate. */
-export const DOMAIN_AUDIT = new TextEncoder().encode("agent-rails/audit/v1");
+/** 12 bytes. Matches `DOMAIN_AUDIT` in the policy crate. */
+export const DOMAIN_AUDIT = new TextEncoder().encode("ash/audit/v1");
 
-export const GENESIS_PREIMAGE_LEN = 20 + 32;
-export const AUDIT_PREIMAGE_LEN = 20 + 32 + 8 + 16 + 32 + 32 + 8 + 8;
+export const GENESIS_PREIMAGE_LEN = 12 + 32;
+export const AUDIT_PREIMAGE_LEN = 12 + 32 + 8 + 16 + 32 + 32 + 8 + 8;
 
 const addressEncoder = getAddressEncoder();
 
@@ -203,7 +203,7 @@ export async function loadReceipts(input: {
 }): Promise<ReceiptRecord[]> {
   const discriminator = getBase58Decoder().decode(INTENT_RECEIPT_DISCRIMINATOR);
   const accounts = await input.rpc
-    .getProgramAccounts(AGENT_RAILS_PROGRAM_ADDRESS, {
+    .getProgramAccounts(ASH_PROGRAM_ADDRESS, {
       encoding: "base64",
       filters: [
         { memcmp: { offset: 0n, bytes: discriminator as Base58EncodedBytes, encoding: "base58" } },

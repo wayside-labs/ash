@@ -1,7 +1,7 @@
-# Agent Rails Dashboard — the Metrics page
+# ASH Dashboard — the Metrics page
 
 **Created:** 2026-09-25
-**Package:** `packages/dashboard` (`@agent-rails/dashboard`)
+**Package:** `packages/dashboard` (`@ash/dashboard`)
 **Route:** `/metrics` · **Nav group:** `nav.money`
 **Status:** Phase A implemented (2026-09-25). Phase B implemented (2026-09-25). Phase C not started.
 
@@ -58,7 +58,7 @@ stated. These five facts change the design, so they come first.
 
 **0.1 `PaymentRecord` already exists. Do not define a second one.**
 `packages/contract/src/events.ts` exports `paymentRecordSchema` and
-`PaymentRecord`, published as `@agent-rails/contract/events`. It is snake_case
+`PaymentRecord`, published as `@ash/contract/events`. It is snake_case
 and it already carries `outcome`, `reason_code`, `source`, `destination`,
 `destination_label`, `mint`, `amount`, `signature`, `receipt`, `logs`,
 `units_consumed`, `detail`. It is *the* operator-sink shape — the thing the MCP
@@ -69,7 +69,7 @@ tailing.
 
 **0.2 Receipts are not the history.** `close_receipt` is *permissionless* once
 `now ≥ receipt.expires_at + RECEIPT_GRACE_SECONDS` (3600s —
-`programs/agent_rails/src/constants.rs:33`). The upstream F2a `IntentReceipt`
+`programs/ash/src/constants.rs:33`). The upstream F2a `IntentReceipt`
 reader answers "did *this* payment land?" and can never answer "what happened
 last month", because the accounts are gone and someone else has the rent. The
 durable record is the `PaymentExecuted` event stream (spec §8), recovered as
@@ -103,7 +103,7 @@ tooltip until Phase B lands the event replay that can honour it.
 **0.5 `DestinationContact` is `AllowlistEntry`, and the reader exists.**
 `destination_owner` + a 32-byte `label` + `per_tx_max_override`, read by
 `loadDestinationIndex()` in `packages/sdk/src/destinations.ts` (already exported
-from `@agent-rails/sdk`, already used by `packages/cli`). Contacts come from
+from `@ash/sdk`, already used by `packages/cli`). Contacts come from
 chain. The dashboard does not get a contacts table.
 
 **Also worth knowing before you start:**
@@ -247,7 +247,7 @@ without scrolling into an address.
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │ Hosting under 1,500 USDC / 30d      1,200 / 1,500   ████████████░░░  80% ⚠ │
 │ ⓘ A goal is a note to yourself. The policy is the limit that stops a        │
-│   payment — set it with `agent-rails policy set`.                           │
+│   payment — set it with `ash policy set`.                           │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -394,7 +394,7 @@ this page needs.
 ## F. TypeScript contracts
 
 `packages/dashboard/src/lib/metrics/schema.ts`. These live in the dashboard, not
-in `@agent-rails/contract`: contract is the cross-surface compatibility anchor
+in `@ash/contract`: contract is the cross-surface compatibility anchor
 that `client`, `sdk`, `mcp` and `cli` all pin, and `MetricsSummary` / `PeriodGoal`
 are hosted-dashboard view concepts with no counterpart on any other surface.
 Adding them upstream would put a UI shape on the package that gates MCP
@@ -402,7 +402,7 @@ transport compatibility. `PaymentRecord` is the exception, and it is already
 there.
 
 ```ts
-import { paymentRecordSchema } from "@agent-rails/contract/events";
+import { paymentRecordSchema } from "@ash/contract/events";
 import { z } from "zod";
 import { solanaClusterSchema } from "@/lib/schema";
 
@@ -449,7 +449,7 @@ export const metricsScopeSchema = z.object({
   mint: addressSchema.nullable(),
 });
 
-/** One amount, carried the way every other Agent Rails surface carries one. */
+/** One amount, carried the way every other ASH surface carries one. */
 export const metricAmountSchema = z.object({
   raw: baseUnitsSchema,
   mint: addressSchema,
@@ -676,7 +676,7 @@ re-runs on every period change; (3) `exactness` has to be decided in exactly one
 place, and a server route is the only place all the inputs are present at once.
 
 **`GET /api/metrics/destinations?cluster&rpc&policy=`** wraps
-`loadDestinationIndex()` from `@agent-rails/sdk`. Read-only; it calls
+`loadDestinationIndex()` from `@ash/sdk`. Read-only; it calls
 `getProgramAccounts` with a discriminator + policy memcmp, exactly as
 `packages/cli/src/chain/read.ts` already does.
 
@@ -777,7 +777,7 @@ below is the deck; PT-BR uses the identical keys.
 "metrics.headroom.openLimits": "Full ceilings and policy bands",
 "metrics.headroom.emptyTitle": "No policy to measure against",
 "metrics.headroom.emptyDescription": "This treasury has no open policy, so there is no limit to spend against yet.",
-"metrics.headroom.emptyCommand": "pnpm agent-rails policy set --help",
+"metrics.headroom.emptyCommand": "pnpm ash policy set --help",
 
 // section 3
 "metrics.byToken.title": "By token",
@@ -790,7 +790,7 @@ below is the deck; PT-BR uses the identical keys.
 "metrics.destinations.anyMode": "This policy allows any destination, so there is no roster to show.",
 "metrics.destinations.emptyTitle": "No destination registered",
 "metrics.destinations.emptyDescription": "An allowlist policy pays only labelled destinations. Add one from the CLI.",
-"metrics.destinations.emptyCommand": "pnpm agent-rails dest add --label \"Acme Hosting\" --owner <address>",
+"metrics.destinations.emptyCommand": "pnpm ash dest add --label \"Acme Hosting\" --owner <address>",
 
 // section 4
 "metrics.value.title": "Value",
@@ -818,7 +818,7 @@ below is the deck; PT-BR uses the identical keys.
 "metrics.payments.exportedIncomplete": "Exported {count} payments — history is incomplete",
 "metrics.payments.emptyTitle": "No payment history yet",
 "metrics.payments.emptyDescription": "This page reads payments back from transaction logs. Once an agent pays, the ledger fills in — or run the CLI to see the same records now.",
-"metrics.payments.emptyCommand": "pnpm agent-rails status --json",
+"metrics.payments.emptyCommand": "pnpm ash status --json",
 "metrics.payments.outcome.settled": "settled",
 "metrics.payments.outcome.denied": "denied",
 "metrics.payments.outcome.indeterminate": "unresolved",
@@ -867,7 +867,7 @@ Two copy rules worth holding to. **Human labels:** "Vault", not "Treasury PDA";
 **Honest empties:** every empty state names the CLI command that would produce
 the data, because "no data" plus a dead end reads as a broken page. The
 `*.emptyCommand` keys render in the `<code>` block style `/treasury` already uses
-for `pnpm agent-rails init`.
+for `pnpm ash init`.
 
 ---
 
@@ -886,8 +886,8 @@ than no link.
 ```ts
 // Leaf imports, matching lib/utils.ts: the barrel reaches `intent-id`, which pulls in
 // `node:crypto` and cannot be bundled for the browser. NATIVE_MINT is in constants.
-import { NATIVE_MINT } from "@agent-rails/contract/constants";
-import { USDC_MINT_DEVNET } from "@agent-rails/contract/mints";
+import { NATIVE_MINT } from "@ash/contract/constants";
+import { USDC_MINT_DEVNET } from "@ash/contract/mints";
 import type { DestinationContact, PaymentRecordView } from "./schema";
 
 /** 28 hex chars; the row index supplies the last 4, so every id is valid by construction. */
@@ -1016,7 +1016,7 @@ Ten steps each, manual, on devnet. They are also the outline for
 
 **Test 1 — the headline is exact and the provenance is legible (Phase A)**
 
-1. `pnpm agent-rails init --rpc <devnet>`; note the treasury address.
+1. `pnpm ash init --rpc <devnet>`; note the treasury address.
 2. Deposit 10 USDC and 0.5 SOL into the vault from the connected wallet on `/treasury`.
 3. Create a policy and a session from the CLI with a 24h short window.
 4. Make two payments through the MCP server, 1 USDC each.
@@ -1035,7 +1035,7 @@ Ten steps each, manual, on devnet. They are also the outline for
 4. Click through to `/limits`; confirm it is read-only too.
 5. Search the page DOM for the words "pause", "withdraw", "revoke": absent.
 6. §6 shows expired receipts implicitly via seq; confirm there is no "reclaim rent" button (`getCloseReceiptInstruction` is forbidden).
-7. Run `pnpm --filter @agent-rails/dashboard exec vitest run src/lib/server/privileged-surface.test.ts` — green.
+7. Run `pnpm --filter @ash/dashboard exec vitest run src/lib/server/privileged-surface.test.ts` — green.
 8. Confirm `e2e/fixtures.ts` stubs `**/api/metrics/**`, then run `scripts/verify.sh ui` with `/metrics` in `privilege.spec.ts`'s browse loop — green, and the run reaches no cluster (check the stub recorded every metrics call).
 9. Confirm `chain.calls` for the `/metrics` visit contains only paths present in `READ_ONLY_CHAIN_ROUTES`.
 10. Grep `app/api/metrics/` for `getWithdrawInstruction`: absent — Metrics has no write at all, not even the owner's.
@@ -1144,6 +1144,6 @@ tested without a cluster.
 | Nothing | Phase A | A is self-contained in `packages/dashboard`. Start now. |
 | F2a — `IntentReceipt` reader + `verifyAuditChain` in TS | §6 verification | **Done** in `packages/sdk`; wire into §6 when Phase B starts. |
 | F2b — payment history reader + export | §5, `Custom` periods | If F2b lands as an SDK reader, `lib/metrics/history.ts` shrinks to a mapper and Phase B drops ~5h. **Worth agreeing the boundary before B starts.** |
-| Decision: does `PaymentRecordView` stay in the dashboard or move to `@agent-rails/contract`? | Phase B shape | Recommendation: stays in the dashboard. Contract gates MCP transport compatibility and should not carry UI view types. |
+| Decision: does `PaymentRecordView` stay in the dashboard or move to `@ash/contract`? | Phase B shape | Recommendation: stays in the dashboard. Contract gates MCP transport compatibility and should not carry UI view types. |
 | Decision: is `goals` a `/api/state` resource, or dropped? | Phase C | Recommendation: `/api/state`, off-chain, never an instruction. Keeps the privilege split true by construction. |
 | A devnet treasury with a real policy, a live session, and ≥5 settled payments | Test 1 and 3, and the Colosseum demo | The most likely schedule risk on this whole list: none of §1–§6 can be reviewed against anything but zeros without it. |

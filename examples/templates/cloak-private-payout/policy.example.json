@@ -1,0 +1,56 @@
+{
+  "$comment": "Statement of intent for review. No tool reads this file; the variables and constants named here are what apply it. The policy is soft (ADR-027): it binds the model, not the operator.",
+  "template": "cloak-private-payout",
+  "cluster": "mainnet-beta",
+  "enforcement": "soft",
+  "vault": {
+    "used": false,
+    "$comment": "Nothing here goes through execute_payment, a treasury, a policy or a session. The desk is the operator's own mainnet wallet."
+  },
+  "flags": {
+    "NEXT_PUBLIC_CLOAK_MAINNET": "1",
+    "NEXT_PUBLIC_CLOAK_ALLOWED_WALLETS": "<FUNDER_WALLET>",
+    "NEXT_PUBLIC_CLOAK_RPC_URL": "<MAINNET_RPC_URL_THAT_ANSWERS_BROWSER_ORIGINS>",
+    "$comment": "Public variables, inlined into the bundle at build time. The template is off unless the first is 1, and an empty allow list allows nobody."
+  },
+  "allowedWallets": ["<FUNDER_WALLET>"],
+  "limits": {
+    "payeesPerRun": { "min": 1, "max": 4 },
+    "perPayeeSol": { "min": "0.01", "max": "0.05" },
+    "perRunSol": { "max": "0.10" },
+    "$comment": "Constants of the template (CLOAK_PAYOUT_LIMITS in packages/contract/src/template-run.ts), not fields of the model's proposal. 0.01 SOL is Cloak's own minimum for a shield and for a swap."
+  },
+  "delivery": {
+    "SOL": "relayed withdrawal from the pool to the payee",
+    "ZEC": {
+      "how": "private swap of SOL into the verified wrapped ZEC mint, to the payee's token account",
+      "mint": "A7bdiYdS5GjqGFtxf17ppRHtDKPkkRqbKtR27dxvQXaS",
+      "decimals": 8,
+      "minOutput": "the Jupiter quote at approval time, minus 2%",
+      "slippageBps": 200
+    }
+  },
+  "refuses": [
+    "a payee equal to the funder",
+    "two payouts of the same delivery to the same address",
+    "a reserved address: System Program, incinerator, SPL Token, Token-2022, Cloak's program, the ZEC mint",
+    "a run when mainnet is off or the connected wallet is not on the allow list"
+  ],
+  "fees": {
+    "cloakExit": {
+      "fixedSol": "0.005",
+      "variable": "0.3%",
+      "appliesTo": "every payout, whether a withdrawal or a swap"
+    },
+    "deposit": "free",
+    "example": { "grossLamports": "20000000", "feeLamports": "5060000", "netLamports": "14940000" },
+    "networkBufferSol": "0.02",
+    "$comment": "The buffer is a guess until a mainnet run measures it."
+  },
+  "keys": {
+    "source": "the wallet's signature over a fixed message, through HKDF",
+    "persisted": "nothing secret: signatures of finished steps and a 16-hex-character key fingerprint, in localStorage",
+    "viewingKey": "registered with Cloak's relay by the SDK; the accountant gets the CSV, never the key"
+  },
+  "agentSurface": { "mcpTools": 7, "changed": false, "chatRequestTools": "none" }
+}

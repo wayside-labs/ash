@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 #
-# Scheduled DCA outflow through Agent Rails. Cron decides *when*; the on-chain policy decides
+# Scheduled DCA outflow through ASH. Cron decides *when*; the on-chain policy decides
 # *whether*. No model in the loop.
 #
 #   dca-cron.sh tick      # pay this period's slice to the swap desk (safe to run twice)
 #   dca-cron.sh status    # policy headroom + this template's sink counts
 #
-# Required configuration (sourced from $DCA_ENV, default ~/.agent-rails/dca/dca.env; copy it
+# Required configuration (sourced from $DCA_ENV, default ~/.ash/dca/dca.env; copy it
 # from examples/templates/dca-sol/dca.env.example):
 #
-#   AGENT_RAILS_RPC    RPC endpoint
+#   ASH_RPC    RPC endpoint
 #   TREASURY           Treasury PDA
 #   POLICY_NAME        Policy name the treasury's PDA is derived from
 #   SESSION            AgentSession PDA the cron pays with
@@ -20,15 +20,15 @@
 #   AMOUNT             Human units per period
 #   CADENCE            daily | weekly | hourly
 #
-# SDK equivalent: `buildPaymentIntent` + `executePayment` from @agent-rails/sdk with
-# `deriveIntentId` over the same reference — that is what `agent-rails pay` does.
+# SDK equivalent: `buildPaymentIntent` + `executePayment` from @ash/sdk with
+# `deriveIntentId` over the same reference — that is what `ash pay` does.
 #
 # No keypair ever lives in this repo; every key path points under $OUT_DIR.
 
 set -uo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)"
-ENV_FILE="${DCA_ENV:-${HOME}/.agent-rails/dca/dca.env}"
+ENV_FILE="${DCA_ENV:-${HOME}/.ash/dca/dca.env}"
 CLI_JS="${REPO_ROOT}/packages/cli/dist/cli.js"
 
 die() {
@@ -40,8 +40,13 @@ load_env() {
   [[ -f $ENV_FILE ]] || die "missing $ENV_FILE — copy examples/templates/dca-sol/dca.env.example"
   # shellcheck disable=SC1090
   source "$ENV_FILE"
-  AGENT_RAILS_RPC=${AGENT_RAILS_RPC:-https://api.devnet.solana.com}
-  OUT_DIR=${OUT_DIR:-${HOME}/.agent-rails/dca}
+  # Env files written before the ASH rename say AGENT_RAILS_*; prefer ASH_*, fall back to the old name.
+  for legacy in $(compgen -v AGENT_RAILS_); do
+    new="ASH_${legacy#AGENT_RAILS_}"
+    [[ -n ${!new:-} ]] || export "$new=${!legacy}"
+  done
+  ASH_RPC=${ASH_RPC:-https://api.devnet.solana.com}
+  OUT_DIR=${OUT_DIR:-${HOME}/.ash/dca}
   DESTINATION=${DESTINATION:-dca-desk}
   CADENCE=${CADENCE:-daily}
   REFERENCE_PREFIX=${REFERENCE_PREFIX:-dca-usdc}
@@ -117,7 +122,7 @@ alert() {
 # Shared by the dry run and the real payment: the flags that derive the intent id.
 pay() {
   $CLI pay \
-    --rpc "$AGENT_RAILS_RPC" \
+    --rpc "$ASH_RPC" \
     --out "$OUT_DIR" \
     --wallet "$WALLET" \
     --treasury "$TREASURY" \
@@ -138,7 +143,7 @@ pay() {
 receipt_exists() {
   local intent_id=$1
   $CLI audit export \
-    --rpc "$AGENT_RAILS_RPC" \
+    --rpc "$ASH_RPC" \
     --out "$OUT_DIR" \
     --wallet "$WALLET" \
     --treasury "$TREASURY" \
@@ -197,7 +202,7 @@ cmd_tick() {
 
 cmd_status() {
   $CLI policy show \
-    --rpc "$AGENT_RAILS_RPC" \
+    --rpc "$ASH_RPC" \
     --out "$OUT_DIR" \
     --wallet "$WALLET" \
     --treasury "$TREASURY" \

@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import {
-  AGENT_RAILS_PROGRAM_ADDRESS,
+  ASH_PROGRAM_ADDRESS,
   findPolicyPda,
   findSessionPda,
   findSolVaultPda,
@@ -10,9 +10,9 @@ import {
   getCreatePolicyInstructionAsync,
   getCreateSessionInstructionAsync,
   getCreateTreasuryInstructionAsync,
-} from "@agent-rails/client";
-import { NATIVE_MINT } from "@agent-rails/contract";
-import { findEventAuthorityPda } from "@agent-rails/sdk";
+} from "@ash/client";
+import { NATIVE_MINT } from "@ash/contract";
+import { findEventAuthorityPda } from "@ash/sdk";
 import {
   type Address,
   appendTransactionMessageInstructions,
@@ -113,7 +113,7 @@ export async function createFixture(options: {
       payer: owner,
       createKey,
       eventAuthority,
-      program: AGENT_RAILS_PROGRAM_ADDRESS,
+      program: ASH_PROGRAM_ADDRESS,
       owner: owner.address,
       operator: owner.address,
       recoveryDestination: owner.address,
@@ -128,7 +128,7 @@ export async function createFixture(options: {
       treasury,
       mint: NATIVE_MINT as Address,
       eventAuthority,
-      program: AGENT_RAILS_PROGRAM_ADDRESS,
+      program: ASH_PROGRAM_ADDRESS,
       ceiling: {
         maxPerTx: 5n * LAMPORTS_PER_SOL,
         maxShortWindow: 10n * LAMPORTS_PER_SOL,
@@ -148,7 +148,7 @@ export async function createFixture(options: {
       operator: owner,
       treasury,
       eventAuthority,
-      program: AGENT_RAILS_PROGRAM_ADDRESS,
+      program: ASH_PROGRAM_ADDRESS,
       name: policyName,
       args: {
         mintLimits: [
@@ -177,7 +177,7 @@ export async function createFixture(options: {
       treasury,
       policy,
       eventAuthority,
-      program: AGENT_RAILS_PROGRAM_ADDRESS,
+      program: ASH_PROGRAM_ADDRESS,
       destinationOwner: vendorSigner.address,
       label: padded(VENDOR_LABEL),
       perTxMaxOverride: 0n,
@@ -191,7 +191,7 @@ export async function createFixture(options: {
       treasury,
       policy,
       eventAuthority,
-      program: AGENT_RAILS_PROGRAM_ADDRESS,
+      program: ASH_PROGRAM_ADDRESS,
       sessionKey: sessionKey.address,
       label: padded("e2e-agent"),
       expiresAt: BigInt(Math.floor(Date.now() / 1000) + 3_600),
@@ -212,7 +212,7 @@ export async function createFixture(options: {
     LAMPORTS_PER_SOL,
   );
 
-  const [allowlistEntry] = await import("@agent-rails/client").then((client) =>
+  const [allowlistEntry] = await import("@ash/client").then((client) =>
     client.findEntryPda({ policy, destinationOwner: vendorSigner.address }),
   );
 

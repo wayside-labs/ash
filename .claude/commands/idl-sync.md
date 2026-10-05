@@ -19,4 +19,4 @@ say so rather than committing a client regenerated from a stale IDL.
 
 Read the IDL diff before committing. A changed account layout is a breaking change for
 every downstream client and indexer, and it must be matched by an update to
-`programs/agent_rails/tests/layout.rs` and to `docs/spec/accounts-and-instructions.md` §3.
+`programs/ash/tests/layout.rs` and to `docs/spec/accounts-and-instructions.md` §3.

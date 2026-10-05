@@ -1,12 +1,8 @@
-import { REASON_CODES, SDK_REASON_CODES } from "@agent-rails/contract";
+import { REASON_CODES, SDK_REASON_CODES } from "@ash/contract";
 import { SOLANA_ERROR__INSTRUCTION_ERROR__CUSTOM, SolanaError } from "@solana/kit";
 import { describe, expect, it } from "vitest";
-import {
-  agentRailsErrorFromCode,
-  reasonCodeFromProgramError,
-  toAgentRailsError,
-} from "./error-mapping.js";
-import { AgentRailsError } from "./errors.js";
+import { ashErrorFromCode, reasonCodeFromProgramError, toAshError } from "./error-mapping.js";
+import { AshError } from "./errors.js";
 
 /** An Anchor custom error as Kit surfaces it from a failed instruction. */
 function customProgramError(code: unknown): SolanaError {
@@ -44,9 +40,9 @@ describe("reasonCodeFromProgramError", () => {
   );
 });
 
-describe("agentRailsErrorFromCode", () => {
+describe("ashErrorFromCode", () => {
   it("reports a program revert as a denial, not an indeterminate outcome", () => {
-    const error = agentRailsErrorFromCode(6000);
+    const error = ashErrorFromCode(6000);
     expect(error.reasonCode).toBe("TREASURY_PAUSED");
     // A program error means the transaction executed and reverted: nothing moved. Any
     // other outcome here would invite a caller to treat a clean denial as a maybe-sent.
@@ -56,30 +52,30 @@ describe("agentRailsErrorFromCode", () => {
 
   it("keeps the cause for the operator's record", () => {
     const cause = customProgramError(6001);
-    expect(agentRailsErrorFromCode(6001, cause).cause).toBe(cause);
+    expect(ashErrorFromCode(6001, cause).cause).toBe(cause);
   });
 
   it("falls back to the reason code when the client has no message for it", () => {
-    const error = agentRailsErrorFromCode(9999);
+    const error = ashErrorFromCode(9999);
     expect(error.reasonCode).toBe("UNKNOWN_PROGRAM_ERROR");
     expect(error.message).toBe("UNKNOWN_PROGRAM_ERROR");
   });
 });
 
-describe("toAgentRailsError", () => {
-  it("returns an AgentRailsError unchanged", () => {
-    const original = new AgentRailsError({
+describe("toAshError", () => {
+  it("returns an AshError unchanged", () => {
+    const original = new AshError({
       reasonCode: "SESSION_BUSY",
       message: "already in flight",
       outcome: "denied",
     });
     // Identity, not a copy: layers above attach intent id and signature to the instance
     // they hold, and re-wrapping here would silently drop that context.
-    expect(toAgentRailsError(original)).toBe(original);
+    expect(toAshError(original)).toBe(original);
   });
 
   it("unwraps a Kit custom instruction error to its program reason", () => {
-    const error = toAgentRailsError(customProgramError(6018));
+    const error = toAshError(customProgramError(6018));
     expect(error.reasonCode).toBe("EXCEEDS_PER_TX_MAX");
     expect(error.source).toBe("program");
     expect(error.outcome).toBe("denied");
@@ -88,14 +84,14 @@ describe("toAgentRailsError", () => {
   it("treats a custom error with a non-numeric code as a non-program failure", () => {
     // A SolanaError is still an Error, so this must land on the simulation branch rather
     // than coercing a malformed code into a program decision it never made.
-    const error = toAgentRailsError(customProgramError("6018"));
+    const error = toAshError(customProgramError("6018"));
     expect(error.reasonCode).toBe("UNKNOWN_PROGRAM_ERROR");
     expect(error.source).toBe("simulation");
   });
 
   it("attributes a plain Error to simulation and keeps its message", () => {
     const cause = new Error("rpc unreachable");
-    const error = toAgentRailsError(cause);
+    const error = toAshError(cause);
     expect(error.reasonCode).toBe("UNKNOWN_PROGRAM_ERROR");
     expect(error.source).toBe("simulation");
     expect(error.message).toBe("rpc unreachable");
@@ -107,7 +103,7 @@ describe("toAgentRailsError", () => {
     ["undefined", undefined],
     ["an object", { code: 6000 }],
   ])("falls back to a fixed message for %s", (_label, thrown) => {
-    const error = toAgentRailsError(thrown);
+    const error = toAshError(thrown);
     expect(error.reasonCode).toBe("UNKNOWN_PROGRAM_ERROR");
     expect(error.message).toBe("Payment simulation failed");
     expect(error.outcome).toBe("denied");

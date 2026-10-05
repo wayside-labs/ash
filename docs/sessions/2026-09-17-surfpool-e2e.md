@@ -64,7 +64,7 @@ need to touch is one you should not touch, and the narrowed rule was reverted on
 keyless path worked.
 
 The reason the keyless path exists is not elegance. `solana program deploy` deploys at whatever
-address its keypair file names, and `target/deploy/agent_rails-keypair.json` is gitignored
+address its keypair file names, and `target/deploy/ash-keypair.json` is gitignored
 because `.gitignore` refuses to carry raw secret keys. Locally that file holds the key
 behind `declare_id!` and everything worked; in CI `cargo build-sbf` minted a fresh one, the
 program landed at `FFKD9nM8…` instead of `4qjD6vSg…`, the deploy command exited 0, and every

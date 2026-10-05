@@ -5,7 +5,7 @@ import {
   importConnectorDocument,
   importMarkdownConnector,
   splitFrontmatter,
-} from "@agent-rails/contract/connector-import";
+} from "@ash/contract/connector-import";
 import { parse as parseYaml } from "yaml";
 
 /** Larger than any real OpenAPI subset worth mounting, small enough to parse inline. */

@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { mkdir } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { ashHome } from "@ash/contract/legacy-env";
 
 /**
  * Drives the locally installed Claude Code CLI in headless mode, so a user with
@@ -20,7 +21,7 @@ import { join } from "node:path";
  *    roster changes between CLI releases, so a name list silently rots into a
  *    hole on the next upgrade.
  *  - `--strict-mcp-config` with no config drops every MCP server the user has
- *    configured — including the Agent Rails payment tools, which must never be
+ *    configured — including the ASH payment tools, which must never be
  *    reachable from a chat box.
  *  - cwd is an empty directory, so no CLAUDE.md or repo file is in scope.
  *  - the model is chosen from a fixed map, never from request text.
@@ -44,7 +45,7 @@ const SANDBOX_SETTINGS = JSON.stringify({
 
 /** An empty cwd so the CLI cannot pick up project context or instructions. */
 async function sandboxDir(): Promise<string> {
-  const dir = join(process.env.AGENT_RAILS_HOME ?? join(homedir(), ".agent-rails"), "chat-sandbox");
+  const dir = join(ashHome(), "chat-sandbox");
   await mkdir(dir, { recursive: true });
   return dir;
 }

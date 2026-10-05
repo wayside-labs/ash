@@ -1,10 +1,10 @@
 /**
- * Runnable mock: exercises `createAgentRailsTools` without RPC or a model provider.
+ * Runnable mock: exercises `createAshTools` without RPC or a model provider.
  * Run (from repo root, after build): node --experimental-strip-types packages/adapters/vercel-ai/examples/mock-run.ts
  */
-import { createAgentRailsTools } from "../dist/index.js";
+import { createAshTools } from "../dist/index.js";
 
-const tools = createAgentRailsTools({
+const tools = createAshTools({
   getSession: async () => ({
     session: "demo-session",
     expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
@@ -32,7 +32,7 @@ const tools = createAgentRailsTools({
   }),
 });
 
-const check = tools.agent_rails_check_payment;
+const check = tools.ash_check_payment;
 if (!check?.execute) {
   throw new Error("check_payment tool missing execute");
 }

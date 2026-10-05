@@ -1,4 +1,4 @@
-import type { Treasury } from "@agent-rails/client";
+import type { Treasury } from "@ash/client";
 import type { Address } from "@solana/kit";
 import { CliError } from "./errors.js";
 

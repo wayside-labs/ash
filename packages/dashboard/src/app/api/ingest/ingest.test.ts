@@ -66,7 +66,7 @@ let delivered: { url: string; body: unknown }[];
 
 beforeEach(async () => {
   const home = await mkdtemp(join(tmpdir(), "ops-test-"));
-  vi.stubEnv("AGENT_RAILS_HOME", home);
+  vi.stubEnv("ASH_HOME", home);
   vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "");
   vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "");
   resetLimits();
@@ -79,7 +79,7 @@ beforeEach(async () => {
         id: "hook",
         name: "Ops webhook",
         kind: "webhook",
-        target: "https://hooks.example/agent-rails",
+        target: "https://hooks.example/ash",
         events: ["payment_review_required", "payment_denied"],
       },
     ],
@@ -119,7 +119,7 @@ describe("ingest", () => {
     const body = (await res.json()) as { review: { id: string; status: string } };
     expect(body.review.status).toBe("pending");
     expect(delivered).toHaveLength(1);
-    expect(delivered[0]?.url).toBe("https://hooks.example/agent-rails");
+    expect(delivered[0]?.url).toBe("https://hooks.example/ash");
 
     // Asking again does not open a second review.
     const again = (await (await post(token, reviewEvent())).json()) as { review: { id: string } };

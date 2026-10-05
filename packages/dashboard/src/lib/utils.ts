@@ -1,7 +1,7 @@
 // Leaf imports, not the package barrel: the barrel reaches `intent-id`, which
 // imports `node:crypto` and cannot be bundled for the browser.
-import { NATIVE_MINT } from "@agent-rails/contract/constants";
-import { knownMintSymbol } from "@agent-rails/contract/mints";
+import { NATIVE_MINT } from "@ash/contract/constants";
+import { knownMintSymbol } from "@ash/contract/mints";
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import type { Money } from "./types";
@@ -121,7 +121,7 @@ export { NATIVE_MINT };
 
 /**
  * Known mints get their ticker; anything else falls back to a short address.
- * The registry lives in `@agent-rails/contract` so the CLI, the server routes
+ * The registry lives in `@ash/contract` so the CLI, the server routes
  * and this renderer all name the same address the same way.
  */
 export function mintSymbol(mint: string): string {

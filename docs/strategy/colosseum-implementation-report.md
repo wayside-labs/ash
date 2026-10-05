@@ -125,7 +125,7 @@ Este documento consolida **o que cada prompt pediu**, **o que foi entregue**, **
 |----------------|--------|
 | `packages/adapters/vercel-ai` | **Feito** |
 | Exemplo + Vitest + README | **Feito** |
-| Snippet Cursor | **Feito** — `examples/agent-rails-mcp.cursor.json` |
+| Snippet Cursor | **Feito** — `examples/ash-mcp.cursor.json` |
 
 **PR:** #71.
 
@@ -197,8 +197,8 @@ Landing / waitlist / “Try on devnet” — **fora de escopo** (`colosseum-plan
 ## 5. Verificação local (2026-09-26)
 
 ```bash
-# Pré-requisito: target/deploy/agent_rails.so (+ test_pda_relay.so)
-cargo build-sbf --manifest-path programs/agent_rails/Cargo.toml
+# Pré-requisito: target/deploy/ash.so (+ test_pda_relay.so)
+cargo build-sbf --manifest-path programs/ash/Cargo.toml
 cargo build-sbf --manifest-path programs/test_pda_relay/Cargo.toml
 
 VERIFY_STRICT=1 scripts/verify.sh all    # audit: use npmjs registry se npmmirror

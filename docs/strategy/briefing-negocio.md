@@ -1,4 +1,4 @@
-# Agent Rails — Briefing para negócio
+# ASH — Briefing para negócio
 
 **Para:** quem vai cuidar de mercado, receita, parcerias e narrativa — sem precisar ler código
 **Data:** 2026-09-21 · **Status:** vivo · **Lê em:** ~20 minutos
@@ -8,7 +8,7 @@
 
 ## 1. O que é, em uma frase
 
-Agentes de IA já conseguem pagar sozinhos. O Agent Rails é a camada que decide **quanto eles podem perder** — e **prova** isso para um terceiro, sem o cliente precisar confiar em nós.
+Agentes de IA já conseguem pagar sozinhos. O ASH é a camada que decide **quanto eles podem perder** — e **prova** isso para um terceiro, sem o cliente precisar confiar em nós.
 
 A frase de categoria:
 
@@ -22,7 +22,7 @@ Limitar gasto, sozinho, já virou commodity: a própria Solana lançou um primit
 
 Uma empresa (ou uma pessoa) quer que um agente pague fornecedores, APIs, taxas de rede, talvez opere no mercado. Se ela entregar a chave da tesouraria para o agente, o teto de perda é o saldo inteiro: um prompt malicioso, um loop de retry, uma chave vazada.
 
-Cartão virtual (Visa, Stripe, Nekuda) resolve isso no mundo tradicional. No cripto, a resposta comum ainda é “confia no software” ou “usa um teto simples”. O Agent Rails coloca as regras **na rede**, de um jeito que o dono do dinheiro sempre consegue tirá-lo de volta, sozinho, mesmo se nós, o operador ou o agente sumirem.
+Cartão virtual (Visa, Stripe, Nekuda) resolve isso no mundo tradicional. No cripto, a resposta comum ainda é “confia no software” ou “usa um teto simples”. O ASH coloca as regras **na rede**, de um jeito que o dono do dinheiro sempre consegue tirá-lo de volta, sozinho, mesmo se nós, o operador ou o agente sumirem.
 
 ---
 

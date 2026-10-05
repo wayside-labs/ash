@@ -5,7 +5,7 @@ import { mcpServerSchema, skillSchema } from "./schema";
 const existing = {
   agents: [{ name: "Scout" }],
   mcps: [
-    mcpServerSchema.parse({ id: "rails", name: "agent-rails", scope: "workflow" }),
+    mcpServerSchema.parse({ id: "rails", name: "ash", scope: "workflow" }),
     mcpServerSchema.parse({ id: "fetch", name: "fetch", scope: "global" }),
   ],
   skills: [skillSchema.parse({ id: "s1", name: "vendor-checkout" })],
@@ -27,7 +27,7 @@ describe("validateProposal", () => {
       existing,
     );
     expect(result.newAgents).toEqual([{ name: "Buyer", role: "pays vendors" }]);
-    expect(result.tools).toEqual([{ mcpId: "rails", mcpName: "agent-rails", agent: "Buyer" }]);
+    expect(result.tools).toEqual([{ mcpId: "rails", mcpName: "ash", agent: "Buyer" }]);
     expect(result.skills).toHaveLength(1);
     expect(result.warnings).toEqual([]);
   });

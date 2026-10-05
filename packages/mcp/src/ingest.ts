@@ -1,5 +1,5 @@
-import type { AgentEvent } from "@agent-rails/contract/alerts";
-import { postAgentEvent } from "@agent-rails/sdk";
+import type { AgentEvent } from "@ash/contract/alerts";
+import { postAgentEvent } from "@ash/sdk";
 import type { ServerContext } from "./context.js";
 
 /** Fire-and-forget: the dashboard being down must never stop or slow a payment. */

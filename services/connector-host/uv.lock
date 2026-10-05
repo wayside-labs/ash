@@ -8,7 +8,7 @@ resolution-markers = [
 ]
 
 [[package]]
-name = "agent-rails-connector"
+name = "ash-connector"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

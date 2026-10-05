@@ -74,7 +74,7 @@ merge.
 
 ## Constraints kept
 
-- No change to `programs/agent_rails`, the policy crate, the IDL, or `packages/mcp`. The agent
+- No change to `programs/ash`, the policy crate, the IDL, or `packages/mcp`. The agent
   tool surface is untouched.
 - This is presentation, not privilege. Every advanced route is reachable by URL, as before, and
   keeps its own server checks. The simple shell only stops *showing* operator controls first.

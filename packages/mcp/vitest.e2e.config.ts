@@ -9,17 +9,17 @@ const repoRoot = resolve(packageRoot, "../..");
  * Layer 5 of the test pyramid (ADR-008): a real validator, run on demand.
  *
  * Separate from the default config because these need `surfpool`, the Solana CLI, and a
- * built `target/deploy/agent_rails.so` — none of which a contributor should need to run
+ * built `target/deploy/ash.so` — none of which a contributor should need to run
  * layers 1 to 4 in seconds.
  */
 export default defineConfig({
   resolve: {
     alias: {
-      "@agent-rails/e2e/harness/blinding-proxy": resolve(
+      "@ash/e2e/harness/blinding-proxy": resolve(
         repoRoot,
         "packages/e2e/src/harness/blinding-proxy.ts",
       ),
-      "@agent-rails/e2e/harness/surfnet": resolve(repoRoot, "packages/e2e/src/harness/surfnet.ts"),
+      "@ash/e2e/harness/surfnet": resolve(repoRoot, "packages/e2e/src/harness/surfnet.ts"),
     },
   },
   test: {

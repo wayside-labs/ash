@@ -8,13 +8,13 @@
 
 import { createHash } from "node:crypto";
 import {
-  AGENT_RAILS_PROGRAM_ADDRESS,
-  agentRailsErrorFromCode,
+  ASH_PROGRAM_ADDRESS,
+  ashErrorFromCode,
   auditHeadToHex,
   customCodeFromTransactionError,
   PAYMENT_EXECUTED_EVENT_DISCRIMINATOR,
   parsePaymentExecutedEvent,
-} from "@agent-rails/sdk";
+} from "@ash/sdk";
 import { getBase58Decoder } from "@solana/kit";
 import type { PaymentRecordView } from "./schema";
 
@@ -96,7 +96,7 @@ export function extractPaymentExecutedEvents(
 
   for (const group of meta.innerInstructions) {
     for (const instruction of group.instructions) {
-      if (instruction.programId !== AGENT_RAILS_PROGRAM_ADDRESS) continue;
+      if (instruction.programId !== ASH_PROGRAM_ADDRESS) continue;
       const data = decodeInstructionData(instruction.data);
       if (!data) continue;
       const event = parsePaymentExecutedInstruction(data);
@@ -161,7 +161,7 @@ export function paymentRecordFromFailedTransaction(
   if (!err) return null;
   const code = customCodeFromTransactionError(err);
   if (code === undefined) return null;
-  const mapped = agentRailsErrorFromCode(code, err);
+  const mapped = ashErrorFromCode(code, err);
   return {
     ts: tsFromBlockTime(tx.blockTime),
     treasury: ctx.treasury,

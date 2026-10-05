@@ -7,26 +7,26 @@ import {
   mcpGetPolicySchema,
   mcpGetSessionSchema,
   mcpListDestinationsSchema,
-} from "@agent-rails/contract";
+} from "@ash/contract";
 import { describe, expect, it } from "vitest";
-import { AGENT_RAILS_TOOL_METADATA } from "./metadata.js";
-import { createAgentRailsTools } from "./tools.js";
+import { ASH_TOOL_METADATA } from "./metadata.js";
+import { createAshTools } from "./tools.js";
 
 describe("Vercel AI SDK adapter", () => {
   it("maps exactly the contract tool names", () => {
-    const names = AGENT_RAILS_TOOL_METADATA.map((meta) => meta.name).sort();
+    const names = ASH_TOOL_METADATA.map((meta) => meta.name).sort();
     expect(names).toEqual([...AGENT_TOOL_NAMES].sort());
   });
 
   it("uses the same zod schemas as the MCP server for every tool", () => {
-    const byName = new Map(AGENT_RAILS_TOOL_METADATA.map((meta) => [meta.name, meta.inputSchema]));
+    const byName = new Map(ASH_TOOL_METADATA.map((meta) => [meta.name, meta.inputSchema]));
     const expected = new Map([
-      ["agent_rails_get_session", mcpGetSessionSchema],
-      ["agent_rails_get_policy", mcpGetPolicySchema],
-      ["agent_rails_list_destinations", mcpListDestinationsSchema],
-      ["agent_rails_get_payment_status", mcpGetPaymentStatusSchema],
-      ["agent_rails_check_payment", mcpCheckPaymentSchema],
-      ["agent_rails_execute_payment", mcpExecutePaymentSchema],
+      ["ash_get_session", mcpGetSessionSchema],
+      ["ash_get_policy", mcpGetPolicySchema],
+      ["ash_list_destinations", mcpListDestinationsSchema],
+      ["ash_get_payment_status", mcpGetPaymentStatusSchema],
+      ["ash_check_payment", mcpCheckPaymentSchema],
+      ["ash_execute_payment", mcpExecutePaymentSchema],
     ] as const);
     for (const [name, schema] of expected) {
       expect(byName.get(name)).toBe(schema);
@@ -34,7 +34,7 @@ describe("Vercel AI SDK adapter", () => {
   });
 
   it("exposes no privileged tool names", () => {
-    for (const meta of AGENT_RAILS_TOOL_METADATA) {
+    for (const meta of ASH_TOOL_METADATA) {
       for (const forbidden of FORBIDDEN_TOOL_PATTERNS) {
         expect(meta.name.includes(forbidden)).toBe(false);
       }
@@ -42,15 +42,13 @@ describe("Vercel AI SDK adapter", () => {
   });
 
   it("registers one fund-moving tool", () => {
-    const writers = AGENT_RAILS_TOOL_METADATA.filter((meta) =>
-      meta.name.endsWith("execute_payment"),
-    );
+    const writers = ASH_TOOL_METADATA.filter((meta) => meta.name.endsWith("execute_payment"));
     expect(writers).toHaveLength(1);
-    expect(writers[0]?.name).toBe("agent_rails_execute_payment");
+    expect(writers[0]?.name).toBe("ash_execute_payment");
   });
 
   it("builds a ToolSet and forwards handler calls", async () => {
-    const tools = createAgentRailsTools({
+    const tools = createAshTools({
       getSession: async () => ({ ok: "session" }),
       getPolicy: async () => ({ ok: "policy" }),
       listDestinations: async () => ({ destinations: [] }),
@@ -62,7 +60,7 @@ describe("Vercel AI SDK adapter", () => {
 
     expect(Object.keys(tools).sort()).toEqual([...AGENT_TOOL_NAMES].sort());
 
-    const check = tools.agent_rails_check_payment;
+    const check = tools.ash_check_payment;
     expect(check).toBeDefined();
     if (!check?.execute) {
       throw new Error("expected execute on check_payment tool");

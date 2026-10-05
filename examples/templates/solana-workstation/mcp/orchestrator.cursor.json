@@ -1,25 +1,25 @@
 {
   "mcpServers": {
-    "agent-rails": {
-      "command": "agent-rails-mcp",
+    "ash": {
+      "command": "ash-mcp",
       "args": [],
       "env": {
-        "AGENT_RAILS_RPC": "https://api.devnet.solana.com",
-        "AGENT_RAILS_SESSION": "<SESSION_PDA>",
-        "AGENT_RAILS_SIGNER": "<SESSION_KEYPAIR_PATH>",
-        "AGENT_RAILS_TOOLS": "readonly",
-        "AGENT_RAILS_SECURITY": "balanced"
+        "ASH_RPC": "https://api.devnet.solana.com",
+        "ASH_SESSION": "<SESSION_PDA>",
+        "ASH_SIGNER": "<SESSION_KEYPAIR_PATH>",
+        "ASH_TOOLS": "readonly",
+        "ASH_SECURITY": "balanced"
       }
     },
     "solana-jupiter": {
-      "command": "agent-rails-integrations",
+      "command": "ash-integrations",
       "args": ["mcp", "jupiter"],
       "env": {
         "JUPITER_API_BASE": "https://quote-api.jup.ag"
       }
     },
     "sodax": {
-      "command": "agent-rails-integrations",
+      "command": "ash-integrations",
       "args": ["mcp", "sodax"],
       "env": {
         "SODAX_ALLOWED_DESTINATIONS": "<chainKey>:<address>,<chainKey>:<address>"

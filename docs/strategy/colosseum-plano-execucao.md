@@ -56,8 +56,12 @@ no Colosseum quanto na Earn.
 É o preço de uma postura que vale mais no pitch principal do que os três somados —
 mas é uma escolha, e deve ser dita como escolha.
 
-**Não existe side track da Cloak** (a Cloak é um time brasileiro que venceu o side
-track do Cypherpunk e entrou no acelerador — é referência, não patrocinador).
+**Existe um Privacy Sprint da Superteam Brasil (Cloak + Zcash), fora da tabela acima:**
+10 × 100 USDC, prazo 05/10 às 04:00 BRT, para quem participa do Hackathon da Colosseum e é do
+the/Garage. O plano está em `docs/strategy/privacy-sprint-plano-execucao.md`. A linha "Zcash —
+Fora" acima segue valendo para o Hackathon principal; marcar a rede Zcash na inscrição continua
+decisão em aberto (§11, item 7 daquele plano). A Cloak é um time brasileiro que venceu o side
+track do Cypherpunk e entrou no acelerador.
 
 ### Submissão — checklist do Superteam Brasil
 
@@ -89,7 +93,7 @@ Elegibilidade: 18+, projeto novo, captação abaixo de US$ 3 mi. Todos ok.
 | | Entrega | Onde toca | Dono |
 |---|---|---|---|
 | F1 | USDC ponta a ponta | `vault-transfer` aceita SOL e SPL (`mint` + ATA). Leitura por mint via `vault-balances` | 0xcf02 — **feito** (escrita) / Lucas (leitura) |
-| F2a | Leitor de `IntentReceipt` + `verifyAuditChain` em TS espelhando `crates/agent-rails-policy/src/audit.rs`, com os vetores fixos do Rust como teste compartilhado | `packages/sdk` | 0xcf02 — **feito** |
+| F2a | Leitor de `IntentReceipt` + `verifyAuditChain` em TS espelhando `crates/ash-policy/src/audit.rs`, com os vetores fixos do Rust como teste compartilhado | `packages/sdk` | 0xcf02 — **feito** |
 | F2b | Histórico + export CSV/JSON — **Metrics Phase B** (`docs/product/metrics-page.md`; Phase A em `/metrics` via #63) | `packages/dashboard` | 0xcf02 — **feito** |
 | F3 | CLI de operador: `pay`, `policy set`, `pause`, `audit export`, `session revoke` — hoje só existe `init` | `packages/cli` | 0xcf02 — **feito** |
 | F4 | `scripts/demo.sh` reprodutível, com assinaturas devnet públicas | `scripts/demo.sh`, `scripts/demo-retry.mjs` | 0xcf02 — **feito** |
@@ -99,13 +103,13 @@ Elegibilidade: 18+, projeto novo, captação abaixo de US$ 3 mi. Todos ok.
 | | Entrega | Dono |
 |---|---|---|
 | F5 | Guardian-as-a-Service mínimo: watcher que chama `pause` ao quebrar regra | 0xcf02 — **feito** |
-| F6 | Adapter Vercel AI SDK (`@agent-rails/adapter-vercel-ai`) + snippet Cursor | 0xcf02 — **feito** |
+| F6 | Adapter Vercel AI SDK (`@ash/adapter-vercel-ai`) + snippet Cursor | 0xcf02 — **feito** |
 | F8 | Alertas em negação e em 80% da janela da policy (`alert-webhook` + `alert-watch`) | Lucas / 0xcf02 — **feito** |
 
 ### Cortes explícitos
 
 **F7 — landing, waitlist e "Try on devnet" sem cadastro: cortado.** O fluxo real é
-`agent-rails init` + MCP no Cursor/Claude Desktop + dashboard com tesouraria colada.
+`ash init` + MCP no Cursor/Claude Desktop + dashboard com tesouraria colada.
 Provisionar tesouraria no browser sem auth é outro produto; não entra no escopo de
 12/10.
 
@@ -182,7 +186,7 @@ Regra do dia: **código até as 18h, narrativa depois.** Outreach diário às 9h
 Sem rede de design partners. Então a tração é gerada por vocês:
 
 1. **Agente de referência**, ligado em **D-14**: um agente que compra algo real
-   (inferência, uma API paga) e paga por Agent Rails, rodando em devnet até 12/10.
+   (inferência, uma API paga) e paga por ASH, rodando em devnet até 12/10.
    Slide 9: *"2.100 payments settled, 31 denied by policy, 0 double-spends — all
    public, all verifiable."* Ser explícito no vídeo sobre a natureza do número:
    *"this is our own agent, under our own policy, for two weeks."*
@@ -248,7 +252,7 @@ explícitas · zona proibida anotada no `CONTRIBUTING`.
 - [x] README como produto + tabela open-source vs hospedado + link para declaração pré-14/09
 - [x] `docs/strategy/colosseum-pre-hackathon-declaration.md` — texto para o formulário
 - [x] `docs/runbooks/dashboard-smoke.md` — 10 passos manuais
-- [x] CI: `pnpm turbo run build --filter @agent-rails/dashboard` no job `typescript` (fontes via `@fontsource`, sem fetch ao Google no build)
+- [x] CI: `pnpm turbo run build --filter @ash/dashboard` no job `typescript` (fontes via `@fontsource`, sem fetch ao Google no build)
 - [x] `VERIFY_STRICT=1 scripts/verify.sh all` verde localmente (2026-09-26: rust + kani + ts OK; `pnpm audit` exige registry npmjs — npmmirror não tem endpoint; `mutants`/`e2e` ficam fora de `all`)
 - [x] Smoke automatizado: `VERIFY_STRICT=1 scripts/verify.sh ui` (45 testes, incl. `e2e/smoke.spec.ts`)
 - [ ] Smoke manual assinado por humano na tabela do runbook antes de gravar a demo
@@ -256,6 +260,6 @@ explícitas · zona proibida anotada no `CONTRIBUTING`.
 ## Aberto
 
 - **Nome e marca** — brainstorm em andamento. Regra de custo: a marca muda, o código
-  não. Landing, deck e vídeos com o nome novo; `@agent-rails/*` interno até depois
+  não. Landing, deck e vídeos com o nome novo; `@ash/*` interno até depois
   de 12/10.
 - **Elegibilidade** em Superteam Thailand, La Familia e Panta.

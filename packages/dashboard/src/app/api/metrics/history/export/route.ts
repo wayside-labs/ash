@@ -59,7 +59,7 @@ export async function GET(req: Request) {
     });
     const records = history.records.map(toPaymentRecord);
     const payload = format === "csv" ? paymentsToCsv(records) : paymentsToJson(records);
-    const filename = `agent-rails-payments-${new Date().toISOString().slice(0, 10)}.${format}`;
+    const filename = `ash-payments-${new Date().toISOString().slice(0, 10)}.${format}`;
 
     return new Response(payload, {
       status: 200,

@@ -64,11 +64,11 @@ jobs:
         run: |
           set -euo pipefail
           scripts/program-hash.sh build
-          sha256=$(cut -d' ' -f1 target/deploy/agent_rails.so.sha256)
+          sha256=$(cut -d' ' -f1 target/deploy/ash.so.sha256)
           echo "sha256=$sha256" >> "$GITHUB_OUTPUT"
           echo "### Program hash" >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
-          cat target/deploy/agent_rails.build-info.json >> "$GITHUB_STEP_SUMMARY"
+          cat target/deploy/ash.build-info.json >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
 
       # Reported, never enforced: a tag cut before the deploy legitimately differs from
@@ -78,7 +78,7 @@ jobs:
         continue-on-error: true
         run: |
           deployed=$(scripts/program-hash.sh onchain devnet)
-          built=$(cut -d' ' -f1 target/deploy/agent_rails.so.sha256)
+          built=$(cut -d' ' -f1 target/deploy/ash.so.sha256)
           {
             echo "### Deployed on devnet"
             echo ""
@@ -93,9 +93,9 @@ jobs:
         with:
           name: program
           path: |
-            target/deploy/agent_rails.so
-            target/deploy/agent_rails.so.sha256
-            target/deploy/agent_rails.build-info.json
+            target/deploy/ash.so
+            target/deploy/ash.so.sha256
+            target/deploy/ash.build-info.json
           retention-days: 90
 
   smoke:
@@ -172,7 +172,7 @@ jobs:
           SHA256: ${{ needs.program.outputs.sha256 }}
         run: |
           set -euo pipefail
-          program_id=$(sed -n 's/^declare_id!("\(.*\)");/\1/p' programs/agent_rails/src/lib.rs)
+          program_id=$(sed -n 's/^declare_id!("\(.*\)");/\1/p' programs/ash/src/lib.rs)
           notes=$(mktemp)
           cat > "$notes" <<NOTES
           **Unaudited, devnet only.** The upgrade authority is not renounced; see the trust
@@ -191,7 +191,7 @@ jobs:
           scripts/program-hash.sh compare    # and compares it with what devnet is running
           \`\`\`
 
-          \`agent_rails.build-info.json\` records the Agave, Anchor and Rust versions the
+          \`ash.build-info.json\` records the Agave, Anchor and Rust versions the
           digest depends on. The build is toolchain-pinned, not container-hermetic — ADR-011
           says what that leaves open.
           NOTES
@@ -199,6 +199,6 @@ jobs:
             --title "${{ github.ref_name }}" \
             --notes-file "$notes" \
             --prerelease \
-            artifacts/agent_rails.so \
-            artifacts/agent_rails.so.sha256 \
-            artifacts/agent_rails.build-info.json
+            artifacts/ash.so \
+            artifacts/ash.so.sha256 \
+            artifacts/ash.build-info.json

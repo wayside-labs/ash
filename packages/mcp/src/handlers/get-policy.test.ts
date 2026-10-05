@@ -1,12 +1,12 @@
-import { fetchMaybePolicy } from "@agent-rails/client";
+import { fetchMaybePolicy } from "@ash/client";
 import { address } from "@solana/kit";
 import { describe, expect, it, vi } from "vitest";
 import type { ServerContext } from "../context.js";
 import { testBoundContext, testConfig, testSecurity } from "../testing.js";
 import { handleGetPolicy } from "./get-policy.js";
 
-vi.mock("@agent-rails/client", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@agent-rails/client")>();
+vi.mock("@ash/client", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@ash/client")>();
   return {
     ...actual,
     fetchMaybePolicy: vi.fn(),

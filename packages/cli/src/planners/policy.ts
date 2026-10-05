@@ -1,11 +1,5 @@
-import type {
-  MintCeiling,
-  MintLimit,
-  PolicyInput,
-  PolicyInputArgs,
-  Treasury,
-} from "@agent-rails/client";
-import { NATIVE_MINT } from "@agent-rails/contract";
+import type { MintCeiling, MintLimit, PolicyInput, PolicyInputArgs, Treasury } from "@ash/client";
+import { NATIVE_MINT } from "@ash/contract";
 import { type Address, address } from "@solana/kit";
 import { CliError } from "../errors.js";
 
@@ -90,7 +84,7 @@ export function preflightPolicyLeqCeiling(
     };
     if (!limitLeqCeiling(draft, config.ceiling)) {
       throw new CliError(`Policy limit for ${formatHint(limit.mint)} exceeds the owner ceiling`, {
-        hint: `Raise the ceiling first: agent-rails ceiling set --mint ${limit.mint === address(NATIVE_MINT) ? "SOL" : limit.mint} ...`,
+        hint: `Raise the ceiling first: ash ceiling set --mint ${limit.mint === address(NATIVE_MINT) ? "SOL" : limit.mint} ...`,
       });
     }
   }

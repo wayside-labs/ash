@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "ash": {
+      "command": "npx",
+      "args": ["-y", "@ash/mcp"],
+      "env": {
+        "ASH_RPC": "https://api.devnet.solana.com",
+        "ASH_SESSION": "<paste-session-pda-from-ash-init>",
+        "ASH_SIGNER": "~/.ash/session.json"
+      }
+    }
+  }
+}

@@ -65,7 +65,7 @@ Authentication → Email Templates → **Magic Link** (e **Confirm signup**, que
 novo recebe):
 
 ```html
-<h2>Entrar na Agent Rails</h2>
+<h2>Entrar na ASH</h2>
 <p><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email">Entrar</a></p>
 <p>Se você não pediu este link, ignore este e-mail.</p>
 ```

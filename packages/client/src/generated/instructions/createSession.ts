@@ -45,7 +45,7 @@ import {
   type ResolvedInstructionAccount,
 } from "@solana/program-client-core";
 import { findSessionPda } from "../pdas/index.js";
-import { AGENT_RAILS_PROGRAM_ADDRESS } from "../programs/index.js";
+import { ASH_PROGRAM_ADDRESS } from "../programs/index.js";
 
 export const CREATE_SESSION_DISCRIMINATOR: ReadonlyUint8Array = new Uint8Array([
   242, 193, 143, 179, 150, 25, 122, 227,
@@ -58,7 +58,7 @@ export function getCreateSessionDiscriminatorBytes(): ReadonlyUint8Array {
 }
 
 export type CreateSessionInstruction<
-  TProgram extends string = typeof AGENT_RAILS_PROGRAM_ADDRESS,
+  TProgram extends string = typeof ASH_PROGRAM_ADDRESS,
   TAccountOperator extends string | AccountMeta<string> = string,
   TAccountTreasury extends string | AccountMeta<string> = string,
   TAccountPolicy extends string | AccountMeta<string> = string,
@@ -176,7 +176,7 @@ export async function getCreateSessionInstructionAsync<
   TAccountSystemProgram extends string,
   TAccountEventAuthority extends string,
   TAccountProgram extends string,
-  TProgramAddress extends Address = typeof AGENT_RAILS_PROGRAM_ADDRESS,
+  TProgramAddress extends Address = typeof ASH_PROGRAM_ADDRESS,
 >(
   input: CreateSessionAsyncInput<
     TAccountOperator,
@@ -201,7 +201,7 @@ export async function getCreateSessionInstructionAsync<
   >
 > {
   // Program address.
-  const programAddress = config?.programAddress ?? AGENT_RAILS_PROGRAM_ADDRESS;
+  const programAddress = config?.programAddress ?? ASH_PROGRAM_ADDRESS;
 
   // Original accounts.
   const originalAccounts = {
@@ -299,7 +299,7 @@ export function getCreateSessionInstruction<
   TAccountSystemProgram extends string,
   TAccountEventAuthority extends string,
   TAccountProgram extends string,
-  TProgramAddress extends Address = typeof AGENT_RAILS_PROGRAM_ADDRESS,
+  TProgramAddress extends Address = typeof ASH_PROGRAM_ADDRESS,
 >(
   input: CreateSessionInput<
     TAccountOperator,
@@ -322,7 +322,7 @@ export function getCreateSessionInstruction<
   TAccountProgram
 > {
   // Program address.
-  const programAddress = config?.programAddress ?? AGENT_RAILS_PROGRAM_ADDRESS;
+  const programAddress = config?.programAddress ?? ASH_PROGRAM_ADDRESS;
 
   // Original accounts.
   const originalAccounts = {
@@ -376,7 +376,7 @@ export function getCreateSessionInstruction<
 }
 
 export type ParsedCreateSessionInstruction<
-  TProgram extends string = typeof AGENT_RAILS_PROGRAM_ADDRESS,
+  TProgram extends string = typeof ASH_PROGRAM_ADDRESS,
   TAccountMetas extends readonly AccountMeta[] = readonly AccountMeta[],
 > = {
   programAddress: Address<TProgram>;

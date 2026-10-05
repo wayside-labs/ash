@@ -3,6 +3,7 @@ import { expect, stubChain, stubWallet, t, test } from "./fixtures";
 const EARN = t("templates.builtin.earnBountyHunter.name");
 const DCA = t("templates.builtin.dcaSol.name");
 const WORKSTATION = t("templates.builtin.solanaWorkstation.name");
+const CLOAK = t("templates.builtin.cloakPrivatePayout.name");
 
 /**
  * The templates workspace: a builder canvas with the menu on the right (the default), and the
@@ -84,7 +85,7 @@ test.describe("templates", () => {
     await page.getByRole("button", { name: t("templates.view.cards") }).click();
 
     await expect(page.getByRole("heading", { name: t("templates.title"), level: 1 })).toBeVisible();
-    await expect(page.getByTestId("template-card")).toHaveCount(4);
+    await expect(page.getByTestId("template-card")).toHaveCount(5);
 
     await page
       .getByTestId("template-card")
@@ -93,6 +94,19 @@ test.describe("templates", () => {
 
     await expect(builderTitle(page)).toContainText(WORKSTATION);
     await expect(page).toHaveURL(/[?&]t=builtin%3Asolana-workstation/);
+  });
+
+  test("the private payout desk draws its planner, its desk and who the desk pays", async ({
+    page,
+  }) => {
+    await page.goto("/templates?t=builtin%3Acloak-private-payout");
+
+    await expect(builderTitle(page)).toContainText(CLOAK);
+    const canvas = page.getByLabel(t("templates.builder.canvasLabel"));
+    await expect(canvas.getByText("Payout planner", { exact: true })).toBeVisible();
+    await expect(canvas.getByText("Cloak desk", { exact: true })).toBeVisible();
+    await expect(canvas.getByText("SOL payee")).toBeVisible();
+    await expect(canvas.getByText("ZEC payee")).toBeVisible();
   });
 
   test("a card's own buttons do not open the builder", async ({ page }) => {

@@ -28,11 +28,11 @@ export type ApplyTemplateResult = {
 function railsMcpEnv(mode: "readonly" | "full"): Record<string, string> {
   const tools = mode === "readonly" ? "readonly" : "full";
   return {
-    AGENT_RAILS_RPC: "",
-    AGENT_RAILS_SESSION: "",
-    AGENT_RAILS_SIGNER: "",
-    AGENT_RAILS_TOOLS: tools,
-    AGENT_RAILS_SECURITY: "balanced",
+    ASH_RPC: "",
+    ASH_SESSION: "",
+    ASH_SIGNER: "",
+    ASH_TOOLS: tools,
+    ASH_SECURITY: "balanced",
   };
 }
 
@@ -45,7 +45,7 @@ export type TemplateMcpSpec = {
   command: string;
   args: string[];
   env: Record<string, string>;
-  /** Set for the per-agent rails MCP so a preview can attach it to that agent. */
+  /** Set for the per-ash MCP so a preview can attach it to that agent. */
   agentName?: string;
 };
 
@@ -58,14 +58,14 @@ export function templateMcpSpecs(template: StoredWorkflowTemplate): TemplateMcpS
   for (const agent of template.agents) {
     if (agent.railsMcp === "none") continue;
     specs.push({
-      name: "Agent Rails Payments",
+      name: "ASH Payments",
       description:
         agent.railsMcp === "readonly"
           ? "Read-only policy and session checks for this agent"
           : "Capped payments for this agent",
       scope: "agent",
       scopeName: agent.name,
-      command: "agent-rails-mcp",
+      command: "ash-mcp",
       args: [],
       env: railsMcpEnv(agent.railsMcp),
       agentName: agent.name,
@@ -78,7 +78,7 @@ export function templateMcpSpecs(template: StoredWorkflowTemplate): TemplateMcpS
 }
 
 /**
- * Materializes a workflow, its agents, and per-agent rails MCP rows from a template.
+ * Materializes a workflow, its agents, and per-ash MCP rows from a template.
  * Privileged on-chain steps (init, policy, session create) stay outside — the returned
  * workflow is workspace state the operator finishes in Treasury / Limits / CLI.
  */

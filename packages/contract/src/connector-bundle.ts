@@ -5,12 +5,12 @@ import { z } from "zod";
  * `services/connector-host` (Python, FastMCP) mounts. Chat emits it, the dashboard imports
  * it, the runner export hands it to the host. It never carries code, keys, or a payment path.
  *
- * Mirrors `services/connector-host/src/agent_rails_connector/declarative.py`. The fixtures
+ * Mirrors `services/connector-host/src/ash_connector/declarative.py`. The fixtures
  * under `examples/connectors/fixtures/` are loaded by both test suites; a rule added on one
  * side only fails the other's fixture test.
  */
 
-export const CONNECTOR_API_VERSION = "agent-rails.connector/v1";
+export const CONNECTOR_API_VERSION = "ash.connector/v1";
 export const CONNECTOR_MAX_TOOLS = 32;
 /** The fenced-block language the chat model uses to propose a bundle. */
 export const CONNECTOR_FENCE = "connector-bundle";
@@ -51,7 +51,7 @@ export function forbiddenConnectorName(name: string): string | null {
 
 // The payment server's signer, RPC and ingest token share the runner's env. A bundle that
 // could name them could put them in a header to its own host.
-const RESERVED_ENV_PREFIXES = ["AGENT_RAILS_", "SOLANA_", "CONNECTOR_"];
+const RESERVED_ENV_PREFIXES = ["ASH_", "SOLANA_", "CONNECTOR_"];
 const ENV_NAME = /^[A-Z][A-Z0-9_]{0,63}$/;
 const TOOL_NAME = /^[a-z][a-z0-9_]{0,63}$/;
 const BUNDLE_NAME = /^[a-z][a-z0-9-]{0,63}$/;

@@ -1,5 +1,5 @@
-import { AGENT_RAILS_PROGRAM_ADDRESS, fetchMaybeTreasury } from "@agent-rails/client";
-import { loadDestinationIndex } from "@agent-rails/sdk";
+import { ASH_PROGRAM_ADDRESS, fetchMaybeTreasury } from "@ash/client";
+import { loadDestinationIndex } from "@ash/sdk";
 import { formatSol } from "../amounts.js";
 import { readTreasurySnapshot } from "../chain/read.js";
 import { readUpgradeAuthority } from "../chain/upgrade-authority.js";
@@ -19,13 +19,13 @@ export async function runDoctor(options: GlobalCliOptions, ui: Ui): Promise<numb
 
   try {
     const ctx = await loadContext(options);
-    await assertProgramDeployed(ctx.rpc, AGENT_RAILS_PROGRAM_ADDRESS, rpcUrl);
-    checks.push({ name: "Program deployed", ok: true, detail: AGENT_RAILS_PROGRAM_ADDRESS });
+    await assertProgramDeployed(ctx.rpc, ASH_PROGRAM_ADDRESS, rpcUrl);
+    checks.push({ name: "Program deployed", ok: true, detail: ASH_PROGRAM_ADDRESS });
 
     // ADR-011's headline claim, and the only one a user is told to check on-chain before
     // deciding how much to put behind this. Reported, never asserted: at `0.x` a single key
     // is the documented state, so the check passes and says whose key it is.
-    const upgrade = await readUpgradeAuthority(ctx.rpc, AGENT_RAILS_PROGRAM_ADDRESS);
+    const upgrade = await readUpgradeAuthority(ctx.rpc, ASH_PROGRAM_ADDRESS);
     checks.push({
       name: "Upgrade authority",
       ok: true,
@@ -102,7 +102,7 @@ export async function runDoctor(options: GlobalCliOptions, ui: Ui): Promise<numb
       name: "Session live",
       ok: session?.live === true,
       detail: session ? `${session.label} (${session.address})` : "no live session",
-      hint: session?.live ? undefined : "Create or rotate a session: agent-rails session create",
+      hint: session?.live ? undefined : "Create or rotate a session: ash session create",
     });
 
     const destIndex = await loadDestinationIndex({
@@ -113,8 +113,7 @@ export async function runDoctor(options: GlobalCliOptions, ui: Ui): Promise<numb
       name: "Allowlist non-empty",
       ok: destIndex.entries.length > 0,
       detail: `${destIndex.entries.length} destination(s)`,
-      hint:
-        destIndex.entries.length === 0 ? "agent-rails dest add --label ... --owner ..." : undefined,
+      hint: destIndex.entries.length === 0 ? "ash dest add --label ... --owner ..." : undefined,
     });
 
     const mcpOk = mcpEntryExists(options.mcpEntry);
@@ -122,14 +121,14 @@ export async function runDoctor(options: GlobalCliOptions, ui: Ui): Promise<numb
       name: "MCP entry exists",
       ok: mcpOk,
       detail: mcpOk ? "built" : "missing",
-      hint: mcpOk ? undefined : "pnpm --filter @agent-rails/mcp build",
+      hint: mcpOk ? undefined : "pnpm --filter @ash/mcp build",
     });
   } catch (error) {
     checks.push({
       name: "Bootstrap",
       ok: false,
       detail: error instanceof Error ? error.message : String(error),
-      hint: "Run agent-rails init for this cluster.",
+      hint: "Run ash init for this cluster.",
     });
   }
 
@@ -139,7 +138,7 @@ export async function runDoctor(options: GlobalCliOptions, ui: Ui): Promise<numb
     return failed.length === 0 ? 0 : 1;
   }
 
-  ui.heading("Agent Rails doctor");
+  ui.heading("ASH doctor");
   ui.blank();
   for (const check of checks) {
     if (check.ok) ui.succeed(check.name, check.detail);

@@ -1,5 +1,5 @@
 import { appendFile } from "node:fs/promises";
-import type { PaymentRecord } from "@agent-rails/contract";
+import type { PaymentRecord } from "@ash/contract";
 
 /**
  * The operator's record of every payment attempt (ARCHITECTURE section 8).

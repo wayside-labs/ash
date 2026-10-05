@@ -1,7 +1,7 @@
 # Chat credit billing (hosted assistant)
 
 **Status:** implemented on `feat/chat-credit-billing`, stacked on `feat/openrouter-chat` (PR #80).
-**Scope:** `packages/dashboard` only. Nothing here touches `programs/agent_rails`, the MCP
+**Scope:** `packages/dashboard` only. Nothing here touches `programs/ash`, the MCP
 server or the SDK, and the program still charges no fee of any kind.
 
 ## What it is
@@ -28,7 +28,7 @@ SLA can come later on top of this. It should not be the only way to buy tokens.
 
 These are two separate meters, and they should stay separate:
 
-- **Agent Rails treasuries** govern what *agents* pay *vendors*. That money sits in a
+- **ASH treasuries** govern what *agents* pay *vendors*. That money sits in a
   program-owned vault and moves only under policy, session and ceiling rules.
 - **This ledger** is what the *dashboard* charges for its own assistant. It is off-chain,
   the program never sees it, and it holds no user funds on-chain.
@@ -90,7 +90,7 @@ Migration `packages/dashboard/supabase/migrations/20260930020000_credit_ledger.s
   role (`SUPABASE_SERVICE_ROLE_KEY`, which is already required for bootstrap).
 - `credit_balance(org_id)` sums the ledger in the database.
 
-Local JSON mode (`BILLING_ENABLED=true`) writes `~/.agent-rails/billing.json`, next to
+Local JSON mode (`BILLING_ENABLED=true`) writes `~/.ash/billing.json`, next to
 `dashboard.json` rather than inside it, because the state document is editable through
 the UI.
 
@@ -198,7 +198,7 @@ To find an org by email, join `profiles.email → memberships.account_id → org
 
 ## Test plan
 
-- [x] `pnpm --filter @agent-rails/dashboard exec vitest run src/lib/billing.test.ts
+- [x] `pnpm --filter @ash/dashboard exec vitest run src/lib/billing.test.ts
       src/lib/server/billing src/app/api/chat src/lib/server/llm/openrouter-api.test.ts`
       covers the math, pricing fallbacks, the starter grant, idempotency, 402/401/409/503,
       a debit after a completed stream and after a failed one, and that every

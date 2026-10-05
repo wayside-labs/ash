@@ -23,7 +23,7 @@
     "onePerBounty": true
   },
   "mcp": {
-    "AGENT_RAILS_SECURITY": "balanced"
+    "ASH_SECURITY": "balanced"
   },
   "referencePattern": "<bounty-slug>/<vendor>/<invoice-or-period>"
 }

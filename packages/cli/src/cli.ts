@@ -38,7 +38,7 @@ import { DEFAULT_WALLET_PATH } from "./wallet.js";
 const program = new Command();
 
 program
-  .name("agent-rails")
+  .name("ash")
   .description("Guardrails and treasury operations for autonomous Solana payments")
   // Read from the manifest: a literal here went stale the first time the package was
   // versioned, and `--version` is the one output a user checks against a changelog.
@@ -57,7 +57,7 @@ program
   )
   .addOption(
     new Option("--out <dir>", "Where to write keys, the manifest and the MCP config").default(
-      ".agent-rails",
+      ".ash",
     ),
   )
   .addOption(new Option("--name <name>", "Policy name, max 32 bytes").default("default"))
@@ -137,8 +137,8 @@ program
     "after",
     `
 Examples:
-  $ agent-rails init
-  $ agent-rails init --rpc http://127.0.0.1:8899 --yes
+  $ ash init
+  $ ash init --rpc http://127.0.0.1:8899 --yes
 `,
   )
   .action(async (options) => {
@@ -657,7 +657,7 @@ async function main(): Promise<void> {
       process.exit(1);
     }
     ui.blank();
-    ui.fail("Unexpected error - this is a bug in agent-rails");
+    ui.fail("Unexpected error - this is a bug in ash");
     console.error(error);
     process.exit(1);
   }

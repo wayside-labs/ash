@@ -21,7 +21,7 @@ function ageLabel(asOf: string, t: (key: string, params?: Record<string, number>
 /**
  * §4 — value, and what moved it.
  *
- * Informational by construction. There is no cost basis anywhere in Agent Rails
+ * Informational by construction. There is no cost basis anywhere in ASH
  * and no price history, so this cannot be profit and loss and does not pretend
  * to be: it marks current holdings to market and attributes the day's move to
  * the day's price change, which is the one thing a spot feed can honestly say.

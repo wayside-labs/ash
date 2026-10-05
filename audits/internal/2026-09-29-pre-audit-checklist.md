@@ -16,11 +16,11 @@ Evidence commands run on 2026-09-29 with `VERIFY_STRICT=1` unless noted.
 |---|---|---|
 | Threat model vs instruction set | **Done** | Cross-walk: 23 instructions in spec §2 match IDL; roles and MCP privilege split in `THREAT_MODEL.md` §2–3. See `sealevel-attacks-review-2026-09-29.md`. |
 | Sealevel-attacks checklist | **Done (internal)** | Structured review recorded in `sealevel-attacks-review-2026-09-29.md`; not a substitute for external audit. |
-| `scripts/verify.sh rust` | **Pass** | fmt, clippy, overflow-checks, `cargo test --workspace`, policy llvm-cov ≥95%. Requires `cargo build-sbf` for both `agent_rails` and `test_pda_relay` first. |
+| `scripts/verify.sh rust` | **Pass** | fmt, clippy, overflow-checks, `cargo test --workspace`, policy llvm-cov ≥95%. Requires `cargo build-sbf` for both `ash` and `test_pda_relay` first. |
 | `scripts/verify.sh kani` | **Pass** | 13 harnesses, Kani 0.68.0 per `scripts/verify.sh`. |
-| `scripts/verify.sh e2e` | **Pass** | `@agent-rails/e2e` + `@agent-rails/mcp test:e2e` (Surfpool). |
+| `scripts/verify.sh e2e` | **Pass** | `@ash/e2e` + `@ash/mcp test:e2e` (Surfpool). |
 | Surface freeze / codegen drift | **Process** | `pnpm codegen:check` in CI `typescript` job; IDL workflow `idl matches the program`. |
-| Upgrade authority vs README | **Documented** | ADR-020: offline key `F2zW3818bfDpAapLo9Z9mgfttYjkkK23JAnkpnWNcSmP` per `docs/runbooks/upgrade-authority.md`. Re-run `agent-rails doctor --rpc https://api.devnet.solana.com` before release tags. |
+| Upgrade authority vs README | **Documented** | ADR-020: offline key `F2zW3818bfDpAapLo9Z9mgfttYjkkK23JAnkpnWNcSmP` per `docs/runbooks/upgrade-authority.md`. Re-run `ash doctor --rpc https://api.devnet.solana.com` before release tags. |
 | Findings under `audits/` | **Done** | This file + Sealevel review. |
 
 ---
@@ -45,6 +45,6 @@ Evidence commands run on 2026-09-29 with `VERIFY_STRICT=1` unless noted.
 
 ## Next review trigger
 
-- Any change to `programs/agent_rails` account layouts or instruction set  
+- Any change to `programs/ash` account layouts or instruction set  
 - Before Colosseum / grant / investor diligence that claims “audited”  
 - Before `1.0.0-beta` mainnet deploy

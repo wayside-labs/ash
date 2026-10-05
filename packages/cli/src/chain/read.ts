@@ -1,6 +1,6 @@
 import {
-  AGENT_RAILS_PROGRAM_ADDRESS,
   AGENT_SESSION_DISCRIMINATOR,
+  ASH_PROGRAM_ADDRESS,
   decodeAgentSession,
   decodePolicy,
   decodeTreasury,
@@ -9,9 +9,9 @@ import {
   POLICY_DISCRIMINATOR,
   type Policy,
   type Treasury,
-} from "@agent-rails/client";
-import { NATIVE_MINT } from "@agent-rails/contract";
-import { loadDestinationIndex } from "@agent-rails/sdk";
+} from "@ash/client";
+import { NATIVE_MINT } from "@ash/contract";
+import { loadDestinationIndex } from "@ash/sdk";
 import {
   type Address,
   address,
@@ -81,7 +81,7 @@ export type TreasurySnapshot = {
 
 async function programAccounts(rpc: Rpc, discriminator: Base58EncodedBytes, treasury: Address) {
   return rpc
-    .getProgramAccounts(AGENT_RAILS_PROGRAM_ADDRESS, {
+    .getProgramAccounts(ASH_PROGRAM_ADDRESS, {
       encoding: "base64",
       filters: [
         { memcmp: { offset: 0n, bytes: discriminator, encoding: "base58" } },
@@ -107,7 +107,7 @@ export async function readTreasurySnapshot(
   policy: Address,
 ): Promise<TreasurySnapshot> {
   const info = await rpc.getAccountInfo(treasury, { encoding: "base64" }).send();
-  if (!info.value || info.value.owner !== AGENT_RAILS_PROGRAM_ADDRESS) {
+  if (!info.value || info.value.owner !== ASH_PROGRAM_ADDRESS) {
     throw new Error(`No treasury at ${treasury}`);
   }
 
@@ -131,7 +131,7 @@ export async function readTreasurySnapshot(
     if (config.mint === address(NATIVE_MINT)) {
       vaultBalance = solVaultLamports;
     } else {
-      const [ata] = await import("@agent-rails/sdk").then((sdk) =>
+      const [ata] = await import("@ash/sdk").then((sdk) =>
         sdk.findAssociatedTokenAddress({
           owner: treasury,
           mint: config.mint,

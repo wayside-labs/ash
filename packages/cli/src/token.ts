@@ -2,7 +2,7 @@ import {
   ASSOCIATED_TOKEN_PROGRAM_ADDRESS,
   findAssociatedTokenAddress,
   TOKEN_PROGRAM_ADDRESS,
-} from "@agent-rails/sdk";
+} from "@ash/sdk";
 import {
   AccountRole,
   type Address,

@@ -8,7 +8,7 @@ import {
   mcpGetSessionSchema,
   mcpListDestinationsSchema,
   mcpRequestLimitIncreaseSchema,
-} from "@agent-rails/contract";
+} from "@ash/contract";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { McpServerConfig } from "../config.js";
 import type { ServerContext } from "../context.js";
@@ -41,7 +41,7 @@ type ToolDefinition = {
 
 export const TOOL_DEFINITIONS: ToolDefinition[] = [
   {
-    name: "agent_rails_get_session",
+    name: "ash_get_session",
     description:
       "Report this agent's session: expiry, revocation status, sequence number, and " +
       "per-mint spend counters including lifetime spend.",
@@ -49,7 +49,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     handler: (context) => handleGetSession(context),
   },
   {
-    name: "agent_rails_get_policy",
+    name: "ash_get_policy",
     description:
       "Report the spending policy in force: per-transaction, window and lifetime limits, " +
       "destination mode, and whether a memo is required.",
@@ -57,7 +57,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     handler: (context) => handleGetPolicy(context),
   },
   {
-    name: "agent_rails_list_destinations",
+    name: "ash_list_destinations",
     description:
       "List the destinations this session may pay, by label. Use a label from this list as " +
       "destination_ref; raw addresses are refused under an allowlist policy.",
@@ -65,7 +65,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     handler: (context) => handleListDestinations(context),
   },
   {
-    name: "agent_rails_get_payment_status",
+    name: "ash_get_payment_status",
     description:
       "Look up whether a payment settled, by intent_id. This is the authoritative answer " +
       "and the only correct response to an indeterminate outcome.",
@@ -73,7 +73,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     handler: (context, input) => handleGetPaymentStatus(context, input),
   },
   {
-    name: "agent_rails_check_payment",
+    name: "ash_check_payment",
     description:
       "Dry-run a payment: resolve the destination and amount, simulate it against the " +
       "policy, and report whether it would be accepted. Sends nothing and costs nothing.",
@@ -81,7 +81,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     handler: (context, input) => handleCheckPayment(context, input),
   },
   {
-    name: "agent_rails_execute_payment",
+    name: "ash_execute_payment",
     description:
       'Pay a registered destination. Amounts are in human units (e.g. "12.50"); the ' +
       "destination is a label; reference identifies what is being settled and makes the " +
@@ -91,7 +91,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     handler: (context, input) => handleExecutePayment(context, input),
   },
   {
-    name: "agent_rails_request_limit_increase",
+    name: "ash_request_limit_increase",
     description:
       "Ask the operator for more budget when the current limits block a legitimate task. " +
       "This only sends a message; it changes no limit, and you must keep working within the " +
@@ -105,17 +105,17 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
 export const REGISTERED_TOOL_NAMES: readonly string[] = TOOL_DEFINITIONS.map((tool) => tool.name);
 
 /**
- * What `AGENT_RAILS_TOOLS=readonly` registers. An allowlist rather than "everything but
+ * What `ASH_TOOLS=readonly` registers. An allowlist rather than "everything but
  * execute": a write tool added later stays out of readonly mode until someone puts it here.
  */
 export const READONLY_TOOL_NAMES: ReadonlySet<AgentToolName> = new Set<AgentToolName>([
-  "agent_rails_get_session",
-  "agent_rails_get_policy",
-  "agent_rails_list_destinations",
-  "agent_rails_get_payment_status",
-  "agent_rails_check_payment",
+  "ash_get_session",
+  "ash_get_policy",
+  "ash_list_destinations",
+  "ash_get_payment_status",
+  "ash_check_payment",
   // Grants nothing: a planner that cannot pay may still say it needs budget.
-  "agent_rails_request_limit_increase",
+  "ash_request_limit_increase",
 ]);
 
 export function toolsForMode(mode: McpServerConfig["toolsMode"]): ToolDefinition[] {

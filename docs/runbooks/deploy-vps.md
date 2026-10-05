@@ -10,7 +10,7 @@
 | | |
 |---|---|
 | Provedor | Hostinger, plano **KVM 2**, cobrado em reais, conta do Lucas |
-| Máquina | x86_64, 2 vCPU AMD EPYC 9354P, 7,8 GiB RAM, ~97 GB NVMe, **Ubuntu 22.04**, hostname `agent-rails` |
+| Máquina | x86_64, 2 vCPU AMD EPYC 9354P, 7,8 GiB RAM, ~97 GB NVMe, **Ubuntu 22.04**, hostname `ash` |
 | Onde | **costa leste dos EUA** — medido da máquina: 14 ms até `us-east-1`, ~120 ms até `sa-east-1` |
 | IP | fixo do plano; **o endereço não fica no repositório** — peça a um sócio |
 
@@ -18,7 +18,7 @@ O endereço fica fora do repositório porque o repositório vai ser aberto para 
 hackathon, e um IP de servidor publicado é um alvo a mais sem nenhum ganho para quem lê.
 
 A primeira versão deste runbook era para uma VM Always Free da Oracle. Ela foi abandonada — o
-porquê está na ADR-019. A conta Oracle e a VM de apoio `agent-rails-02` serão encerradas.
+porquê está na ADR-019. A conta Oracle e a VM de apoio `ash-02` serão encerradas.
 
 ---
 
@@ -43,7 +43,7 @@ pessoas; no servidor só existem chaves públicas.
 | `root` | — | — | **login por SSH desligado** |
 | `lucas` | Lucas, chave própria (`SHA256:ulEjKtRT…fWok`) | sim, sem senha | ✅ 28/09 |
 | `ronaldo` | Ronaldo, chave de `github.com/0xcf02.keys` (`SHA256:uc7Gv1Rz…K7qk`) | sim, sem senha | ✅ 28/09; em uso desde 29/09 |
-| `agent-rails` | serviço do dashboard e backups — nunca uma pessoa; sem docker, sem SSH | **não** | ✅ 29/09 (`bootstrap.sh`) |
+| `ash` | serviço do dashboard e backups — nunca uma pessoa; sem docker, sem SSH | **não** | ✅ 29/09 (`bootstrap.sh`) |
 
 Os dois usuários pessoais estão no grupo `docker` e não têm senha (`passwd -l`): o login é só
 por chave, e `NOPASSWD` no sudo evita criar uma senha só para ele.
@@ -57,7 +57,7 @@ sudo passwd -l fulano
 sudo install -d -m 700 -o fulano -g fulano /home/fulano/.ssh
 curl -fsS https://github.com/<usuario-github>.keys | sudo tee /home/fulano/.ssh/authorized_keys >/dev/null
 sudo chown fulano:fulano /home/fulano/.ssh/authorized_keys && sudo chmod 600 /home/fulano/.ssh/authorized_keys
-echo "fulano ALL=(ALL) NOPASSWD:ALL" | sudo tee -a /etc/sudoers.d/90-agent-rails >/dev/null && sudo visudo -c
+echo "fulano ALL=(ALL) NOPASSWD:ALL" | sudo tee -a /etc/sudoers.d/90-ash >/dev/null && sudo visudo -c
 ```
 
 E acrescentar o nome em `AllowUsers` (§3) — sem isso o sshd recusa a pessoa mesmo com a chave
@@ -109,7 +109,7 @@ etapa 2 depois de 12/10) foi substituído pelo que foi combinado com o Lucas e c
 
 - **Tráfego:** túnel Cloudflare próprio; nenhuma porta aberta e o `ufw` não mudou (o certbot do
   ash usa a 80). Hostnames `console.ash.app.br` e `console-api.ash.app.br` (só `/auth` e `/rest`).
-- **Usuário:** `agent-rails`, sem docker, sem sudo, sem SSH. O `deploy` é do ash e está no grupo
+- **Usuário:** `ash`, sem docker, sem sudo, sem SSH. O `deploy` é do ash e está no grupo
   docker; não usamos.
 - **Supabase:** self-hosted enxuto na mesma VPS, versões iguais às do hospedado, cutover em
   2026-09-29.

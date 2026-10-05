@@ -13,14 +13,14 @@ dist/
 # Solana keypairs are raw secret keys; never commit one, wherever it lands.
 **/*keypair*.json
 
-# `agent-rails init` output: generated keys, the per-cluster manifest and the MCP config
+# `ash init` output: generated keys, the per-cluster manifest and the MCP config
 # snippet. Per-developer state, and the keys are already covered above.
-.agent-rails/
+.ash/
 
 # Surfpool simnet logs from the E2E harness
 .surfpool/
 
-# Playwright's own scratch: the isolated AGENT_RAILS_HOME the UI suite writes to,
+# Playwright's own scratch: the isolated ASH_HOME the UI suite writes to,
 # plus traces and screenshots from failed runs.
 packages/dashboard/.playwright/
 
@@ -53,3 +53,14 @@ docs/strategy/crypto-worlds-fair-playbook.md
 
 # Agent infra env files (examples/agent-infra/*.env.example is the committed template).
 examples/agent-infra/*.env
+
+# Output of `pnpm cloak-smoke`: the progress log, the proof pack and the accountant CSV land in
+# the working directory under these names. The proof pack is public data but it names payees and
+# amounts, and the CSV is for the accountant only: copy a pack into docs/ on purpose, never by
+# `git add .`.
+cloak-smoke-log.json
+cloak-proof-*.json
+cloak-proof-*.json.csv
+
+# Local keypairs and dev state from the early rename-era scripts: never commit them.
+.agent-rails/

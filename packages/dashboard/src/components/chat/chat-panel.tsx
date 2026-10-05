@@ -1,9 +1,10 @@
 "use client";
 
-import { extractConnectorProposals } from "@agent-rails/contract/connector-bundle";
+import { extractConnectorProposals } from "@ash/contract/connector-bundle";
+import { extractTemplateRunProposals, withoutTemplateRunBlocks } from "@ash/contract/template-run";
 import { useQueryClient } from "@tanstack/react-query";
 import { Bot, Loader2, Send, Square } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AddBalanceButton } from "@/components/billing/add-balance-button";
 import { ConnectorProposalCard, withoutConnectorBlocks } from "@/components/chat/connector-card";
 import { Markdown } from "@/components/chat/markdown";
@@ -12,6 +13,7 @@ import {
   reconcileSelectedModel,
   selectableProviders,
 } from "@/components/chat/model-selection";
+import { TemplateRunCard } from "@/components/chat/template-run-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -59,6 +61,16 @@ export function ChatPanel({ className }: { className?: string }) {
   const queryClient = useQueryClient();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  // The box grows with what is pasted, up to half the screen, so a long prompt can be read
+  // whole. It shrinks back when the message is sent (the input clears).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `input` is the trigger; the height is read from the DOM
+  useLayoutEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [input]);
   const [streaming, setStreaming] = useState(false);
   const [mode, setMode] = useState<string | null>(null);
   /** The reply the server refused for want of credit; it carries the top-up button. */
@@ -125,7 +137,7 @@ export function ChatPanel({ className }: { className?: string }) {
         throw new Error(detail.error ?? t("chat.error.httpStatus", { status: res.status }));
       }
 
-      setMode(res.headers.get("x-agent-rails-mode"));
+      setMode(res.headers.get("x-ash-mode"));
 
       const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
       let buffer = "";
@@ -223,11 +235,12 @@ export function ChatPanel({ className }: { className?: string }) {
       <div className="border-t border-border p-3">
         <div className="flex gap-2">
           <Textarea
+            ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={t("chat.placeholder")}
-            className="max-h-32 min-h-[44px] resize-none"
+            className="max-h-[50vh] min-h-[160px] resize-none overflow-y-auto"
             rows={1}
           />
           {streaming ? (
@@ -284,17 +297,26 @@ export function ChatPanel({ className }: { className?: string }) {
 
 /**
  * Only closed fences are parsed, so a block still streaming in shows as text until its
- * closing backticks arrive and then becomes a card.
+ * closing backticks arrive and then becomes a card. Two kinds of block can arrive: a connector
+ * the operator may add, and a private payout the operator may approve.
  */
 function AssistantContent({ content }: { content: string }) {
-  const proposals = useMemo(() => extractConnectorProposals(content), [content]);
-  if (proposals.length === 0) return <Markdown content={content} />;
+  const payouts = useMemo(() => extractTemplateRunProposals(content), [content]);
+  // Payouts come out first: a payout written under the connector fence must not also show up as a
+  // connector that failed validation.
+  const rest = useMemo(() => withoutTemplateRunBlocks(content), [content]);
+  const connectors = useMemo(() => extractConnectorProposals(rest), [rest]);
+  if (connectors.length === 0 && payouts.length === 0) return <Markdown content={content} />;
   return (
     <>
-      <Markdown content={withoutConnectorBlocks(content)} />
-      {proposals.map((proposal, index) => (
+      <Markdown content={withoutConnectorBlocks(rest)} />
+      {connectors.map((proposal, index) => (
         // biome-ignore lint/suspicious/noArrayIndexKey: blocks have no identity beyond order
-        <ConnectorProposalCard key={index} proposal={proposal} />
+        <ConnectorProposalCard key={`connector-${index}`} proposal={proposal} />
+      ))}
+      {payouts.map((proposal, index) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: blocks have no identity beyond order
+        <TemplateRunCard key={`payout-${index}`} proposal={proposal} />
       ))}
     </>
   );

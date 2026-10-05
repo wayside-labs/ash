@@ -2,8 +2,8 @@ import {
   type ConnectorBundle,
   connectorBundleSchema,
   connectorSecretEnv,
-} from "@agent-rails/contract/connector-bundle";
-import { ConnectorImportError } from "@agent-rails/contract/connector-import";
+} from "@ash/contract/connector-bundle";
+import { ConnectorImportError } from "@ash/contract/connector-import";
 import { z } from "zod";
 import { connectorMcpRow } from "@/lib/connectors";
 import { mcpServerSchema, scopeSchema } from "@/lib/schema";

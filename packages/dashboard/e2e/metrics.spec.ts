@@ -167,6 +167,6 @@ test.describe("metrics", () => {
 
     await page.goto("/metrics");
     await expect(page.getByText(t("metrics.emptyTitle"))).toBeVisible();
-    await expect(page.getByText("pnpm agent-rails init --rpc <url>")).toBeVisible();
+    await expect(page.getByText("pnpm ash init --rpc <url>")).toBeVisible();
   });
 });

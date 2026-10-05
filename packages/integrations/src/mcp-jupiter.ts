@@ -1,4 +1,4 @@
-import { SOLANA_DAPPS } from "@agent-rails/contract";
+import { SOLANA_DAPPS } from "@ash/contract";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
@@ -15,17 +15,17 @@ function textResult(payload: unknown, isError = false) {
 }
 
 const DESK_HINT =
-  "Agent Rails execute_payment moves funds to an allowlisted desk wallet. Sign swapTransaction " +
+  "ASH execute_payment moves funds to an allowlisted desk wallet. Sign swapTransaction " +
   "with the desk key (or a mandate PDA in a future release). Never pay a pool vault token account.";
 
 export async function startJupiterMcp(env: NodeJS.ProcessEnv = process.env) {
   const client = new JupiterClient(env.JUPITER_API_BASE ? { baseUrl: env.JUPITER_API_BASE } : {});
   const server = new McpServer(
-    { name: "agent-rails-integrations-jupiter", version: "0.1.0" },
+    { name: "ash-integrations-jupiter", version: "0.1.0" },
     {
       instructions:
         "Solana swap quotes and unsigned transactions via Jupiter. This server cannot move funds. " +
-        "Pair with agent-rails-mcp: treasury pays the desk, then sign and send the swap from the desk. " +
+        "Pair with ash-mcp: treasury pays the desk, then sign and send the swap from the desk. " +
         "For anything that leaves Solana (other networks, bridging, lending, yield vaults) use the SODAX connector.",
     },
   );
@@ -34,7 +34,7 @@ export async function startJupiterMcp(env: NodeJS.ProcessEnv = process.env) {
     "solana_ecosystem_catalog",
     {
       description:
-        "Free. Curated Solana dApps (Jupiter, Raydium, Orca, Kamino, Drift) and how they compose with Agent Rails.",
+        "Free. Curated Solana dApps (Jupiter, Raydium, Orca, Kamino, Drift) and how they compose with ASH.",
       inputSchema: z.strictObject({}),
     },
     async () =>
@@ -93,7 +93,7 @@ export async function startJupiterMcp(env: NodeJS.ProcessEnv = process.env) {
           ...swap,
           encoding: "base64",
           next_step:
-            "Deserialize, sign with user_public_key, send via your RPC. Fund the desk via agent_rails_execute_payment first if needed.",
+            "Deserialize, sign with user_public_key, send via your RPC. Fund the desk via ash_execute_payment first if needed.",
         });
       } catch (error) {
         return textResult({ error: error instanceof Error ? error.message : String(error) }, true);

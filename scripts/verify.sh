@@ -85,7 +85,7 @@ if [[ $group == all || $group == rust ]]; then
   # ADR-008: policy crate >=95%. The crate is the layer with no Solana dependency, so
   # this is the one place the spend arithmetic can be measured on its own.
   if command -v cargo-llvm-cov >/dev/null 2>&1; then
-    run "coverage (policy >=95%)" cargo llvm-cov -p agent-rails-policy \
+    run "coverage (policy >=95%)" cargo llvm-cov -p ash-policy \
       --summary-only --fail-under-lines 95
   else
     printf '\n\033[1m▸ coverage (policy >=95%%)\033[0m\n'
@@ -106,7 +106,7 @@ if [[ $group == all || $group == kani ]]; then
       printf '\033[33m! kani %s installed, %s pinned — proofs discharge against the solver that ran them\033[0m\n' \
         "$installed" "$KANI_VERSION"
     fi
-    run "kani (policy proofs)" cargo kani -p agent-rails-policy --output-format terse
+    run "kani (policy proofs)" cargo kani -p ash-policy --output-format terse
   else
     printf '\n\033[1m▸ kani (policy proofs)\033[0m\n'
     printf '\033[33mskipped: cargo-kani is not installed\033[0m\n'
@@ -150,14 +150,14 @@ if [[ $group == e2e ]]; then
     printf '\033[33mskipped: surfpool is not installed\033[0m\n'
     printf '  https://docs.surfpool.run — or: cargo install surfpool-cli\n'
     note_skip "e2e (surfpool)"
-  elif [[ ! -f target/deploy/agent_rails.so ]]; then
+  elif [[ ! -f target/deploy/ash.so ]]; then
     printf '\n\033[1m▸ e2e (surfpool)\033[0m\n'
-    printf '\033[33mskipped: target/deploy/agent_rails.so is missing\033[0m\n'
-    printf '  cargo build-sbf --manifest-path programs/agent_rails/Cargo.toml\n'
+    printf '\033[33mskipped: target/deploy/ash.so is missing\033[0m\n'
+    printf '  cargo build-sbf --manifest-path programs/ash/Cargo.toml\n'
     note_skip "e2e (surfpool)"
   else
-    run "e2e (surfpool)" pnpm --filter @agent-rails/e2e test:e2e
-    run "e2e (mcp handlers)" pnpm --filter @agent-rails/mcp test:e2e
+    run "e2e (surfpool)" pnpm --filter @ash/e2e test:e2e
+    run "e2e (mcp handlers)" pnpm --filter @ash/mcp test:e2e
   fi
 fi
 
@@ -170,18 +170,18 @@ if [[ $group == ui ]]; then
     printf '\033[33mskipped: @playwright/test is not installed\033[0m\n'
     printf '  pnpm install\n'
     note_skip "ui (playwright)"
-  elif browser_dir=$(pnpm --filter @agent-rails/dashboard exec playwright install --dry-run chromium 2>/dev/null |
+  elif browser_dir=$(pnpm --filter @ash/dashboard exec playwright install --dry-run chromium 2>/dev/null |
     sed -n 's/^  Install location: *//p' | head -1) && [[ -z $browser_dir || ! -d $browser_dir ]]; then
     # `--dry-run` reports where the pinned build *would* live and exits 0 either way, so the
     # directory is the only thing that answers "is it actually downloaded".
     printf '\n\033[1m▸ ui (playwright)\033[0m\n'
     printf '\033[33mskipped: the chromium build playwright pins is not downloaded\033[0m\n'
-    printf '  pnpm --filter @agent-rails/dashboard exec playwright install --with-deps chromium\n'
+    printf '  pnpm --filter @ash/dashboard exec playwright install --with-deps chromium\n'
     note_skip "ui (playwright)"
   else
     # The dashboard imports the workspace packages by their built output, so the
     # suite's own `next build` needs them present first.
-    run "ui (playwright)" pnpm turbo run test:e2e --filter @agent-rails/dashboard
+    run "ui (playwright)" pnpm turbo run test:e2e --filter @ash/dashboard
   fi
 fi
 

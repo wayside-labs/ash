@@ -1,8 +1,8 @@
 "use client";
 
-import { NATIVE_MINT } from "@agent-rails/contract/constants";
-import { usdcMintFor } from "@agent-rails/contract/mints";
-import { AmountConversionError, fromBaseUnits, toBaseUnits } from "@agent-rails/contract/units";
+import { NATIVE_MINT } from "@ash/contract/constants";
+import { usdcMintFor } from "@ash/contract/mints";
+import { AmountConversionError, fromBaseUnits, toBaseUnits } from "@ash/contract/units";
 import { AlertTriangle, ArrowDownLeft, ArrowUpRight, ExternalLink, Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -292,7 +292,7 @@ export function VaultTransferDialog({
               <p className="rounded-lg border border-dashed border-border p-3 text-xs text-muted-foreground">
                 {t("vaultTransfer.usdcNotConfigured")}{" "}
                 <code className="num text-foreground">
-                  pnpm agent-rails init --mint {truncateAddress(usdcMint, 6)}
+                  pnpm ash init --mint {truncateAddress(usdcMint, 6)}
                 </code>
               </p>
             )}

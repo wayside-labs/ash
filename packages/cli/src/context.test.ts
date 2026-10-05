@@ -1,4 +1,4 @@
-import { findPolicyPda } from "@agent-rails/client";
+import { findPolicyPda } from "@ash/client";
 import { address } from "@solana/kit";
 import { describe, expect, it } from "vitest";
 import { resolvePolicy, resolvePolicyName, resolveTreasury } from "./context.js";
