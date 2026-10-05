@@ -45,7 +45,8 @@
   },
   "pnpm": {
     "overrides": {
-      "postcss": "^8.5.23"
+      "postcss": "^8.5.23",
+      "axios": ">=1.20.0"
     }
   }
 }

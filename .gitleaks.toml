@@ -62,3 +62,13 @@ regexes = [
   '''^7v5FqEj8DaCbvJPEqpUtZXKyLBtrHuxhG2tWayTaJd4C$''',
   '''^deposit/withdraw/vaultSwap$''',
 ]
+
+# A 44-character test value for the console-redaction cut in packages/cloak. It is a made-up
+# placeholder ("Secret" is spelled into it on purpose), not an address and not a key; the test
+# only checks that the string is cut from the output.
+[[allowlists]]
+description = "Placeholder base58 string in the cloak console-redaction test"
+condition = "AND"
+paths = ['''packages/cloak/src/errors\.test\.ts''']
+regexTarget = "secret"
+regexes = ['''^4Nd1mYQzvgWJ3SecretSecretSecretSecretSecret1x$''']
