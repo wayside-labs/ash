@@ -28,9 +28,12 @@ const ChatPanel = dynamic(
 
 const PANEL_IDS: HomePanelId[] = ["chat", "workflows"];
 
+// The chat gets most of the width by default: the prompts people paste are long and must be
+// readable. A saved drag still wins, and the storage key below is versioned so a layout saved
+// at the old 42% default does not keep the chat small.
 const DEFAULT_SIZES: Record<HomePanelId, number> = {
-  chat: 42,
-  workflows: 58,
+  chat: 62,
+  workflows: 38,
 };
 
 // useDefaultLayout's default `storage = localStorage` is evaluated during server render, where
@@ -75,7 +78,7 @@ export function HomeLayout() {
   // below `md` the panels always stack. The saved preference is kept for wider screens.
   const narrow = useMediaQuery("(max-width: 767px)");
   const direction = narrow ? "vertical" : homeLayout.direction;
-  const storageId = `home-${direction}-${layoutResetCounter}`;
+  const storageId = `home-v2-${direction}-${layoutResetCounter}`;
   const { defaultLayout, onLayoutChanged } = useDefaultLayout({
     id: storageId,
     panelIds: PANEL_IDS,
