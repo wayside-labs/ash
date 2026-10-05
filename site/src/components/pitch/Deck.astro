@@ -5,18 +5,20 @@ import { getPitch } from "../../content/pitch";
 import type { Lang } from "../../content/copy";
 import FlowMap from "../showcase/FlowMap.astro";
 import AgentCards from "../showcase/AgentCards.astro";
-interface Props { lang: Lang; hidden?: boolean }
-const { lang, hidden = false } = Astro.props;
+// only: draw one slide by id (the pitch-deck frames reuse the live flow slide this way).
+interface Props { lang: Lang; hidden?: boolean; only?: string }
+const { lang, hidden = false, only } = Astro.props;
 const p = getPitch(lang);
-const n = p.slides.length;
+const slides = only ? p.slides.filter((s) => s.id === only) : p.slides;
+const n = slides.length;
 // Visual slides carry their caption below the figure (a footnote on the matrix and market) or
 // above it (the live panels); text slides keep the plain list.
 const below = new Set(["matrix", "market"]);
 const wide = new Set(["flow", "cards", "matrix", "market", "versus"]);
 ---
-<div class="deck" data-deck data-durs={JSON.stringify(p.slides.map((s) => s.dur))} hidden={hidden}>
+<div class="deck" data-deck data-durs={JSON.stringify(slides.map((s) => s.dur))} hidden={hidden}>
   <div class="slides" data-slides>
-    {p.slides.map((s, i) => (
+    {slides.map((s, i) => (
       <section class={`slide kind-${s.kind}`} data-slide data-id={s.id} aria-roledescription="slide" aria-label={`${p.deck.slide} ${i + 1} / ${n}`}>
         <div class={`inner${wide.has(s.kind) ? " wide" : ""}`}>
           <p class="kicker kicker-slash">{s.kicker}</p>
