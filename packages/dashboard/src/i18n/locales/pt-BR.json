@@ -589,7 +589,7 @@
   "settings.rpcResponding": "RPC respondendo — {detail}",
   "settings.rpcFailed": "Falha: {detail}",
   "chat.title": "Chat",
-  "chat.welcome": "Oi, eu sou a ASH. O que vamos construir na Solana hoje?\n\nPagar um fornecedor ou colaborador em privado pela Cloak, converter parte em ZEC, ou criar um agente com limites de gasto. Diga o objetivo e eu explico cada passo.\n\nEu consigo ler seus fluxos e os orçamentos dos seus agentes, mas nunca movo dinheiro sozinho: você aprova cada pagamento.",
+  "chat.welcome": "Oi, eu sou a ASH. O que vamos construir na Solana hoje?",
   "chat.placeholder": "O que você quer construir?",
   "chat.thinking": "Pensando…",
   "chat.modelLabel": "Modelo:",
