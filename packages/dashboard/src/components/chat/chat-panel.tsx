@@ -4,7 +4,7 @@ import { extractConnectorProposals } from "@ash/contract/connector-bundle";
 import { extractTemplateRunProposals, withoutTemplateRunBlocks } from "@ash/contract/template-run";
 import { useQueryClient } from "@tanstack/react-query";
 import { Bot, Loader2, Send, Square } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AddBalanceButton } from "@/components/billing/add-balance-button";
 import { ConnectorProposalCard, withoutConnectorBlocks } from "@/components/chat/connector-card";
 import { Markdown } from "@/components/chat/markdown";
@@ -61,6 +61,16 @@ export function ChatPanel({ className }: { className?: string }) {
   const queryClient = useQueryClient();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  // The box grows with what is pasted, up to half the screen, so a long prompt can be read
+  // whole. It shrinks back when the message is sent (the input clears).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `input` is the trigger; the height is read from the DOM
+  useLayoutEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [input]);
   const [streaming, setStreaming] = useState(false);
   const [mode, setMode] = useState<string | null>(null);
   /** The reply the server refused for want of credit; it carries the top-up button. */
@@ -225,11 +235,12 @@ export function ChatPanel({ className }: { className?: string }) {
       <div className="border-t border-border p-3">
         <div className="flex gap-2">
           <Textarea
+            ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={t("chat.placeholder")}
-            className="max-h-32 min-h-[44px] resize-none"
+            className="max-h-[50vh] min-h-[44px] resize-none overflow-y-auto"
             rows={1}
           />
           {streaming ? (
