@@ -62,23 +62,21 @@ test.describe("money bar", () => {
     await expect(page.getByRole("heading", { name: t("home.workflowsTitle") })).toBeVisible();
 
     const bar = page.locator("header").first();
-    await expect(bar.getByTestId("header-balance")).toContainText("$1.23");
+    // The balance is not in the top bar any more; Deposit and Withdraw still are.
+    await expect(bar.getByTestId("header-balance")).toHaveCount(0);
     await expect(bar.getByRole("button", { name: t("header.deposit") })).toBeVisible();
     await expect(bar.getByRole("button", { name: t("header.withdraw") })).toBeVisible();
-    // A web3 bar: the network and the wallet are here; the SOL price ticker is not.
+    // A web3 bar: the network and the wallet are here, with the live SOL price.
     await expect(bar.getByText("Devnet", { exact: true })).toBeVisible();
     await expect(bar.getByRole("button", { name: t("wallet.connect") })).toBeVisible();
   });
 
-  test("a Brazilian viewer sees reais, and USDC on Solana is the one rail", async ({ page }) => {
+  test("a Brazilian viewer's deposit offers USDC on Solana, and no PIX", async ({ page }) => {
     await money(page, 2_000_000);
     await stubRegion(page, "BR", 5.5);
     await stubRails(page);
 
     await page.goto("/");
-    await expect(page.getByTestId("header-balance")).toContainText("R$");
-    await expect(page.getByTestId("header-balance")).toContainText("11,00");
-
     await page.getByRole("button", { name: t("header.deposit") }).click();
     await expect(page.getByTestId("deposit-rail-solana_pay_usdc")).toBeVisible();
     await expect(page.getByTestId("deposit-rail-pix")).toHaveCount(0);

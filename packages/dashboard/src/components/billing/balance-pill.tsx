@@ -1,27 +1,19 @@
 "use client";
 
 import { ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useBilling } from "@/hooks/use-billing";
-import { useRegion } from "@/hooks/use-region";
-import { intlLocale } from "@/i18n";
-import { useLocale, useTranslation } from "@/i18n/locale-provider";
-import { formatBalance } from "@/lib/region";
-import { BALANCE_PATH, balanceState } from "@/lib/shell";
-import { cn } from "@/lib/utils";
-import { useAppStore, useBalancesHidden } from "@/stores/app-store";
+import { useTranslation } from "@/i18n/locale-provider";
+import { balanceState } from "@/lib/shell";
+import { useAppStore } from "@/stores/app-store";
 
 /**
- * The top bar's only money: the client's credit, in reais for a Brazilian viewer and dollars
- * for everyone else, beside Deposit and Withdraw. Renders nothing until the balance is known,
- * and nothing where billing is off or the viewer is signed out.
+ * Deposit and Withdraw in the top bar. The balance itself is not shown there: it lives on the
+ * balance page. Renders nothing until billing answers, and nothing where billing is off or the
+ * viewer is signed out.
  */
 export function BalancePill() {
   const { t } = useTranslation();
-  const locale = intlLocale(useLocale());
-  const hidden = useBalancesHidden();
-  const region = useRegion();
   const setMoneyDialog = useAppStore((s) => s.setMoneyDialog);
   const { data } = useBilling();
 
@@ -31,23 +23,6 @@ export function BalancePill() {
 
   return (
     <div className="flex items-center gap-2 sm:gap-3">
-      <Link
-        href={BALANCE_PATH}
-        className="flex flex-col items-end leading-tight"
-        data-testid="header-balance"
-      >
-        <span className="text-[10px] uppercase tracking-[0.12em] text-faint-foreground">
-          {t("balance.label")}
-        </span>
-        <span
-          className={cn(
-            "num text-sm font-medium",
-            state === "funded" ? "text-foreground" : "text-destructive",
-          )}
-        >
-          {hidden ? "••••" : formatBalance(data.balanceMicros, region, locale)}
-        </span>
-      </Link>
       <Button
         size="sm"
         variant={state === "funded" ? "outline" : "default"}
