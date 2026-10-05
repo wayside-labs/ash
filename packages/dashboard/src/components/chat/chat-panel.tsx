@@ -240,7 +240,7 @@ export function ChatPanel({ className }: { className?: string }) {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={t("chat.placeholder")}
-            className="max-h-[50vh] min-h-[44px] resize-none overflow-y-auto"
+            className="max-h-[50vh] min-h-[160px] resize-none overflow-y-auto"
             rows={1}
           />
           {streaming ? (
