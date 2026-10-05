@@ -1,0 +1,25 @@
+---
+// Up to three posts that share a tag or the category (relatedPosts). Renders nothing when the
+// post shares nothing with any other: an empty "Related" heading would be a promise not kept.
+import { getCopy, type Lang } from "../../content/copy";
+import type { PublicPost } from "../../lib/blog-types";
+import PostCard from "./PostCard.astro";
+interface Props { posts: readonly PublicPost[]; lang: Lang }
+const { posts, lang } = Astro.props;
+const c = getCopy(lang).blog;
+---
+{posts.length > 0 && (
+  <section class="related" aria-labelledby="related-title">
+    <h2 id="related-title">{c.related}</h2>
+    <ul>
+      {posts.map((post) => <li><PostCard post={post} lang={lang} heading="h3" /></li>)}
+    </ul>
+  </section>
+)}
+<style>
+  .related { margin-top: 72px; padding-top: 48px; border-top: 1px solid var(--line); }
+  h2 { font-size: var(--step-2); }
+  ul { list-style: none; margin: 24px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+  @media (max-width: 960px) { ul { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 620px) { ul { grid-template-columns: 1fr; } .related { margin-top: 48px; padding-top: 36px; } }
+</style>

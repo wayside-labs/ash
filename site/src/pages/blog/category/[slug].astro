@@ -1,0 +1,8 @@
+---
+import ListPage from "../../../components/blog/pages/ListPage.astro";
+import { categoryPaths } from "../../../lib/blog-pages";
+import type { ListView } from "../../../lib/blog-views";
+export const getStaticPaths = () => categoryPaths("en");
+type Props = ListView;
+---
+<ListPage {...Astro.props} />

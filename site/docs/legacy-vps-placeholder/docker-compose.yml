@@ -1,0 +1,40 @@
+# /opt/ash on the Hostinger VPS. The site is reached only through the Cloudflare Tunnel:
+# no service publishes a port, and the daemon binds published ports to 127.0.0.1 anyway.
+# Runtime secrets (CLOUDFLARE_TUNNEL_TOKEN) live in /opt/ash/.env, never here.
+
+x-comum: &comum
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    # Uncapped container logs filled the disk to 96% on the team's other VPS.
+    options: { max-size: "10m", max-file: "5" }
+
+services:
+  web:
+    <<: *comum
+    image: nginx:1.28-alpine
+    container_name: ash-web
+    volumes:
+      - ./site:/usr/share/nginx/html:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks: [ash]
+
+  cloudflared:
+    <<: *comum
+    image: cloudflare/cloudflared:2026.9.3
+    container_name: ash-cloudflared
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      web:
+        condition: service_healthy
+    networks: [ash]
+
+networks:
+  ash:
+    name: ash

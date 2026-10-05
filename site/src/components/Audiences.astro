@@ -1,0 +1,30 @@
+---
+import { getCopy, type Lang } from "../content/copy";
+import Section from "./Section.astro";
+import Button from "./Button.astro";
+import { bookingUrl } from "../lib/contact";
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const c = getCopy(lang);
+// A real booking address, or the contact section of this page (lib/contact.ts).
+const booking: string = bookingUrl(import.meta.env.PUBLIC_BOOKING_URL) ?? "#contact";
+---
+<Section id="who" title={c.who.title} alt>
+  <div class="doors">
+    {c.who.doors.map((d, i) => (
+      <div class="door surface-card" data-reveal>
+        <h3>{d.t}</h3>
+        <p class="muted">{d.b}</p>
+        <Button href={booking} variant={i < 2 ? "primary" : "ghost"} external={booking.startsWith("http")}>{d.cta}</Button>
+      </div>
+    ))}
+  </div>
+  <p class="note muted" data-reveal>{c.who.note}</p>
+</Section>
+<style>
+  .doors { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  .door { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 20px; }
+  .door p { font-size: 15px; flex: 1; }
+  .note { margin-top: 24px; font-size: 14px; max-width: 48em; }
+  @media (max-width: 860px) { .doors { grid-template-columns: 1fr; } }
+</style>

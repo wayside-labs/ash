@@ -1,0 +1,17 @@
+---
+// {{mapa}}: the money map, the same component the home and the pitch draw. It labels itself as a
+// simulation; the activity feed stays off so the block is a figure, not a second page.
+import type { Lang } from "../../../content/copy";
+import FlowMap from "../../showcase/FlowMap.astro";
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+---
+<div class="map" data-shortcode="mapa" data-pagefind-ignore><FlowMap lang={lang} feed={false} /></div>
+<style>
+  .map { min-width: 0; font-size: 16px; line-height: 1.55; }
+  /* The reading column is narrower than the map can be drawn legibly (its cards hold three lines
+     of text), so above the width where the map stacks its cards by itself the figure takes the
+     page's full content width: 100cqw is the post's <main>, declared a container in PostPage. It
+     sits above the sticky contents, which pass behind it. */
+  @media (min-width: 721px) { .map { position: relative; z-index: 1; width: 100cqw; } }
+</style>

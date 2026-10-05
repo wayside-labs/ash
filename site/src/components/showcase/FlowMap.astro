@@ -1,0 +1,281 @@
+---
+// Money-flow map ported from the Claude Design workflow panel v1: vault → agents → payees, with a
+// dot travelling each payment. The original measured the DOM and crashed when the workflow changed;
+// here the geometry is a fixed 1000×560 coordinate space shared by the SVG and the HTML cards, so
+// there is nothing to measure. Simulation lives in lib/flow-model.ts.
+import { getCopy, type Lang } from "../../content/copy";
+import { initialFlow, PAYEES } from "../../lib/flow-model";
+// variant "hero": on a phone the top of the page shows vault and agents only, so the promise and
+// the first scroll are not a wall of cards.
+interface Props { lang: Lang; feed?: boolean; variant?: "default" | "hero" }
+const { lang, feed = true, variant = "default" } = Astro.props;
+const t = getCopy(lang).showcase;
+const s0 = initialFlow();
+const W = 1000, H = 560;
+const box = (x: number, y: number, w: number, h: number) =>
+  `left:${(x / W) * 100}%;top:${(y / H) * 100}%;width:${(w / W) * 100}%;height:${(h / H) * 100}%`;
+
+const vault = { x: 20, y: 195, w: 200, h: 150 };
+const agentTops = [34, 152, 270, 388];
+const AX = 400, AW = 230, AH = 86;
+const payeeTops = [70, 152, 234, 316, 398];
+const PX = 820, PW = 160, PH = 46;
+const agentY = Object.fromEntries(s0.agents.map((a, k) => [a.id, (agentTops[k] ?? 0) + AH / 2]));
+const payeeY = Object.fromEntries(PAYEES.map((p, k) => [p, (payeeTops[k] ?? 0) + PH / 2]));
+const curve = (x1: number, y1: number, x2: number, y2: number) => {
+  const mx = (x1 + x2) / 2;
+  return `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`;
+};
+const funding = s0.agents.map((a) => ({ id: `f-${a.id}`, d: curve(vault.x + vault.w, vault.y + vault.h / 2, AX, agentY[a.id] ?? 0) }));
+const payments = s0.agents.flatMap((a) =>
+  a.pays.map((p) => ({ id: `p-${a.id}-${p}`, agent: a.id, paused: a.status === "paused", d: curve(AX + AW, agentY[a.id] ?? 0, PX, payeeY[p] ?? 0) })),
+);
+const handoffs = s0.handoffs.map((h) => {
+  const y1 = agentY[h.from] ?? 0, y2 = agentY[h.to] ?? 0;
+  const bow = Math.min(70, Math.abs(y2 - y1) * 0.5 + 22);
+  return {
+    id: `h-${h.from}-${h.to}`, d: `M${AX},${y1} C${AX - bow},${y1} ${AX - bow},${y2} ${AX},${y2}`,
+    lx: AX - bow * 0.75, ly: (y1 + y2) / 2, label: t.handoffs[h.label as keyof typeof t.handoffs],
+  };
+});
+const num = (n: number) => n.toLocaleString(lang === "pt" ? "pt-BR" : "en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+---
+<div class={`flow${variant === "hero" ? " is-hero" : ""}`} data-flow data-lang={lang} data-labels={JSON.stringify(t)}>
+  <div class="kpis">
+    <span class="pill mono">{t.demo}</span>
+    <div><small>{t.kpi.spent}</small><b class="mono"><span data-kpi="spent">{num(s0.spentToday)}</span> / {num(s0.ceiling)}</b></div>
+    <div><small>{t.kpi.active}</small><b class="mono">3 / 4</b></div>
+    <div><small>{t.kpi.denied}</small><b class="mono deny" data-kpi="denied">0</b></div>
+  </div>
+  <div class="scroll">
+    <div class="canvas">
+      <svg viewBox={`0 0 ${W} ${H}`} aria-hidden="true">
+        {funding.map((e) => <path d={e.d} class="e funding" />)}
+        {payments.map((e) => <path d={e.d} class={`e payment${e.paused ? " paused" : ""}`} data-edge={e.id} />)}
+        {handoffs.map((e) => <path d={e.d} class="e handoff" />)}
+        <g data-pulses></g>
+      </svg>
+      {handoffs.map((e) => <span class="hlabel mono" style={`left:${(e.lx / W) * 100}%;top:${(e.ly / H) * 100}%`}>⇄ {e.label}</span>)}
+
+      <div class="card vault" style={box(vault.x, vault.y, vault.w, vault.h)}>
+        <small class="eyebrow">{t.vault} · USDC</small>
+        <b class="mono big" data-vault>{num(s0.vault)}</b>
+        <p class="row"><span class="dot accent"></span>{t.ceiling}<span class="mono accent">{num(s0.ceiling)}{t.perDay}</span></p>
+        <p class="row"><span class="dot warn"></span>{t.guardian}<span class="mono faint">0x9f…A21c</span></p>
+      </div>
+
+      {s0.agents.map((a, k) => {
+        const who = t.agents[a.id as keyof typeof t.agents];
+        return (
+          <div class={`card agent is-${a.status}`} data-agent={a.id} style={box(AX, agentTops[k] ?? 0, AW, AH)}>
+            <div class="head"><span><b>{who.n}</b><small>{who.r}</small></span><span class={`status ${a.status}`}>{t.status[a.status]}</span></div>
+            {a.status === "routes" ? (
+              <p class="faint note">{t.noSpend}</p>
+            ) : (
+              <>
+                <div class="bar"><i data-bar style={`width:${(a.spent / a.limit) * 100}%`}></i></div>
+                <p class="row mono"><span><span data-left>{num(a.limit - a.spent)}</span> <em>{t.left}</em></span><span class="faint">{t.balance} <span data-bal>{num(a.balance)}</span></span></p>
+              </>
+            )}
+          </div>
+        );
+      })}
+
+      {PAYEES.map((p, k) => (
+        <div class="card payee" data-payee={p} style={box(PX, payeeTops[k] ?? 0, PW, PH)}>
+          <b>{t.payees[p]}</b><small class="mono"><span data-today>{num(0)}</span> {t.today}</small>
+        </div>
+      ))}
+    </div>
+  </div>
+  <p class="legend">
+    <span><i class="l funding"></i>{t.legend.funding}</span><span><i class="l payment"></i>{t.legend.payment}</span>
+    <span><i class="l handoff"></i>{t.legend.handoff}</span><span><i class="l paused"></i>{t.legend.paused}</span>
+    <span><i class="l ceiling"></i>{t.legend.ceiling}</span>
+  </p>
+  {feed && (
+    <div class="feed">
+      <p class="fhead"><span class="dot settle live"></span><b>{t.feed.title}</b><small class="faint">{t.feed.where}</small></p>
+      <ul data-feed aria-live="off"></ul>
+    </div>
+  )}
+</div>
+<style>
+  /* Text inside the map scales with the map (container units), so the same component reads right
+     at full width on the site and squeezed into a pitch slide. */
+  .flow { container-type: inline-size; border: 1px solid var(--line-strong); border-radius: var(--radius-xl); background: var(--surface); overflow: hidden; }
+  .kpis { display: flex; flex-wrap: wrap; align-items: end; gap: 28px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+  .kpis small { display: block; font-size: 11px; color: var(--faint); }
+  .kpis b { font-size: 14px; font-weight: 500; }
+  .pill { font-size: 10.5px; color: var(--faint); border: 1px solid var(--line-strong); border-radius: var(--radius-sm); padding: 2px 8px; align-self: center; text-transform: uppercase; letter-spacing: .1em; }
+  .deny { color: var(--deny-soft); }
+  .scroll { overflow-x: auto; }
+  /* The canvas never shrinks below what the cards need; on a phone it scrolls sideways inside
+     its own frame instead of squeezing text or overflowing the page. */
+  .canvas { position: relative; aspect-ratio: 1000 / 560; min-width: 680px;
+    background-image: radial-gradient(var(--line-strong) 1px, transparent 1px); background-size: 20px 20px; }
+  svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .e { fill: none; stroke-width: 1.4; transition: opacity .2s; }
+  .e.funding { stroke: var(--line-strong); }
+  .e.payment { stroke: var(--settle); opacity: .45; }
+  .e.payment.paused { stroke: var(--warning); stroke-dasharray: 4 4; opacity: .6; }
+  .e.handoff { stroke: var(--muted); stroke-dasharray: 2 4; }
+  .hlabel { position: absolute; transform: translate(-50%, -50%); font-size: max(9px, 1cqw); color: var(--muted); background: var(--bg); border: 1px solid var(--line-strong); border-radius: var(--radius-sm); padding: 1px 7px; white-space: nowrap; }
+  .card { position: absolute; background: var(--elevated); border: 1px solid var(--line-strong); border-radius: var(--radius-lg); padding: 10px 12px; transition: border-color .3s; overflow: hidden; }
+  .card small { display: block; font-size: max(9px, 1.05cqw); color: var(--muted); }
+  .card p { margin: 0; }
+  .eyebrow { text-transform: uppercase; letter-spacing: .08em; }
+  .big { display: block; font-size: max(15px, 1.95cqw); font-weight: 500; margin: 4px 0 8px; }
+  .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: max(9.5px, 1.15cqw); margin-top: 4px; white-space: nowrap; }
+  .row em { font-style: normal; color: var(--muted); }
+  .accent { color: var(--accent); } .faint { color: var(--faint); }
+  .dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+  .dot.accent { background: var(--accent); } .dot.warn { background: var(--warning); } .dot.settle { background: var(--settle); }
+  .vault .row { justify-content: flex-start; } .vault .row .mono { margin-left: auto; }
+  .head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; font-size: max(10.5px, 1.25cqw); }
+  .head small { font-size: max(9px, 1.1cqw); }
+  .status { font-family: var(--mono); font-size: max(9px, 1cqw); border: 1px solid; border-radius: var(--radius-sm); padding: 1px 7px; }
+  .status.active, .status.routes { color: var(--settle); border-color: var(--settle-line); }
+  .status.paused { color: var(--warning); border-color: color-mix(in srgb, var(--warning) 40%, transparent); }
+  .note { font-size: max(9px, 1.05cqw); line-height: 1.3; margin-top: 6px; }
+  /* Spent vs limit, with the ceiling tick at the end. The tick is the same green as the fill now;
+     it is told apart by its shape, a mark taller than the bar. */
+  .bar { position: relative; height: 3px; background: var(--line-strong); border-radius: 2px; margin-top: 10px; }
+  .bar::after { content: ""; position: absolute; right: 0; top: -3px; width: 2px; height: 9px; background: var(--accent); }
+  .bar i { display: block; height: 100%; background: var(--settle); border-radius: 2px; box-shadow: var(--glow-bar); transition: width .4s; }
+  .bar i.hot { background: var(--warning); box-shadow: 0 0 10px color-mix(in srgb, var(--warning) 60%, transparent); }
+  .agent.flash-settled { border-color: var(--settle); }
+  .agent.flash-denied { border-color: var(--deny); }
+  .payee { display: grid; align-content: center; padding: 6px 12px; }
+  .payee b { font-size: max(10px, 1.2cqw); font-weight: 500; }
+  .payee.hit small { color: var(--settle); }
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; padding: 10px 18px; margin: 0; font-size: 11.5px; color: var(--muted); }
+  .l { display: inline-block; width: 18px; height: 0; border-top: 1.5px solid; vertical-align: middle; margin-right: 6px; }
+  .l.funding { border-color: var(--line-strong); } .l.payment { border-color: var(--settle); }
+  .l.handoff { border-top-style: dotted; border-color: var(--muted); } .l.paused { border-top-style: dashed; border-color: var(--warning); }
+  .l.ceiling { width: 2px; height: 10px; border: 0; background: var(--accent); }
+  .feed { border-top: 1px solid var(--line); padding: 10px 18px 12px; }
+  .fhead { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font-size: 12.5px; }
+  .live { animation: blink 1.6s infinite; }
+  @keyframes blink { 50% { opacity: .35; } }
+  ul { list-style: none; margin: 0; padding: 0; min-height: 132px; }
+  :global(.flow li) { display: grid; grid-template-columns: 64px 84px 1fr auto; gap: 10px; font-size: 12px; padding: 4px 0; border-bottom: 1px solid var(--line); animation: rowIn .25s ease-out; }
+  :global(.flow li .k-settled) { color: var(--settle); } :global(.flow li .k-denied) { color: var(--deny-soft); }
+  :global(.flow li .k-blocked) { color: var(--warning); } :global(.flow li .k-handoff) { color: var(--muted); }
+  @keyframes rowIn { from { opacity: 0; transform: translateY(-4px); } }
+  @media (max-width: 600px) { :global(.flow li) { grid-template-columns: 56px 1fr auto; } :global(.flow li .t) { display: none; } }
+  /* Phones get the v2 panel's answer instead of a sideways-scrolling map: the same cards, stacked.
+     The curves and dots need the wide geometry, so they go; bars, flashes and the feed keep running. */
+  @media (max-width: 720px) {
+    .scroll { overflow: visible; }
+    .canvas { aspect-ratio: auto; min-width: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 14px; background-image: none; }
+    svg, .hlabel, .legend { display: none; }
+    .card { position: static; width: auto !important; height: auto !important; }
+    .head { font-size: 13px; } .head small, .card small, .note, .status { font-size: 11px; } .row { font-size: 12px; } .big { font-size: 20px; } .payee b { font-size: 12.5px; }
+    .vault, .agent { grid-column: 1 / -1; }
+    .is-hero .payee { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { .live, :global(.flow li) { animation: none; } .bar i, .card { transition: none; } }
+</style>
+<script>
+  import { initialFlow, rng, step, type FlowEvent, type FlowState } from "../../lib/flow-model";
+
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const SVGNS = "http://www.w3.org/2000/svg";
+
+  document.querySelectorAll<HTMLElement>("[data-flow]").forEach((root, idx) => {
+    const t = JSON.parse(root.dataset.labels ?? "{}");
+    const loc = root.dataset.lang === "pt" ? "pt-BR" : "en-US";
+    const num = (n: number) => n.toLocaleString(loc, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const clock = () => new Date().toLocaleTimeString(loc, { hour12: false });
+    const feed = root.querySelector<HTMLUListElement>("[data-feed]");
+    const pulses = root.querySelector<SVGGElement>("[data-pulses]");
+    let state: FlowState = initialFlow();
+    const rand = rng(20260930 + idx);
+
+    function paint() {
+      const v = root.querySelector("[data-vault]"); if (v) v.textContent = num(state.vault);
+      const sp = root.querySelector("[data-kpi=spent]"); if (sp) sp.textContent = num(state.spentToday);
+      const dn = root.querySelector("[data-kpi=denied]"); if (dn) dn.textContent = String(state.deniedToday);
+      for (const a of state.agents) {
+        const card = root.querySelector(`[data-agent="${a.id}"]`);
+        if (!card || !a.limit) continue;
+        const pct = a.spent / a.limit;
+        const bar = card.querySelector<HTMLElement>("[data-bar]");
+        if (bar) { bar.style.width = `${Math.min(100, pct * 100)}%`; bar.classList.toggle("hot", pct > 0.85); }
+        const left = card.querySelector("[data-left]"); if (left) left.textContent = num(a.limit - a.spent);
+        const bal = card.querySelector("[data-bal]"); if (bal) bal.textContent = num(a.balance);
+      }
+      for (const [p, v] of Object.entries(state.payeeToday)) {
+        const el = root.querySelector(`[data-payee="${p}"]`);
+        el?.classList.toggle("hit", v > 0);
+        const td = el?.querySelector("[data-today]"); if (td) td.textContent = num(v);
+      }
+    }
+
+    // A dot rides the payment's own curve; rAF + getPointAtLength keeps it off the SMIL quirks
+    // the original had (a frame at 0,0 before it started).
+    function pulse(edge: string, color: string, ms: number) {
+      const path = root.querySelector<SVGPathElement>(`[data-edge="${edge}"]`);
+      if (!path || !pulses || reduce) return;
+      const dot = document.createElementNS(SVGNS, "circle");
+      dot.setAttribute("r", "4");
+      dot.style.fill = color;
+      dot.style.filter = `drop-shadow(0 0 4px ${color})`;
+      pulses.append(dot);
+      const len = path.getTotalLength();
+      const t0 = performance.now();
+      const tick = (now: number) => {
+        const k = Math.min(1, (now - t0) / ms);
+        const pt = path.getPointAtLength(len * k);
+        dot.setAttribute("cx", String(pt.x)); dot.setAttribute("cy", String(pt.y));
+        if (k < 1) requestAnimationFrame(tick); else dot.remove();
+      };
+      requestAnimationFrame(tick);
+    }
+
+    function flash(agent: string, kind: "settled" | "denied") {
+      const card = root.querySelector(`[data-agent="${agent}"]`);
+      card?.classList.add(`flash-${kind}`);
+      setTimeout(() => card?.classList.remove(`flash-${kind}`), 900);
+    }
+
+    function log(e: FlowEvent) {
+      if (!feed) return;
+      const who = (id: string) => t.agents[id]?.n ?? id;
+      const li = document.createElement("li");
+      const cells: Array<[string, string]> = [["t mono faint", clock()], [`k-${e.kind}`, t.feed[e.kind]]];
+      if (e.kind === "handoff") {
+        cells.push(["", `${who(e.from)} → ${who(e.to)} · ${t.handoffs[e.label] ?? e.label}`], ["mono", ""]);
+      } else {
+        const tail = e.kind === "denied" ? ` · ${t.feed.overLimit}` : e.kind === "blocked" ? ` · ${t.feed.paused}` : "";
+        cells.push(["", `${who(e.from)} → ${t.payees[e.to] ?? e.to}${tail}`], ["mono", e.amount ? num(e.amount) : "—"]);
+      }
+      for (const [cls, text] of cells) { const s = document.createElement("span"); s.className = cls; s.textContent = text; li.append(s); }
+      feed.prepend(li);
+      while (feed.children.length > 6) feed.lastElementChild?.remove();
+    }
+
+    function tick() {
+      const r = step(state, rand);
+      const newDay = r.state.day !== state.day;
+      state = r.state;
+      const e = r.event;
+      if (newDay && feed) feed.replaceChildren();
+      if (e.kind === "settled") { pulse(`p-${e.from}-${e.to}`, "var(--settle)", 1100); flash(e.from, "settled"); }
+      if (e.kind === "denied") { pulse(`p-${e.from}-${e.to}`, "var(--deny)", 900); flash(e.from, "denied"); }
+      log(e);
+      paint();
+    }
+
+    // Only run while on screen: the pitch keeps hidden slides in the DOM, and a background tab
+    // should not burn a timer for nobody.
+    let timer: number | undefined;
+    const run = (on: boolean) => {
+      if (on && timer === undefined) { tick(); timer = window.setInterval(tick, 2100); }
+      if (!on && timer !== undefined) { clearInterval(timer); timer = undefined; }
+    };
+    if (reduce) { for (let k = 0; k < 5; k++) tick(); }
+    else new IntersectionObserver((es) => run(es.some((x) => x.isIntersecting))).observe(root);
+  });
+</script>

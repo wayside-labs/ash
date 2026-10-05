@@ -1,0 +1,12 @@
+---
+import Base from "../../layouts/Base.astro";
+import Top from "../../components/pitch/Top.astro";
+import Investor from "../../components/pitch/Investor.astro";
+import { getPitch, investorPath } from "../../content/pitch";
+const lang = "pt" as const;
+const p = getPitch(lang);
+---
+<Base lang={lang} title={p.meta.investorTitle} description={p.meta.description} path={investorPath(lang)} altPath={investorPath("en")} noindex motion={false}>
+  <Top lang={lang} alt={investorPath("en")} />
+  <main id="main"><Investor lang={lang} /></main>
+</Base>

@@ -1,0 +1,50 @@
+---
+// Search over the posts of this language (decision 9). The index is Pagefind's, built from the
+// post pages after the build and served from this site under /pagefind/. Nothing of it is asked
+// for until the reader touches the field: no script, no index, no request for who never
+// searches. The markup and the styles are the site's own; Pagefind's interface is not shipped.
+// What a result shows comes from the index of our own pages and still goes in as text: titles
+// through textContent, excerpts cut at Pagefind's <mark> and nothing else.
+import { getCopy, type Lang } from "../../content/copy";
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const c = getCopy(lang).blog.search;
+---
+<div class="search" data-search data-pagefind="/pagefind/pagefind.js" data-hint={c.hint} data-none={c.none} data-one={c.count.one} data-other={c.count.other} data-loading={c.loading} data-failed={c.failed}>
+  <form role="search" data-search-form>
+    <label class="sr" for="blog-search">{c.label}</label>
+    <input id="blog-search" type="search" name="q" placeholder={c.placeholder} autocomplete="off" spellcheck="false" enterkeyhint="search" />
+  </form>
+  <p class="status muted" role="status" data-search-status></p>
+  <ul class="results" aria-label={c.results} data-search-results hidden></ul>
+</div>
+<style>
+  .search { margin-top: 28px; max-width: 560px; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  input {
+    width: 100%; min-height: 44px; padding: 9px 14px; font: inherit; font-size: 16px; color: var(--ink);
+    background: var(--elevated); border: 1px solid var(--line-strong); border-radius: var(--radius-md);
+    appearance: none;
+  }
+  input::placeholder { color: var(--faint); }
+  input:hover { border-color: var(--settle-line); }
+  input:focus-visible { outline: 2px solid var(--settle); outline-offset: 2px; border-radius: var(--radius-md); }
+  .status { margin-top: 10px; font-size: 14px; min-height: 1.55em; overflow-wrap: anywhere; }
+  .status:empty { display: none; }
+  .results { list-style: none; margin: 10px 0 0; padding: 6px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--radius-lg); }
+  .results[hidden] { display: none; }
+  /* The rows are made by the script, so they carry no scope attribute. */
+  .results :global(a) { display: block; padding: 10px 12px; border-radius: var(--radius-md); overflow-wrap: anywhere; }
+  .results :global(a:hover), .results :global(a:focus-visible) { background: var(--elevated); text-decoration: none; }
+  .results :global(a:focus-visible) { outline: 2px solid var(--settle); outline-offset: -2px; }
+  .results :global(.t) { display: block; font-weight: 500; line-height: 1.3; }
+  .results :global(.e) { display: block; margin-top: 4px; font-size: 14px; line-height: 1.5; color: var(--muted); }
+  .results :global(mark) { background: none; color: var(--ink); font-weight: 600; }
+</style>
+<!-- Not bundled (is:inline): the bundler rewrites a dynamic import() to preload its chunks, and
+     Pagefind's file is not one of its chunks. Declaring the function loads nothing. -->
+<script is:inline>window.ashImport = (url) => import(url);</script>
+<script>
+  import { initSearch } from "../../lib/blog-search-ui";
+  document.querySelectorAll<HTMLElement>("[data-search]").forEach(initSearch);
+</script>

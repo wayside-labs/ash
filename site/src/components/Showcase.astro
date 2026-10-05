@@ -1,0 +1,75 @@
+---
+// "See it run": the three agent cards inside one panel, under a strip of the day's totals. The
+// button plays one more payment by the first agent, so a visitor sees a budget go down.
+import { getCopy, type Lang } from "../content/copy";
+import AgentCards from "./showcase/AgentCards.astro";
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const c = getCopy(lang).showcase;
+const loc = lang === "pt" ? "pt-BR" : "en-US";
+const num = (n: number) => n.toLocaleString(loc, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+// What the three cards add up to: one payment settled, one refused, one agent paused.
+const SPENT = 45, CEILING = 500;
+---
+<section class="band wash-top" id="demo">
+  <div class="wrap showcase">
+    <div class="head">
+      <div>
+        <p class="kicker-slash" data-reveal>{c.eyebrow}</p>
+        <h2 data-reveal>{c.title}</h2>
+      </div>
+      <p class="sub muted" data-reveal>{c.sub}</p>
+    </div>
+    <div class="panel" data-reveal data-showcase data-locale={loc} data-spent={SPENT}>
+      <div class="strip mono">
+        <span class="demo">{c.demo}</span>
+        <span>{c.kpi.spent} <b><span data-sim-spent>{num(SPENT)}</span> / {num(CEILING)}</b></span>
+        <span>{c.kpi.active} <b>2 / 3</b></span>
+        <span>{c.kpi.denied} <b class="deny">1</b></span>
+        <button type="button" class="run mono" data-sim-run><span aria-hidden="true">▶ </span>{c.run}</button>
+      </div>
+      <div class="cards"><AgentCards lang={lang} variant="grid" /></div>
+    </div>
+  </div>
+</section>
+<script>
+  // One more 5.00 payment by the first agent per click, up to four, then back to the start:
+  // enough to watch the budget shrink and the totals follow, with nothing sent anywhere.
+  const STEP = 5, MAX = 4;
+  for (const panel of document.querySelectorAll<HTMLElement>("[data-showcase]")) {
+    const card = panel.querySelector<HTMLElement>("[data-sim]");
+    const run = panel.querySelector<HTMLButtonElement>("[data-sim-run]");
+    if (!card || !run) continue;
+    const fmt = new Intl.NumberFormat(panel.dataset.locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const base = { left: Number(card.dataset.left), limit: Number(card.dataset.limit), bal: Number(card.dataset.bal), amount: Number(card.dataset.amount), spent: Number(panel.dataset.spent) };
+    // Every card carries the same hooks; only the first agent's are moved, so they are looked up
+    // inside its card. The day's total sits in the strip, outside it.
+    const set = (root: HTMLElement, sel: string, text: string) => { const el = root.querySelector(sel); if (el) el.textContent = text; };
+    let extra = 0;
+    run.addEventListener("click", () => {
+      extra = extra >= MAX ? 0 : extra + 1;
+      const paid = extra * STEP;
+      set(card, "[data-sim-left]", fmt.format(base.left - paid));
+      set(card, "[data-sim-bal]", fmt.format(base.bal - paid));
+      set(card, "[data-sim-amount]", fmt.format(base.amount + paid));
+      set(card, "[data-sim-times]", extra ? ` ×${extra + 1}` : "");
+      set(panel, "[data-sim-spent]", fmt.format(base.spent + paid));
+      const bar = card.querySelector<HTMLElement>("[data-sim-bar]");
+      if (bar) bar.style.width = `${(1 - (base.left - paid) / base.limit) * 100}%`;
+    });
+  }
+</script>
+<style>
+  .showcase { padding-block: var(--section); display: flex; flex-direction: column; gap: 40px; }
+  .head { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 24px 64px; align-items: end; }
+  h2 { margin-top: 14px; }
+  .sub { font-size: 16px; line-height: 1.6; text-wrap: pretty; }
+  .panel { border: 1px solid var(--line-strong); border-radius: var(--radius-xl); background: var(--surface); overflow: hidden; }
+  .strip { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 40px; padding: 16px 20px; border-bottom: 1px solid var(--line); font-size: 13px; color: var(--faint); }
+  .strip > span { white-space: nowrap; } .strip b { font-weight: 500; color: var(--ink); } .strip .deny { color: var(--deny); }
+  .demo { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+  .run { margin-left: auto; font-size: 12px; color: var(--settle); background: transparent; border: 1px solid var(--settle-line); border-radius: var(--radius-md); padding: 7px 12px; min-height: 32px; cursor: pointer; }
+  .run:hover { background: rgb(61 255 110 / .08); }
+  .cards { padding: 20px; }
+  @media (max-width: 560px) { .run { margin-left: 0; } .cards { padding: 14px; } }
+</style>

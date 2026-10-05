@@ -13,7 +13,8 @@
       "!**/node_modules",
       "!idl",
       "!.claude/skills/sodax-*",
-      "!skills-lock.json"
+      "!skills-lock.json",
+      "!site"
     ]
   },
   "formatter": {

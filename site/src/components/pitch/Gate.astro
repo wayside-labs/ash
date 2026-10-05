@@ -1,0 +1,84 @@
+---
+import { getPitch, pitchPath } from "../../content/pitch";
+import { privacyPath, type Lang } from "../../content/copy";
+import { KINDS } from "../../lib/lead-schema";
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const g = getPitch(lang).gate;
+const sitekey: string = import.meta.env.PUBLIC_TURNSTILE_SITEKEY || "";
+---
+<section class="gate" data-gate role="dialog" aria-modal="true" aria-labelledby="gate-title">
+  <form class="card" data-gate-form novalidate data-sitekey={sitekey}>
+    <h1 id="gate-title">{g.title}</h1>
+    <p class="sub muted">{g.sub}</p>
+
+    <label class="field">
+      <span>{g.name}</span>
+      <input name="name" autocomplete="name" maxlength="80" required />
+      <small class="err" data-err="name" hidden>{g.errors.name}</small>
+    </label>
+    <label class="field">
+      <span>{g.role}</span>
+      <input name="role" autocomplete="organization-title" maxlength="80" placeholder={g.rolePlaceholder} required />
+      <small class="err" data-err="role" hidden>{g.errors.role}</small>
+    </label>
+    <fieldset class="field">
+      <legend>{g.kind}</legend>
+      <div class="kinds">
+        {KINDS.map((k) => (
+          <label class="kind"><input type="radio" name="kind" value={k} required /><span>{g.kinds[k]}</span></label>
+        ))}
+      </div>
+      <small class="err" data-err="kind" hidden>{g.errors.kind}</small>
+    </fieldset>
+    <label class="field">
+      <span>{g.email}</span>
+      <input name="email" type="email" autocomplete="email" maxlength="254" required />
+      <small class="err" data-err="email" hidden>{g.errors.email}</small>
+    </label>
+    <label class="consent">
+      <input type="checkbox" name="consent" required />
+      <span>{g.consent} <a href={privacyPath(lang)} target="_blank" rel="noopener">{g.consentLink}</a></span>
+    </label>
+    <small class="err" data-err="consent" hidden>{g.errors.consent}</small>
+
+    <div class="captcha" data-captcha></div>
+    <small class="err" data-err="network" hidden>{g.errors.network}</small>
+    <button type="submit" class="btn btn-primary" data-submit data-sending={g.sending}>{g.submit}</button>
+    <!-- Consent is only free if refusing it costs nothing: the same deck is one click away. -->
+    <p class="skip muted">{g.skip} <a href={pitchPath(lang)}>{g.skipLink}</a></p>
+  </form>
+</section>
+<style>
+  .gate {
+    position: fixed; inset: 0; z-index: var(--z-overlay); display: grid; place-items: center; overflow-y: auto;
+    padding: 24px 16px; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(6px);
+  }
+  .gate[hidden] { display: none; }
+  .card {
+    width: min(100%, 480px); background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--radius-xl);
+    padding: 28px; display: grid; gap: 16px;
+  }
+  h1 { font-size: 26px; font-weight: 600; line-height: 1.15; letter-spacing: 0; }
+  .sub { margin-top: -6px; font-size: 15px; }
+  .field { display: grid; gap: 6px; border: 0; margin: 0; padding: 0; min-width: 0; }
+  .field > span, legend { font-size: 13px; color: var(--muted); padding: 0; }
+  input:not([type="radio"], [type="checkbox"]) {
+    background: var(--elevated); color: var(--ink); border: 1px solid var(--line-strong); border-radius: var(--radius-md);
+    padding: 10px 12px; font: inherit; font-size: 15px; min-width: 0;
+  }
+  input:focus-visible { outline: 2px solid var(--settle); outline-offset: 1px; }
+  .kinds { display: grid; gap: 8px; margin-top: 6px; }
+  .kind { display: flex; align-items: center; gap: 10px; border: 1px solid var(--line-strong); border-radius: var(--radius-md); padding: 10px 12px; cursor: pointer; font-size: 15px; }
+  .kind:has(input:checked) { border-color: var(--settle); }
+  input[type="radio"], input[type="checkbox"] { accent-color: var(--settle); margin: 0; }
+  .consent { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; color: var(--muted); line-height: 1.45; }
+  .consent input { margin-top: 2px; flex: none; }
+  .consent a, .skip a { color: var(--settle); }
+  .consent a:hover, .skip a:hover { color: var(--settle-soft); }
+  .err { color: var(--deny-soft); font-size: 13px; }
+  .err[hidden] { display: none; }
+  .captcha:empty { display: none; }
+  button[disabled] { opacity: .6; cursor: progress; }
+  .skip { font-size: 13px; line-height: 1.45; margin-top: -4px; }
+</style>

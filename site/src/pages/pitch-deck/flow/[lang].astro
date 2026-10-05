@@ -1,0 +1,21 @@
+---
+// The live flow slide (pitch #5) on its own, for the pitch deck's slide 6. It is the same Deck
+// component as /pitch, so the frame cannot drift from the site; only the controls are hidden.
+import Base from "../../../layouts/Base.astro";
+import Deck from "../../../components/pitch/Deck.astro";
+import { getPitch } from "../../../content/pitch";
+import type { Lang } from "../../../content/copy";
+
+export function getStaticPaths() {
+  return [{ params: { lang: "pt" } }, { params: { lang: "en" } }];
+}
+const lang = Astro.params.lang as Lang;
+const p = getPitch(lang);
+---
+<Base lang={lang} title={p.meta.pitchTitle} description={p.meta.description} path={`/pitch-deck/flow/${lang}/`} altPath={null} noindex motion={false}>
+  <main id="main" class="frame"><Deck lang={lang} only="flow" /></main>
+</Base>
+<style is:global>
+  .frame .deck { height: 100svh; min-height: 0; }
+  .frame .bar, .frame .notes { display: none; }
+</style>

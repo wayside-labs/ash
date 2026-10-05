@@ -1,0 +1,175 @@
+/* Same palette as the site since design v2 (src/styles/tokens.css, docs/design-system.md). Never
+   invent a tone here. The fonts are still Inter and JetBrains Mono: swapping them means new
+   packages and a build this machine cannot run, so it waits for the next studio deploy. */
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #070908;
+  --color-surface: #0b0f0c;
+  --color-elevated: #131a15;
+  --color-ink: #e6ebe7;
+  --color-muted: #a8b3ac;
+  --color-faint: #8a958e;
+  /* The site keeps #18201b for section rules; here "line" also holds cards and fields, which
+     need the stronger of the reference's two line tones. */
+  --color-line: #1d2a21;
+  --color-line-strong: #2a3a2f;
+  --color-accent: #3dff6e;
+  --color-settle: #3dff6e;
+  --color-settle-ink: #04140a;
+  --color-warning: #e0b860;
+  --color-deny: #ff6b5e;
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+}
+
+/* Everything below sits in a layer. In Tailwind 4 a rule outside every layer beats the
+   utilities, whatever its specificity: `hover:border-line-strong` next to an unlayered
+   .surface-card would silently do nothing. */
+@layer base {
+  /* Dark only: native controls (the date picker, selects, scrollbars) follow. */
+  html {
+    color-scheme: dark;
+  }
+  body {
+    background: var(--color-bg);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+  }
+  /* One focus ring for everything, in the brand colour. */
+  :focus-visible {
+    outline: 2px solid var(--color-settle);
+    outline-offset: 2px;
+  }
+  dialog::backdrop {
+    background: color-mix(in srgb, var(--color-bg) 75%, transparent);
+  }
+}
+
+/* A utility, so `border-*`, `rounded-*` and their hover variants written next to it win. */
+@utility surface-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-xl);
+  box-shadow: inset 0 1px 0 0 rgb(255 255 255 / 0.04);
+}
+
+/* The body of a post, in the editor and in the preview: the same rules for both, so what is
+   typed looks like what is previewed. Tokens only; the site has its own theme (M1c). */
+@layer components {
+  .post-body {
+    color: var(--color-ink);
+    font-size: 1rem;
+    line-height: 1.7;
+    overflow-wrap: anywhere;
+  }
+  .post-body > * + * {
+    margin-top: 1em;
+  }
+  .post-body h2,
+  .post-body h3,
+  .post-body h4 {
+    font-weight: 600;
+    line-height: 1.3;
+  }
+  .post-body h2 {
+    font-size: 1.5rem;
+    margin-top: 2em;
+  }
+  .post-body h3 {
+    font-size: 1.25rem;
+    margin-top: 1.6em;
+  }
+  .post-body h4 {
+    font-size: 1.05rem;
+    margin-top: 1.4em;
+  }
+  .post-body > :first-child {
+    margin-top: 0;
+  }
+  .post-body a {
+    color: var(--color-accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .post-body ul,
+  .post-body ol {
+    padding-left: 1.5em;
+  }
+  .post-body ul {
+    list-style: disc;
+  }
+  .post-body ol {
+    list-style: decimal;
+  }
+  .post-body li + li,
+  .post-body li > ul,
+  .post-body li > ol {
+    margin-top: 0.35em;
+  }
+  .post-body blockquote {
+    border-left: 3px solid var(--color-line-strong);
+    padding-left: 1em;
+    color: var(--color-muted);
+  }
+  .post-body blockquote > * + * {
+    margin-top: 0.75em;
+  }
+  .post-body code {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+    background: var(--color-elevated);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-sm);
+    padding: 0.1em 0.3em;
+  }
+  .post-body pre {
+    background: var(--color-elevated);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-md);
+    padding: 1em;
+    overflow-x: auto;
+    line-height: 1.5;
+  }
+  .post-body pre code {
+    background: none;
+    border: 0;
+    padding: 0;
+  }
+  /* Constrained to the column, whatever the file's own size. */
+  .post-body img {
+    max-width: 100%;
+    height: auto;
+    border-radius: var(--radius-md);
+  }
+  .post-body hr {
+    border: 0;
+    border-top: 1px solid var(--color-line-strong);
+    margin: 2em 0;
+  }
+  .post-body table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9375rem;
+  }
+  .post-body th,
+  .post-body td {
+    border: 1px solid var(--color-line);
+    padding: 0.4em 0.7em;
+    text-align: left;
+  }
+  .post-body figcaption {
+    margin-top: 0.5em;
+    font-size: 0.875rem;
+    color: var(--color-muted);
+  }
+  /* The editor's own marks: the selected block (an image, a shortcode) and the drop position. */
+  .post-body .ProseMirror-selectednode {
+    outline: 2px solid var(--color-settle);
+    outline-offset: 2px;
+  }
+}

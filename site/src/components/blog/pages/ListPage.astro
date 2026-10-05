@@ -1,0 +1,93 @@
+---
+// Every list of posts: the index and its pages, a category, a tag, an author. The route files
+// only choose the language; what to list arrives as a ListView (lib/blog-views.ts).
+import Base from "../../../layouts/Base.astro";
+import Header from "../../Header.astro";
+import Footer from "../../Footer.astro";
+import { getCopy } from "../../../content/copy";
+import { categoryName } from "../../../lib/blog-model";
+import { blogIndexPath, categoryPath } from "../../../lib/blog-paths";
+import { fillTemplate } from "../../../lib/blog-text";
+import type { ListView } from "../../../lib/blog-views";
+import AuthorCard from "../AuthorCard.astro";
+import Pagination from "../Pagination.astro";
+import PostCard from "../PostCard.astro";
+import SearchBox from "../SearchBox.astro";
+type Props = ListView;
+const view = Astro.props;
+const { lang, kind, posts, page, pageCount, category, tag, author, rss } = view;
+const c = getCopy(lang).blog;
+
+const subject = category ? categoryName(category, lang) : tag ? tag.tag : author ? author.name : null;
+const kicker = category ? c.category : tag ? c.tag : null;
+const paged = page > 1 ? ` · ${c.page} ${page}` : "";
+const title = subject === null ? `${c.title}${paged} — Ash` : `${subject} — ${c.title} — Ash`;
+// Each kind of list says what it is: the same sentence on every page reads as duplicates.
+const description = subject !== null
+  ? fillTemplate(category ? c.desc.category : tag ? c.desc.tag : c.desc.author, { name: subject })
+  : page > 1 ? fillTemplate(c.desc.page, { page, total: pageCount }) : c.intro;
+// The wide card is the first post of the first page of the index, when it is a featured one.
+const lead = kind === "index" && page === 1 && posts[0]?.featured ? posts[0] : null;
+const rest = lead ? posts.slice(1) : posts;
+---
+<Base lang={lang} title={title} description={description} path={view.path} altPath={view.altPath} xDefaultPath={view.xDefaultPath}
+  noindex={view.noindex ? "follow" : false} motion={false}>
+  {rss && <link slot="head" rel="alternate" type="application/rss+xml" title={`Ash — ${c.title}`} href={rss} />}
+  <Header lang={lang} langHref={view.langHref} homeAnchors />
+  <main id="main" class="wrap list" data-blog={kind}>
+    <header class="head">
+      {author ? <AuthorCard author={author} lang={lang} as="h1" /> : (
+        <>
+          {kicker && <p class="kicker kicker-dot">{kicker}</p>}
+          <h1>{subject ?? c.title}</h1>
+          {kind === "index" && <p class="intro muted">{c.intro}</p>}
+        </>
+      )}
+      {page > 1 && <p class="where mono">{c.page} {page} {c.of} {pageCount}</p>}
+      {kind === "index" && page === 1 && posts.length > 0 && <SearchBox lang={lang} />}
+    </header>
+
+    <nav class="cats" aria-label={c.categories}>
+      <a href={blogIndexPath(lang)} aria-current={kind === "index" ? "page" : undefined}>{c.allPosts}</a>
+      {view.categories.map((item) => (
+        <a href={categoryPath(lang, item.slug)} aria-current={category?.slug === item.slug ? "page" : undefined}>{categoryName(item, lang)}</a>
+      ))}
+      {rss && <a class="rss mono" href={rss}>{c.rss}</a>}
+    </nav>
+
+    {posts.length === 0 && <p class="empty muted">{c.empty}</p>}
+    {lead && <div class="lead"><PostCard post={lead} lang={lang} variant="featured" /></div>}
+    {rest.length > 0 && (
+      <ul class="grid">
+        {rest.map((post) => <li><PostCard post={post} lang={lang} /></li>)}
+      </ul>
+    )}
+    <Pagination lang={lang} page={page} pageCount={pageCount} />
+  </main>
+  <Footer lang={lang} />
+</Base>
+<style>
+  .list { padding-block: 64px 88px; }
+  .head { max-width: 760px; }
+  .kicker { margin-bottom: 14px; }
+  h1 { font-size: clamp(2.25rem, 5vw, 3.25rem); line-height: 1.08; overflow-wrap: anywhere; }
+  .intro { margin-top: 16px; font-size: 18px; line-height: 1.5; max-width: 34em; }
+  .where { margin-top: 14px; font-size: 13px; color: var(--muted); }
+  .cats { margin-top: 36px; padding-bottom: 14px; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 10px 24px; font-size: 15px; color: var(--muted); }
+  .cats a { overflow-wrap: anywhere; min-width: 0; }
+  .cats a:hover { color: var(--ink); }
+  .cats a[aria-current] { color: var(--ink); }
+  .cats .rss { margin-left: auto; font-size: 13px; align-self: center; }
+  .empty { margin-top: 40px; }
+  .lead { margin-top: 32px; }
+  .grid { list-style: none; margin: 20px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+  .cats + .grid { margin-top: 32px; }
+  .grid li { min-width: 0; }
+  @media (max-width: 960px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 620px) {
+    .list { padding-block: 40px 56px; }
+    .grid { grid-template-columns: 1fr; }
+    .cats { margin-top: 28px; }
+    .cats .rss { margin-left: 0; }
+  }
+</style>

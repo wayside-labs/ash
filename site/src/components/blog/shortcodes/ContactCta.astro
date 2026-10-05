@@ -1,0 +1,32 @@
+---
+// {{cta:contato}}: the channels that are really configured for this build (lib/contact.ts drops
+// empty and placeholder values). With none configured the block renders nothing at all (a card
+// with no way to answer it would be a dead end) and the build log names the post, so whoever
+// publishes knows the paragraph before it now leads nowhere.
+import { getCopy, type Lang } from "../../../content/copy";
+import { warnOnce } from "../../../lib/blog-pages";
+import { contactLinks } from "../../../lib/contact";
+import CtaCard from "../CtaCard.astro";
+interface Props { lang: Lang; where: string }
+const { lang, where } = Astro.props;
+const c = getCopy(lang).blog.cta.contact;
+const links = contactLinks(
+  {
+    booking: import.meta.env.PUBLIC_BOOKING_URL || "",
+    whatsapp: import.meta.env.PUBLIC_WHATSAPP || "",
+    email: import.meta.env.PUBLIC_CONTACT_EMAIL || "",
+  },
+  c,
+);
+if (links.length === 0) {
+  warnOnce(`post ${where}: {{cta:contato}} renders nothing, no contact channel is configured (PUBLIC_BOOKING_URL, PUBLIC_WHATSAPP, PUBLIC_CONTACT_EMAIL)`);
+}
+---
+{links.length > 0 && (
+  <CtaCard name="cta:contato" title={c.title} body={c.body}>
+    {links.map((link, k) => (
+      <a class={`btn ${k === 0 ? "btn-primary" : "btn-ghost"}`} href={link.href} data-channel={link.channel}
+        target={link.channel === "email" ? undefined : "_blank"} rel="noopener noreferrer">{c.channels[link.channel]}</a>
+    ))}
+  </CtaCard>
+)}

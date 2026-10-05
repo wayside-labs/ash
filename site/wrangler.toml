@@ -1,0 +1,12 @@
+# Read by `wrangler pages deploy`. The site stays static; this file only adds the D1 binding the
+# /api/lead function needs. Never run `wrangler pages project create` here: it rewrites the Astro
+# config for SSR (see docs/DEPLOY.md). Secrets live in the Pages project, not in this file.
+name = "ash-web"
+pages_build_output_dir = "dist"
+compatibility_date = "2026-09-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ash-leads"
+database_id = "188ff777-61ef-4c57-8a19-bec8a3a576be"
+migrations_dir = "migrations"

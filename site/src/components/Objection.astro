@@ -1,0 +1,37 @@
+---
+import { getCopy, type Lang } from "../content/copy";
+import Section from "./Section.astro";
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const c = getCopy(lang);
+---
+<Section id="objection" title={c.objection.title} sub={c.objection.sub}>
+  <div class="scroll">
+    <table>
+      <thead><tr>{c.objection.head.map((h) => <th>{h}</th>)}</tr></thead>
+      <tbody>
+        {c.objection.rows.map((r) => (
+          <tr><td class="muted">{r[0]}</td><td>{r[1]}</td></tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+  <p class="note muted" data-reveal>{c.objection.note}</p>
+</Section>
+<style>
+  .scroll { overflow-x: auto; }
+  table { width: 100%; min-width: 520px; border-collapse: collapse; font-size: 15px; }
+  th, td { text-align: left; vertical-align: top; padding: 14px 16px 14px 0; border-bottom: 1px solid var(--line); width: 50%; }
+  th { font-family: var(--mono); font-weight: 400; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--faint); border-bottom-color: var(--line-strong); }
+  th + th { color: var(--settle); }
+  .note { margin-top: 20px; font-size: 14px; max-width: 48em; }
+  @media (max-width: 600px) {
+    /* Stack each comparison as a pair instead of scrolling a two-column table sideways. */
+    table { min-width: 0; }
+    thead { display: none; }
+    tr { display: grid; gap: 2px; padding-block: 12px; border-bottom: 1px solid var(--line); }
+    td { width: auto; border: 0; padding: 0; }
+    td.muted::before { content: "\2212\00a0"; }
+    td:not(.muted)::before { content: "+\00a0"; color: var(--accent); }
+  }
+</style>

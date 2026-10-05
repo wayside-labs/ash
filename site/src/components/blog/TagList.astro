@@ -1,0 +1,21 @@
+---
+// A post's tags, each a link to its page. The tag is shown as the author typed it; only its slug
+// (tagSlug) ever goes in the address.
+import { getCopy, type Lang } from "../../content/copy";
+import { tagPath } from "../../lib/blog-paths";
+import { tagSlug } from "../../lib/blog-tags";
+interface Props { tags: readonly string[]; lang: Lang }
+const { tags, lang } = Astro.props;
+const c = getCopy(lang).blog;
+---
+{tags.length > 0 && (
+  <ul class="tags" aria-label={c.tags}>
+    {tags.map((tag) => <li><a class="mono" href={tagPath(lang, tagSlug(tag))}>{tag}</a></li>)}
+  </ul>
+)}
+<style>
+  .tags { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+  li { min-width: 0; }
+  a { display: block; max-width: 100%; overflow-wrap: anywhere; font-size: 12.5px; color: var(--muted); border: 1px solid var(--line-strong); border-radius: var(--radius-sm); padding: 4px 10px; }
+  a:hover { color: var(--settle); border-color: var(--settle-line); text-decoration: none; }
+</style>

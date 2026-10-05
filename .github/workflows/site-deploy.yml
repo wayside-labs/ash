@@ -1,0 +1,83 @@
+name: deploy
+
+on:
+  push:
+    branches: [main]
+    paths: ["site/**", "!site/studio/**", ".github/workflows/site-deploy.yml"]
+  pull_request:
+    paths: ["site/**", "!site/studio/**", ".github/workflows/site-deploy.yml"]
+  # The studio asks for a rebuild when a post is published (its site-rebuild job). GitHub only
+  # delivers this event to the workflow file on the default branch.
+  repository_dispatch:
+    types: [studio-publish]
+  # The same rebuild by hand, from the Actions tab.
+  workflow_dispatch:
+
+# One deploy at a time. cancel-in-progress is false on purpose: a run that is already publishing
+# must finish, or the site could stay on a half-uploaded deploy; GitHub keeps at most one run
+# waiting in a group and replaces it with the newest, which is the one that has every post
+# published so far. Pull requests get a group each, so a review never waits behind a deploy, and
+# there a newer push does replace the run it makes pointless. A manual run on another branch
+# never deploys, so it gets a group of its own too: in the deploy group it would take the one
+# waiting place and push a studio-publish out of the queue.
+concurrency:
+  group: >-
+    ${{ github.event_name == 'pull_request' && format('site-pr-{0}', github.ref)
+    || ((github.event_name == 'repository_dispatch' || github.ref == 'refs/heads/main') && 'site-deploy'
+    || format('site-ref-{0}', github.ref)) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# The site lives in site/ of this repository; every run step works there.
+defaults:
+  run:
+    working-directory: site
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+    env:
+      # Secrets cannot be read inside `if:`; this flag lets pushes stay green until they exist.
+      HAS_CLOUDFLARE: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+      # Where the blog comes from (src/lib/blog-source.ts):
+      # - pull request: the fixture in the repository, so a review never depends on the studio;
+      # - everything else: the studio, but only once the repository variable BLOG_API_URL exists.
+      #   Until then the mode is "off" and the site builds exactly as it did before the blog,
+      #   instead of every push to main failing on "BLOG_API_URL is required".
+      # With "api" a studio that is down fails the build on purpose: no deploy is better than a
+      # deploy with an empty blog, and the site already published is not touched.
+      BLOG_SOURCE: ${{ github.event_name == 'pull_request' && 'fixture' || (vars.BLOG_API_URL != '' && 'api' || 'off') }}
+      BLOG_API_URL: ${{ vars.BLOG_API_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      # The repository root is a pnpm workspace with a packageManager pin of its own; read the
+      # site's package.json so the two pins are not compared and found different.
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: site/package.json
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      # --ignore-workspace: the root pnpm-workspace.yaml does not list site/, and without the flag
+      # pnpm installs the root workspace instead and the site's dependencies never arrive.
+      - run: pnpm install --frozen-lockfile --ignore-workspace
+      - run: pnpm test
+      - run: pnpm build
+        env:
+          PUBLIC_BOOKING_URL: ${{ vars.PUBLIC_BOOKING_URL }}
+          PUBLIC_CONTACT_EMAIL: ${{ vars.PUBLIC_CONTACT_EMAIL }}
+          PUBLIC_TURNSTILE_SITEKEY: ${{ vars.PUBLIC_TURNSTILE_SITEKEY }}
+          PUBLIC_WHATSAPP: ${{ vars.PUBLIC_WHATSAPP }}
+      # Never from a pull request (its dist has the sample posts), and only from main: a manual
+      # run started on another branch builds and stops here.
+      - name: Deploy to Cloudflare Pages
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && env.HAS_CLOUDFLARE == 'true'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy site/dist --project-name ash-web --branch main

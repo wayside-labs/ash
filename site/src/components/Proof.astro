@@ -1,0 +1,32 @@
+---
+import { getCopy, type Lang } from "../content/copy";
+import Section from "./Section.astro";
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const c = getCopy(lang);
+const explorer = "https://explorer.solana.com/address/4qjD6vSgYa3oBKde3KVzsH8oCcP9BKsirX1xtD5SS6BS?cluster=devnet";
+---
+<!-- The demo command that used to sit here is gone on purpose: it needs a clone of a repository
+     that is private, and the script itself has drifted from the code. It comes back with both. -->
+<Section id="proof" kicker="03" title={c.proof.title} sub={c.proof.sub}>
+  <div class="stats">
+    {c.proof.stats.map((s) => (
+      <div class="stat" data-reveal>
+        <b class="num"><span data-count={s.v} data-decimals={Number.isInteger(s.v) ? "0" : "1"}>{s.v}</span>{s.s}</b>
+        <span class="muted">{s.l}</span>
+      </div>
+    ))}
+  </div>
+  <p class="link" data-reveal><a href={explorer} target="_blank" rel="noopener">{c.proof.link}</a></p>
+  <p class="process muted" data-reveal>{c.proof.process}</p>
+</Section>
+<style>
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 220px)); gap: 24px 40px; }
+  /* The figures are titles, not table cells: the display face, not the mono of .num. */
+  .stat b { display: block; font-family: var(--display); font-size: 40px; font-weight: 600; line-height: 1; letter-spacing: 0; }
+  .stat span.muted { display: block; margin-top: 8px; font-size: 13px; line-height: 1.5; color: var(--faint); }
+  .process { margin-top: 20px; font-size: 14px; max-width: 46em; color: var(--faint); }
+  .link { margin-top: 32px; font-size: 15px; }
+  .link a { color: var(--settle); }
+  .link a:hover { color: var(--settle-soft); }
+</style>

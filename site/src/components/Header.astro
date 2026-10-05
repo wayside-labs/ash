@@ -1,0 +1,62 @@
+---
+import { getCopy, homePath, otherLang, type Lang } from "../content/copy";
+import { blogLink } from "../lib/blog-pages";
+import { bookingUrl } from "../lib/contact";
+import Button from "./Button.astro";
+import Mascot from "./Mascot.astro";
+// langHref: where the language switch leads when it is not the other home (a blog page points at
+// its own counterpart). homeAnchors: off the home, "#how" has nothing to scroll to, so the
+// section links and the booking fallback carry the home's address in front.
+interface Props { lang: Lang; langHref?: string; homeAnchors?: boolean }
+const { lang, langHref, homeAnchors = false } = Astro.props;
+const c = getCopy(lang);
+const anchor = (id: string): string => `${homeAnchors ? homePath(lang) : ""}#${id}`;
+// The booking address goes through the same filter as every other contact link (lib/contact.ts):
+// an empty, placeholder or non-https value falls back to the contact section instead of shipping
+// a dead button.
+const booking: string = bookingUrl(import.meta.env.PUBLIC_BOOKING_URL) ?? anchor("contact");
+// null when the blog is off or has no post in this language: then there is no link at all.
+const blog = await blogLink(lang);
+---
+<header>
+  <div class="wrap nav">
+    <a class="brand" href={homePath(lang)} aria-label="Ash">
+      <Mascot variant="face" size={34} alt="" loading="eager" class="brand-face" />
+      <span class="wordmark">Ash</span>
+    </a>
+    <nav class={blog ? "links with-blog" : "links"} aria-label={c.nav.sections}>
+      <a href={anchor("how")}>{c.nav.how}</a>
+      <a href={anchor("proof")}>{c.nav.proof}</a>
+      <a href={anchor("who")}>{c.nav.who}</a>
+      {blog && <a href={blog}>{c.blog.nav}</a>}
+      {/* No GitHub link while the repository is private: a visitor would land on a 404. */}
+    </nav>
+    <div class="right">
+      <a class="lang mono" href={langHref ?? homePath(otherLang(lang))} hreflang={otherLang(lang) === "pt" ? "pt-BR" : "en"}>{c.nav.lang}</a>
+      <span class="cta"><Button href={booking} external={booking.startsWith("http")}>{c.nav.cta}</Button></span>
+    </div>
+  </div>
+</header>
+<style>
+  header { position: sticky; top: env(safe-area-inset-top, 0px); z-index: var(--z-header); background: color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
+  /* One row at every width: nothing in it wraps, and below 760px the menu and the button leave
+     instead of dropping to a second line. */
+  .nav { display: flex; align-items: center; gap: 28px; min-height: 60px; }
+  .brand { display: flex; align-items: center; gap: 10px; flex: none; }
+  .brand:hover { text-decoration: none; }
+  .links { display: flex; gap: 20px; font-size: 14px; color: var(--muted); }
+  .links a:hover { color: var(--ink); text-decoration: none; }
+  .right { margin-left: auto; display: flex; align-items: center; gap: 14px; flex: none; }
+  .lang { font-size: 12px; padding: 6px 9px; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); color: var(--muted); }
+  .lang:hover { color: var(--settle); border-color: var(--settle-line); text-decoration: none; }
+  .cta :global(.btn) { min-height: 38px; padding: 8px 16px; font-size: 14px; }
+  /* A fifth link does not fit a tablet at the spacing of four: with the blog on, labels never
+     break onto a second line and the row tightens below 900px. Without the blog nothing here
+     applies and the header is what it always was. */
+  .with-blog { white-space: nowrap; }
+  @media (max-width: 900px) {
+    .nav:has(.with-blog) { gap: 18px; }
+    .with-blog { gap: 14px; margin-left: 0; font-size: 14px; }
+  }
+  @media (max-width: 760px) { .links { display: none; } .cta { display: none; } }
+</style>

@@ -1,0 +1,8 @@
+---
+import PostPage from "../../../components/blog/pages/PostPage.astro";
+import { postPaths } from "../../../lib/blog-pages";
+import type { PostView } from "../../../lib/blog-views";
+export const getStaticPaths = () => postPaths("pt");
+type Props = PostView;
+---
+<PostPage {...Astro.props} />

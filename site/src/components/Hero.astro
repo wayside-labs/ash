@@ -1,0 +1,78 @@
+---
+import { getCopy, type Lang } from "../content/copy";
+import { bookingUrl } from "../lib/contact";
+import Button from "./Button.astro";
+import Mascot from "./Mascot.astro";
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const c = getCopy(lang);
+// A real booking address, or the contact section of this page (lib/contact.ts).
+const booking: string = bookingUrl(import.meta.env.PUBLIC_BOOKING_URL) ?? "#contact";
+// The title is one string in the copy; its last sentence is the one drawn in green. Splitting at
+// the first full stop keeps the words exactly as written, in either language.
+const cut = c.hero.title.indexOf(". ");
+const [lead, punch] = cut < 0 ? [c.hero.title, ""] : [c.hero.title.slice(0, cut + 1), c.hero.title.slice(cut + 2)];
+const loc = lang === "pt" ? "pt-BR" : "en-US";
+const num = (n: number) => n.toLocaleString(loc, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const s = c.showcase;
+// The second button used to open the repository, which is private; the program on devnet is the
+// thing a visitor can actually look at.
+const EXPLORER = "https://explorer.solana.com/address/4qjD6vSgYa3oBKde3KVzsH8oCcP9BKsirX1xtD5SS6BS?cluster=devnet";
+---
+<section class="hero wash-side">
+  <div class="wrap grid">
+    <div class="text">
+      <p class="kicker-dot">{c.hero.eyebrow}</p>
+      <h1>{lead}{punch && <>{" "}<span class="glow-title">{punch}</span></>}</h1>
+      <p class="sub">{c.hero.sub}</p>
+      <div class="cta">
+        <Button href={booking} external={booking.startsWith("http")}>{c.hero.cta1}</Button>
+        <Button href={EXPLORER} variant="ghost" external>{c.hero.cta2} →</Button>
+      </div>
+      <p class="status mono">{c.hero.status}</p>
+    </div>
+    <!-- The mascot stands where the money map used to: the map still runs in the pitch and in
+         the blog's block, and the cards right below show the product working. -->
+    <div class="unit">
+      <Mascot variant="body" alt={c.hero.mascotAlt} loading="eager" fetchpriority="high" class="robot" sizes="(max-width: 560px) calc(100vw - 48px), 480px" />
+      <span class="scan" aria-hidden="true"></span>
+      <span class="tag mono">{c.hero.unit}</span>
+      <span class="live mono"><i aria-hidden="true"></i>{c.hero.online}</span>
+      <p class="chip mono">
+        <span>{s.vault} · USDC <b>{num(2450)}</b></span>
+        <span>{s.ceiling} <b class="cap">{num(500)}{s.perDay}</b></span>
+      </p>
+    </div>
+  </div>
+</section>
+<style>
+  .hero { border-bottom: 1px solid var(--line); }
+  .grid { display: flex; flex-wrap: wrap; align-items: center; gap: 40px 56px; padding-block: 56px; }
+  .text { flex: 65 1 440px; min-width: 0; display: flex; flex-direction: column; gap: 26px; }
+  .text > * { animation: rise .7s cubic-bezier(.2,.7,.2,1) both; }
+  .text > :nth-child(2) { animation-delay: .06s; } .text > :nth-child(3) { animation-delay: .12s; }
+  .text > :nth-child(4) { animation-delay: .18s; } .text > :nth-child(5) { animation-delay: .24s; }
+  @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  h1 { text-wrap: balance; }
+  .sub { font-size: 18px; line-height: 1.6; color: var(--body); max-width: 600px; text-wrap: pretty; }
+  .cta { display: flex; flex-wrap: wrap; gap: 12px; }
+  /* A caution, not a failure: --deny is kept for the critical/refused state. */
+  .status { font-size: 12px; color: var(--warning); }
+
+  .unit { flex: 35 1 300px; min-width: 0; max-width: 480px; margin-inline: auto; position: relative; aspect-ratio: 4 / 5; text-transform: uppercase; }
+  /* The picture looks away from the text as drawn, so it is mirrored; its black backdrop melts
+     into the page through the blend and the mask. */
+  .unit :global(.robot) { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); mix-blend-mode: lighten;
+    -webkit-mask-image: radial-gradient(ellipse 50% 50% at 50% 48%, #000 50%, transparent 97%); mask-image: radial-gradient(ellipse 50% 50% at 50% 48%, #000 50%, transparent 97%); }
+  .scan { position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgb(61 255 110 / .05) 0 1px, transparent 1px 4px);
+    -webkit-mask-image: radial-gradient(ellipse 50% 52% at 50% 50%, #000 40%, transparent 100%); mask-image: radial-gradient(ellipse 50% 52% at 50% 50%, #000 40%, transparent 100%); }
+  .tag, .live { position: absolute; top: 4%; font-size: 11px; color: var(--settle); letter-spacing: .08em; white-space: nowrap; }
+  .tag { left: 8%; } .live { right: 8%; display: flex; align-items: center; gap: 6px; }
+  .live i { width: 6px; height: 6px; border-radius: 50%; background: var(--settle); animation: ashBlink 1.2s infinite; }
+  .chip { position: absolute; left: 4%; right: 4%; bottom: 2%; margin: 0; padding: 12px 14px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 12px;
+    background: rgb(7 9 8 / .8); backdrop-filter: blur(8px); border: 1px solid var(--settle-line); border-radius: var(--radius-md); font-size: 12px; color: var(--muted); text-transform: none; }
+  .chip span { white-space: nowrap; } .chip b { font-weight: 500; color: var(--ink); } .chip .cap { color: var(--settle); }
+  @keyframes ashBlink { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
+  @media (max-width: 760px) { .grid { padding-block: 40px; } .text { gap: 22px; } }
+  @media (prefers-reduced-motion: reduce) { .text > *, .live i { animation: none; } }
+</style>

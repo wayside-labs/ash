@@ -1,0 +1,29 @@
+---
+import { getCopy, type Lang } from "../content/copy";
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const c = getCopy(lang);
+---
+<section class="band band-alt" id="pain">
+  <div class="wrap pain">
+    <h2 data-reveal>{c.pain.title}</h2>
+    <div class="items">
+      {c.pain.items.map((it) => (
+        <div class="item" data-reveal>
+          <h3>{it.t}</h3>
+          <p class="muted">{it.b}</p>
+        </div>
+      ))}
+    </div>
+    <p class="closer mono" data-reveal>{c.pain.closer}</p>
+  </div>
+</section>
+<style>
+  .pain { padding-block: var(--section); }
+  h2 { max-width: 16em; }
+  .items { margin-top: 44px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; }
+  .item { border-top: 1px solid var(--line-strong); padding-top: 18px; }
+  .item p { margin-top: 10px; font-size: 15px; }
+  .closer { margin-top: 44px; font-size: 14px; color: var(--deny-soft); }
+  @media (max-width: 760px) { .items { grid-template-columns: 1fr; gap: 24px; } }
+</style>

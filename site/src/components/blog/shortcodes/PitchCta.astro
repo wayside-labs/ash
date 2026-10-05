@@ -1,0 +1,13 @@
+---
+// {{cta:pitch}}: a card to the pitch of this language. The pitch is noindex on purpose; this is a
+// link to it, not a page to be found.
+import { getCopy, type Lang } from "../../../content/copy";
+import Button from "../../Button.astro";
+import CtaCard from "../CtaCard.astro";
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const c = getCopy(lang).blog.cta.pitch;
+---
+<CtaCard name="cta:pitch" title={c.title} body={c.body}>
+  <Button href={lang === "pt" ? "/pt/pitch/" : "/pitch/"}>{c.button}</Button>
+</CtaCard>

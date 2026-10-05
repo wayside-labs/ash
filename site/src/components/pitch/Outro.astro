@@ -1,0 +1,74 @@
+---
+// After the last slide of the investor deck: thanks by name, then one soft question. Channels
+// come from build-time settings and only the real ones render (see lib/contact.ts).
+import { getPitch } from "../../content/pitch";
+import { homePath, type Lang } from "../../content/copy";
+import { contactLinks } from "../../lib/contact";
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const o = getPitch(lang).outro;
+const links = contactLinks(
+  {
+    booking: import.meta.env.PUBLIC_BOOKING_URL || "",
+    whatsapp: import.meta.env.PUBLIC_WHATSAPP || "",
+    email: import.meta.env.PUBLIC_CONTACT_EMAIL || "",
+  },
+  o,
+);
+---
+<section class="outro" data-outro hidden data-thanks={o.thanks} data-lines={JSON.stringify(o.lines)}>
+  <div class="inner">
+    <h1 data-thanks-text tabindex="-1"></h1>
+    <p class="line" data-outro-line></p>
+
+    {links.length > 0 ? (
+      <div class="ask" data-ask>
+        <p class="q">{o.ask}</p>
+        <div class="row">
+          <button type="button" class="btn btn-primary" data-yes>{o.yes}</button>
+          <button type="button" class="btn btn-ghost" data-no>{o.no}</button>
+        </div>
+      </div>
+    ) : (
+      <p class="muted">{o.none}</p>
+    )}
+
+    <div class="channels" data-channels hidden>
+      <p class="muted">{o.pick}</p>
+      <div class="row">
+        {links.map((l, k) => (
+          <a class={`btn ${k === 0 ? "btn-primary" : "btn-ghost"}`} href={l.href} data-channel={l.channel}
+            target={l.channel === "email" ? undefined : "_blank"} rel="noopener">{o.channels[l.channel]}</a>
+        ))}
+      </div>
+    </div>
+    <p class="muted later" data-later hidden>{o.later}</p>
+
+    <nav class="after">
+      <button type="button" data-replay>↺ {o.replay}</button>
+      <a href={homePath(lang)}>{o.site}</a>
+    </nav>
+  </div>
+</section>
+<style>
+  .outro { min-height: calc(100svh - 58px); display: grid; align-content: center; padding: 24px clamp(16px, 6vw, 88px); }
+  .outro[hidden] { display: none; }
+  .inner { max-width: 880px; }
+  .inner > * { animation: rise .7s cubic-bezier(.2,.7,.2,1) both; }
+  .inner > :nth-child(2) { animation-delay: .12s; } .inner > :nth-child(3) { animation-delay: .24s; }
+  @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  h1 { font-size: clamp(36px, 6vw, 80px); line-height: 1.02; letter-spacing: -0.025em; outline: none; }
+  .line { margin-top: 22px; font-size: clamp(18px, 2vw, 24px); line-height: 1.4; max-width: 32em; }
+  /* The ceiling line again, separating the thanks from the one question we ask. */
+  .ask, .channels { margin-top: 36px; padding-top: 24px; border-top: 2px dashed var(--accent); }
+  .ask[hidden], .channels[hidden], .later[hidden] { display: none; }
+  .q { font-size: 20px; }
+  .row { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 12px; }
+  .later { margin-top: 28px; }
+  .after { margin-top: 44px; display: flex; flex-wrap: wrap; gap: 20px; font-size: 14px; }
+  .after button { all: unset; cursor: pointer; color: var(--settle); }
+  .after button:hover { color: var(--settle-soft); }
+  .after a { color: var(--muted); }
+  .after button:focus-visible, .after a:focus-visible { outline: 2px solid var(--settle); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { .inner > * { animation: none; } }
+</style>

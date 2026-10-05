@@ -1,0 +1,139 @@
+---
+// One post. Every string of the payload except the body is plain text and goes in through {…},
+// which escapes it; the body goes through PostBody; the structured data goes through
+// serializeJsonLd, the only serializer that survives a title containing "</script>".
+// data-pagefind-body marks the article as what the search indexes; data-pagefind-ignore keeps
+// the parts that repeat on every post (contents, tags, share, author) out of it.
+import Base from "../../../layouts/Base.astro";
+import Header from "../../Header.astro";
+import Footer from "../../Footer.astro";
+import { getCopy, homePath, otherLang } from "../../../content/copy";
+import { blogPostingLd, breadcrumbLd, serializeJsonLd } from "../../../lib/blog-jsonld";
+import { categoryName } from "../../../lib/blog-model";
+import { ogImageHref } from "../../../lib/blog-og";
+import { SITE_URL } from "../../../lib/blog-pages";
+import { absoluteUrl, authorPath, blogIndexPath, categoryPath } from "../../../lib/blog-paths";
+import { bodyExcerpt } from "../../../lib/blog-text";
+import type { PostView } from "../../../lib/blog-views";
+import AuthorCard from "../AuthorCard.astro";
+import Cover from "../Cover.astro";
+import PostBody from "../PostBody.astro";
+import PostMeta from "../PostMeta.astro";
+import PostToc from "../PostToc.astro";
+import RelatedPosts from "../RelatedPosts.astro";
+import ShareLinks from "../ShareLinks.astro";
+import TagList from "../TagList.astro";
+type Props = PostView;
+const { lang, post, path, altPath, xDefaultPath, langHref, rss, related, author } = Astro.props;
+const c = getCopy(lang).blog;
+
+// What the author wrote for search engines, else the excerpt, else the first words of the body.
+const description = post.metaDescription ?? post.excerpt ?? bodyExcerpt(post.html) ?? c.intro;
+const category = post.category ? categoryName(post.category, lang) : null;
+// The JPEG the build writes beside the cover; a post with no cover uses the site's og.png.
+const ogImage = post.coverUrl === null ? "/og.png" : ogImageHref(post.coverUrl);
+const posting = blogPostingLd({
+  siteUrl: SITE_URL, inLanguage: lang === "pt" ? "pt-BR" : "en", publisherName: "Ash",
+  headline: post.title, path, description,
+  datePublished: post.publishedAt, dateModified: post.updatedAt,
+  authorName: post.author?.name ?? null, authorPath: post.author ? authorPath(lang, post.author.slug) : null,
+  imagePath: ogImage, articleSection: category, keywords: post.tags,
+});
+const crumbs = breadcrumbLd(
+  [{ name: "Ash", path: homePath(lang) }, { name: c.title, path: blogIndexPath(lang) }, { name: post.title, path }],
+  SITE_URL,
+);
+const hasToc = post.toc.length >= 2;
+---
+<Base lang={lang} title={`${post.metaTitle ?? post.title} — Ash`} description={description} path={path} altPath={altPath}
+  xDefaultPath={xDefaultPath} ogType="article" ogImage={ogImage} motion={false}
+  article={{ publishedTime: post.publishedAt, modifiedTime: post.updatedAt }}>
+  <Fragment slot="head">
+    <link rel="alternate" type="application/rss+xml" title={`Ash — ${c.title}`} href={rss} />
+    <script type="application/ld+json" set:html={serializeJsonLd(posting)} />
+    <script type="application/ld+json" set:html={serializeJsonLd(crumbs)} />
+  </Fragment>
+  <Header lang={lang} langHref={langHref} homeAnchors />
+  <main id="main" class="wrap post" data-blog="post">
+    <article data-pagefind-body>
+      <header class="head">
+        <p class="crumb" data-pagefind-ignore><a href={blogIndexPath(lang)}>← {c.allPosts}</a></p>
+        {post.category && <p class="kicker kicker-dot" data-pagefind-ignore><a href={categoryPath(lang, post.category.slug)}>{category}</a></p>}
+        <h1>{post.title}</h1>
+        {post.excerpt && <p class="lead muted">{post.excerpt}</p>}
+        <div class="meta" data-pagefind-ignore><PostMeta post={post} lang={lang} author updated /></div>
+        {altPath && (
+          <p class="tr" data-pagefind-ignore><a href={altPath} hreflang={lang === "en" ? "pt-BR" : "en"} lang={otherLang(lang) === "pt" ? "pt-BR" : "en"}>{c.translation}</a></p>
+        )}
+      </header>
+
+      <div class={`cols${hasToc ? " has-toc" : ""}`}>
+        {hasToc && <aside class="side" data-pagefind-ignore><PostToc toc={post.toc} label={c.toc} /></aside>}
+        <div class="main">
+          {post.coverUrl !== null && <div class="cover"><Cover post={post} eager /></div>}
+          <PostBody html={post.html} lang={lang} where={`${lang}/${post.slug}`} />
+          <footer class="end" data-pagefind-ignore>
+            <TagList tags={post.tags} lang={lang} />
+            <ShareLinks url={absoluteUrl(SITE_URL, path)} title={post.title} lang={lang} />
+          </footer>
+          {author && <div class="by" data-pagefind-ignore><AuthorCard author={author} lang={lang} /></div>}
+        </div>
+      </div>
+    </article>
+    <RelatedPosts posts={related} lang={lang} />
+  </main>
+  <Footer lang={lang} />
+</Base>
+<style>
+  /* A container so a wide block of the body (the money map) can size itself to the page's content
+     width from inside the narrower reading column. */
+  .post { padding-block: 48px 88px; container-type: inline-size; }
+  .head { max-width: 760px; overflow-wrap: anywhere; }
+  .crumb { font-size: 14px; color: var(--muted); }
+  .crumb a:hover { color: var(--ink); }
+  .kicker { margin-top: 28px; }
+  .kicker a:hover { color: var(--settle-soft); }
+  h1 { margin-top: 14px; font-size: clamp(2rem, 4.4vw, 3rem); line-height: 1.1; }
+  .lead { margin-top: 18px; font-size: 19px; line-height: 1.5; }
+  .meta { margin-top: 20px; }
+  .tr { margin-top: 12px; font-size: 14px; }
+  .tr a { color: var(--muted); text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 3px; }
+  .tr a:hover { color: var(--ink); }
+
+  .cols { margin-top: 40px; padding-top: 40px; border-top: 1px solid var(--line); display: grid; grid-template-columns: minmax(0, 700px); }
+  .cols.has-toc { grid-template-columns: minmax(0, 700px) minmax(0, 240px); justify-content: space-between; column-gap: 64px; }
+  .main { min-width: 0; grid-column: 1; grid-row: 1; }
+  .side { grid-column: 2; grid-row: 1; }
+  .side > :global(nav) { position: sticky; top: 96px; }
+  .cover { margin-bottom: 36px; }
+  .end { margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--line); display: grid; gap: 20px; }
+  .by { margin-top: 32px; }
+  @media (max-width: 960px) {
+    .cols.has-toc { grid-template-columns: minmax(0, 700px); row-gap: 28px; justify-content: start; }
+    .side, .main { grid-column: 1; grid-row: auto; }
+    .side > :global(nav) { position: static; }
+  }
+  @media (max-width: 620px) {
+    .post { padding-block: 32px 56px; }
+    .lead { font-size: 17.5px; }
+    .cols { margin-top: 28px; padding-top: 28px; }
+    .cover { margin-bottom: 28px; }
+  }
+  /* On paper: dark text on white, the article and nothing around it, and the address of a link
+     printed after it, since nobody can click a sheet. The tokens are redefined rather than each
+     rule rewritten, so every component of the post follows. !important because the hidden parts
+     set their own display in their own scoped styles. */
+  @media print {
+    :global(:root) {
+      --bg: #fff; --bg-alt: #fff; --surface: #fff; --elevated: #fff; --sunken: #fff;
+      --ink: #000; --body: #000; --muted: #333; --faint: #555; --code-fg: #000; --line: #bbb; --line-strong: #888;
+      --settle: #000; --settle-soft: #000; --accent: #000;
+    }
+    :global(body) { background: #fff; color: #000; }
+    :global(body > header), :global(body > footer), :global(.skip), :global(.related), :global([data-shortcode]),
+    .side, .crumb, .tr, .end { display: none !important; }
+    .post { padding-block: 0; }
+    .cols, .cols.has-toc { display: block; margin-top: 24px; padding-top: 24px; }
+    :global(.prose a[href^="http"]::after) { content: " (" attr(href) ")"; font-size: .85em; overflow-wrap: anywhere; }
+  }
+</style>

@@ -1,0 +1,21 @@
+node_modules
+.next
+dist
+.env*
+uploads
+deploy
+tests
+# The test files that live next to the code import helpers from tests/, which is not in the
+# image: with them inside, `next build` type-checks them and fails on the missing module.
+**/*.test.ts
+**/*.test.tsx
+.vitest
+*.tsbuildinfo
+next-env.d.ts
+Dockerfile
+.dockerignore
+AGENTS.md
+CLAUDE.md
+README.md
+tunnel.env
+*.env

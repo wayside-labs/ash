@@ -1,0 +1,46 @@
+---
+// The mascot, from files made ahead of time by scripts/mascot.mjs (AVIF first, WebP for the
+// browsers that lack it). Three pictures: "face" (logo: 34px in the header, 22px in the footer),
+// "body" (the hero, already cut to its 4:5 frame) and "closeup" (the closing section). The image
+// is always the same robot; mirroring, masks and scanlines are the page's CSS, not other files.
+import type { ImageMetadata } from "astro";
+type Variant = "face" | "body" | "closeup";
+interface Props {
+  variant: Variant;
+  // The text for someone who cannot see the picture; "" where the name is written next to it.
+  alt: string;
+  // face only: the side in CSS pixels.
+  size?: 22 | 34;
+  // What the layout shows the picture at, for body and closeup (their width follows the column).
+  sizes?: string;
+  loading?: "eager" | "lazy";
+  fetchpriority?: "high" | "low" | "auto";
+  class?: string;
+}
+const { variant, alt, size = 34, sizes, loading = "lazy", fetchpriority = "auto", class: className } = Astro.props;
+
+const files = import.meta.glob<{ default: ImageMetadata }>("../assets/mascot/*.{avif,webp}", { eager: true });
+const file = (width: number, format: "avif" | "webp"): ImageMetadata => {
+  const found = files[`../assets/mascot/${variant}-${width}.${format}`];
+  if (!found) throw new Error(`mascot: no ${variant}-${width}.${format}; run node scripts/mascot.mjs`);
+  return found.default;
+};
+
+// [1x, 2x] widths. The face is a fixed square, so the browser picks by pixel density; the other
+// two follow their column, so it picks by width.
+const WIDTHS = { body: [480, 753], closeup: [388, 700] } as const;
+const [small, large] = variant === "face" ? [size, size * 2] : WIDTHS[variant];
+const srcset = (format: "avif" | "webp"): string => variant === "face"
+  ? `${file(small, format).src} 1x, ${file(large, format).src} 2x`
+  : `${file(small, format).src} ${small}w, ${file(large, format).src} ${large}w`;
+const fallback = file(small, "webp");
+const pick = variant === "face" ? undefined : sizes ?? `(max-width: ${small + 48}px) calc(100vw - 48px), ${small}px`;
+---
+<picture>
+  <source type="image/avif" srcset={srcset("avif")} sizes={pick} />
+  <source type="image/webp" srcset={srcset("webp")} sizes={pick} />
+  <img
+    class={className} src={fallback.src} alt={alt} width={fallback.width} height={fallback.height}
+    loading={loading} fetchpriority={fetchpriority} decoding="async"
+  />
+</picture>

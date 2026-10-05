@@ -1,0 +1,25 @@
+---
+import { getCopy, type Lang } from "../content/copy";
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const c = getCopy(lang);
+---
+<section class="band" id="why">
+  <div class="wrap momentum">
+    <p class="kicker-slash" data-reveal>{c.momentum.eyebrow}</p>
+    <h2 data-reveal>{c.momentum.title}</h2>
+    <div class="body">
+      <p class="stat" data-reveal>{c.momentum.stat}</p>
+      <p class="note" data-reveal>{c.momentum.note}</p>
+    </div>
+  </div>
+</section>
+<style>
+  .momentum { padding-block: var(--section); }
+  h2 { margin-top: 14px; max-width: 20em; }
+  .body { margin-top: 36px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px 64px; }
+  /* The market figure is context, not our claim: muted, behind a quiet rule. */
+  .stat { border-left: 1px solid var(--line-strong); padding-left: 18px; color: var(--muted); font-size: 16px; line-height: 1.65; }
+  .note { font-size: 19px; line-height: 1.55; }
+  @media (max-width: 760px) { .body { grid-template-columns: 1fr; gap: 20px; } }
+</style>

@@ -1,0 +1,74 @@
+---
+// Fonts come from this site, never from a font host; the latin subset alone carries the
+// Portuguese accents. A weight that no page uses is never downloaded.
+import "@fontsource/chakra-petch/latin-600.css";
+import "@fontsource/chakra-petch/latin-700.css";
+import "@fontsource/ibm-plex-sans/latin-400.css";
+import "@fontsource/ibm-plex-sans/latin-500.css";
+import "@fontsource/ibm-plex-sans/latin-600.css";
+import "@fontsource/ibm-plex-mono/latin-400.css";
+import "@fontsource/ibm-plex-mono/latin-500.css";
+import "../styles/tokens.css";
+import "../styles/base.css";
+import { getCopy, type Lang } from "../content/copy";
+
+// altPath: the other language's URL when slugs differ (/investor ↔ /pt/investidor). Left out, it
+// is derived from the path; null means "this page has no other language" and no hreflang is
+// emitted at all, because an alternate that leads to a 404 is worse than none (a blog post with
+// no translation). xDefaultPath: the blog passes the English page of the pair.
+// noindex: pages we send as links, never found by search; "follow" keeps the page out of the
+// index but lets its links count (tag pages, /blog/page/2).
+// motion: the deck owns keyboard and wheel, so no Lenis.
+// ogImage: a path on this site. article: the two dates of a post, as ISO instants.
+// The "head" slot is for what only some pages have: JSON-LD and the feed link.
+// Every page gives its <main> the id "main": the skip link below points there.
+interface Props {
+  lang: Lang; title: string; description: string; path: string;
+  altPath?: string | null; xDefaultPath?: string; noindex?: boolean | "follow"; motion?: boolean;
+  ogType?: "website" | "article"; ogImage?: string;
+  article?: { publishedTime: string; modifiedTime: string };
+}
+const {
+  lang, title, description, path, noindex = false, motion = true,
+  xDefaultPath = "/", ogType = "website", ogImage = "/og.png", article,
+} = Astro.props;
+const site = "https://ash.app.br";
+const altPath = Astro.props.altPath === null
+  ? null
+  : Astro.props.altPath ?? (lang === "en" ? `/pt${path}` : path.replace(/^\/pt/, "") || "/");
+---
+<!doctype html>
+<html lang={lang === "pt" ? "pt-BR" : "en"}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    {noindex && <meta name="robots" content={noindex === "follow" ? "noindex, follow" : "noindex, nofollow"} />}
+    <link rel="canonical" href={`${site}${path}`} />
+    {altPath !== null && <link rel="alternate" hreflang={lang === "en" ? "pt-BR" : "en"} href={`${site}${altPath}`} />}
+    {altPath !== null && <link rel="alternate" hreflang="x-default" href={`${site}${xDefaultPath}`} />}
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="icon" href="/favicon.png" type="image/png" sizes="96x96" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta property="og:type" content={ogType} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={`${site}${path}`} />
+    <meta property="og:image" content={`${site}${ogImage}`} />
+    {article && <meta property="article:published_time" content={article.publishedTime} />}
+    {article && <meta property="article:modified_time" content={article.modifiedTime} />}
+    <meta name="twitter:card" content="summary_large_image" />
+    <slot name="head" />
+  </head>
+  <body>
+    <a class="skip" href="#main">{getCopy(lang).nav.skip}</a>
+    <slot />
+    {motion && (
+      <script>
+        import { initMotion } from "../lib/motion";
+        initMotion();
+      </script>
+    )}
+  </body>
+</html>

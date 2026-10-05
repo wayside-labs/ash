@@ -1,0 +1,39 @@
+---
+import { getCopy, type Lang } from "../content/copy";
+import Section from "./Section.astro";
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const c = getCopy(lang);
+/* Owner sets the ceiling (accent is the ceiling's token); guardian only pauses, so a caution
+   tone, never the critical one; the agent paying within policy is "good". Since design v2 the
+   ceiling and "good" are the same green, so owner and agent share a colour. */
+const tones = ["accent", "muted", "warning", "settle"] as const;
+---
+<Section id="rules" kicker="02" title={c.roles.title} sub={c.roles.sub} alt>
+  <div class="cards">
+    {c.roles.items.map((r, i) => (
+      <div class={`card tone-${tones[i]}`} data-reveal>
+        <h3>{r.n}</h3>
+        <p class="muted">{r.b}</p>
+      </div>
+    ))}
+  </div>
+  <p class="limits" data-reveal>{c.roles.limits}</p>
+  <p class="rule" data-reveal>{c.roles.rule}</p>
+</Section>
+<style>
+  .cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .card {
+    border: 1px solid var(--line-strong); border-left-width: 3px; border-radius: var(--radius-lg);
+    padding: 18px 20px; background: var(--surface);
+  }
+  .card h3 { font-family: var(--display); font-size: 20px; }
+  .card p { margin-top: 8px; font-size: 15px; }
+  .tone-accent { border-left-color: var(--accent); }
+  .tone-muted { border-left-color: var(--muted); }
+  .tone-warning { border-left-color: var(--warning); }
+  .tone-settle { border-left-color: var(--settle); }
+  .limits { margin-top: 28px; font-size: 15px; max-width: 46em; }
+  .rule { margin-top: 20px; padding: 14px 18px; background: var(--wash); border: 1px solid var(--settle-line); border-radius: var(--radius-lg); font-size: 17px; line-height: 1.55; }
+  @media (max-width: 600px) { .cards { grid-template-columns: 1fr; } }
+</style>

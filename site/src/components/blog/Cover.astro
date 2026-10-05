@@ -1,0 +1,46 @@
+---
+// The picture of a post: the uploaded cover when there is one, a drawing made of the site's own
+// tokens when there is not. The box keeps one shape (16:9) either way, so a grid of cards lines
+// up and nothing jumps while an image loads.
+import { generatedCover } from "../../lib/blog-cover";
+import { coverOf } from "../../lib/blog-model";
+import type { PublicPost } from "../../lib/blog-types";
+import Mascot from "../Mascot.astro";
+// eager: the cover at the top of a post is the first thing on screen; in a list it can wait.
+interface Props { post: PublicPost; eager?: boolean }
+const { post, eager = false } = Astro.props;
+const cover = coverOf(post);
+// The alt the author wrote, or none: a picture with no description is decoration, and the title
+// is already beside it.
+const alt = post.coverAlt?.trim() ?? "";
+const drawn = generatedCover(post.slug);
+---
+{cover ? (
+  <div class="cover">
+    <img src={cover.src} alt={alt} loading={eager ? "eager" : "lazy"} decoding="async" />
+  </div>
+) : (
+  <div class="cover drawn" aria-hidden="true" data-cover="generated">
+    <p class="label">
+      <Mascot variant="face" size={22} alt="" />
+      <span>Ash</span>
+    </p>
+    <div class="bars">
+      {drawn.bars.map((fill) => <div class="bar"><i style={`width:${fill}%`}></i></div>)}
+    </div>
+  </div>
+)}
+<style>
+  .cover { aspect-ratio: 16 / 9; overflow: hidden; border-radius: var(--radius-lg); border: 1px solid var(--line-strong); background: var(--elevated); }
+  .cover > img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  /* The money map's canvas (dots) and its limit bar: spent in green, and the taller tick at the
+     end is the ceiling. */
+  .drawn { position: relative; display: grid; align-content: end; padding: 9% 9% 11%;
+    background-image: radial-gradient(var(--line-strong) 1px, transparent 1px); background-size: 20px 20px; }
+  .label { position: absolute; top: 9%; left: 9%; display: flex; align-items: center; gap: 8px; margin: 0; font-family: var(--display); font-weight: 700; font-size: 13px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+  .label :global(img) { display: block; width: 22px; height: 22px; border-radius: 5px; }
+  .bars { display: grid; gap: 16px; }
+  .bar { position: relative; height: 3px; background: var(--line-strong); border-radius: 2px; }
+  .bar::after { content: ""; position: absolute; right: 0; top: -4px; width: 2px; height: 11px; background: var(--accent); }
+  .bar i { display: block; height: 100%; background: var(--settle); border-radius: 2px; box-shadow: var(--glow-bar); }
+</style>
