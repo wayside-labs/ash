@@ -38,7 +38,8 @@ jobs:
           node-version: 24
           cache: pnpm
           cache-dependency-path: site/studio/pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile
+      # --ignore-workspace: see site-deploy.yml; the root workspace would swallow this install.
+      - run: pnpm install --frozen-lockfile --ignore-workspace
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build

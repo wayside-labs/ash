@@ -52,14 +52,19 @@ jobs:
       BLOG_API_URL: ${{ vars.BLOG_API_URL }}
     steps:
       - uses: actions/checkout@v4
+      # The repository root is a pnpm workspace with a packageManager pin of its own; read the
+      # site's package.json so the two pins are not compared and found different.
       - uses: pnpm/action-setup@v4
         with:
+          package_json_file: site/package.json
           version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      # --ignore-workspace: the root pnpm-workspace.yaml does not list site/, and without the flag
+      # pnpm installs the root workspace instead and the site's dependencies never arrive.
+      - run: pnpm install --frozen-lockfile --ignore-workspace
       - run: pnpm test
       - run: pnpm build
         env:
