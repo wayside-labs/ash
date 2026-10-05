@@ -1,7 +1,6 @@
 "use client";
 
 import { Menu, Shield } from "lucide-react";
-import { BalancePill } from "@/components/billing/balance-pill";
 import { SolPrice } from "@/components/layout/sol-price";
 import { HideBalancesToggle } from "@/components/shared/hide-balances-toggle";
 import { Badge } from "@/components/ui/badge";
@@ -83,7 +82,6 @@ export function Header() {
         </Select>
         <SolPrice />
         <HideBalancesToggle />
-        <BalancePill />
         <span className="hidden h-8 w-px bg-border sm:block" />
         <GatedConnectButton />
       </div>

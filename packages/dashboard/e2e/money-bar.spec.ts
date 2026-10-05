@@ -18,7 +18,15 @@ import {
  * appears only once the server reports the transfer confirmed.
  */
 
+import { BALANCE_PATH } from "../src/lib/shell";
+
 const RECIPIENT = "5LwWtPdEvVUSbYCTv5zvhP9gkt3nKANLGkvD2xa6jvvD";
+
+/** Deposit and Withdraw live on the balance page now, not in the top bar. */
+async function openMoneyDialog(page: Page, key: "header.deposit" | "header.withdraw") {
+  await page.goto(BALANCE_PATH);
+  await page.getByRole("button", { name: t(key) }).click();
+}
 
 async function stubRegion(page: Page, country: string | null, usdRate = 1) {
   const currency = country === "BR" ? "BRL" : "USD";
@@ -62,10 +70,10 @@ test.describe("money bar", () => {
     await expect(page.getByRole("heading", { name: t("home.workflowsTitle") })).toBeVisible();
 
     const bar = page.locator("header").first();
-    // The balance is not in the top bar any more; Deposit and Withdraw still are.
+    // The top bar carries no money: no balance, no Deposit, no Withdraw. Those live on the balance page.
     await expect(bar.getByTestId("header-balance")).toHaveCount(0);
-    await expect(bar.getByRole("button", { name: t("header.deposit") })).toBeVisible();
-    await expect(bar.getByRole("button", { name: t("header.withdraw") })).toBeVisible();
+    await expect(bar.getByRole("button", { name: t("header.deposit") })).toHaveCount(0);
+    await expect(bar.getByRole("button", { name: t("header.withdraw") })).toHaveCount(0);
     // A web3 bar: the network and the wallet are here, with the live SOL price.
     await expect(bar.getByText("Devnet", { exact: true })).toBeVisible();
     await expect(bar.getByRole("button", { name: t("wallet.connect") })).toBeVisible();
@@ -77,7 +85,7 @@ test.describe("money bar", () => {
     await stubRails(page);
 
     await page.goto("/");
-    await page.getByRole("button", { name: t("header.deposit") }).click();
+    await openMoneyDialog(page, "header.deposit");
     await expect(page.getByTestId("deposit-rail-solana_pay_usdc")).toBeVisible();
     await expect(page.getByTestId("deposit-rail-pix")).toHaveCount(0);
   });
@@ -116,7 +124,7 @@ test.describe("money bar", () => {
     );
 
     await page.goto("/");
-    await page.getByRole("button", { name: t("header.deposit") }).click();
+    await openMoneyDialog(page, "header.deposit");
     await page.getByRole("button", { name: "$25" }).click();
     await page.getByRole("button", { name: t("deposit.create") }).click();
 
@@ -177,7 +185,7 @@ test.describe("money bar", () => {
     });
 
     await page.goto("/");
-    await page.getByRole("button", { name: t("header.deposit") }).click();
+    await openMoneyDialog(page, "header.deposit");
     await page.getByRole("button", { name: "$5", exact: true }).click();
     await page.getByRole("button", { name: t("deposit.create") }).click();
     await expect(page.getByText(t("deposit.scanFee"))).toBeVisible();
@@ -215,7 +223,7 @@ test.describe("money bar", () => {
     });
 
     await page.goto("/");
-    await page.getByRole("button", { name: t("header.deposit") }).click();
+    await openMoneyDialog(page, "header.deposit");
     await page.getByRole("button", { name: t("deposit.create") }).click();
     const pay = page.getByRole("button", {
       name: t("deposit.payWithWallet", { wallet: "Phantom" }),
@@ -230,7 +238,7 @@ test.describe("money bar", () => {
     await stubRails(page, false);
 
     await page.goto("/");
-    await page.getByRole("button", { name: t("header.deposit") }).click();
+    await openMoneyDialog(page, "header.deposit");
     await expect(page.getByText(t("deposit.railOff"))).toBeVisible();
     await expect(page.getByRole("button", { name: t("deposit.create") })).toHaveCount(0);
   });
@@ -257,7 +265,7 @@ test.describe("money bar", () => {
     });
 
     await page.goto("/");
-    await page.getByRole("button", { name: t("header.withdraw") }).click();
+    await openMoneyDialog(page, "header.withdraw");
     await page.getByLabel(t("withdraw.amount")).fill("2");
     await page.getByPlaceholder(t("withdraw.kind.solana_usdc.placeholder")).fill(RECIPIENT);
     await page.getByRole("button", { name: t("withdraw.submit") }).click();
