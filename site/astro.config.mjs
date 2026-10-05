@@ -2,12 +2,13 @@ import { defineConfig } from "astro/config";
 import sitemap from "@astrojs/sitemap";
 import { blog, isUnlistedBlogPath } from "./src/integrations/blog.ts";
 
-// The pitch and the investor funnel are links we send, not pages to be found. In the blog, tag
+// The pitch, the investor funnel and the pitch-deck frames are links we send, not pages to be found. In the blog, tag
 // pages and /page/2 onwards are noindex (thin lists of what the index and the posts already
 // say), so they stay out of the sitemap too; so does the index of a language with no post yet
 // (isUnlistedBlogPath, which the blog integration fills from the payload).
 const UNLISTED = [
   /^\/(pt\/)?(pitch|investor|investidor)\/?$/,
+  /^\/pitch-deck\//,
   /^\/(pt\/)?blog\/tag\/[^/]+\/?$/,
   /^\/(pt\/)?blog\/(page|pagina)\/\d+\/?$/,
 ];
