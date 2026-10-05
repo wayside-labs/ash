@@ -443,7 +443,7 @@ describe("proofPackSchema", () => {
   it("carries the commitment that wrote the privacy text's hash on-chain, when there is one", () => {
     const commitment = {
       signature: SIG,
-      memo: `ash/privacy-text/v1 sha256=${"a".repeat(64)}`,
+      memo: `agent-rails/privacy-text/v1 sha256=${"a".repeat(64)}`,
     };
     expect(proofPackSchema.safeParse({ ...pack, commitment }).success).toBe(true);
     // Optional: a run made without it is still a valid pack.

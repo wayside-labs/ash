@@ -158,7 +158,7 @@ edited after the commitment, the two would differ.
 memo is exactly:
 
 ```
-ash/privacy-text/v1 sha256=331f0b7a354c8f18dfbbc71d25d5d3f99d23c74797fde752446a23e0c0313148
+agent-rails/privacy-text/v1 sha256=331f0b7a354c8f18dfbbc71d25d5d3f99d23c74797fde752446a23e0c0313148
 ```
 
 **Where it comes from.** The runner sends it right after the Cloak deposit, as a standalone

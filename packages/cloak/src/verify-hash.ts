@@ -46,8 +46,11 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 /** The SPL Memo program, v2. Checked on mainnet: it exists, it is executable, loader v2 owns it. */
 export const MEMO_PROGRAM_ADDRESS = "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr";
 
-/** What the memo starts with; the SHA-256 in lowercase hex follows. */
-export const MEMO_PREFIX = "ash/privacy-text/v1 sha256=";
+/**
+ * What the memo starts with; the SHA-256 in lowercase hex follows. Fixed by the memo already on
+ * mainnet (`agent-rails/...`), so it must match what was written, not a later name of the project.
+ */
+export const MEMO_PREFIX = "agent-rails/privacy-text/v1 sha256=";
 
 /** The Privacy Sprint's limit for the text. */
 export const WORD_LIMIT = 300;

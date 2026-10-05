@@ -249,7 +249,7 @@ describe("sendMemoTransaction", () => {
         rpc,
         memo: COMMITMENT_MEMO,
         feePayer,
-        sign: async () => rewrittenBy(keyPair, feePayer, "ash/privacy-text/v1 sha256=00"),
+        sign: async () => rewrittenBy(keyPair, feePayer, "agent-rails/privacy-text/v1 sha256=00"),
         ...instant,
       }),
     ).rejects.toThrow(/no longer carries the memo/);

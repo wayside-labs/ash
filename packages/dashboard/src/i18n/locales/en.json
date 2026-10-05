@@ -589,7 +589,7 @@
   "settings.rpcResponding": "RPC responding — {detail}",
   "settings.rpcFailed": "Failed: {detail}",
   "chat.title": "Chat",
-  "chat.welcome": "Hi! I'm the ASH assistant. Tell me what you want to build — for example *\"I want an agent that pays my suppliers\"* — and I'll explain each part.\n\nI can read your workflows and your agents' budgets, but I never move money on my own: you confirm every payment.",
+  "chat.welcome": "Hi, I'm ASH. What are we building on Solana today?\n\nPay a supplier or a contributor privately through Cloak, swap part of it into ZEC, or set up an agent with spending limits. Tell me the goal and I'll walk you through each step.\n\nI can read your workflows and your agents' budgets, but I never move money on my own: you approve every payment.",
   "chat.placeholder": "What do you want to build?",
   "chat.thinking": "Thinking…",
   "chat.modelLabel": "Model:",

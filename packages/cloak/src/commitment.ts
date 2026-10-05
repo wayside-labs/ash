@@ -18,8 +18,12 @@
  */
 export const MEMO_PROGRAM_ADDRESS = "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr";
 
-/** What the memo starts with; the SHA-256 in lowercase hex follows. */
-export const COMMITMENT_MEMO_PREFIX = "ash/privacy-text/v1 sha256=";
+/**
+ * What the memo starts with; the SHA-256 in lowercase hex follows. The prefix is part of the
+ * commitment already on mainnet (the Privacy Sprint's first run wrote `agent-rails/...`), so it
+ * must not follow a rename: a verifier reads the memo as it was written.
+ */
+export const COMMITMENT_MEMO_PREFIX = "agent-rails/privacy-text/v1 sha256=";
 
 /**
  * SHA-256 of the canonical text of `examples/templates/cloak-private-payout/PRIVACY.md` (Portuguese,

@@ -43,7 +43,7 @@ describe("the memo", () => {
   const hash = "ab".repeat(32);
 
   it("is a fixed prefix and the hash in lowercase hex", () => {
-    expect(commitmentMemo(hash)).toBe(`ash/privacy-text/v1 sha256=${hash}`);
+    expect(commitmentMemo(hash)).toBe(`agent-rails/privacy-text/v1 sha256=${hash}`);
     expect(commitmentMemo(hash).startsWith(COMMITMENT_MEMO_PREFIX)).toBe(true);
     expect(new TextEncoder().encode(COMMITMENT_MEMO).length).toBeLessThan(120);
   });
@@ -57,7 +57,7 @@ describe("the memo", () => {
       `${commitmentMemo(hash)} `,
       `${COMMITMENT_MEMO_PREFIX}${"ab".repeat(31)}`,
       `${COMMITMENT_MEMO_PREFIX}${"AB".repeat(32)}`,
-      `ash/privacy-text/v2 sha256=${hash}`,
+      `agent-rails/privacy-text/v2 sha256=${hash}`,
     ]) {
       expect(parseCommitmentMemo(other), other).toBeNull();
     }
@@ -306,7 +306,7 @@ describe("the command line", () => {
     const { io, text, requests } = ioFor();
     expect(await verify.run([], io)).toBe(0);
     expect(text()).toContain(`SHA-256   ${HASH}`);
-    expect(text()).toContain(`Memo      ash/privacy-text/v1 sha256=${HASH}`);
+    expect(text()).toContain(`Memo      agent-rails/privacy-text/v1 sha256=${HASH}`);
     expect(text()).toContain("Words     4");
     expect(requests).toEqual([]); // no network unless asked
   });

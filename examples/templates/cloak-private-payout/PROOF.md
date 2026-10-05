@@ -48,7 +48,7 @@ programs the transaction invokes.
 **The commitment (`commitment.signature`, when present).** A transaction of its own, signed and paid
 for by the `funder`, with one instruction for the SPL Memo program
 (`MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr`) and no Cloak involvement at all. The Memo
-instruction's text is `commitment.memo`, which is `ash/privacy-text/v1 sha256=` and the hash.
+instruction's text is `commitment.memo`, which is `agent-rails/privacy-text/v1 sha256=` and the hash.
 The README's proof-of-existence section explains what it proves and how to check it with
 `packages/cloak/src/verify-hash.ts --tx <signature>`.
 
