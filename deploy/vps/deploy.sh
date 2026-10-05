@@ -52,8 +52,8 @@ if [[ ! -f $release/.built ]]; then
     corepack pnpm install --frozen-lockfile --ignore-scripts
     # The vendors, the CLI (the scripted buyer pays through it) and the MCP server (agents on
     # this box run it) ride along; turbo builds their shared dependencies once.
-    corepack pnpm turbo run build --filter=@agent-rails/dashboard --filter=@agent-rails/vendors \
-      --filter=@agent-rails/cli --filter=@agent-rails/mcp --filter=@agent-rails/knowledge-mcp
+    corepack pnpm turbo run build --filter=@ash/dashboard --filter=@ash/vendors \
+      --filter=@ash/cli --filter=@ash/mcp --filter=@ash/knowledge-mcp
     touch .built
   ' _ "$release"
 fi
