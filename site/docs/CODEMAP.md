@@ -181,7 +181,7 @@ Hostnames: `studio.ash.app.br` (atrás do Access) e `pub.ash.app.br` (só rotas 
 **Do studio ao site (M1c).**
 ```
 publicar no studio → job site-rebuild → repository_dispatch (studio-publish) no GitHub
-   → deploy.yml (um por vez) → pnpm build com BLOG_SOURCE=api e BLOG_API_URL
+   → site-deploy.yml (um por vez) → pnpm build com BLOG_SOURCE=api e BLOG_API_URL
         ├─ loadBlog: GET pub.ash.app.br/api/public/posts → validatePayload (não-200 ou formato errado derruba)
         ├─ páginas: getStaticPaths de lib/blog-pages.ts → ListPage / PostPage
         └─ integração (depois das páginas): imagens → dist/blog-media/ · capas em JPEG · Pagefind → dist/pagefind/

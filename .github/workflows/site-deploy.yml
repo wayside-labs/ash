@@ -3,9 +3,9 @@ name: deploy
 on:
   push:
     branches: [main]
-    paths-ignore: ["studio/**", ".github/workflows/studio.yml"]
+    paths: ["site/**", "!site/studio/**", ".github/workflows/site-deploy.yml"]
   pull_request:
-    paths-ignore: ["studio/**", ".github/workflows/studio.yml"]
+    paths: ["site/**", "!site/studio/**", ".github/workflows/site-deploy.yml"]
   # The studio asks for a rebuild when a post is published (its site-rebuild job). GitHub only
   # delivers this event to the workflow file on the default branch.
   repository_dispatch:
@@ -26,6 +26,11 @@ concurrency:
     || ((github.event_name == 'repository_dispatch' || github.ref == 'refs/heads/main') && 'site-deploy'
     || format('site-ref-{0}', github.ref)) }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# The site lives in site/ of this repository; every run step works there.
+defaults:
+  run:
+    working-directory: site
 
 jobs:
   build:
@@ -70,4 +75,4 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist --project-name ash-web --branch main
+          command: pages deploy site/dist --project-name ash-web --branch main

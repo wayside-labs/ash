@@ -37,7 +37,7 @@ já está. Nada roda na VPS compartilhada com o Ronaldo.
    secrets `CLOUDFLARE_API_TOKEN` e `CLOUDFLARE_ACCOUNT_ID`; variables `PUBLIC_BOOKING_URL` e
    `PUBLIC_CONTACT_EMAIL`.
 
-## O workflow (`.github/workflows/deploy.yml`)
+## O workflow (`.github/workflows/site-deploy.yml`)
 
 Instala, roda `pnpm test`, faz o build com as variáveis e publica com `wrangler pages deploy`.
 

@@ -3,16 +3,16 @@ name: studio
 on:
   push:
     branches: [main]
-    paths: ["studio/**", ".github/workflows/studio.yml"]
+    paths: ["site/studio/**", ".github/workflows/site-studio.yml"]
   pull_request:
-    paths: ["studio/**", ".github/workflows/studio.yml"]
+    paths: ["site/studio/**", ".github/workflows/site-studio.yml"]
 
 jobs:
   check:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: studio
+        working-directory: site/studio
     services:
       postgres:
         image: postgres:17.11-alpine
@@ -32,12 +32,12 @@ jobs:
       # Reads the pnpm version from the packageManager field (pnpm@9.15.9), so CI and the image agree.
       - uses: pnpm/action-setup@v4
         with:
-          package_json_file: studio/package.json
+          package_json_file: site/studio/package.json
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: pnpm
-          cache-dependency-path: studio/pnpm-lock.yaml
+          cache-dependency-path: site/studio/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test
