@@ -1,0 +1,61 @@
+---
+// One post in a list. The title is the link and it stretches over the whole card, so the card has
+// one tab stop and one name; the category link sits above it and stays its own target.
+import { getCopy, type Lang } from "../../content/copy";
+import { categoryName } from "../../lib/blog-model";
+import { categoryPath, postPath } from "../../lib/blog-paths";
+import type { PublicPost } from "../../lib/blog-types";
+import Cover from "./Cover.astro";
+import PostMeta from "./PostMeta.astro";
+// variant "featured": the wide card at the top of the index. heading: the level that fits where
+// the card is (h2 in a list under the page's h1, h3 under "Related posts").
+interface Props { post: PublicPost; lang: Lang; variant?: "default" | "featured"; heading?: "h2" | "h3" }
+const { post, lang, variant = "default", heading: Heading = "h2" } = Astro.props;
+const c = getCopy(lang).blog;
+---
+<article class={`card surface-card is-${variant}`} data-post={post.slug}>
+  <div class="media"><Cover post={post} eager={variant === "featured"} /></div>
+  <div class="text">
+    {(post.featured || post.category) && (
+      <p class="kicker mono">
+        {post.featured && <span class="badge">{c.featured}</span>}
+        {post.category && <a href={categoryPath(lang, post.category.slug)}>{categoryName(post.category, lang)}</a>}
+      </p>
+    )}
+    <Heading class="title"><a class="main" href={postPath(lang, post.slug)}>{post.title}</a></Heading>
+    {post.excerpt && <p class="excerpt muted">{post.excerpt}</p>}
+    <div class="foot">
+      <PostMeta post={post} lang={lang} />
+      <span class="more" aria-hidden="true">{c.readMore} →</span>
+    </div>
+  </div>
+</article>
+<style>
+  .card { position: relative; display: flex; flex-direction: column; height: 100%; padding: 12px; transition: border-color .2s; }
+  .card:hover { border-color: var(--line-strong); }
+  .text { display: flex; flex-direction: column; flex: 1; gap: 10px; padding: 16px 8px 8px; min-width: 0; }
+  .kicker { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 12px; color: var(--muted); }
+  .kicker a { position: relative; z-index: 1; overflow-wrap: anywhere; }
+  .kicker a:hover { color: var(--ink); }
+  /* Mint is "good" and the brand; a featured post is the house's pick, not a status. */
+  .badge { color: var(--settle); border: 1px solid color-mix(in srgb, var(--settle) 40%, transparent); border-radius: var(--radius-sm); padding: 1px 7px; }
+  /* :global because the heading's tag is chosen at run time and gets no scope attribute. */
+  .text > :global(.title) { font-size: var(--step-2); line-height: 1.25; overflow-wrap: anywhere; }
+  .main:hover { text-decoration: none; }
+  .main::after { content: ""; position: absolute; inset: 0; border-radius: var(--radius-xl); }
+  .main:focus-visible { outline: none; }
+  .main:focus-visible::after { outline: 2px solid var(--settle); outline-offset: 3px; }
+  .excerpt { font-size: 15px; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
+  .foot { margin-top: auto; padding-top: 6px; display: grid; gap: 10px; }
+  .more { font-size: 14px; color: var(--ink); }
+  .card:hover .more { color: var(--settle); }
+
+  .is-featured .text > :global(.title) { font-size: var(--step-3); line-height: 1.15; }
+  .is-featured .excerpt { font-size: 16px; -webkit-line-clamp: 4; line-clamp: 4; }
+  @media (min-width: 861px) {
+    .is-featured { flex-direction: row; align-items: stretch; gap: 12px; }
+    .is-featured .media { flex: 0 0 54%; align-self: center; }
+    .is-featured .text { padding: 20px 20px 20px 16px; justify-content: center; }
+    .is-featured .foot { margin-top: 8px; }
+  }
+</style>

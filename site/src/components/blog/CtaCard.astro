@@ -1,0 +1,18 @@
+---
+// The card a special block of a post turns into. Not a heading: it sits between the post's own
+// h2s and must not show up in its outline. The buttons arrive through the slot.
+interface Props { title: string; body: string; name: string }
+const { title, body, name } = Astro.props;
+---
+<aside class="cta surface-card" data-shortcode={name} data-pagefind-ignore>
+  <p class="t">{title}</p>
+  <p class="b muted">{body}</p>
+  <div class="actions"><slot /></div>
+</aside>
+<style>
+  .cta { background: var(--elevated); padding: 24px; }
+  .t { font-family: var(--display); font-size: var(--step-2); font-weight: 600; line-height: 1.2; text-wrap: balance; }
+  .b { margin-top: 8px; font-size: 16px; line-height: 1.5; max-width: 34em; }
+  .actions { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 12px; }
+  @media (max-width: 620px) { .cta { padding: 20px; } }
+</style>

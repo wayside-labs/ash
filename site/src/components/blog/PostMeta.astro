@@ -1,0 +1,27 @@
+---
+// The line under a title: who, when, how long. Dates are printed in the blog's own time zone
+// (formatPostDate), so the build server and a laptop agree on the day.
+import { getCopy, type Lang } from "../../content/copy";
+import { formatPostDate } from "../../lib/blog-model";
+import { authorPath } from "../../lib/blog-paths";
+import type { PublicPost } from "../../lib/blog-types";
+import { updatedDay } from "../../lib/blog-views";
+// author: the name, linked to the author's page (off inside a card, where the whole card is
+// already one link). updated: the day of the last edit, when it is another day.
+interface Props { post: PublicPost; lang: Lang; author?: boolean; updated?: boolean }
+const { post, lang, author = false, updated = false } = Astro.props;
+const c = getCopy(lang).blog;
+const edited = updated ? updatedDay(post, lang) : null;
+---
+<p class="meta">
+  {author && post.author && <span>{c.by} <a href={authorPath(lang, post.author.slug)}>{post.author.name}</a></span>}
+  <span><span class="sr">{c.published} </span><time datetime={post.publishedAt}>{formatPostDate(post.publishedAt, lang)}</time></span>
+  <span>{post.readingMinutes} {c.minRead}</span>
+  {edited && <span>{c.updated} <time datetime={post.updatedAt}>{edited}</time></span>}
+</p>
+<style>
+  .meta { display: flex; flex-wrap: wrap; row-gap: 2px; font-size: 14px; color: var(--muted); }
+  .meta > span:not(:last-child)::after { content: "·"; margin-inline: 8px; color: var(--faint); }
+  a { color: var(--ink); }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+</style>

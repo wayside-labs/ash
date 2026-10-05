@@ -1,0 +1,24 @@
+---
+import Base from "../layouts/Base.astro";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+import { getCopy, homePath } from "../content/copy";
+const lang = "en" as const;
+const c = getCopy(lang);
+---
+<Base lang={lang} title={`${c.privacy.title} — Ash`} description={c.privacy.body[0]} path="/privacy/" altPath="/pt/privacidade/">
+  <Header lang={lang} langHref="/pt/privacidade/" homeAnchors />
+  <main id="main" class="wrap privacy">
+    <h1>{c.privacy.title}</h1>
+    {c.privacy.body.map((p) => <p>{p}</p>)}
+    <p><a href={homePath(lang)}>{c.privacy.back}</a></p>
+  </main>
+  <Footer lang={lang} />
+</Base>
+<style>
+  .privacy { padding-block: 64px; max-width: 720px; display: grid; gap: 18px; }
+  h1 { font-size: var(--step-4); line-height: 1.08; margin-bottom: 8px; }
+  p { color: var(--body); }
+  a { color: var(--settle); }
+  a:hover { color: var(--settle-soft); }
+</style>

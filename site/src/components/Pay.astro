@@ -1,0 +1,23 @@
+---
+import { getCopy, type Lang } from "../content/copy";
+import Section from "./Section.astro";
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const c = getCopy(lang);
+---
+<Section id="how" kicker="01" title={c.pay.title} sub={c.pay.sub}>
+  <div class="items">
+    {c.pay.items.map((it) => (
+      <div class="item" data-reveal>
+        <h3>{it.t}</h3>
+        <p class="muted">{it.b}</p>
+      </div>
+    ))}
+  </div>
+</Section>
+<style>
+  .items { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 36px 32px; }
+  .item { border-top: 1px solid var(--line-strong); padding-top: 18px; }
+  .item p { margin-top: 10px; font-size: 15px; }
+  @media (max-width: 600px) { .items { grid-template-columns: 1fr; gap: 22px; } }
+</style>

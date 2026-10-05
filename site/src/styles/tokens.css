@@ -1,0 +1,49 @@
+/*
+ * Design v2 (2026-10-02): the site's own identity, from the "Ash Home" drawing in
+ * docs/design/ash-home-reference.html. The console (wayside-labs/agent-rails) keeps its palette
+ * for now, so these values are no longer copied from it. The names stayed and the values changed,
+ * which is what re-dresses every page at once. Dark only: no light variant, no @media branch.
+ * Rules, measured contrast and where each token may be used: docs/design-system.md.
+ */
+:root {
+  --bg: #070908; --bg-alt: #090c0a; --surface: #0b0f0c; --elevated: #131a15; --sunken: #050706;
+  --ink: #e6ebe7; --body: #b9c3bd; --muted: #a8b3ac; --faint: #8a958e;
+  /* --line divides sections and is too faint to hold a card: cards, fields and the outline
+     button take --line-strong. */
+  --line: #18201b; --line-strong: #2a3a2f;
+
+  --settle: #3dff6e;        /* brand, action and "good": one green for all three */
+  --settle-hover: #7dff9c;
+  --settle-soft: #9dffb5;   /* text on a translucent green fill; a link under the pointer */
+  --settle-ink: #04140a;    /* text on a green fill */
+  --settle-line: #234a2e;   /* a quiet green border */
+  /* The periwinkle is gone: a ceiling is drawn in the brand green now. The name stays so the
+     places that mean "limit" can be told apart from the ones that mean "settled". */
+  --accent: #3dff6e;
+  --warning: #e0b860;
+  --deny: #ff6b5e;          /* fills, borders, dots */
+  --deny-soft: #ff8a7e;     /* the same meaning as text */
+
+  --code-fg: #c9d2cc; --code-dim: #8a958e;
+
+  /* Glow is the one shadow there is, and only for: the primary button, the highlighted words of
+     the top title, the 01/02/03 numbers and progress bars. Cards stay surface plus border. */
+  --glow-button: 0 0 24px rgb(61 255 110 / .35);
+  --glow-title: 0 0 28px rgb(61 255 110 / .45);
+  --glow-number: 0 0 30px rgb(61 255 110 / .35);
+  --glow-bar: 0 0 10px rgb(61 255 110 / .6);
+  --wash: rgb(61 255 110 / .07);
+
+  --display: "Chakra Petch", "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --wrap: 1240px; --gutter: 24px;
+  --section: clamp(56px, 8vw, 96px);
+  --step-0: 1rem; --step-1: 1.125rem; --step-2: 1.375rem; --step-3: 1.75rem;
+  --step-4: clamp(2rem, 4vw, 3rem);          /* section titles */
+  --step-5: clamp(2.75rem, 6vw, 5.25rem);    /* the top title */
+  /* chip 4, button and field 6, card 10 to 14 */
+  --radius-sm: 4px; --radius-md: 6px; --radius-lg: 10px; --radius-xl: 14px;
+  --z-header: 30; --z-overlay: 50;
+  color-scheme: dark;
+}

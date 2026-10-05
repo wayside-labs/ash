@@ -1,0 +1,44 @@
+name: studio
+
+on:
+  push:
+    branches: [main]
+    paths: ["studio/**", ".github/workflows/studio.yml"]
+  pull_request:
+    paths: ["studio/**", ".github/workflows/studio.yml"]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: studio
+    services:
+      postgres:
+        image: postgres:17.11-alpine
+        env:
+          POSTGRES_USER: studio
+          POSTGRES_PASSWORD: studio
+          POSTGRES_DB: studio_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U studio" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgres://studio:studio@localhost:5432/studio_test
+      # boringco's integration suite never ran in CI; here a missing database fails the job.
+      REQUIRE_DB_TESTS: "1"
+    steps:
+      - uses: actions/checkout@v4
+      # Reads the pnpm version from the packageManager field (pnpm@9.15.9), so CI and the image agree.
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: studio/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: studio/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build

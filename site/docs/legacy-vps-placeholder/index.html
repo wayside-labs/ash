@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ash</title>
+  <meta name="description" content="On-chain spend control for AI agents — capped, auditable, retry-safe.">
+  <meta name="robots" content="noindex">
+  <style>
+    :root { --bg: #0b0d0c; --fg: #d8e0dc; --dim: #6f7c76; --accent: #7fd1a8; }
+    * { box-sizing: border-box; margin: 0; }
+    html, body { height: 100%; }
+    body {
+      background: var(--bg); color: var(--fg);
+      font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      display: grid; place-items: center; padding: 24px 16px;
+    }
+    main { max-width: 36rem; }
+    h1 { font-size: clamp(3rem, 12vw, 5.5rem); letter-spacing: 0.3em; font-weight: 300; }
+    h1::after {
+      content: ""; display: inline-block; width: 0.08em; height: 0.8em; margin-left: 0.1em;
+      background: var(--accent); vertical-align: -0.05em; animation: blink 1.2s steps(1) infinite;
+    }
+    p { margin-top: 1.25rem; color: var(--dim); }
+    p strong { color: var(--fg); font-weight: 500; }
+    @keyframes blink { 50% { opacity: 0; } }
+    @media (prefers-reduced-motion: reduce) { h1::after { animation: none; } }
+  </style>
+</head>
+<body>
+  <!--
+    Special Order 937 was a different company's policy.
+    Here the agent never holds the money — only a receipt.
+  -->
+  <main>
+    <h1>ASH</h1>
+    <p><strong>On-chain spend control for AI agents</strong> — capped, auditable, retry-safe.</p>
+    <p>Controle de gastos on-chain para agentes de IA. Em breve.</p>
+  </main>
+</body>
+</html>

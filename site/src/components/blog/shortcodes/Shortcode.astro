@@ -1,0 +1,23 @@
+---
+// One special block of a post. The names are the studio's catalogue (KNOWN_SHORTCODES); splitBody
+// already stopped the build on any other, and the check here does it again should the catalogue
+// grow without this file.
+import type { Lang } from "../../../content/copy";
+import type { KnownShortcode } from "../../../lib/blog-body";
+import { warnOnce } from "../../../lib/blog-pages";
+import ContactCta from "./ContactCta.astro";
+import MapBlock from "./MapBlock.astro";
+import PitchCta from "./PitchCta.astro";
+// where: "en/slug", so a line in the build log can name the post.
+interface Props { name: KnownShortcode; lang: Lang; where: string }
+const { name, lang, where } = Astro.props;
+if (!["cta:pitch", "cta:contato", "cta:newsletter", "mapa"].includes(name)) {
+  throw new Error(`blog body: no component for {{${name}}}`);
+}
+// The newsletter does not exist yet (M3). Its block renders nothing, and says so once per build,
+// rather than standing in as a second contact card right under the first.
+if (name === "cta:newsletter") warnOnce("{{cta:newsletter}} renders nothing until the newsletter exists (M3)");
+---
+{name === "cta:pitch" && <PitchCta lang={lang} />}
+{name === "cta:contato" && <ContactCta lang={lang} where={where} />}
+{name === "mapa" && <MapBlock lang={lang} />}

@@ -1,0 +1,25 @@
+---
+// A full-width band with a rule on top: heading in the left track, content on the right. `alt`
+// puts the band on the alternate background, so neighbouring sections read as separate sheets.
+// A kicker here is the pillar's number (01, 02, 03), drawn large in the brand green.
+interface Props { id: string; title: string; sub?: string; kicker?: string; alt?: boolean }
+const { id, title, sub, kicker, alt = false } = Astro.props;
+---
+<section class:list={["band", { "band-alt": alt }]} id={id}>
+  <div class="wrap row">
+    <div class="row-head" data-reveal>
+      {kicker && <p class="glow-number">{kicker}</p>}
+      <h2>{title}</h2>
+      {sub && <p class="muted">{sub}</p>}
+    </div>
+    <div class="row-body" data-reveal><slot /></div>
+  </div>
+</section>
+<style>
+  .row { padding-block: var(--section); display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 40px 64px; }
+  .glow-number { margin-bottom: 16px; }
+  .row-head h2 { font-size: clamp(30px, 3.6vw, 42px); line-height: 1.05; }
+  .row-head p.muted { margin-top: 16px; font-size: 16px; max-width: 26em; }
+  .row-body { min-width: 0; }
+  @media (max-width: 960px) { .row { grid-template-columns: 1fr; } }
+</style>

@@ -1,0 +1,12 @@
+---
+import Base from "../../layouts/Base.astro";
+import Top from "../../components/pitch/Top.astro";
+import Deck from "../../components/pitch/Deck.astro";
+import { getPitch, pitchPath } from "../../content/pitch";
+const lang = "pt" as const;
+const p = getPitch(lang);
+---
+<Base lang={lang} title={p.meta.pitchTitle} description={p.meta.description} path={pitchPath(lang)} altPath={pitchPath("en")} noindex motion={false}>
+  <Top lang={lang} alt={pitchPath("en")} />
+  <main id="main"><Deck lang={lang} /></main>
+</Base>

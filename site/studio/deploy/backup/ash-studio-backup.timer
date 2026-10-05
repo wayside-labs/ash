@@ -1,0 +1,10 @@
+[Unit]
+Description=ash-studio - dump diario as 03:35 UTC (antes do ash-offsite das 04:00)
+
+[Timer]
+OnCalendar=*-*-* 03:35:00 UTC
+Persistent=true
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target

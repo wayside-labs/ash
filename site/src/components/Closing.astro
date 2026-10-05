@@ -1,0 +1,51 @@
+---
+import { getCopy, type Lang } from "../content/copy";
+import Button from "./Button.astro";
+import Mascot from "./Mascot.astro";
+import { bookingUrl, contactEmail } from "../lib/contact";
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const c = getCopy(lang);
+// Only what is really configured (lib/contact.ts): with neither, the section has no button and
+// prints no address.
+const booking = bookingUrl(import.meta.env.PUBLIC_BOOKING_URL);
+const email = contactEmail(import.meta.env.PUBLIC_CONTACT_EMAIL);
+---
+<section class="closing" id="contact">
+  <div class="wrap inner">
+    <div class="text">
+      <h2 data-reveal>{c.closing.title}</h2>
+      <p data-reveal>{c.closing.sub}</p>
+      <div class="cta" data-reveal>
+        {booking && <Button href={booking} external>{c.closing.cta}</Button>}
+        {email && <span class="alt">{c.closing.alt} <code>{email}</code></span>}
+      </div>
+    </div>
+    <div class="unit" data-reveal>
+      <span class="ring" aria-hidden="true"></span>
+      <Mascot variant="closeup" alt={c.closing.mascotAlt} class="robot" sizes="(max-width: 500px) calc(88vw - 42px), 388px" />
+      <span class="bubble mono">{c.closing.bubble} <span aria-hidden="true">✓</span></span>
+    </div>
+  </div>
+</section>
+<style>
+  /* The last band: the same dark sheet with the green wash turned up a little; the mascot signs
+     off, and the one loud thing beside it is the button. */
+  .closing { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); overflow: hidden;
+    background-image: radial-gradient(ellipse at 75% 50%, rgb(61 255 110 / .12), transparent 55%); }
+  .inner { padding-block: 80px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 40px; align-items: center; }
+  h2 { font-size: clamp(38px, 5vw, 64px); font-weight: 700; line-height: 1; text-wrap: balance; }
+  p { margin-top: 22px; font-size: 17px; line-height: 1.6; color: var(--body); max-width: 520px; text-wrap: pretty; }
+  .cta { margin-top: 28px; display: flex; flex-wrap: wrap; align-items: center; gap: 18px; }
+  .alt { font-size: 15px; color: var(--muted); }
+  .alt code { user-select: all; color: var(--ink); }
+
+  .unit { position: relative; justify-self: center; width: min(100%, 440px); aspect-ratio: 1; }
+  .ring { position: absolute; inset: -4%; border-radius: 50%; border: 1px dashed rgb(61 255 110 / .35); animation: ashSpin 40s linear infinite; }
+  .unit :global(.robot) { position: absolute; inset: 6%; width: 88%; height: 88%; object-fit: cover; border-radius: 50%; box-shadow: 0 0 90px rgb(61 255 110 / .25); }
+  .bubble { position: absolute; right: 0; top: 10%; padding: 10px 14px; background: var(--surface); border: 1px solid var(--settle-line);
+    border-radius: 10px 10px 10px 2px; font-size: 13px; color: var(--settle); white-space: nowrap; }
+  @keyframes ashSpin { to { transform: rotate(360deg); } }
+  @media (max-width: 760px) { .inner { padding-block: 56px; } .unit { width: min(100%, 320px); } }
+  @media (prefers-reduced-motion: reduce) { .ring { animation: none; } }
+</style>

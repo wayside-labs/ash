@@ -1,0 +1,52 @@
+{
+  "name": "ash-studio",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "next dev -p 3100",
+    "build": "next build && node build-worker.mjs",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "db:generate": "drizzle-kit generate"
+  },
+  "dependencies": {
+    "@fontsource/inter": "5",
+    "@fontsource/jetbrains-mono": "5",
+    "@tiptap/core": "3",
+    "@tiptap/extension-image": "3",
+    "@tiptap/pm": "3",
+    "@tiptap/react": "3",
+    "@tiptap/starter-kit": "3",
+    "drizzle-orm": "0.45",
+    "jose": "6",
+    "next": "16.3",
+    "postgres": "3.4",
+    "react": "19.3",
+    "react-dom": "19.3",
+    "sanitize-html": "2.18",
+    "sharp": "0.35",
+    "zod": "4"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4",
+    "@testing-library/dom": "10",
+    "@testing-library/react": "16",
+    "@testing-library/user-event": "14",
+    "@types/node": "24",
+    "@types/react": "19",
+    "@types/react-dom": "19",
+    "@types/sanitize-html": "2",
+    "drizzle-kit": "0.31",
+    "esbuild": "^0.28.2",
+    "jsdom": "30",
+    "tailwindcss": "4",
+    "typescript": "5.9",
+    "vitest": "5"
+  }
+}

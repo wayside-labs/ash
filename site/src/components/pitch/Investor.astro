@@ -1,0 +1,186 @@
+---
+// The investor funnel: form → personal welcome → the official deck, unchanged. Nothing here
+// carries slide content; it only decides when the shared Deck becomes visible.
+import Gate from "./Gate.astro";
+import Welcome from "./Welcome.astro";
+import Deck from "./Deck.astro";
+import Outro from "./Outro.astro";
+import type { Lang } from "../../content/copy";
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+---
+<div data-investor data-lang={lang}>
+  <Gate lang={lang} />
+  <Welcome lang={lang} />
+  <Deck lang={lang} hidden />
+  <Outro lang={lang} />
+</div>
+<script>
+  import { validateLead, type Kind } from "../../lib/lead-schema";
+  import { loadVisitor, saveVisitor, firstName, fill, type Visitor } from "../../lib/visitor";
+  import { mountCeilingScene } from "../../lib/ceiling-scene";
+
+  type Turnstile = { render(el: HTMLElement, o: Record<string, unknown>): string; reset(id?: string): void };
+  const w = window as unknown as { turnstile?: Turnstile; onAshTurnstile?: () => void };
+
+  const root = document.querySelector<HTMLElement>("[data-investor]");
+  const gate = document.querySelector<HTMLElement>("[data-gate]");
+  const form = document.querySelector<HTMLFormElement>("[data-gate-form]");
+  const welcome = document.querySelector<HTMLElement>("[data-welcome]");
+  const deck = document.querySelector<HTMLElement>("[data-deck]");
+  const outro = document.querySelector<HTMLElement>("[data-outro]");
+  let current: Visitor | null = null;
+  const lang = root?.dataset.lang === "pt" ? "pt" : "en";
+  const FIELDS = ["name", "role", "kind", "email", "consent"];
+
+  let token = "";
+  let widget: string | undefined;
+
+  function showErrors(fields: string[]) {
+    form?.querySelectorAll<HTMLElement>("[data-err]").forEach((el) => { el.hidden = !fields.includes(el.dataset.err ?? ""); });
+    form?.querySelector<HTMLElement>(`[name="${fields[0]}"]`)?.focus();
+  }
+
+  function welcomeFor(v: Visitor, returning: boolean) {
+    current = v;
+    if (!welcome) return;
+    const name = firstName(v.name);
+    const lines = JSON.parse(welcome.dataset.lines ?? "{}") as Record<Kind, string>;
+    const hi = welcome.querySelector<HTMLElement>("[data-hi-text]");
+    const line = welcome.querySelector<HTMLElement>("[data-line]");
+    if (hi) hi.textContent = fill((returning ? welcome.dataset.back : welcome.dataset.hi) ?? "", name);
+    if (line) line.textContent = lines[v.kind] ?? "";
+    if (gate) gate.hidden = true;
+    welcome.hidden = false;
+
+    // The hero scene, re-labelled so the treasury on screen is the visitor's own.
+    const canvas = welcome.querySelector<HTMLCanvasElement>("[data-welcome-canvas]");
+    if (canvas && !canvas.dataset.mounted) {
+      canvas.dataset.mounted = "1";
+      const labels = { ...JSON.parse(welcome.dataset.sceneLabels ?? "{}"), balance: fill(welcome.dataset.treasury ?? "", name) };
+      canvas.setAttribute("aria-label", `${labels.balance} · ${labels.ceiling}: ${labels.hint}`);
+      const cs = getComputedStyle(document.documentElement);
+      const c = (n: string) => cs.getPropertyValue(n).trim();
+      mountCeilingScene(canvas, labels, {
+        accent: c("--accent"), deny: c("--deny"), settle: c("--settle"), muted: c("--muted"),
+        ink: c("--ink"), line: c("--line"), surface: c("--surface"),
+      });
+    }
+    hi?.focus();
+  }
+
+  welcome?.querySelector("[data-open-deck]")?.addEventListener("click", () => {
+    if (!welcome || !deck) return;
+    welcome.hidden = true;
+    deck.hidden = false;
+    deck.querySelector<HTMLElement>("[data-next]")?.focus();
+  });
+
+  // Turnstile only loads when a site key was built in; without one the API refuses, which is the
+  // intended state for local builds (the e2e suite intercepts /api/lead instead).
+  const sitekey = form?.dataset.sitekey;
+  const box = form?.querySelector<HTMLElement>("[data-captcha]");
+  if (sitekey && box) {
+    w.onAshTurnstile = () => {
+      widget = w.turnstile?.render(box, {
+        sitekey, appearance: "interaction-only", language: lang === "pt" ? "pt-br" : "en",
+        callback: (t: string) => { token = t; },
+        "expired-callback": () => { token = ""; },
+      });
+    };
+    const s = document.createElement("script");
+    s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=onAshTurnstile";
+    s.async = true;
+    document.head.append(s);
+  }
+
+  form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const fd = new FormData(form);
+    const v = validateLead({
+      name: fd.get("name"), role: fd.get("role"), kind: fd.get("kind"), email: fd.get("email"),
+      lang, consent: fd.get("consent") === "on",
+    });
+    if (!v.ok) { showErrors(v.errors); return; }
+    showErrors([]);
+
+    const btn = form.querySelector<HTMLButtonElement>("[data-submit]");
+    const label = btn?.textContent ?? "";
+    if (btn) { btn.disabled = true; btn.textContent = btn.dataset.sending ?? label; }
+    try {
+      const r = await fetch("/api/lead", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ...v.lead, turnstileToken: token }),
+      });
+      const j = (await r.json().catch(() => ({}))) as { errors?: string[]; ref?: string };
+      // 503 "unavailable" means collection is switched off on purpose (no Turnstile secret until
+      // the privacy prerequisites exist). That lock is ours, so the visitor goes through to the
+      // pitch and nothing is stored; only a real failure asks them to retry.
+      const collectionOff = r.status === 503 && (j.errors ?? []).includes("unavailable");
+      if (!r.ok && !collectionOff) {
+        // Field errors from the server map back onto the form; anything else (captcha, outage)
+        // is ours to fix, so it reads as a retry, not as the visitor's mistake.
+        const fields = (j.errors ?? []).filter((f) => FIELDS.includes(f));
+        showErrors(r.status === 400 && fields.length ? fields : ["network"]);
+        if (w.turnstile) { w.turnstile.reset(widget); token = ""; }
+        return;
+      }
+      const visitor: Visitor = { name: v.lead.name, kind: v.lead.kind };
+      if (typeof j.ref === "string") visitor.ref = j.ref;
+      saveVisitor(visitor);
+      welcomeFor(visitor, false);
+    } catch {
+      showErrors(["network"]);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = label; }
+    }
+  });
+
+  // Past the last slide: thank them by name and ask one question. Choosing a channel records the
+  // interest against the lead's ref (only when collection is on and a ref exists); the link itself
+  // opens regardless, so a failed call never costs the conversation.
+  const show = (el: Element | null | undefined, on: boolean) => { if (el) (el as HTMLElement).hidden = !on; };
+  deck?.addEventListener("deck:end", () => {
+    if (!outro || !deck) return;
+    const name = firstName(current?.name ?? "");
+    const lines = JSON.parse(outro.dataset.lines ?? "{}") as Record<Kind, string>;
+    const h = outro.querySelector<HTMLElement>("[data-thanks-text]");
+    if (h) h.textContent = fill(outro.dataset.thanks ?? "", name).replace(/,\s*\./, ".");
+    const line = outro.querySelector<HTMLElement>("[data-outro-line]");
+    if (line) line.textContent = current ? (lines[current.kind] ?? "") : "";
+    show(outro.querySelector("[data-ask]"), true);
+    show(outro.querySelector("[data-channels]"), false);
+    show(outro.querySelector("[data-later]"), false);
+    deck.hidden = true;
+    outro.hidden = false;
+    h?.focus();
+  });
+  outro?.querySelector("[data-yes]")?.addEventListener("click", () => {
+    show(outro.querySelector("[data-ask]"), false);
+    show(outro.querySelector("[data-channels]"), true);
+    outro.querySelector<HTMLElement>("[data-channel]")?.focus();
+  });
+  outro?.querySelector("[data-no]")?.addEventListener("click", () => {
+    show(outro.querySelector("[data-ask]"), false);
+    show(outro.querySelector("[data-later]"), true);
+  });
+  outro?.querySelectorAll<HTMLAnchorElement>("[data-channel]").forEach((a) => {
+    a.addEventListener("click", () => {
+      if (!current?.ref) return;
+      const body = JSON.stringify({ ref: current.ref, channel: a.dataset.channel });
+      // keepalive: the tab may be leaving for Cal.com or WhatsApp as this fires.
+      fetch("/api/interest", { method: "POST", headers: { "content-type": "application/json" }, body, keepalive: true }).catch(() => {});
+    });
+  });
+  outro?.querySelector("[data-replay]")?.addEventListener("click", () => {
+    if (!outro || !deck) return;
+    outro.hidden = true;
+    deck.hidden = false;
+    location.hash = "#1";
+    deck.querySelector<HTMLElement>("[data-next]")?.focus();
+  });
+
+  const known = loadVisitor();
+  if (known) welcomeFor(known, true);
+  else form?.querySelector<HTMLInputElement>("input[name=name]")?.focus();
+</script>

@@ -1,0 +1,35 @@
+---
+// Who wrote it: picture (when the studio has one), name and the bio of this language. On a post
+// the name links to the author's page; on that page it is the h1.
+import { getCopy, type Lang } from "../../content/copy";
+import { authorBio } from "../../lib/blog-model";
+import { authorPath } from "../../lib/blog-paths";
+import type { PublicAuthor } from "../../lib/blog-types";
+import { avatarOf } from "../../lib/blog-views";
+interface Props { author: PublicAuthor; lang: Lang; as?: "h1" | "card" }
+const { author, lang, as = "card" } = Astro.props;
+const c = getCopy(lang).blog;
+const avatar = avatarOf(author);
+const bio = authorBio(author, lang).trim();
+---
+<div class={`author is-${as}${as === "card" ? " surface-card" : ""}`} data-author={author.slug}>
+  {avatar && <img src={avatar} alt="" width="56" height="56" loading="lazy" decoding="async" />}
+  <div class="who">
+    <p class="k mono">{c.author}</p>
+    {as === "h1"
+      ? <h1>{author.name}</h1>
+      : <p class="n"><a href={authorPath(lang, author.slug)}>{author.name}</a></p>}
+    {bio && <p class="bio muted">{bio}</p>}
+  </div>
+</div>
+<style>
+  .author { display: flex; gap: 16px; align-items: flex-start; min-width: 0; }
+  .is-card { padding: 20px; }
+  img { flex: none; width: 56px; height: 56px; border-radius: 50%; object-fit: cover; border: 1px solid var(--line); }
+  .who { min-width: 0; overflow-wrap: anywhere; }
+  .k { font-size: 12px; color: var(--faint); text-transform: uppercase; letter-spacing: .08em; }
+  .n { margin-top: 4px; font-weight: 500; font-size: var(--step-1); }
+  h1 { margin-top: 8px; font-size: clamp(2rem, 4vw, 2.75rem); line-height: 1.1; }
+  .bio { margin-top: 6px; font-size: 15px; max-width: 44em; }
+  .is-h1 .bio { margin-top: 14px; font-size: 18px; line-height: 1.5; }
+</style>

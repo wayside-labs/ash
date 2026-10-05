@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.astro/
+.env
+.env.*
+!.env.example
+test-results/
+playwright-report/
+.wrangler/
+
+studio/.next/
+studio/.vitest/
+studio/dist/
+studio/next-env.d.ts
+studio/*.tsbuildinfo
+studio/uploads/
+tunnel.env

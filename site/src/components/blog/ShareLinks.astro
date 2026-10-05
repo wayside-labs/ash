@@ -1,0 +1,51 @@
+---
+// Share is a row of ordinary links (decision 10): no network's script, no cookie, nothing sent
+// until the reader clicks. "Copy link" is the one thing here that needs JavaScript, so the button
+// starts hidden and the script shows it.
+import { getCopy, type Lang } from "../../content/copy";
+import { SHARE_NAMES, shareLinks } from "../../lib/blog-share";
+// url: the post's absolute address. title: plain text.
+interface Props { url: string; title: string; lang: Lang }
+const { url, title, lang } = Astro.props;
+const c = getCopy(lang).blog;
+---
+<div class="share">
+  <span class="h mono" id="share-label">{c.share}</span>
+  <ul aria-labelledby="share-label">
+    {shareLinks(url, title).map((link) => (
+      <li>
+        <a href={link.href} data-share={link.id} target={link.id === "email" ? undefined : "_blank"} rel="noopener noreferrer">
+          {link.id === "email" ? c.email : SHARE_NAMES[link.id]}
+        </a>
+      </li>
+    ))}
+    <li><button type="button" hidden data-copy-link={url} data-copied={c.copied}>{c.copyLink}</button></li>
+  </ul>
+</div>
+<style>
+  .share { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; font-size: 14px; }
+  .h { font-size: 12px; color: var(--faint); text-transform: uppercase; letter-spacing: .08em; }
+  ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 16px; }
+  button { all: unset; cursor: pointer; }
+  /* "X" is one letter: every target is at least 24 by 24, whatever its label. */
+  a, button { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; min-height: 24px; color: var(--muted); }
+  a:hover, button:hover { color: var(--ink); }
+  button[hidden] { display: none; }
+  button:focus-visible { outline: 2px solid var(--settle); outline-offset: 3px; border-radius: 2px; }
+</style>
+<script>
+  document.querySelectorAll<HTMLButtonElement>("[data-copy-link]").forEach((button) => {
+    if (!navigator.clipboard) return;
+    button.hidden = false;
+    const label = button.textContent;
+    button.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(button.dataset.copyLink ?? location.href);
+        button.textContent = button.dataset.copied ?? label;
+        setTimeout(() => { button.textContent = label; }, 1500);
+      } catch {
+        // The browser refused (no permission): the address bar still has the link.
+      }
+    });
+  });
+</script>

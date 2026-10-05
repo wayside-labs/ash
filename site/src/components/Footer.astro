@@ -1,0 +1,27 @@
+---
+import { getCopy, privacyPath, type Lang } from "../content/copy";
+import { blogLink } from "../lib/blog-pages";
+import Mascot from "./Mascot.astro";
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const c = getCopy(lang);
+const blog = await blogLink(lang);
+---
+<footer>
+  <div class="wrap inner">
+    <Mascot variant="face" size={22} alt="" />
+    <span class="line">{c.footer.line}</span>
+    <nav aria-label="Footer">
+      {blog && <a href={blog}>{c.blog.nav}</a>}
+      <a href={privacyPath(lang)}>{c.footer.privacy}</a>
+    </nav>
+  </div>
+</footer>
+<style>
+  footer { border-top: 1px solid var(--line); font-size: 13px; color: var(--faint); }
+  .inner { padding-block: 28px 36px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; }
+  .inner :global(img) { display: block; width: 22px; height: 22px; border-radius: 5px; flex: none; }
+  .line { flex: 1 1 240px; }
+  nav { display: flex; gap: 20px; color: var(--muted); }
+  nav a:hover { color: var(--ink); }
+</style>

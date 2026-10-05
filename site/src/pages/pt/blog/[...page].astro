@@ -1,0 +1,9 @@
+---
+// /pt/blog/ e /pt/blog/pagina/2/ ... Same file as src/pages/blog/[...page].astro but the language.
+import ListPage from "../../../components/blog/pages/ListPage.astro";
+import { indexPaths } from "../../../lib/blog-pages";
+import type { ListView } from "../../../lib/blog-views";
+export const getStaticPaths = () => indexPaths("pt");
+type Props = ListView;
+---
+<ListPage {...Astro.props} />

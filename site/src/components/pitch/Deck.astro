@@ -1,0 +1,265 @@
+---
+// The one place slides are drawn. /pitch and /investor both render this component from the same
+// content file, which is what keeps the investor funnel an exact copy of the official pitch.
+import { getPitch } from "../../content/pitch";
+import type { Lang } from "../../content/copy";
+import FlowMap from "../showcase/FlowMap.astro";
+import AgentCards from "../showcase/AgentCards.astro";
+interface Props { lang: Lang; hidden?: boolean }
+const { lang, hidden = false } = Astro.props;
+const p = getPitch(lang);
+const n = p.slides.length;
+// Visual slides carry their caption below the figure (a footnote on the matrix and market) or
+// above it (the live panels); text slides keep the plain list.
+const below = new Set(["matrix", "market"]);
+const wide = new Set(["flow", "cards", "matrix", "market", "versus"]);
+---
+<div class="deck" data-deck data-durs={JSON.stringify(p.slides.map((s) => s.dur))} hidden={hidden}>
+  <div class="slides" data-slides>
+    {p.slides.map((s, i) => (
+      <section class={`slide kind-${s.kind}`} data-slide data-id={s.id} aria-roledescription="slide" aria-label={`${p.deck.slide} ${i + 1} / ${n}`}>
+        <div class={`inner${wide.has(s.kind) ? " wide" : ""}`}>
+          <p class="kicker kicker-slash">{s.kicker}</p>
+          <h2 class="line">{s.line}</h2>
+          {s.kind === "versus" ? (
+            <div class="versus">{s.support.map((t, k) => <p class={k === 0 ? "keys" : "none"}>{t}</p>)}</div>
+          ) : !below.has(s.kind) && (
+            <ul class="support">{s.support.map((t, k) => <li class={k === 0 ? "first" : ""}>{t}</li>)}</ul>
+          )}
+          {s.kind === "flow" && <div class="visual flowv"><FlowMap lang={lang} feed={false} /></div>}
+          {s.kind === "cards" && <div class="visual"><AgentCards lang={lang} /></div>}
+          {"points" in s && (
+            <div class="matrix">
+              <div class="plane">
+                {s.points.map((pt) => (
+                  <span class={`pt${"you" in pt ? " you" : ""}${pt.x > 0.72 ? " flip" : ""}`} style={`left:${pt.x * 100}%;bottom:${pt.y * 100}%`}><i></i>{pt.n}</span>
+                ))}
+              </div>
+              <span class="ax x0">{s.axes.x[0]}</span><span class="ax x1">{s.axes.x[1]} →</span>
+              <span class="ax y0">{s.axes.y[0]}</span><span class="ax y1">↑ {s.axes.y[1]}</span>
+            </div>
+          )}
+          {"stats" in s && (
+            <div class="stats">{s.stats.map((st) => <div class="st"><b class="mono">{st.v}</b><span>{st.l}</span></div>)}</div>
+          )}
+          {below.has(s.kind) && <p class="foot muted">{s.support.join(" ")}</p>}
+        </div>
+        <aside class="notes" data-notes>{s.notes}</aside>
+      </section>
+    ))}
+  </div>
+  <div class="bar">
+    <div class="progress" aria-hidden="true"><span data-progress></span></div>
+    <div class="controls">
+      <button type="button" data-prev aria-label={p.deck.prev}>←</button>
+      <span class="count mono" aria-live="polite" data-count>1 / {n}</span>
+      <button type="button" data-next aria-label={p.deck.next}>→</button>
+      <span class="hint mono">{p.deck.hint}</span>
+      <button type="button" class="toggle" data-notes-toggle aria-pressed="false">{p.deck.notes}</button>
+      <button type="button" class="toggle" data-play data-label-play={p.deck.present} data-label-stop={p.deck.stop} aria-pressed="false">{p.deck.present}</button>
+    </div>
+  </div>
+</div>
+<style>
+  .deck { position: relative; display: grid; grid-template-rows: 1fr auto; height: calc(100svh - 58px); min-height: 460px; }
+  .deck[hidden] { display: none; }
+  .slides { position: relative; overflow: hidden; }
+  .slide {
+    position: absolute; inset: 0; display: grid; align-content: center; padding: 24px clamp(16px, 6vw, 88px);
+    opacity: 0; transform: translateY(14px); pointer-events: none;
+    transition: opacity .45s cubic-bezier(.2,.7,.2,1), transform .45s cubic-bezier(.2,.7,.2,1);
+  }
+  .slide.is-active { opacity: 1; transform: none; pointer-events: auto; }
+  /* min-width: a grid item is as wide as its longest unbreakable line, and on a phone that
+     pushed the whole slide off the screen. */
+  .inner { max-width: 1040px; min-width: 0; }
+  .kicker { font-size: 13px; }
+  .line { margin-top: 18px; font-size: clamp(30px, 5.4vw, 72px); line-height: 1.04; letter-spacing: -0.01em; max-width: 18em; }
+  .support { list-style: none; margin: 32px 0 0; padding: 0; display: grid; gap: 12px; max-width: 46em; }
+  .support li { color: var(--muted); font-size: clamp(16px, 1.6vw, 20px); line-height: 1.4; }
+
+  .kind-hook .line { font-size: clamp(34px, 6.6vw, 88px); }
+  /* The answer slide carries the brand's one motif: the dashed ceiling line under the promise. */
+  .kind-answer .line { padding-bottom: 28px; border-bottom: 3px dashed var(--accent); }
+  .kind-answer .support li { color: var(--ink); }
+  .kind-pillar .support li, .kind-demo .support li { padding-left: 18px; position: relative; color: var(--ink); }
+  .kind-pillar .support li::before, .kind-demo .support li::before {
+    content: ""; position: absolute; left: 0; top: .55em; width: 8px; height: 8px; border-radius: 2px; background: var(--settle);
+  }
+  .kind-list .support li { border-top: 1px solid var(--line); padding-top: 12px; }
+  .kind-stat .support li.first { color: var(--ink); font-size: clamp(20px, 2.4vw, 30px); border-left: 2px solid var(--accent); padding-left: 16px; }
+  .kind-close .support li { border-left: 2px solid var(--line-strong); padding-left: 14px; }
+  .kind-close .support li.first { border-color: var(--warning); color: var(--ink); }
+  .kind-close .support li:last-child { border: 0; padding-left: 0; margin-top: 8px; font-size: 15px; }
+
+  /* Visual slides: wider, and allowed to scroll on a short or narrow screen instead of clipping. */
+  .slide { overflow-y: auto; align-content: safe center; }
+  .inner.wide { max-width: 1180px; width: 100%; }
+  .inner.wide .line { font-size: clamp(28px, 3.6vw, 50px); max-width: 24em; }
+  .kind-flow .support { display: none; }
+  .visual { margin-top: 24px; }
+  /* Keep the whole map on screen: its height follows its width, so cap the width by the height. */
+  .flowv { width: min(100%, calc((100svh - 380px) * 1.78)); }
+  .versus { margin-top: 32px; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; max-width: 1100px; }
+  .versus p { margin: 0; padding: 20px; border-radius: var(--radius-xl); background: var(--surface); border: 1px solid var(--line-strong); font-size: clamp(16px, 1.7vw, 21px); line-height: 1.4; }
+  .versus .keys { border-color: color-mix(in srgb, var(--deny) 45%, transparent); }
+  .versus .none { border-color: color-mix(in srgb, var(--warning) 45%, transparent); }
+  .matrix { position: relative; margin: 28px 0 0 28px; padding-bottom: 26px; }
+  .plane { position: relative; aspect-ratio: 16 / 6.2; border-left: 1px solid var(--line-strong); border-bottom: 1px solid var(--line-strong);
+    background: linear-gradient(to right, transparent calc(50% - .5px), var(--line) 50%, transparent calc(50% + .5px)),
+      linear-gradient(to top, transparent calc(50% - .5px), var(--line) 50%, transparent calc(50% + .5px)); }
+  .pt { position: absolute; transform: translate(-6px, 50%); display: flex; align-items: center; gap: 8px; font-size: clamp(11px, 1.05vw, 14px); color: var(--muted); white-space: nowrap; }
+  .pt i { width: 10px; height: 10px; border-radius: 50%; background: var(--line-strong); flex: none; }
+  .pt.flip { flex-direction: row-reverse; transform: translate(calc(-100% + 6px), 50%); }
+  .pt.you { color: var(--ink); font-weight: 600; font-size: clamp(14px, 1.4vw, 18px); }
+  .pt.you i { width: 14px; height: 14px; background: var(--settle); box-shadow: 0 0 0 6px color-mix(in srgb, var(--settle) 15%, transparent); }
+  .ax { position: absolute; font-size: 12px; color: var(--faint); }
+  .ax.x0 { left: 0; bottom: 0; } .ax.x1 { right: 0; bottom: 0; }
+  .ax.y0, .ax.y1 { left: -28px; transform-origin: left top; transform: rotate(-90deg); }
+  .ax.y0 { top: calc(100% - 30px); } .ax.y1 { top: 50%; }
+  .stats { margin-top: 32px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
+  .st { border-top: 2px solid var(--accent); padding-top: 14px; display: grid; gap: 8px; }
+  .st b { font-family: var(--display); font-size: clamp(24px, 2.8vw, 40px); font-weight: 600; line-height: 1.05; }
+  .st span { font-size: 13.5px; line-height: 1.45; color: var(--muted); }
+  .foot { margin-top: 22px; font-size: 13.5px; max-width: 60em; }
+  .kind-thanks .line { font-size: clamp(48px, 9vw, 128px); }
+  @media (max-width: 760px) {
+    .versus, .stats { grid-template-columns: 1fr; }
+    .plane { aspect-ratio: 4 / 5; }
+    .pt { font-size: 10.5px; white-space: normal; max-width: 42vw; }
+  }
+
+  .notes {
+    display: none; position: absolute; left: clamp(16px, 6vw, 88px); right: clamp(16px, 6vw, 88px); bottom: 12px;
+    background: var(--elevated); border: 1px solid var(--line-strong); border-radius: var(--radius-lg);
+    padding: 12px 16px; font-size: 14px; line-height: 1.5; color: var(--muted); max-height: 30%; overflow-y: auto;
+  }
+  .deck.show-notes .notes { display: block; }
+
+  .bar { border-top: 1px solid var(--line); }
+  .progress { height: 2px; background: var(--line); }
+  .progress span { display: block; height: 100%; width: 0; background: var(--settle); box-shadow: var(--glow-bar); transition: width .3s linear; }
+  .controls { display: flex; align-items: center; gap: 10px; padding: 10px clamp(16px, 4vw, 40px); }
+  .controls button {
+    all: unset; cursor: pointer; font-size: 14px; color: var(--ink); border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm); padding: 6px 10px; line-height: 1;
+  }
+  .controls button:hover { border-color: var(--settle); color: var(--settle); }
+  .controls button:focus-visible { outline: 2px solid var(--settle); outline-offset: 2px; }
+  .controls .toggle[aria-pressed="true"] { border-color: var(--settle); color: var(--settle); }
+  .count { font-size: 13px; color: var(--muted); min-width: 4.5em; text-align: center; }
+  .hint { font-size: 12px; color: var(--faint); margin-left: auto; }
+  @media (max-width: 700px) { .hint { display: none; } .controls .toggle { margin-left: auto; } .controls .toggle + .toggle { margin-left: 0; } }
+  @media (prefers-reduced-motion: reduce) { .slide, .progress span { transition: none; transform: none; } }
+</style>
+<script>
+  import { next, prev, clamp, fromHash, schedule, slideAt, total } from "../../lib/deck-model";
+
+  const deck = document.querySelector<HTMLElement>("[data-deck]");
+  if (deck) {
+    // Function declarations below are hoisted, so they lose the null check; this binding keeps it.
+    const host: HTMLElement = deck;
+    const slides = [...deck.querySelectorAll<HTMLElement>("[data-slide]")];
+    const n = slides.length;
+    const durs: number[] = JSON.parse(deck.dataset.durs ?? "[]");
+    const starts = schedule(durs);
+    const length = total(durs);
+    const count = deck.querySelector<HTMLElement>("[data-count]");
+    const bar = deck.querySelector<HTMLElement>("[data-progress]");
+    const play = deck.querySelector<HTMLButtonElement>("[data-play]");
+    const notesBtn = deck.querySelector<HTMLButtonElement>("[data-notes-toggle]");
+    let i = fromHash(location.hash, n);
+    let timer: number | undefined;
+    let t0 = 0;
+
+    const visible = () => !deck.hidden && deck.offsetParent !== null;
+
+    function render(progress?: number) {
+      slides.forEach((s, k) => {
+        const on = k === i;
+        s.classList.toggle("is-active", on);
+        s.toggleAttribute("inert", !on);
+        s.setAttribute("aria-hidden", String(!on));
+      });
+      if (count) count.textContent = `${i + 1} / ${n}`;
+      if (bar) bar.style.width = `${Math.round((progress ?? (i + 1) / n) * 100)}%`;
+    }
+
+    function go(to: number) {
+      i = clamp(to, n);
+      history.replaceState(null, "", `#${i + 1}`);
+      render();
+    }
+
+    function stop() {
+      if (timer !== undefined) clearInterval(timer);
+      timer = undefined;
+      if (play) { play.textContent = play.dataset.labelPlay ?? ""; play.setAttribute("aria-pressed", "false"); }
+      render();
+    }
+
+    // Presenting runs the three-minute clock from the current slide, so a presenter can rehearse
+    // from the middle; any manual move hands control back.
+    function start() {
+      t0 = performance.now() - (starts[i] ?? 0) * 1000;
+      if (play) { play.textContent = play.dataset.labelStop ?? ""; play.setAttribute("aria-pressed", "true"); }
+      timer = window.setInterval(() => {
+        const s = (performance.now() - t0) / 1000;
+        if (s >= length) { i = n - 1; stop(); host.dispatchEvent(new CustomEvent("deck:end", { bubbles: true })); return; }
+        const at = slideAt(s, durs);
+        if (at !== i) { i = at; history.replaceState(null, "", `#${i + 1}`); }
+        render(s / length);
+      }, 200);
+    }
+
+    const manual = (to: number) => { if (timer !== undefined) stop(); go(to); };
+    // Asking for the slide after the last one is a signal, not a no-op: /investor listens for it
+    // to show its closing screen, while /pitch simply stays on the ask.
+    const forward = () => {
+      if (i === n - 1) { if (timer !== undefined) stop(); deck.dispatchEvent(new CustomEvent("deck:end", { bubbles: true })); }
+      else manual(next(i, n));
+    };
+    const toggleNotes = () => {
+      const on = deck.classList.toggle("show-notes");
+      notesBtn?.setAttribute("aria-pressed", String(on));
+    };
+
+    deck.querySelector("[data-next]")?.addEventListener("click", forward);
+    deck.querySelector("[data-prev]")?.addEventListener("click", () => manual(prev(i, n)));
+    play?.addEventListener("click", () => (timer === undefined ? start() : stop()));
+    notesBtn?.addEventListener("click", toggleNotes);
+
+    document.addEventListener("keydown", (e) => {
+      if (!visible() || e.metaKey || e.ctrlKey || e.altKey) return;
+      if ((e.target as HTMLElement | null)?.closest("input, textarea, select")) return;
+      const k = e.key;
+      if (k === "ArrowRight" || k === "PageDown" || k === " ") { e.preventDefault(); forward(); }
+      else if (k === "ArrowLeft" || k === "PageUp") { e.preventDefault(); manual(prev(i, n)); }
+      else if (k === "Home") manual(0);
+      else if (k === "End") manual(n - 1);
+      else if (k === "p" || k === "P") timer === undefined ? start() : stop();
+      else if (k === "n" || k === "N") toggleNotes();
+    });
+
+    // Tap the right half to advance, the left half to go back; links, code and notes stay usable.
+    deck.querySelector("[data-slides]")?.addEventListener("click", (e) => {
+      const me = e as MouseEvent;
+      if ((me.target as HTMLElement).closest("a, button, code, [data-notes]")) return;
+      const box = (me.currentTarget as HTMLElement).getBoundingClientRect();
+      if (me.clientX > box.left + box.width / 2) forward(); else manual(prev(i, n));
+    });
+
+    let x0: number | null = null;
+    deck.addEventListener("touchstart", (e) => { x0 = e.touches[0]?.clientX ?? null; }, { passive: true });
+    deck.addEventListener("touchend", (e) => {
+      const x1 = e.changedTouches[0]?.clientX;
+      if (x0 === null || x1 === undefined) return;
+      const dx = x1 - x0;
+      x0 = null;
+      if (Math.abs(dx) > 40) { if (dx < 0) forward(); else manual(prev(i, n)); }
+    });
+
+    window.addEventListener("hashchange", () => { const to = fromHash(location.hash, n); if (to !== i) manual(to); });
+    render();
+  }
+</script>

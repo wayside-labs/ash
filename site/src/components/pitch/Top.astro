@@ -1,0 +1,21 @@
+---
+import { homePath, otherLang, type Lang } from "../../content/copy";
+import Mascot from "../Mascot.astro";
+interface Props { lang: Lang; alt: string }
+const { lang, alt } = Astro.props;
+const other = otherLang(lang);
+---
+<header class="top">
+  <a class="brand" href={homePath(lang)} aria-label="Ash">
+    <Mascot variant="face" size={34} alt="" loading="eager" class="brand-face" />
+    <span class="wordmark">Ash</span>
+  </a>
+  <a class="lang mono" href={alt} hreflang={other === "pt" ? "pt-BR" : "en"}>{other.toUpperCase()}</a>
+</header>
+<style>
+  /* 58px tall, exactly: the deck, the welcome and the outro size themselves as 100svh - 58px. */
+  .top { display: flex; justify-content: space-between; align-items: center; height: 58px; padding: 0 clamp(16px, 4vw, 40px); }
+  .brand { display: inline-flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; }
+  .lang { color: var(--muted); text-decoration: none; font-size: 12px; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); padding: 5px 8px; }
+  .lang:hover { color: var(--settle); border-color: var(--settle-line); }
+</style>

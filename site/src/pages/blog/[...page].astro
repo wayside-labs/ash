@@ -1,0 +1,10 @@
+---
+// /blog/ and /blog/page/2/ ... A rest route and not an index.astro, because a plain page is always
+// built: with the blog off this one returns no path and nothing is written.
+import ListPage from "../../components/blog/pages/ListPage.astro";
+import { indexPaths } from "../../lib/blog-pages";
+import type { ListView } from "../../lib/blog-views";
+export const getStaticPaths = () => indexPaths("en");
+type Props = ListView;
+---
+<ListPage {...Astro.props} />

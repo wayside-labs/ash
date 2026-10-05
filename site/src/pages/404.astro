@@ -1,0 +1,33 @@
+---
+// Cloudflare Pages serves this file for any address that does not exist. Without it the host
+// answered every wrong address with the home and a 200. One file for both languages: the host
+// cannot tell which one the visitor wanted, so the page offers both homes.
+import Base from "../layouts/Base.astro";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+import Mascot from "../components/Mascot.astro";
+import { getCopy, homePath } from "../content/copy";
+const lang = "en" as const;
+const c = getCopy(lang);
+const pt = getCopy("pt");
+---
+<Base lang={lang} title={`${c.notFound.title} — Ash`} description={c.notFound.body} path="/404/" altPath={null} noindex>
+  <Header lang={lang} homeAnchors />
+  <main id="main" class="wrap missing">
+    <Mascot variant="closeup" alt="" class="robot" sizes="160px" />
+    <p class="kicker-slash">404</p>
+    <h1>{c.notFound.title}</h1>
+    <p>{c.notFound.body}</p>
+    <p class="links"><a href={homePath(lang)}>{c.notFound.home}</a><a href={homePath("pt")} lang="pt-BR" hreflang="pt-BR">{pt.notFound.home}</a></p>
+  </main>
+  <Footer lang={lang} />
+</Base>
+<style>
+  .missing { padding-block: 72px 96px; max-width: 720px; display: grid; gap: 16px; justify-items: start; }
+  .missing :global(.robot) { width: 160px; height: 160px; object-fit: cover; border-radius: 50%; border: 1px solid var(--settle-line); }
+  h1 { font-size: var(--step-4); line-height: 1.08; }
+  p { color: var(--body); }
+  .links { display: flex; flex-wrap: wrap; gap: 8px 24px; margin-top: 8px; }
+  a { color: var(--settle); }
+  a:hover { color: var(--settle-soft); }
+</style>

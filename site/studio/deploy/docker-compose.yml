@@ -1,0 +1,98 @@
+# /opt/ash-studio on the Hostinger VPS. Reached only through the `ash` Cloudflare Tunnel;
+# nothing publishes a port. Secrets live in /opt/ash-studio/.env, never here.
+x-logging: &logging
+  driver: json-file
+  options: { max-size: "10m", max-file: "5" }
+
+x-comum: &comum
+  restart: unless-stopped
+  logging: *logging
+
+x-app: &app
+  <<: *comum
+  image: ash-studio:${APP_VERSION:?APP_VERSION is required}
+  env_file: .env
+  environment:
+    APP_VERSION: ${APP_VERSION}
+  depends_on:
+    migrate: { condition: service_completed_successfully }
+
+services:
+  db:
+    <<: *comum
+    image: postgres:17.11-alpine
+    container_name: ash-studio-db
+    environment:
+      POSTGRES_USER: studio
+      POSTGRES_DB: studio
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+    volumes: ["./pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U studio -d studio"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [studio]
+
+  migrate:
+    image: ash-studio:${APP_VERSION}
+    container_name: ash-studio-migrate
+    logging: *logging
+    command: ["node", "dist/migrate.mjs"]
+    env_file: .env
+    environment:
+      GITHUB_DISPATCH_TOKEN: ""
+    depends_on:
+      db: { condition: service_healthy }
+    networks: [studio]
+    restart: "no"
+
+  app:
+    <<: *app
+    container_name: ash-studio
+    environment:
+      APP_VERSION: ${APP_VERSION}
+      # Only the worker calls GitHub. The app faces the internet, so it gets the token blanked
+      # (this overrides env_file) and, in its place, the flag /api/health reports: "on" when the
+      # token is set in .env, empty otherwise.
+      GITHUB_DISPATCH_TOKEN: ""
+      SITE_REBUILD: ${GITHUB_DISPATCH_TOKEN:+on}
+    volumes: ["./uploads:/app/uploads"]
+    healthcheck:
+      # The live probe: a job that died yesterday turns /api/health red, and that must not mark
+      # the container unhealthy (cloudflared waits on this to start).
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health?probe=live"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
+    networks: [studio]
+
+  worker:
+    <<: *app
+    container_name: ash-studio-worker
+    command: ["node", "dist/worker.mjs"]
+    environment:
+      APP_VERSION: ${APP_VERSION}
+      # A fixed name: hostname() is the container id, which would add a heartbeat row per deploy.
+      WORKER_NAME: ash-studio-worker
+    # The worker stops claiming on SIGTERM but finishes the job in hand; the longest handler
+    # deadline is just under the 5-minute lease, so Docker must not SIGKILL it after 10 s.
+    stop_grace_period: 5m
+    networks: [studio]
+
+  # Connector for the `ash` tunnel (studio. and pub. hostnames). The old /opt/ash stack that ran
+  # it is down since the site moved to Pages, so the studio carries its own connector.
+  cloudflared:
+    <<: *comum
+    image: cloudflare/cloudflared:2026.9.3
+    container_name: ash-studio-cloudflared
+    command: tunnel --no-autoupdate run
+    # Its own file: the app and worker read .env and have no business holding the tunnel token.
+    env_file: tunnel.env
+    depends_on:
+      app: { condition: service_healthy }
+    networks: [studio]
+
+networks:
+  studio: { name: ash-studio }

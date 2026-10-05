@@ -1,0 +1,25 @@
+---
+// Newer and older pages of the index. Renders nothing when there is one page.
+import { getCopy, type Lang } from "../../content/copy";
+import { blogIndexPath } from "../../lib/blog-paths";
+interface Props { lang: Lang; page: number; pageCount: number }
+const { lang, page, pageCount } = Astro.props;
+const c = getCopy(lang).blog;
+---
+{pageCount > 1 && (
+  <nav class="pages" aria-label={c.pagination}>
+    {page > 1
+      ? <a class="btn btn-ghost" rel="prev" href={blogIndexPath(lang, page - 1)}>← {c.newer}</a>
+      : <span></span>}
+    <span class="where mono" aria-current="page">{c.page} {page} {c.of} {pageCount}</span>
+    {page < pageCount
+      ? <a class="btn btn-ghost next" rel="next" href={blogIndexPath(lang, page + 1)}>{c.older} →</a>
+      : <span></span>}
+  </nav>
+)}
+<style>
+  .pages { margin-top: 40px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; }
+  .pages > :first-child { justify-self: start; }
+  .pages > :last-child { justify-self: end; }
+  .where { font-size: 13px; color: var(--muted); }
+</style>
