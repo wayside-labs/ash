@@ -16,7 +16,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useTranslation } from "@/i18n/locale-provider";
 import { cn } from "@/lib/utils";
-import { type HomePanelId, useAppStore } from "@/stores/app-store";
+import { type HomeLayoutDirection, type HomePanelId, useAppStore } from "@/stores/app-store";
 
 const ChatPanel = dynamic(
   () => import("@/components/chat/chat-panel").then((m) => ({ default: m.ChatPanel })),
@@ -28,12 +28,12 @@ const ChatPanel = dynamic(
 
 const PANEL_IDS: HomePanelId[] = ["chat", "workflows"];
 
-// The chat gets most of the width by default: the prompts people paste are long and must be
-// readable. A saved drag still wins, and the storage key below is versioned so a layout saved
-// at the old 42% default does not keep the chat small.
-const DEFAULT_SIZES: Record<HomePanelId, number> = {
-  chat: 62,
-  workflows: 38,
+// The chat gets most of the room by default, so a long pasted prompt can be read. Stacked, that
+// is height (the chat on top); side by side, width. A saved drag still wins, and the storage key
+// below is versioned so a layout saved at an older default does not keep the chat small.
+const DEFAULT_SIZES: Record<HomeLayoutDirection, Record<HomePanelId, number>> = {
+  vertical: { chat: 70, workflows: 30 },
+  horizontal: { chat: 42, workflows: 58 },
 };
 
 // useDefaultLayout's default `storage = localStorage` is evaluated during server render, where
@@ -78,7 +78,7 @@ export function HomeLayout() {
   // below `md` the panels always stack. The saved preference is kept for wider screens.
   const narrow = useMediaQuery("(max-width: 767px)");
   const direction = narrow ? "vertical" : homeLayout.direction;
-  const storageId = `home-v2-${direction}-${layoutResetCounter}`;
+  const storageId = `home-v3-${direction}-${layoutResetCounter}`;
   const { defaultLayout, onLayoutChanged } = useDefaultLayout({
     id: storageId,
     panelIds: PANEL_IDS,
@@ -131,7 +131,7 @@ export function HomeLayout() {
       <ResizablePanelGroup
         id={storageId}
         orientation={direction}
-        defaultLayout={defaultLayout ?? DEFAULT_SIZES}
+        defaultLayout={defaultLayout ?? DEFAULT_SIZES[direction]}
         onLayoutChanged={onLayoutChanged}
         className="min-h-0 flex-1 rounded-xl"
       >
@@ -141,7 +141,7 @@ export function HomeLayout() {
             <ResizablePanel
               id={panelId}
               minSize={22}
-              defaultSize={DEFAULT_SIZES[panelId]}
+              defaultSize={DEFAULT_SIZES[direction][panelId]}
               className="min-h-0"
             >
               <div className="h-full min-h-0 overflow-hidden p-0.5">{panelContent[panelId]}</div>

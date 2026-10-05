@@ -11,7 +11,8 @@ export type HomeLayoutDirection = "horizontal" | "vertical";
 export type TemplatesView = "list" | "cards";
 
 export const DEFAULT_HOME_LAYOUT = {
-  direction: "horizontal" as HomeLayoutDirection,
+  // Stacked by default: the chat sits on top and takes most of the height, so a long prompt has room.
+  direction: "vertical" as HomeLayoutDirection,
   panelOrder: ["chat", "workflows"] as [HomePanelId, HomePanelId],
 };
 
