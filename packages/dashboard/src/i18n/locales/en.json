@@ -589,7 +589,7 @@
   "settings.rpcResponding": "RPC responding — {detail}",
   "settings.rpcFailed": "Failed: {detail}",
   "chat.title": "Chat",
-  "chat.welcome": "Hi, I'm ASH. What are we building on Solana today?",
+  "chat.welcome": "Hi, I'm ASH. What do we do on Solana today?",
   "chat.placeholder": "What do you want to build?",
   "chat.thinking": "Thinking…",
   "chat.modelLabel": "Model:",
