@@ -1,6 +1,6 @@
 "use client";
 
-import { Menu, Shield } from "lucide-react";
+import { Bot, Menu } from "lucide-react";
 import { SolPrice } from "@/components/layout/sol-price";
 import { HideBalancesToggle } from "@/components/shared/hide-balances-toggle";
 import { Badge } from "@/components/ui/badge";
@@ -57,7 +57,7 @@ export function Header() {
         </Button>
 
         <div className="flex items-center gap-2">
-          <Shield className="h-5 w-5 text-primary" />
+          <Bot className="h-5 w-5 text-primary" />
           <span className="hidden font-semibold sm:inline">{t("header.brand")}</span>
         </div>
       </div>
