@@ -1,4 +1,4 @@
-import { proofPackSchema } from "@agent-rails/contract/template-run";
+import { proofPackSchema } from "@ash/contract/template-run";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { COMMITMENT_MEMO } from "./commitment.js";
 import {

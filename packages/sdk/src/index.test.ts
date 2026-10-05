@@ -1,11 +1,11 @@
 import { address } from "@solana/kit";
 import { describe, expect, it } from "vitest";
 import { findTreasuryPda } from "./pdas.js";
-import { agentRails } from "./plugin.js";
+import { ash } from "./plugin.js";
 
-describe("@agent-rails/sdk", () => {
+describe("@ash/sdk", () => {
   it("exposes the kit plugin shape", () => {
-    const plugin = agentRails({
+    const plugin = ash({
       session: address("11111111111111111111111111111111"),
       signer: {
         address: address("11111111111111111111111111111111"),
@@ -19,7 +19,7 @@ describe("@agent-rails/sdk", () => {
   });
 
   it("resolves the requested posture at construction", () => {
-    const plugin = agentRails({
+    const plugin = ash({
       session: address("11111111111111111111111111111111"),
       signer: {
         address: address("11111111111111111111111111111111"),
@@ -32,7 +32,7 @@ describe("@agent-rails/sdk", () => {
 
   it("rejects a malformed posture when the client is built, not when it pays", () => {
     expect(() =>
-      agentRails({
+      ash({
         session: address("11111111111111111111111111111111"),
         signer: {
           address: address("11111111111111111111111111111111"),

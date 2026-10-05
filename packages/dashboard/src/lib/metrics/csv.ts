@@ -6,7 +6,7 @@
  * same headers in a dashboard export.
  */
 
-import type { PaymentRecord } from "@agent-rails/contract/events";
+import type { PaymentRecord } from "@ash/contract/events";
 
 /** RFC 4180: quote every field; double quotes inside. */
 function csvCell(value: string): string {

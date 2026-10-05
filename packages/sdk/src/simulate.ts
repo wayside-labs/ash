@@ -9,12 +9,12 @@ import {
   type SolanaRpcApi,
 } from "@solana/kit";
 import {
-  agentRailsErrorFromCode,
+  ashErrorFromCode,
   customCodeFromTransactionError,
   stringifyRpcError,
-  toAgentRailsError,
+  toAshError,
 } from "./error-mapping.js";
-import { AgentRailsError } from "./errors.js";
+import { AshError } from "./errors.js";
 import type { PaymentTransactionMessage } from "./payment-intent.js";
 
 export type SimulatePaymentInput = {
@@ -31,7 +31,7 @@ export type SimulatePaymentResult = {
 
 /**
  * Dry-run a payment transaction against an RPC node and map program failures to
- * `AgentRailsError` with stable `reason_code` strings for MCP surfaces.
+ * `AshError` with stable `reason_code` strings for MCP surfaces.
  */
 export async function simulatePayment(input: SimulatePaymentInput): Promise<SimulatePaymentResult> {
   try {
@@ -52,9 +52,9 @@ export async function simulatePayment(input: SimulatePaymentInput): Promise<Simu
     if (simulation.err) {
       const customCode = customCodeFromTransactionError(simulation.err);
       if (customCode !== undefined) {
-        throw agentRailsErrorFromCode(customCode, simulation.err);
+        throw ashErrorFromCode(customCode, simulation.err);
       }
-      throw new AgentRailsError({
+      throw new AshError({
         reasonCode: "UNKNOWN_PROGRAM_ERROR",
         message: `Simulation failed: ${stringifyRpcError(simulation.err)}`,
         outcome: "denied",
@@ -71,8 +71,8 @@ export async function simulatePayment(input: SimulatePaymentInput): Promise<Simu
     if (
       isSolanaError(error, SOLANA_ERROR__JSON_RPC__SERVER_ERROR_SEND_TRANSACTION_PREFLIGHT_FAILURE)
     ) {
-      throw toAgentRailsError(error);
+      throw toAshError(error);
     }
-    throw toAgentRailsError(error);
+    throw toAshError(error);
   }
 }

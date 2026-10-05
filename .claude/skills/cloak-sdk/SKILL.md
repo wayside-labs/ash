@@ -48,7 +48,7 @@ They come from the SDK reference and apply to every call written here.
 
 ## 2. This repo's invariants
 
-1. **Never in `programs/agent_rails`, `packages/mcp/src/tools/` or
+1. **Never in `programs/ash`, `packages/mcp/src/tools/` or
    `packages/contract/src/mcp-tools.ts`.** The agent surface stays at seven tools. A private payout
    is operator-approved from a wallet; it is not an agent tool, and no tool may start one.
 2. **It is not a vault flow.** No `execute_payment`, no `IntentReceipt`, no treasury account. Do not
@@ -61,9 +61,9 @@ They come from the SDK reference and apply to every call written here.
 4. **The dashboard's source names no `get…Instruction` builder.** `privileged-surface.test.ts`
    scans `packages/dashboard/src` for the pattern and for a forbidden list. The builders live inside
    the SDK, not in a dashboard file.
-5. **Client files import `@agent-rails/contract/template-run`, never the package root.** The root
+5. **Client files import `@ash/contract/template-run`, never the package root.** The root
    pulls `node:crypto` into a browser bundle, and only `next build` catches it. The root entry of
-   `@agent-rails/cloak` is browser-safe: no SDK import and no Node built-in. `adapter.ts` is the only
+   `@ash/cloak` is browser-safe: no SDK import and no Node built-in. `adapter.ts` is the only
    module that imports the SDK, through a dynamic import; `node.ts` and `smoke.ts` are Node-only.
 6. **Events and proofs carry public data only.** Strict schemas, error codes in place of upstream
    messages (`RUN_ERROR_CODES`, `classifyError`), `message` at most 300 characters. No key, note,
@@ -103,10 +103,10 @@ They come from the SDK reference and apply to every call written here.
 ## 4. Commands
 
 ```bash
-pnpm --filter @agent-rails/cloak test         # offline; real SDK for keys, bridge and fee parity
-pnpm --filter @agent-rails/cloak typecheck
-pnpm --filter @agent-rails/cloak build        # tsdown; dist/smoke.js, adapter, node, testing
-pnpm --filter @agent-rails/contract exec vitest run src/template-run.test.ts
+pnpm --filter @ash/cloak test         # offline; real SDK for keys, bridge and fee parity
+pnpm --filter @ash/cloak typecheck
+pnpm --filter @ash/cloak build        # tsdown; dist/smoke.js, adapter, node, testing
+pnpm --filter @ash/contract exec vitest run src/template-run.test.ts
 node packages/cloak/dist/smoke.js --keypair <KEYPAIR.json> --payee-sol <A> --payee-zec <B>
                                               # or: pnpm cloak-smoke <the same flags>
 ```

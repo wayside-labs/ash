@@ -2,7 +2,7 @@ import {
   CLOAK_PRIVATE_PAYOUT_TEMPLATE_ID,
   type CloakPayoutProposal,
   cloakPayoutProposalSchema,
-} from "@agent-rails/contract/template-run";
+} from "@ash/contract/template-run";
 import { buildRunPlan, type RunPlan } from "./plan.js";
 
 const BASE58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";

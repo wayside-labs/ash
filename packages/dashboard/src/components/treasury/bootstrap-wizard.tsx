@@ -1,7 +1,7 @@
 "use client";
 
-import { MAX_NAME_LEN } from "@agent-rails/contract/constants";
-import { fromBaseUnits, toBaseUnits } from "@agent-rails/contract/units";
+import { MAX_NAME_LEN } from "@ash/contract/constants";
+import { fromBaseUnits, toBaseUnits } from "@ash/contract/units";
 import type { KeyPairSigner } from "@solana/kit";
 import { AlertTriangle, Check, Circle, ExternalLink, Loader2 } from "lucide-react";
 import Link from "next/link";
@@ -86,7 +86,7 @@ function fitsName(value: string): boolean {
 }
 
 /**
- * ADR-021 wave 2A: `agent-rails init`, guided, in the browser. The server builds each
+ * ADR-021 wave 2A: `ash init`, guided, in the browser. The server builds each
  * stage from the CLI's own `buildStages`; this component collects the answers, holds the
  * two keys that must never leave the tab (the throwaway `create_key` and the optional
  * session key), and walks the wallet through one signature per stage.

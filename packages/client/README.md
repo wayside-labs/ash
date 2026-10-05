@@ -1,13 +1,13 @@
-# @agent-rails/client
+# @ash/client
 
-100% Codama-generated Solana Kit client for the `agent_rails` program. Do not hand-edit files under `src/generated/` — regenerate from the Anchor IDL instead.
+100% Codama-generated Solana Kit client for the `ash` program. Do not hand-edit files under `src/generated/` — regenerate from the Anchor IDL instead.
 
 ## Regenerate
 
 From the repo root:
 
 ```bash
-pnpm idl:build   # extract idl/agent_rails.json (no full anchor build)
+pnpm idl:build   # extract idl/ash.json (no full anchor build)
 pnpm codegen     # render Kit client into src/generated/
 ```
 
@@ -26,7 +26,7 @@ src/generated/
   pdas/           treasury, policy, session, solVault, allowlist entry
   events/         PaymentExecuted, TreasuryPaused, …
   errors/         Anchor custom errors 6000–6041
-  programs/       AGENT_RAILS_PROGRAM_ADDRESS, AgentRailsInstruction enum, client helpers
+  programs/       ASH_PROGRAM_ADDRESS, AshInstruction enum, client helpers
   types/          PaymentIntent, MintLimit, PolicyArgs, …
 ```
 
@@ -34,10 +34,10 @@ src/generated/
 
 ```ts
 import {
-  AGENT_RAILS_PROGRAM_ADDRESS,
+  ASH_PROGRAM_ADDRESS,
   getExecutePaymentSolInstructionAsync,
   findSessionPda,
-} from "@agent-rails/client";
+} from "@ash/client";
 ```
 
-For higher-level helpers (`PaymentIntent`, preflight, error mapping), use `@agent-rails/sdk`.
+For higher-level helpers (`PaymentIntent`, preflight, error mapping), use `@ash/sdk`.

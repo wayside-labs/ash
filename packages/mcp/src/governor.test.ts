@@ -1,4 +1,4 @@
-import { isAgentRailsError } from "@agent-rails/sdk";
+import { isAshError } from "@ash/sdk";
 import { describe, expect, it } from "vitest";
 import { PaymentGovernor } from "./governor.js";
 import { TEST_ALLOWLIST_ENTRY } from "./testing.js";
@@ -7,7 +7,7 @@ function reasonOf(fn: () => unknown): string {
   try {
     fn();
   } catch (error) {
-    if (isAgentRailsError(error)) return error.reasonCode;
+    if (isAshError(error)) return error.reasonCode;
     throw error;
   }
   return "no-error";
@@ -86,9 +86,9 @@ describe("PaymentGovernor", () => {
       governor.acquire();
       throw new Error("expected a denial");
     } catch (error) {
-      if (!isAgentRailsError(error)) throw error;
+      if (!isAshError(error)) throw error;
       expect(error.message).toContain("c".repeat(32));
-      expect(error.message).toContain("agent_rails_get_payment_status");
+      expect(error.message).toContain("ash_get_payment_status");
     }
   });
 });

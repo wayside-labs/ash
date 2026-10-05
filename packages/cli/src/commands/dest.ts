@@ -1,4 +1,4 @@
-import { loadDestinationIndex, normalizeLabel } from "@agent-rails/sdk";
+import { loadDestinationIndex, normalizeLabel } from "@ash/sdk";
 import { readTreasurySnapshot } from "../chain/read.js";
 import type { GlobalCliOptions } from "../cli-options.js";
 import { loadContext } from "../context.js";

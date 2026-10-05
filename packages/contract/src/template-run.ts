@@ -12,8 +12,8 @@ import { z } from "zod";
  * subpath export and not reached through the package root.
  */
 
-export const TEMPLATE_RUN_API_VERSION = "agent-rails.template-run/v1";
-export const PROOF_PACK_API_VERSION = "agent-rails.proof-pack/v1";
+export const TEMPLATE_RUN_API_VERSION = "ash.template-run/v1";
+export const PROOF_PACK_API_VERSION = "ash.proof-pack/v1";
 /** The fenced-block language the chat model uses to propose a run. */
 export const TEMPLATE_RUN_FENCE = "template-run";
 export const CLOAK_PRIVATE_PAYOUT_TEMPLATE_ID = "builtin:cloak-private-payout";

@@ -1,16 +1,16 @@
 {
-  "name": "@agent-rails/mcp",
+  "name": "@ash/mcp",
   "version": "0.1.0",
-  "description": "stdio MCP server exposing the agent-facing Agent Rails payment tools.",
+  "description": "stdio MCP server exposing the agent-facing ASH payment tools.",
   "license": "Apache-2.0",
-  "homepage": "https://github.com/wayside-labs/agent-rails",
+  "homepage": "https://github.com/wayside-labs/ash",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/wayside-labs/agent-rails.git",
+    "url": "git+https://github.com/wayside-labs/ash.git",
     "directory": "packages/mcp"
   },
   "bugs": {
-    "url": "https://github.com/wayside-labs/agent-rails/issues"
+    "url": "https://github.com/wayside-labs/ash/issues"
   },
   "keywords": [
     "solana",
@@ -28,7 +28,7 @@
   },
   "type": "module",
   "bin": {
-    "agent-rails-mcp": "./dist/cli.js"
+    "ash-mcp": "./dist/cli.js"
   },
   "exports": {
     ".": {
@@ -47,15 +47,15 @@
     "test:e2e": "vitest run --config vitest.e2e.config.ts"
   },
   "dependencies": {
-    "@agent-rails/client": "workspace:*",
-    "@agent-rails/contract": "workspace:*",
-    "@agent-rails/sdk": "workspace:*",
+    "@ash/client": "workspace:*",
+    "@ash/contract": "workspace:*",
+    "@ash/sdk": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.30.0",
     "@solana/kit": "^8.2.0",
     "zod": "^4.0.0"
   },
   "devDependencies": {
-    "@agent-rails/e2e": "workspace:*",
+    "@ash/e2e": "workspace:*",
     "@types/node": "^22.0.0",
     "tsdown": "^0.15.0",
     "vitest": "^4.0.0"

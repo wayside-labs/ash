@@ -1,5 +1,5 @@
-import { payoutDigest, type RunLog } from "@agent-rails/cloak";
-import type { CloakPayoutProposal } from "@agent-rails/contract/template-run";
+import { payoutDigest, type RunLog } from "@ash/cloak";
+import type { CloakPayoutProposal } from "@ash/contract/template-run";
 
 /**
  * What the browser remembers about a private payout: signatures and a key fingerprint. Both are
@@ -11,7 +11,7 @@ import type { CloakPayoutProposal } from "@agent-rails/contract/template-run";
  * and the run must still work without it, only without resuming.
  */
 
-const PREFIX = "agent-rails.cloak";
+const PREFIX = "ash.cloak";
 const SIGNATURE = /^[1-9A-HJ-NP-Za-km-z]{64,90}$/;
 
 /**

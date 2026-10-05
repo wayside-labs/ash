@@ -1,16 +1,16 @@
 {
-  "name": "@agent-rails/contract",
+  "name": "@ash/contract",
   "version": "0.1.0",
-  "description": "Schemas, reason codes and event types shared by every Agent Rails surface.",
+  "description": "Schemas, reason codes and event types shared by every ASH surface.",
   "license": "Apache-2.0",
-  "homepage": "https://github.com/wayside-labs/agent-rails",
+  "homepage": "https://github.com/wayside-labs/ash",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/wayside-labs/agent-rails.git",
+    "url": "git+https://github.com/wayside-labs/ash.git",
     "directory": "packages/contract"
   },
   "bugs": {
-    "url": "https://github.com/wayside-labs/agent-rails/issues"
+    "url": "https://github.com/wayside-labs/ash/issues"
   },
   "keywords": [
     "solana",
@@ -83,6 +83,10 @@
     "./template-run": {
       "types": "./dist/template-run.d.ts",
       "import": "./dist/template-run.js"
+    },
+    "./legacy-env": {
+      "types": "./dist/legacy-env.d.ts",
+      "import": "./dist/legacy-env.js"
     }
   },
   "files": [

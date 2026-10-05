@@ -1,4 +1,4 @@
-import { type CloakPayoutProposal, parseSolToLamports } from "@agent-rails/contract/template-run";
+import { type CloakPayoutProposal, parseSolToLamports } from "@ash/contract/template-run";
 import { sha256 } from "@noble/hashes/sha256";
 import { bytesToHex } from "@noble/hashes/utils";
 import { NETWORK_BUFFER_LAMPORTS } from "./constants.js";

@@ -1,4 +1,4 @@
-import { verifyAuditChain } from "@agent-rails/sdk";
+import { verifyAuditChain } from "@ash/sdk";
 import { address } from "@solana/kit";
 import type { PaymentRecordView } from "@/lib/metrics/schema";
 

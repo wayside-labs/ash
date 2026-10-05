@@ -1,9 +1,9 @@
 import {
-  AGENT_RAILS_PROGRAM_ADDRESS,
+  ASH_PROGRAM_ADDRESS,
   findEntryPda,
   getAddAllowlistEntryInstruction,
   getRemoveAllowlistEntryInstruction,
-} from "@agent-rails/client";
+} from "@ash/client";
 import type { Address, TransactionSigner } from "@solana/kit";
 import { findEventAuthority } from "../bootstrap.js";
 import { encodeFixedName } from "../names.js";
@@ -28,7 +28,7 @@ export async function buildAddAllowlistEntryInstruction(input: {
       policy: input.policy,
       entry,
       eventAuthority,
-      program: AGENT_RAILS_PROGRAM_ADDRESS,
+      program: ASH_PROGRAM_ADDRESS,
       destinationOwner: input.destinationOwner,
       label: encodeFixedName(input.label, "--label"),
       perTxMaxOverride: 0n,
@@ -54,6 +54,6 @@ export async function buildRemoveAllowlistEntryInstruction(input: {
     entry,
     rentDestination: input.operator.address,
     eventAuthority,
-    program: AGENT_RAILS_PROGRAM_ADDRESS,
+    program: ASH_PROGRAM_ADDRESS,
   });
 }

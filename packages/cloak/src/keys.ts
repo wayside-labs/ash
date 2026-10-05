@@ -5,7 +5,7 @@ import type { WalletPort } from "./ports.js";
 
 const encoder = new TextEncoder();
 
-export const KEY_DERIVATION_DOMAIN = "agent-rails/cloak-private-payout/v1";
+export const KEY_DERIVATION_DOMAIN = "ash/cloak-private-payout/v1";
 
 /**
  * What the wallet is asked to sign to derive the payout keys. The text says what the signature is
@@ -16,7 +16,7 @@ export const KEY_DERIVATION_DOMAIN = "agent-rails/cloak-private-payout/v1";
 export function keyDerivationMessage(funder: string): Uint8Array {
   return encoder.encode(
     [
-      "Agent Rails x Cloak: private payout keys (v1)",
+      "ASH x Cloak: private payout keys (v1)",
       "",
       "Signing derives the keys that control your private payout notes, here and on any device with this wallet.",
       "It does NOT authorize a transaction or move funds.",

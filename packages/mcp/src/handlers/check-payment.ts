@@ -1,11 +1,11 @@
-import { mcpCheckPaymentSchema } from "@agent-rails/contract";
+import { mcpCheckPaymentSchema } from "@ash/contract";
 import {
   buildPaymentIntent,
-  isAgentRailsError,
+  isAshError,
   precheckReceipt,
   runPolicyHooks,
   simulatePayment,
-} from "@agent-rails/sdk";
+} from "@ash/sdk";
 import type { ServerContext } from "../context.js";
 import { preparePayment } from "./prepare.js";
 
@@ -139,7 +139,7 @@ export async function handleCheckPayment(
       ...describe,
     };
   } catch (error) {
-    if (!isAgentRailsError(error)) {
+    if (!isAshError(error)) {
       throw error;
     }
     return {

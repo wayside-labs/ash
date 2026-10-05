@@ -1,6 +1,6 @@
-import { AGENT_RAILS_PROGRAM_ADDRESS, getWithdrawInstructionAsync } from "@agent-rails/client";
-import { NATIVE_MINT } from "@agent-rails/contract";
-import { findAssociatedTokenAddress } from "@agent-rails/sdk";
+import { ASH_PROGRAM_ADDRESS, getWithdrawInstructionAsync } from "@ash/client";
+import { NATIVE_MINT } from "@ash/contract";
+import { findAssociatedTokenAddress } from "@ash/sdk";
 import { type Address, address, type TransactionSigner } from "@solana/kit";
 import { findEventAuthority, NATIVE_MINT_ADDRESS } from "../bootstrap.js";
 import type { Rpc } from "../rpc.js";
@@ -24,7 +24,7 @@ export async function buildWithdrawInstruction(input: {
       mint: address(NATIVE_MINT),
       destination: input.destination,
       eventAuthority,
-      program: AGENT_RAILS_PROGRAM_ADDRESS,
+      program: ASH_PROGRAM_ADDRESS,
       amount: input.amount,
     });
   }
@@ -44,7 +44,7 @@ export async function buildWithdrawInstruction(input: {
     destination: destinationAta,
     tokenProgram: info.tokenProgram,
     eventAuthority,
-    program: AGENT_RAILS_PROGRAM_ADDRESS,
+    program: ASH_PROGRAM_ADDRESS,
     amount: input.amount,
   });
 }

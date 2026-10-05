@@ -1,5 +1,5 @@
-import { fetchMaybePolicy } from "@agent-rails/client";
-import { describeSecurity } from "@agent-rails/contract";
+import { fetchMaybePolicy } from "@ash/client";
+import { describeSecurity } from "@ash/contract";
 import type { ServerContext } from "../context.js";
 import { serializePolicy } from "./serialize.js";
 

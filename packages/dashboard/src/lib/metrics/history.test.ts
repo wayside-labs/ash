@@ -1,5 +1,5 @@
-import { USDC_MINT_DEVNET } from "@agent-rails/contract/mints";
-import { getPaymentExecutedEventEncoder } from "@agent-rails/sdk";
+import { USDC_MINT_DEVNET } from "@ash/contract/mints";
+import { getPaymentExecutedEventEncoder } from "@ash/sdk";
 import { address } from "@solana/kit";
 import { describe, expect, it } from "vitest";
 import {

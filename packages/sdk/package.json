@@ -1,16 +1,16 @@
 {
-  "name": "@agent-rails/sdk",
+  "name": "@ash/sdk",
   "version": "0.1.0",
-  "description": "PaymentIntent builder, preflight, signing and error mapping for Agent Rails.",
+  "description": "PaymentIntent builder, preflight, signing and error mapping for ASH.",
   "license": "Apache-2.0",
-  "homepage": "https://github.com/wayside-labs/agent-rails",
+  "homepage": "https://github.com/wayside-labs/ash",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/wayside-labs/agent-rails.git",
+    "url": "git+https://github.com/wayside-labs/ash.git",
     "directory": "packages/sdk"
   },
   "bugs": {
-    "url": "https://github.com/wayside-labs/agent-rails/issues"
+    "url": "https://github.com/wayside-labs/ash/issues"
   },
   "keywords": [
     "solana",
@@ -43,8 +43,8 @@
     "coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@agent-rails/client": "workspace:*",
-    "@agent-rails/contract": "workspace:*",
+    "@ash/client": "workspace:*",
+    "@ash/contract": "workspace:*",
     "@solana/kit": "^8.2.0"
   },
   "devDependencies": {

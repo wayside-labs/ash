@@ -1,4 +1,4 @@
-import { type AgentRailsSecurityConfig, resolveSecurity } from "@agent-rails/sdk";
+import { type AshSecurityConfig, resolveSecurity } from "@ash/sdk";
 import { type Address, generateKeyPairSigner } from "@solana/kit";
 import type { BoundContext } from "./bound-context.js";
 import type { McpRuntime, McpServerConfig } from "./config.js";
@@ -108,7 +108,7 @@ export type FakeRpcOptions = {
   simulationError?: unknown;
 };
 
-export function testSecurity(config: AgentRailsSecurityConfig = {}) {
+export function testSecurity(config: AshSecurityConfig = {}) {
   return resolveSecurity({
     preset: "balanced",
     ...config,

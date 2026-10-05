@@ -50,7 +50,7 @@ const addressSchema = z.string().min(1);
 const relayDataSchema = z.strictObject({ address: z.string(), payload: z.string() });
 
 const DESK_FLOW =
-  "Fund the desk first with agent_rails_execute_payment (policy-checked, receipted). Sign `tx` with the " +
+  "Fund the desk first with ash_execute_payment (policy-checked, receipted). Sign `tx` with the " +
   "desk key on src_chain_key and broadcast it (Solana: base64 serialized transaction, EVM: {from,to,value,data}). " +
   "Solana transactions carry a recent blockhash: sign within about a minute or rebuild.";
 

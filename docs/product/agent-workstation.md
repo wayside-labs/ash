@@ -5,9 +5,9 @@
 ## What it is
 
 An **agent workstation** is a workflow in the dashboard (or a template under `examples/templates/`)
-where several agents cooperate. **Agent Rails** is always the payment rail: caps, allowlists,
-sessions, audit chain. **Integrations** (`@agent-rails/integrations`) are read/build connectors
-(quotes, unsigned transactions, catalogs). **Vendors** (`@agent-rails/vendors`) are pay-per-use
+where several agents cooperate. **ASH** is always the payment rail: caps, allowlists,
+sessions, audit chain. **Integrations** (`@ash/integrations`) are read/build connectors
+(quotes, unsigned transactions, catalogs). **Vendors** (`@ash/vendors`) are pay-per-use
 HTTP services settled through the same payment tools.
 
 ```
@@ -20,7 +20,7 @@ HTTP services settled through the same payment tools.
                 │                                │
                 └────────────┬───────────────────┘
                              ▼
-                    agent_rails program (transfers only)
+                    ash program (transfers only)
                              ▼
               allowlisted desks · vendor pay_to · treasury children
 ```
@@ -34,7 +34,7 @@ HTTP services settled through the same payment tools.
 
 ## Ecosystem map
 
-Canonical list: `@agent-rails/contract` → `SOLANA_DAPPS` (`solana-dapps.ts`). Jupiter is **live**
+Canonical list: `@ash/contract` → `SOLANA_DAPPS` (`solana-dapps.ts`). Jupiter is **live**
 via MCP for swaps inside Solana; SODAX is **live** via MCP for everything that crosses networks
 (swaps to 22 networks, bridge, money market, leverage-yield vaults — `docs/product/sodax-integration.md`,
 ADR-025); Raydium and Orca are **catalog + Jupiter routes**; Kamino and Drift follow desk-wallet
@@ -49,7 +49,7 @@ and delegation patterns described in strategy docs.
 
 **Dynamic (user-defined) connectors:** declarative bundles only — Python FastMCP host at
 `services/connector-host` (`docs/runbooks/fastmcp-connector-layer.md`). Chat may emit bundle
-JSON; agents mount the host alongside static `@agent-rails/mcp` and `@agent-rails/integrations`.
+JSON; agents mount the host alongside static `@ash/mcp` and `@ash/integrations`.
 
 ## Money
 

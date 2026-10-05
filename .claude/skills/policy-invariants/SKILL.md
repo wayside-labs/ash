@@ -10,7 +10,7 @@ project. This is the procedure for changing one.
 
 ## 1. Decide where it belongs — this is the step people get wrong
 
-Almost always: `crates/agent-rails-policy`, not `programs/agent_rails`.
+Almost always: `crates/ash-policy`, not `programs/ash`.
 
 The crate holds window rollover, limit evaluation, the ceiling partial order, and the audit
 hash chain, with no Solana dependency. The program is account validation and CPI. That split
@@ -64,11 +64,11 @@ ADR-008 also calls for `cargo-fuzz` and Kani proofs on this crate. Neither exist
 - Does the ceiling/policy relation still hold? `policy_leq_ceiling` is what enforces
   "loosening flows downhill only" — an operator must never be able to set policy above the
   owner's ceiling.
-- Did an account layout move? Then `programs/agent_rails/tests/layout.rs` and
+- Did an account layout move? Then `programs/ash/tests/layout.rs` and
   `docs/spec/accounts-and-instructions.md` §3 change in the same commit, and it is a
   breaking change for every Codama client downstream.
 - Did the instruction surface move? Run `pnpm idl:sync`.
-- Did CU cost move? `programs/agent_rails/tests/budget.rs` measures it against the
+- Did CU cost move? `programs/ash/tests/budget.rs` measures it against the
   baselines in `tests/cu-baselines.txt`, and CI fails at >10% over them. The spec §10 design
   gate is ≤45k CU for `execute_payment`. If the move is intended, refresh the baseline with
   `scripts/cu-baseline.sh --write` in the same commit that justifies it.

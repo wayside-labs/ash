@@ -15,7 +15,7 @@ export type WorkstationMcpSpec = {
 const JUPITER_MCP: Omit<WorkstationMcpSpec, "scope" | "scopeName"> = {
   name: "Solana Jupiter",
   description: "Quotes and unsigned swaps via Jupiter (routes Raydium, Orca, and others).",
-  command: "agent-rails-integrations",
+  command: "ash-integrations",
   args: ["mcp", "jupiter"],
   env: {
     JUPITER_API_BASE: "https://quote-api.jup.ag",
@@ -28,7 +28,7 @@ const SODAX_MCP: Omit<WorkstationMcpSpec, "scope" | "scopeName"> = {
   name: "SODAX cross-network",
   description:
     "Cross-network swaps, bridge, money market and leverage-yield vaults via SODAX (unsigned intents for the desk).",
-  command: "agent-rails-integrations",
+  command: "ash-integrations",
   args: ["mcp", "sodax"],
   env: {
     SODAX_ALLOWED_DESTINATIONS: "",

@@ -1,13 +1,13 @@
-import { AGENT_RAILS_PROGRAM_ADDRESS, fetchMaybeAgentSession } from "@agent-rails/client";
-import { NATIVE_MINT } from "@agent-rails/contract";
+import { ASH_PROGRAM_ADDRESS, fetchMaybeAgentSession } from "@ash/client";
+import { NATIVE_MINT } from "@ash/contract";
 import { address, lamports } from "@solana/kit";
 import { describe, expect, it, vi } from "vitest";
 import type { ServerContext } from "../context.js";
 import { testBoundContext, testConfig } from "../testing.js";
 import { handleGetSession } from "./get-session.js";
 
-vi.mock("@agent-rails/client", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@agent-rails/client")>();
+vi.mock("@ash/client", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@ash/client")>();
   return {
     ...actual,
     fetchMaybeAgentSession: vi.fn(),
@@ -38,7 +38,7 @@ describe("handleGetSession", () => {
       address: SESSION,
       executable: false,
       lamports: lamports(0n),
-      programAddress: AGENT_RAILS_PROGRAM_ADDRESS,
+      programAddress: ASH_PROGRAM_ADDRESS,
       space: 0n,
       data: {
         discriminator: new Uint8Array(8),

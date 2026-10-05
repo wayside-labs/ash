@@ -1,4 +1,4 @@
-import { ZEC_MINT } from "@agent-rails/contract/template-run";
+import { ZEC_MINT } from "@ash/contract/template-run";
 import type { MerkleTree, TransactOptions, Utxo, UtxoKeypair } from "@cloak.dev/sdk";
 import { sha256 } from "@noble/hashes/sha256";
 import { bytesToHex } from "@noble/hashes/utils";

@@ -12,7 +12,7 @@
 # in CI, which is deterministic and cannot be talked out of it:
 #   generated client  -> pnpm codegen:check
 #   overflow-checks   -> the grep step in .github/workflows/ci.yml
-#   account layouts   -> programs/agent_rails/tests/layout.rs
+#   account layouts   -> programs/ash/tests/layout.rs
 # Treat a deny here as a typo-catcher, not a control.
 #
 # `ask` and `deny` are not two strengths of the same thing. An `ask` hands the call
@@ -78,7 +78,7 @@ Write | Edit)
   fi
 
   case "$file" in
-  */programs/agent_rails/tests/layout.rs)
+  */programs/ash/tests/layout.rs)
     decide deny "layout.rs snapshots account byte layouts, and is itself the check that a layout moved — editing it to match a new layout makes CI green on a breaking change for every Codama client and indexer downstream. Layout stability is what lets v1.1 land without migrations. If the layout change is the intent, the owner edits this file and docs/spec §3 in the same commit."
     ;;
   */docs/adr/ADR-*.md)

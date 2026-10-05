@@ -5,7 +5,7 @@ steps, with a person approving each step. This is not a trading bot: one asset c
 (stablecoins), a short venue allowlist, a weekly-scale cadence, and a policy that makes the
 worst week small.
 
-## What would go wrong without Agent Rails
+## What would go wrong without ASH
 
 "Let the agent chase yield" is how treasuries get drained in public. The failure modes are
 the model's, not the protocol's: it reads a 60% APY on a strategy nobody vetted and moves
@@ -17,7 +17,7 @@ because each move looks locally optimal. Here:
 - **Step cap** — 100 USDC per move, 200 a day, 1,000 lifetime on devnet. A wrong call costs
   one step, not the treasury.
 - **Human gate** — the planner writes a proposal; the operator decides whether the executor
-  runs it. `AGENT_RAILS_SECURITY=strict` adds a second, in-process gate on top.
+  runs it. `ASH_SECURITY=strict` adds a second, in-process gate on top.
 - **Kill switch** — `guardian-watch` pauses the policy when a session burns through half its
   window; the owner can still withdraw while paused.
 
@@ -26,7 +26,7 @@ because each move looks locally optimal. Here:
 ```
  ┌──────────────────┐ rates.json ┌───────────────────┐ proposal.md ┌───────────┐ approved ┌───────────────────┐
  │ scout-rates.sh   │───────────▶│ planner (agent)   │────────────▶│ operator  │─────────▶│ executor (agent)  │
- │ read-only script │            │ MCP: fetch only   │             │ approves  │          │ MCP: agent-rails  │
+ │ read-only script │            │ MCP: fetch only   │             │ approves  │          │ MCP: ash  │
  │ venue allowlist  │            │ pays: never       │             │ or not    │          │ pays: desk labels │
  └──────────────────┘            └───────────────────┘             └───────────┘          └─────────┬─────────┘
                                                                                                     │ check → execute
@@ -47,9 +47,9 @@ because each move looks locally optimal. Here:
 | Executor | [`agents/executor.md`](agents/executor.md) | [`mcp/executor.cursor.json`](mcp/executor.cursor.json) | Yes, desk labels only |
 | Guardian | `scripts/guardian-watch.ts` | — | Pause only |
 
-**Should the planner get `check_payment`?** Optionally. With `AGENT_RAILS_TOOLS=readonly` the
-rails MCP registers the reads and `agent_rails_check_payment` but not
-`agent_rails_execute_payment`, so the planner can dry-run its own proposal without being able to
+**Should the planner get `check_payment`?** Optionally. With `ASH_TOOLS=readonly` the
+rails MCP registers the reads and `ash_check_payment` but not
+`ash_execute_payment`, so the planner can dry-run its own proposal without being able to
 send it. The process still loads the session key — simulation signs — so run a readonly planner
 only on a host you would trust with that key, bound to the same short session. The default here
 is stricter: the planner has no rails MCP, and the executor dry-runs every step, stopping on the
@@ -74,8 +74,8 @@ agent's key.
 pnpm install && pnpm build
 
 # 1. Treasury with 6-decimal mock USDC. Token limits at init (scaled by the mint's decimals).
-pnpm agent-rails init \
-  --out ~/.agent-rails/yield \
+pnpm ash init \
+  --out ~/.ash/yield \
   --name yield-usdc \
   --mock-mint --mock-mint-decimals 6 \
   --token-per-tx 100 --token-daily 200 --token-lifetime 1000 --token-deposit 1000 \
@@ -85,15 +85,15 @@ pnpm agent-rails init \
 
 # 2. One desk per venue. Open each desk's token account; drop init's demo destination.
 for pair in desk-kamino:<KAMINO_DESK_WALLET> desk-save:<SAVE_DESK_WALLET>; do
-  pnpm agent-rails dest add --out ~/.agent-rails/yield \
+  pnpm ash dest add --out ~/.ash/yield \
     --label "${pair%%:*}" --owner "${pair#*:}" --yes
   spl-token create-account <MOCK_USDC_MINT> --owner "${pair#*:}" \
     --fee-payer <OPERATOR_KEYPAIR> --url devnet
 done
-pnpm agent-rails dest rm --out ~/.agent-rails/yield --label demo --yes
+pnpm ash dest rm --out ~/.ash/yield --label demo --yes
 
 # 3. A short session per approved proposal — the approval is the session.
-pnpm agent-rails session create --out ~/.agent-rails/yield \
+pnpm ash session create --out ~/.ash/yield \
   --label rebal-<proposal-id> --session-ttl 2 --yes
 ```
 
@@ -119,7 +119,7 @@ OUT=rates.json examples/templates/defi-yield-rebalance/scripts/scout-rates.sh
 # 4. Deposit from each desk into its venue, by hand, in the venue's UI.
 
 # 5. Revoke the session when done, even though it expires on its own.
-pnpm agent-rails session revoke --out ~/.agent-rails/yield --session <SESSION_PDA> --yes
+pnpm ash session revoke --out ~/.ash/yield --session <SESSION_PDA> --yes
 ```
 
 ## Guardian and alert thresholds
@@ -128,7 +128,7 @@ pnpm agent-rails session revoke --out ~/.agent-rails/yield --session <SESSION_PD
 |---|---|---|
 | `guardian-watch` | `--window short --threshold-bps 5000` | Half the hourly window in one session is already more than one approved step should need — pause, then look |
 | `alert-watch` | default (80% of either window) | Headroom warning for the operator, no action |
-| MCP denials | `AGENT_RAILS_ALERT_WEBHOOK_URL` in the executor env | A denied step means the proposal and the policy disagree; a person should know |
+| MCP denials | `ASH_ALERT_WEBHOOK_URL` in the executor env | A denied step means the proposal and the policy disagree; a person should know |
 
 ```bash
 pnpm guardian-watch --rpc https://api.devnet.solana.com \
@@ -148,6 +148,6 @@ routing in [`docs/runbooks/alert-webhooks.md`](../../../docs/runbooks/alert-webh
 - **Unlimited or open-ended trading**: no destination the agent chooses, no cadence faster than
   a person can review, no removal of the lifetime cap.
 - **Automated venue deposits.** The desk step is manual. Automating it means a key with no
-  Agent Rails policy in front of it; it needs its own design and review.
+  ASH policy in front of it; it needs its own design and review.
 - **Mainnet.** Real funds wait on the trust phases in the root `README.md`, and on a venue
   review that is not a line in `VENUES`.

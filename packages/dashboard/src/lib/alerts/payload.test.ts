@@ -1,8 +1,8 @@
-import { buildHeadroomLowAlert, buildPaymentDeniedAlert } from "@agent-rails/contract/alerts";
+import { buildHeadroomLowAlert, buildPaymentDeniedAlert } from "@ash/contract/alerts";
 import { describe, expect, it } from "vitest";
 
 /**
- * Dashboard-side contract on alert payloads (F8 / P1-03). Delivery lives in `@agent-rails/sdk`.
+ * Dashboard-side contract on alert payloads (F8 / P1-03). Delivery lives in `@ash/sdk`.
  */
 describe("alert webhook payloads", () => {
   it("serializes payment_denied for generic webhooks", () => {

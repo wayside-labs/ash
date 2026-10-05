@@ -10,11 +10,11 @@ It is not an attestation. It carries no signature of its own, and a reader shoul
 over the file: every claim in it is a pointer to something an explorer shows. The script writes it
 as `cloak-proof-<run>.json` (with the CSV beside it), the dashboard offers it as a download.
 
-## The fields (`agent-rails.proof-pack/v1`)
+## The fields (`ash.proof-pack/v1`)
 
 | Field | Meaning |
 |---|---|
-| `apiVersion`, `template` | `agent-rails.proof-pack/v1` and `builtin:cloak-private-payout` |
+| `apiVersion`, `template` | `ash.proof-pack/v1` and `builtin:cloak-private-payout` |
 | `runId` | `run_` and 12 hex characters; names the run in the timeline and the file |
 | `cluster` | always `mainnet-beta`: the template never runs anywhere else |
 | `cloakProgramId` | the Cloak program the SDK used (`zh1eLd6rSphLejbFfJEneUwzHRfMKxgzrgkfwA6qRkW` in `@cloak.dev/sdk` 0.2.5) |
@@ -48,7 +48,7 @@ programs the transaction invokes.
 **The commitment (`commitment.signature`, when present).** A transaction of its own, signed and paid
 for by the `funder`, with one instruction for the SPL Memo program
 (`MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr`) and no Cloak involvement at all. The Memo
-instruction's text is `commitment.memo`, which is `agent-rails/privacy-text/v1 sha256=` and the hash.
+instruction's text is `commitment.memo`, which is `ash/privacy-text/v1 sha256=` and the hash.
 The README's proof-of-existence section explains what it proves and how to check it with
 `packages/cloak/src/verify-hash.ts --tx <signature>`.
 
@@ -75,7 +75,7 @@ To check only the file's shape, from the workspace (it validates the schema, not
 ```bash
 cd packages/cloak && node --input-type=module -e '
 import { readFileSync } from "node:fs";
-import { proofPackSchema } from "@agent-rails/contract/template-run";
+import { proofPackSchema } from "@ash/contract/template-run";
 proofPackSchema.parse(JSON.parse(readFileSync(process.argv[1], "utf8")));
 console.log("shape ok");' /path/to/cloak-proof-<run>.json
 ```

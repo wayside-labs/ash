@@ -1,11 +1,11 @@
 import {
-  AGENT_RAILS_PROGRAM_ADDRESS,
+  ASH_PROGRAM_ADDRESS,
   getAddGuardianInstruction,
   getRemoveGuardianInstruction,
   getRemoveMintInstructionAsync,
   getSetRolesInstruction,
-} from "@agent-rails/client";
-import { NATIVE_MINT } from "@agent-rails/contract/constants";
+} from "@ash/client";
+import { NATIVE_MINT } from "@ash/contract/constants";
 import {
   type Address,
   address,
@@ -33,7 +33,7 @@ export async function buildAddGuardianInstruction(input: {
     owner: input.owner,
     treasury: input.treasury,
     eventAuthority: await findEventAuthority(),
-    program: AGENT_RAILS_PROGRAM_ADDRESS,
+    program: ASH_PROGRAM_ADDRESS,
     guardian: input.guardian,
   });
 }
@@ -47,7 +47,7 @@ export async function buildRemoveGuardianInstruction(input: {
     owner: input.owner,
     treasury: input.treasury,
     eventAuthority: await findEventAuthority(),
-    program: AGENT_RAILS_PROGRAM_ADDRESS,
+    program: ASH_PROGRAM_ADDRESS,
     guardian: input.guardian,
   });
 }
@@ -70,7 +70,7 @@ export async function buildSetRolesInstruction(input: {
     owner: input.owner,
     treasury: input.treasury,
     eventAuthority: await findEventAuthority(),
-    program: AGENT_RAILS_PROGRAM_ADDRESS,
+    program: ASH_PROGRAM_ADDRESS,
     newOwner,
     newOperator,
   });
@@ -97,6 +97,6 @@ export async function buildRemoveMintInstruction(input: {
     ...(isNative ? { solVault: input.solVault } : {}),
     ...(!isNative && input.vaultAta ? { vaultAta: input.vaultAta } : {}),
     eventAuthority: await findEventAuthority(),
-    program: AGENT_RAILS_PROGRAM_ADDRESS,
+    program: ASH_PROGRAM_ADDRESS,
   });
 }

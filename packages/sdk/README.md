@@ -1,10 +1,10 @@
-# @agent-rails/sdk
+# @ash/sdk
 
-Hand-written Kit plugin on top of the Codama-generated `@agent-rails/client`.
+Hand-written Kit plugin on top of the Codama-generated `@ash/client`.
 
 ## Regenerating the on-chain client
 
-The Anchor IDL is checked in at `idl/agent_rails.json`. Regenerate it without a full `anchor build`:
+The Anchor IDL is checked in at `idl/ash.json`. Regenerate it without a full `anchor build`:
 
 ```bash
 pnpm idl:build
@@ -22,8 +22,8 @@ CI should fail if `packages/client/src/generated` drifts (`pnpm codegen:check`).
 
 ```ts
 import { createSolanaRpc } from "@solana/kit";
-import { deriveIntentId, intentIdToHex, toBaseUnits } from "@agent-rails/contract";
-import { buildPaymentIntent, executePayment, precheckReceipt } from "@agent-rails/sdk";
+import { deriveIntentId, intentIdToHex, toBaseUnits } from "@ash/contract";
+import { buildPaymentIntent, executePayment, precheckReceipt } from "@ash/sdk";
 
 const rpc = createSolanaRpc("https://api.devnet.solana.com");
 
@@ -68,7 +68,7 @@ const result = await executePayment({
 
 ## Outcomes
 
-`executePayment` either returns a settled result or throws `AgentRailsError`, whose `outcome`
+`executePayment` either returns a settled result or throws `AshError`, whose `outcome`
 is the field that matters:
 
 - `denied` — a rule refused it and nothing moved. Safe to change something and try again.
@@ -89,7 +89,7 @@ fuzzy matching: the value of an allowlist is that a close-enough name does not g
 
 ```ts
 const client = createSolanaRpc(url).use(
-  agentRails({
+  ash({
     session,
     signer,
     security: { preset: "strict", hooks: [openInvoiceCheck] },

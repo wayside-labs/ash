@@ -1,4 +1,4 @@
-import { ZEC_MINT } from "@agent-rails/contract/template-run";
+import { ZEC_MINT } from "@ash/contract/template-run";
 import { describe, expect, it, vi } from "vitest";
 import { JUPITER_QUOTE_URL, WSOL_MINT } from "./constants.js";
 import { quoteDrifted, quoteZecOut, quoteZecPayouts } from "./quotes.js";

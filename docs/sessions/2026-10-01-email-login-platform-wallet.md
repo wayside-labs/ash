@@ -108,7 +108,7 @@ Supabase dashboard, not `config.toml`: `config push` applies everything the file
 ### A worktree, and prod's redirect instead of a new one
 
 `feat/workstation-shell` had unrelated uncommitted edits to both locale files, so the work went into
-`../agent-rails-wt-email-login`. The unauthenticated redirect already existed, tested, on the
+`../ash-wt-email-login`. The unauthenticated redirect already existed, tested, on the
 branch prod runs; cherry-picking it beat writing a second version that would conflict later.
 
 ## Verification

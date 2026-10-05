@@ -1,8 +1,8 @@
-# Agent Rails — Architecture
+# ASH — Architecture
 
 **Status:** v1 design baseline (frozen for implementation). Decisions are recorded as ADRs in [`docs/adr/`](docs/adr/README.md); the byte-level account and instruction contract is in [`docs/spec/accounts-and-instructions.md`](docs/spec/accounts-and-instructions.md).
 
-Agent Rails is a guardrail and treasury framework that lets autonomous AI agents make on-chain payments without ever holding unbounded funds. Treasury owners deposit into a program-owned vault, define a policy (per-transaction, windowed, and lifetime limits; destination allowlists; mint allowlists), and issue time-boxed agent sessions. Agents pay through a single `execute_payment` instruction that the program refuses unless every rule holds. Humans keep three separated powers: withdraw (owner), configure within ceilings (operator), and stop (guardians). Every payment is idempotent, and every session carries a tamper-evident audit chain.
+ASH is a guardrail and treasury framework that lets autonomous AI agents make on-chain payments without ever holding unbounded funds. Treasury owners deposit into a program-owned vault, define a policy (per-transaction, windowed, and lifetime limits; destination allowlists; mint allowlists), and issue time-boxed agent sessions. Agents pay through a single `execute_payment` instruction that the program refuses unless every rule holds. Humans keep three separated powers: withdraw (owner), configure within ceilings (operator), and stop (guardians). Every payment is idempotent, and every session carries a tamper-evident audit chain.
 
 ---
 
@@ -40,12 +40,12 @@ flowchart LR
 
   subgraph Agent runtime
     LLM[LLM agent<br/>LangChain / AI SDK / Cursor / Claude]
-    MCP["@agent-rails/mcp<br/>(stdio v1, HTTP v1.1)"]
-    SDK["@agent-rails/sdk<br/>Kit plugin: preflight, PolicyHooks, Signer"]
+    MCP["@ash/mcp<br/>(stdio v1, HTTP v1.1)"]
+    SDK["@ash/sdk<br/>Kit plugin: preflight, PolicyHooks, Signer"]
   end
 
   subgraph Solana
-    PRG[agent_rails program]
+    PRG[ash program]
     TRS[Treasury PDA<br/>roles, ceilings, mints]
     POL[Policy PDA]
     ALW[AllowlistEntry PDAs]
@@ -57,7 +57,7 @@ flowchart LR
 
   subgraph Observability
     IDX["Indexer package<br/>(planned)"]
-    CLI[agent-rails CLI<br/>audit export]
+    CLI[ash CLI<br/>audit export]
   end
 
   OWN -->|create_treasury, add_mint,<br/>set_ceiling, withdraw, pause, unpause| PRG
@@ -82,19 +82,19 @@ you should expect to clone.
 
 | Component | Location | Responsibility |
 |---|---|---|
-| `agent_rails` program | `programs/agent_rails` | Account validation, PDA custody, CPI to token programs, event emission. Thin: delegates all policy decisions to the policy crate. |
-| `agent-rails-policy` crate | `crates/agent-rails-policy` | Pure, `#![no_std]`-compatible, `#![forbid(unsafe_code)]` policy arithmetic: window rollover, limit checks, ceiling partial order, audit hash. Property-tested, fuzzed, model-checked. |
-| `agent-rails-client` crate | **planned** (`crates/agent-rails-client`) | Codama-generated Rust client for relayers and indexers. |
-| `@agent-rails/contract` | `packages/contract` | Zod schemas for MCP tools, reason codes, event types; JSON Schema export. Single source of truth for every off-chain surface. |
-| `@agent-rails/client` | `packages/client` | Codama-generated `@solana/kit` client. No hand-written code. |
-| `@agent-rails/sdk` | `packages/sdk` | Kit plugin (`client.use(agentRails(...))`): `Signer` interface, `PaymentIntent` builder, decimals conversion, preflight simulation, `PolicyHook`s, error mapping; `verifyAuditChain` and receipt reads. |
-| `@agent-rails/mcp` | `packages/mcp` | MCP server core with stdio transport (v1) and Streamable HTTP (v1.1). Agent-facing tools only. |
-| `@agent-rails/indexer` | **planned** (`packages/indexer`) | Pluggable `EventSource` (polling, Yellowstone) and `Sink` (SQLite, Postgres); long-retention `verifyChain`. **Today:** CLI `audit export --verify`, SDK `verifyAuditChain`, dashboard metrics history via RPC log walk (windowed). |
-| `agent-rails` CLI | `packages/cli` | Owner / operator / guardian commands, `init` bootstrap, `audit export`, `doctor`, day-2 operator commands. |
-| `@agent-rails/dashboard` | `packages/dashboard` | Chat-first operator UI; privileged writes allowlisted per ADR-021. |
-| `@agent-rails/adapter-vercel-ai` | `packages/adapters/vercel-ai` | Vercel AI SDK `tool()` wiring for `AGENT_TOOL_NAMES`; schemas from `@agent-rails/contract`, handlers injected (ADR-009). |
-| Other framework adapters | **planned** (`packages/adapters/{langchain,openai-agents}`) | Same thin pattern as the Vercel package. **Today:** MCP stdio or `@agent-rails/adapter-vercel-ai`. |
-| Python package | **planned** (`python/agent_rails`) | MCP client wrapper plus LangChain / CrewAI / pydantic-ai tool wrappers (ADR-009). |
+| `ash` program | `programs/ash` | Account validation, PDA custody, CPI to token programs, event emission. Thin: delegates all policy decisions to the policy crate. |
+| `ash-policy` crate | `crates/ash-policy` | Pure, `#![no_std]`-compatible, `#![forbid(unsafe_code)]` policy arithmetic: window rollover, limit checks, ceiling partial order, audit hash. Property-tested, fuzzed, model-checked. |
+| `ash-client` crate | **planned** (`crates/ash-client`) | Codama-generated Rust client for relayers and indexers. |
+| `@ash/contract` | `packages/contract` | Zod schemas for MCP tools, reason codes, event types; JSON Schema export. Single source of truth for every off-chain surface. |
+| `@ash/client` | `packages/client` | Codama-generated `@solana/kit` client. No hand-written code. |
+| `@ash/sdk` | `packages/sdk` | Kit plugin (`client.use(ash(...))`): `Signer` interface, `PaymentIntent` builder, decimals conversion, preflight simulation, `PolicyHook`s, error mapping; `verifyAuditChain` and receipt reads. |
+| `@ash/mcp` | `packages/mcp` | MCP server core with stdio transport (v1) and Streamable HTTP (v1.1). Agent-facing tools only. |
+| `@ash/indexer` | **planned** (`packages/indexer`) | Pluggable `EventSource` (polling, Yellowstone) and `Sink` (SQLite, Postgres); long-retention `verifyChain`. **Today:** CLI `audit export --verify`, SDK `verifyAuditChain`, dashboard metrics history via RPC log walk (windowed). |
+| `ash` CLI | `packages/cli` | Owner / operator / guardian commands, `init` bootstrap, `audit export`, `doctor`, day-2 operator commands. |
+| `@ash/dashboard` | `packages/dashboard` | Chat-first operator UI; privileged writes allowlisted per ADR-021. |
+| `@ash/adapter-vercel-ai` | `packages/adapters/vercel-ai` | Vercel AI SDK `tool()` wiring for `AGENT_TOOL_NAMES`; schemas from `@ash/contract`, handlers injected (ADR-009). |
+| Other framework adapters | **planned** (`packages/adapters/{langchain,openai-agents}`) | Same thin pattern as the Vercel package. **Today:** MCP stdio or `@ash/adapter-vercel-ai`. |
+| Python package | **planned** (`python/ash`) | MCP client wrapper plus LangChain / CrewAI / pydantic-ai tool wrappers (ADR-009). |
 
 ---
 
@@ -126,7 +126,7 @@ Reserved for v1.1 ("loosening is slow, tightening is instant"): `Treasury.timelo
 sequenceDiagram
   participant A as LLM agent
   participant M as MCP server / SDK
-  participant P as agent_rails program
+  participant P as ash program
   participant T as Token program
 
   Note over M: treasury, policy, session and the destination<br/>index are bound at startup, not passed per call
@@ -234,7 +234,7 @@ Key modeling choices:
 
 ## 6. Policy engine
 
-Policy evaluation is a pure function in `agent-rails-policy`. The Anchor handler validates accounts, calls the crate, and applies the returned state.
+Policy evaluation is a pure function in `ash-policy`. The Anchor handler validates accounts, calls the crate, and applies the returned state.
 
 ### Limits
 
@@ -287,11 +287,11 @@ Solana already rejects byte-identical transactions within the blockhash window. 
 
 The receipt only refuses a retry that carries the *same* `intent_id`, so where that id comes from is part of the guarantee rather than a client detail (ADR-012).
 
-- `PaymentIntent.intent_id: [u8; 16]` is **derived, never drawn at random**: `sha256("agent-rails:intent:v1" ‖ session ‖ destination_owner ‖ mint ‖ amount ‖ reference)[0..16]`, every field length-prefixed. The session is in the preimage so a hostile `reference` cannot be aimed at another session's receipts. `reference` is the caller's name for what is being settled (invoice number, document hash, task id); it is required and has no default, because a generated one puts the system back on random ids.
+- `PaymentIntent.intent_id: [u8; 16]` is **derived, never drawn at random**: `sha256("ash:intent:v1" ‖ session ‖ destination_owner ‖ mint ‖ amount ‖ reference)[0..16]`, every field length-prefixed. The session is in the preimage so a hostile `reference` cannot be aimed at another session's receipts. `reference` is the caller's name for what is being settled (invoice number, document hash, task id); it is required and has no default, because a generated one puts the system back on random ids.
 - A retry of the same payment therefore collides on the same receipt by construction. Changing any payment parameter yields a different id — correct, because that is a different payment, bounded by the window and lifetime limits rather than by idempotency.
 - `execute_payment` `init`s `IntentReceipt` at `["receipt", session, intent_id]`. Duplicate → account-creation failure → no transfer.
 - `PaymentIntent.expires_at` is mandatory, short, and **server-authored** (90 s default, program max 1 h), so the replay window is not something a caller chooses.
-- Receipts answer "did it land?" authoritatively: `get_payment_status(intent_id)` reads the PDA first and, once the receipt account is closed, falls back to indexed or replayed history (CLI `audit export`, future `@agent-rails/indexer`). The SDK prechecks the receipt before building, so a retry of a settled payment costs nothing.
+- Receipts answer "did it land?" authoritatively: `get_payment_status(intent_id)` reads the PDA first and, once the receipt account is closed, falls back to indexed or replayed history (CLI `audit export`, future `@ash/indexer`). The SDK prechecks the receipt before building, so a retry of a settled payment costs nothing.
 - `close_receipt` is permissionless after `expires_at + RECEIPT_GRACE_SECONDS`; rent returns to the `fee_payer` recorded in the receipt. A derived id is stable indefinitely, so beyond that window a precheck must consult event history, not the PDA alone.
 - In v1.1 signed-intent mode, the same `intent_id` doubles as the replay nonce because the Ed25519 signature covers it.
 
@@ -312,9 +312,9 @@ Classification follows what a failure *proves*, not where it was raised: a prefl
 
 ## 8. Audit log
 
-- **Events.** One versioned `AgentRailsEvent` enum emitted via `emit_cpi!` (inner-instruction data, not truncatable logs). Every payment-related variant carries `treasury`, `session`, `seq`, and `audit_head`.
+- **Events.** One versioned `AshEvent` enum emitted via `emit_cpi!` (inner-instruction data, not truncatable logs). Every payment-related variant carries `treasury`, `session`, `seq`, and `audit_head`.
 - **Hash chain.** `AgentSession.seq` increments per executed payment; `audit_head = sha256(DOMAIN ‖ prev_head ‖ seq ‖ intent_id ‖ mint ‖ destination_owner ‖ amount ‖ slot)`. 40 bytes of state, one `hashv` syscall, no new write locks (the session is already writable per payment).
-- **Verifiability.** `verifyAuditChain` in `@agent-rails/sdk` (and the policy crate in Rust) recomputes the chain from `PaymentExecuted` events and compares to on-chain `audit_head`. CLI `agent-rails audit export --verify` does the same for operators. A dedicated `@agent-rails/indexer` package (planned) would persist events past RPC retention; dropped or forged entries are detectable either way; `seq` gaps are detectable without hashing.
+- **Verifiability.** `verifyAuditChain` in `@ash/sdk` (and the policy crate in Rust) recomputes the chain from `PaymentExecuted` events and compares to on-chain `audit_head`. CLI `ash audit export --verify` does the same for operators. A dedicated `@ash/indexer` package (planned) would persist events past RPC retention; dropped or forged entries are detectable either way; `seq` gaps are detectable without hashing.
 - **Denials.** Policy violations caught in preflight never reach the chain; the SDK/MCP server logs `PaymentDenied { reason_code, intent }` to a structured JSON sink using the same schema, so one downstream pipeline sees both outcomes.
 - **Human view.** CLI `audit export`, JSONL sinks, and the dashboard `/metrics` page (best-effort history plus exact counters from session state).
 
@@ -335,7 +335,7 @@ Forward-compatibility decisions already in place:
 
 ## 10. MCP surface
 
-One server core, two transports: stdio (v1, `npx @agent-rails/mcp`, bound to one session via env) and Streamable HTTP (v1.1, `SessionResolver` maps bearer token → session + signer). Tool schemas are identical across transports and adapters because all import `@agent-rails/contract`.
+One server core, two transports: stdio (v1, `npx @ash/mcp`, bound to one session via env) and Streamable HTTP (v1.1, `SessionResolver` maps bearer token → session + signer). Tool schemas are identical across transports and adapters because all import `@ash/contract`.
 
 The server binds one session at startup and derives the treasury, policy, mint table and destination index from the chain. None of those are tool arguments: they are the most privileged fields in the payload, and a tool argument is the part of the payload an injected instruction can reach. Startup fails, before the transport connects, if the session does not exist, the configured signer is not its `session_key`, the session is revoked or expired, or an `Allowlist` policy has no registered destinations.
 
@@ -351,7 +351,7 @@ The server binds one session at startup and derives the treasury, policy, mint t
 | `execute_payment(destination_ref, amount, mint_ref, reference, memo?)` | write | Resolve, derive intent, precheck receipt, hooks, simulate, send, resolve; returns `outcome`, `intent_id`, `receipt`, `signature` |
 | `request_limit_increase(reason, mint_ref?, amount?)` | message | Emits `limit_increase_requested` to the operator's dashboard; grants nothing (ADR-022) |
 
-Contract hygiene: amounts are decimal strings in human units, converted against `MintConfig.decimals` in trusted code with integer arithmetic — excess precision denies rather than rounds. Destinations are **labels, not addresses**: resolution is exact match on an NFKC-normalized label against the on-chain allowlist, with no fuzzy matching, and a raw pubkey is refused outright unless the policy is in `Any` mode. `expires_at` and the token program are server-authored. Every response carries `outcome`, `intent_id` and `receipt` — denials included, since without the id the receipt is unreachable — and every denial carries a `reason_code`. Program logs and raw errors never return to the agent; they go to the operator's structured sink, sharing the on-chain event schema. Resources `agent-rails://session/{pubkey}` and `agent-rails://policy/{pubkey}` mirror the read tools; one prompt, `payment-guidelines`, teaches the check-then-execute pattern.
+Contract hygiene: amounts are decimal strings in human units, converted against `MintConfig.decimals` in trusted code with integer arithmetic — excess precision denies rather than rounds. Destinations are **labels, not addresses**: resolution is exact match on an NFKC-normalized label against the on-chain allowlist, with no fuzzy matching, and a raw pubkey is refused outright unless the policy is in `Any` mode. `expires_at` and the token program are server-authored. Every response carries `outcome`, `intent_id` and `receipt` — denials included, since without the id the receipt is unreachable — and every denial carries a `reason_code`. Program logs and raw errors never return to the agent; they go to the operator's structured sink, sharing the on-chain event schema. Resources `ash://session/{pubkey}` and `ash://policy/{pubkey}` mirror the read tools; one prompt, `payment-guidelines`, teaches the check-then-execute pattern.
 
 A local governor caps concurrency at one payment in flight — two in flight can each pass a limit check the pair of them violates — and applies a rolling per-minute budget. These are advisory: whoever owns the process owns the governor, and the program remains the guarantee.
 
@@ -363,7 +363,7 @@ Deliberately absent from any agent-facing surface: session creation, policy edit
 
 Layered pyramid (ADR-008):
 
-1. `agent-rails-policy`: `proptest`, `cargo-fuzz`; Kani bounded model checking nightly (no overflow, monotone rollover, `≤` is a partial order, chain hash injective in `seq`).
+1. `ash-policy`: `proptest`, `cargo-fuzz`; Kani bounded model checking nightly (no overflow, monotone rollover, `≤` is a partial order, chain hash injective in `seq`).
 2. `anchor-litesvm` Rust integration tests: every instruction, every adversarial path, clock warps.
 3. Trident stateful fuzzing with invariants (vault balance vs. receipts; counters ≤ limits; `Policy ≤ Ceiling`; paused ⇒ no payment; revoked/expired never pays; `seq`/`audit_head` consistency; receipts never re-init; non-role signers cannot mutate).
 4. `litesvm` npm for SDK and MCP tests; MCP contract tests via in-memory transport; tool-schema snapshots.
@@ -385,8 +385,8 @@ Staged trust (ADR-011):
 | `2.x` | New program id; treasuries opt in via `migrate_treasury` | — |
 
 - One program keypair for devnet and mainnet (`rail…` vanity prefix), generated offline, held by the multisig custodians; only the pubkey in the repo.
-- Program `PROGRAM_VERSION: u8`; every account carries `version: u8`. IDL published on-chain via Program Metadata and as a release asset. `@agent-rails/*` packages use independent semver via Changesets; `@agent-rails/contract` is the compatibility anchor; `agent-rails doctor` checks on-chain IDL hash vs. client.
-- Apache-2.0 everywhere; DCO sign-off; `CODEOWNERS` with two reviews for `programs/` and `crates/agent-rails-policy/`; signed commits; `GOVERNANCE.md`, `SECURITY.md`, `THREAT_MODEL.md`.
+- Program `PROGRAM_VERSION: u8`; every account carries `version: u8`. IDL published on-chain via Program Metadata and as a release asset. `@ash/*` packages use independent semver via Changesets; `@ash/contract` is the compatibility anchor; `ash doctor` checks on-chain IDL hash vs. client.
+- Apache-2.0 everywhere; DCO sign-off; `CODEOWNERS` with two reviews for `programs/` and `crates/ash-policy/`; signed commits; `GOVERNANCE.md`, `SECURITY.md`, `THREAT_MODEL.md`.
 - Audit: internal pre-audit (threat model, Sealevel-attacks checklist, static analysis, fuzz/Kani suite), one professional audit, optional competitive review, reports under `audits/`, bug bounty scaled to TVL.
 
 ---
@@ -394,17 +394,17 @@ Staged trust (ADR-011):
 ## 13. Repository layout
 
 ```
-agent-rails/
+ash/
 ├── ARCHITECTURE.md  THREAT_MODEL.md  GOVERNANCE.md  SECURITY.md
-├── programs/agent_rails/            # Anchor program (thin handlers)
+├── programs/ash/            # Anchor program (thin handlers)
 ├── crates/
-│   ├── agent-rails-policy/          # pure policy core
-│   └── agent-rails-client/          # Codama Rust client
+│   ├── ash-policy/          # pure policy core
+│   └── ash-client/          # Codama Rust client
 ├── packages/
 │   ├── contract/  client/  sdk/  mcp/  cli/  dashboard/
-│   ├── adapters/vercel-ai/   # @agent-rails/adapter-vercel-ai (shipped)
+│   ├── adapters/vercel-ai/   # @ash/adapter-vercel-ai (shipped)
 │   └── (planned) indexer/  adapters/{langchain,openai-agents}/
-├── (planned) python/agent_rails/
+├── (planned) python/ash/
 ├── trident-tests/
 ├── examples/
 ├── audits/
@@ -417,7 +417,7 @@ agent-rails/
 
 **v1.0 (shipped in repo)** — native vault, roles, policy engine, receipts, hash chain, stdio MCP, SDK, Vercel AI SDK adapter, CLI operator surface, operator dashboard, full test pyramid layers 1–2 and 4–5, devnet.
 
-**v1.0 (still open)** — LangChain / OpenAI Agents adapters, `@agent-rails/indexer`, Python MCP wrapper, mainnet-beta after audit and trust phase.
+**v1.0 (still open)** — LangChain / OpenAI Agents adapters, `@ash/indexer`, Python MCP wrapper, mainnet-beta after audit and trust phase.
 
 **v1.1** — timelocked loosening with guardian veto (`PendingChange`, `recovery_destination`); signed-intent mode + reference relayer; Streamable HTTP MCP with `SessionResolver`; `approval_threshold` (human-in-the-loop, on-chain successor to ADR-022's review queue) and `cooldown_seconds`; frozen `1.0.0` program.
 

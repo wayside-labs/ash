@@ -1,4 +1,4 @@
-import { type RunEvent, SYSTEM_PROGRAM_ADDRESS } from "@agent-rails/contract/template-run";
+import { type RunEvent, SYSTEM_PROGRAM_ADDRESS } from "@ash/contract/template-run";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { COMMITMENT_MEMO } from "./commitment.js";
 import { NETWORK_BUFFER_LAMPORTS } from "./constants.js";

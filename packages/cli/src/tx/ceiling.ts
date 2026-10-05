@@ -1,8 +1,4 @@
-import {
-  AGENT_RAILS_PROGRAM_ADDRESS,
-  getSetCeilingInstruction,
-  type MintCeilingInput,
-} from "@agent-rails/client";
+import { ASH_PROGRAM_ADDRESS, getSetCeilingInstruction, type MintCeilingInput } from "@ash/client";
 import type { Address, TransactionSigner } from "@solana/kit";
 import { findEventAuthority } from "../bootstrap.js";
 
@@ -19,7 +15,7 @@ export async function buildSetCeilingInstruction(input: {
     owner: input.owner,
     treasury: input.treasury,
     eventAuthority,
-    program: AGENT_RAILS_PROGRAM_ADDRESS,
+    program: ASH_PROGRAM_ADDRESS,
     mint: input.mint,
     ceiling: input.ceiling,
     allowAnyDestination: input.allowAnyDestination,

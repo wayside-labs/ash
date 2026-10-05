@@ -11,9 +11,9 @@ import {
   readStepState,
   resolveBootstrapLimits,
   shortfall,
-} from "@agent-rails/cli/bootstrap";
-import { MAX_NAME_LEN } from "@agent-rails/contract";
-import { AGENT_RAILS_PROGRAM_ADDRESS } from "@agent-rails/sdk";
+} from "@ash/cli/bootstrap";
+import { MAX_NAME_LEN } from "@ash/contract";
+import { ASH_PROGRAM_ADDRESS } from "@ash/sdk";
 import { type Address, address, createNoopSigner } from "@solana/kit";
 import { z } from "zod";
 import {
@@ -34,8 +34,8 @@ import {
 } from "@/lib/server/solana";
 
 // ---------------------------------------------------------------------------
-// ADR-021 wave 2A: `agent-rails init` from a browser. The stages are the CLI's own
-// (`@agent-rails/cli/bootstrap`), so the two operator surfaces cannot drift on ordering,
+// ADR-021 wave 2A: `ash init` from a browser. The stages are the CLI's own
+// (`@ash/cli/bootstrap`), so the two operator surfaces cannot drift on ordering,
 // ceilings or funding semantics. What differs is only who holds the keys: the owner's
 // wallet signs in the browser, and so do the ephemeral `create_key` and the optional
 // session key — this module sees their public halves and nothing else.
@@ -247,12 +247,10 @@ async function prepare(rpc: Rpc, req: BootstrapRequest): Promise<Prepared> {
 
 /**
  * A missing program reads, from `create_treasury`, as `ProgramAccountNotFound` — which
- * looks like a dashboard bug rather than "this cluster has no Agent Rails on it".
+ * looks like a dashboard bug rather than "this cluster has no ASH on it".
  */
 async function assertProgramDeployed(rpc: Rpc): Promise<void> {
-  const { value } = await rpc
-    .getAccountInfo(AGENT_RAILS_PROGRAM_ADDRESS, { encoding: "base64" })
-    .send();
+  const { value } = await rpc.getAccountInfo(ASH_PROGRAM_ADDRESS, { encoding: "base64" }).send();
   if (!value?.executable) throw new SolanaRequestError("api.error.programNotDeployed");
 }
 

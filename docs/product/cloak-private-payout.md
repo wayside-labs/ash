@@ -39,12 +39,12 @@ or `packages/contract/src/mcp-tools.ts`, and the chat request still carries no `
 | The chat model | Drafts the payee list and emits a `template-run` block | Sign, see a key or a note, execute, choose the network, raise a cap |
 | The operator | Checks every full address on the card, ticks two confirmations, approves each wallet prompt | |
 | The operator's wallet | Signs the key-derivation message, the deposit (and its lookup table), the viewing-key registration, and one message per relayed request | |
-| The browser runner (`@agent-rails/cloak`) | Derives keys, shields, pays, rebuilds notes, writes the CSV and the proof | Store a secret, call a server of ours |
+| The browser runner (`@ash/cloak`) | Derives keys, shields, pays, rebuilds notes, writes the CSV and the proof | Store a secret, call a server of ours |
 | Cloak's relay (`https://api.cloak.ag`) | Authenticates the wallet, receives its viewing key, submits withdrawals and swaps, screens the sender | |
 | Jupiter | A keyless, CORS-open ZEC quote that bounds the swap | |
 | The RPC | Reads the chain and sends the deposit | |
 
-The model's output is validated by `@agent-rails/contract/template-run` with a strict schema:
+The model's output is validated by `@ash/contract/template-run` with a strict schema:
 an unknown field is refused, a block that is still streaming (no closing fence) is not a block,
 and an invalid block becomes a warning card with the validator's message, never half-applied.
 
@@ -68,7 +68,7 @@ operator ── "pay 0.02 SOL to X and 0.02 SOL in ZEC to Y" ──▶ model (te
 | `preflight` | Reads only. The connected wallet is the one the run was planned for; the RPC, Cloak's proving files and the relay answer; every ZEC payout has a quote; the balance covers the shield plus 0.02 SOL. Skipped balance check on a resume. | 0 |
 | `derive-keys` | The wallet signs the fixed message once, twice on the first run on a device to prove it signs deterministically. HKDF turns the signature into a master seed, the SDK turns the seed into the viewing key `nk`. A stored fingerprint that does not match stops the run here. | 1–2 |
 | `shield` | One deposit, equal to the sum of the payouts, as a note a scan can rebuild. Inside this step the SDK registers the viewing key with the relay (once per page session; there is no separate step for it) and builds an ephemeral lookup table. | 2–3 for the lookup table and the deposit, plus 1 for the registration |
-| `commit` | Optional (the dashboard card and the smoke script ask for it by default; `--no-commit` skips it). A standalone transaction, signed and paid for by the funder, with one SPL Memo instruction whose text is `agent-rails/privacy-text/v1 sha256=` and the SHA-256 of the privacy text: the commitment half of the text's proof of existence (the README has the verification steps). It touches no Cloak transaction and moves no funds, and a failure never stops the run: it is reported and the payouts go on. Skipped on a resume that already holds its signature. | 1 |
+| `commit` | Optional (the dashboard card and the smoke script ask for it by default; `--no-commit` skips it). A standalone transaction, signed and paid for by the funder, with one SPL Memo instruction whose text is `ash/privacy-text/v1 sha256=` and the SHA-256 of the privacy text: the commitment half of the text's proof of existence (the README has the verification steps). It touches no Cloak transaction and moves no funds, and a failure never stops the run: it is reported and the payouts go on. Skipped on a resume that already holds its signature. | 1 |
 | `payout` | One per payee, in order. SOL: a partial withdrawal (a full one when the pool holds exactly that amount). ZEC: a private swap of SOL into the verified ZEC mint, to the payee's token account, with the payee's wallet named so the relay can open that account, and a minimum output of the quote minus 2%. The wallet signs the relay request, not a transaction. | 1 per SOL payout; 1–5 per swap |
 | `report` | `scanTransactions` with `nk`, then the compliance report as CSV, then the proof pack. A failed CSV does not fail the run: the transactions are final. | 0 |
 | `recover` | Explicit and separate. Rebuilds the notes from the chain and withdraws everything spendable back to the funder. That withdrawal links the pool exit to the funder. | 1 for the sweep, plus the `derive-keys` prompts |
@@ -118,7 +118,7 @@ the fallback if the browser path misbehaves. **It signs and sends nothing withou
 `--confirm-mainnet`.**
 
 ```bash
-pnpm --filter @agent-rails/cloak build
+pnpm --filter @ash/cloak build
 
 # Dry run (the default): the plan, a preflight, and the exact message the wallet would sign.
 node packages/cloak/dist/smoke.js \
@@ -179,7 +179,7 @@ my wallet**. Card labels are the `chat.templateRun.*` keys in
 - **A timeline.** Typed events (`preflight`, `derive-keys`, `shield`, `payout`, `report`,
   `recover`; `started`, `progress`, `done`, `failed`, `skipped`) with signatures, a payee index and
   an error code. Public by construction: a strict schema, no raw upstream message.
-- **A proof pack**, `agent-rails.proof-pack/v1`: run id, cluster, Cloak's program id, SDK version,
+- **A proof pack**, `ash.proof-pack/v1`: run id, cluster, Cloak's program id, SDK version,
   funder, start and end times, the shield signature and amount, and for every payout its payee,
   delivery, gross, fee, net, ZEC minimum output and signature, plus the honest limits as notes. It
   holds no key, note or viewing key. How to check one is in
@@ -189,7 +189,7 @@ my wallet**. Card labels are the `chat.templateRun.*` keys in
   Asset, Output Mint`. The scan reads the newest 250 transactions that touch Cloak's program (the
   whole pool's, not only yours) and keeps those `nk` can decrypt. It carries the payees' addresses
   and the amounts, which is exactly what the pool hides, so share it with the accountant and
-  nobody else. It is not part of Agent Rails' audit chain.
+  nobody else. It is not part of ASH' audit chain.
 
 ## Costs and amounts
 
@@ -240,7 +240,7 @@ The wallet is asked to sign this message (`keyDerivationMessage`). It says what 
 worth, because whoever holds the signature can rebuild the notes:
 
 ```
-Agent Rails x Cloak: private payout keys (v1)
+ASH x Cloak: private payout keys (v1)
 
 Signing derives the keys that control your private payout notes, here and on any device with this wallet.
 It does NOT authorize a transaction or move funds.
@@ -249,7 +249,7 @@ Only sign this on a site you trust: anyone who gets this signature can spend tho
 Wallet: <FUNDER_WALLET>
 ```
 
-HKDF-SHA-256 over the signature (domain `agent-rails/cloak-private-payout/v1`) gives a master seed;
+HKDF-SHA-256 over the signature (domain `ash/cloak-private-payout/v1`) gives a master seed;
 the SDK's `deriveSpendKey` → `deriveUtxoKeypairFromSpendKey` → `getNkFromUtxoPrivateKey` give `nk`.
 Deposit notes are made recoverable (`createRecoverableDepositUtxo`) and so are change notes, so a
 scan with `nk` rebuilds what a lost tab held. Nothing secret is written anywhere (ADR-017's interim
@@ -319,7 +319,7 @@ These belong in every place that describes the template.
 
 **Verified (2026-10-04, offline or read-only).**
 
-- `pnpm --filter @agent-rails/cloak test`: 124 tests, offline. The key derivation, the wallet bridge
+- `pnpm --filter @ash/cloak test`: 124 tests, offline. The key derivation, the wallet bridge
   and fee parity run against the real SDK; the runner runs against a fake that knows its own
   secrets and a leak test fails if any of them, or the wallet's signature in hex or base64, reaches
   an event, the proof, the CSV, the log or the console. The contract module's 30 tests and the
@@ -362,7 +362,7 @@ These belong in every place that describes the template.
 
 | Path | Role |
 |---|---|
-| `packages/contract/src/template-run.ts` | Proposal schema, caps, reserved addresses, events, proof pack. Import it as `@agent-rails/contract/template-run`. |
+| `packages/contract/src/template-run.ts` | Proposal schema, caps, reserved addresses, events, proof pack. Import it as `@ash/contract/template-run`. |
 | `packages/cloak/` | `plan`, `fees`, `quotes`, `policy`, `keys`, `runner`, `report`, `errors` (browser-safe); `adapter` (the only module that imports the SDK); `node` and `smoke` (Node only); `testing` (the fake SDK) |
 | `packages/dashboard/src/components/chat/template-run-card.tsx`, `src/hooks/use-template-run.ts`, `src/lib/templates/runners/` | The card, the hook that drives a run, config and storage |
 | `examples/templates/cloak-private-payout/` | README, `policy.example.json`, the planner role, the privacy text, the video script, the proof guide |

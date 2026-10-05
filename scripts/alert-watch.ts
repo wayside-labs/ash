@@ -4,14 +4,15 @@
  * (same 80%-of-limit signal as guardian-watch, without calling `pause`).
  *
  * Without a hosted indexer this is the server-side path for ceiling alerts: one process per
- * treasury/policy pair you watch. Pair with MCP's `AGENT_RAILS_ALERT_WEBHOOK_URL` for denials.
+ * treasury/policy pair you watch. Pair with MCP's `ASH_ALERT_WEBHOOK_URL` for denials.
  *
  *   pnpm alert-watch --rpc <url> --treasury <addr> --policy <addr> \
  *     --webhook-url <https://…> [--headroom-threshold-bps 2000] [--interval 30] [--once]
  */
 
-import { buildHeadroomLowAlert, headroomBps } from "@agent-rails/contract/alerts";
-import { postAlertWebhook } from "@agent-rails/sdk";
+import { buildHeadroomLowAlert, headroomBps } from "@ash/contract/alerts";
+import { applyLegacyEnv } from "@ash/contract/legacy-env";
+import { postAlertWebhook } from "@ash/sdk";
 import {
   type Address,
   address,
@@ -20,8 +21,8 @@ import {
   getBase64Encoder,
 } from "@solana/kit";
 import {
-  AGENT_RAILS_PROGRAM_ADDRESS,
   AGENT_SESSION_DISCRIMINATOR,
+  ASH_PROGRAM_ADDRESS,
   decodeAgentSession,
   fetchMaybePolicy,
   type MintLimit,
@@ -80,10 +81,10 @@ function parseArgs(argv: string[]): Options {
     i++;
   }
 
-  const rpcUrl = map.get("--rpc") ?? process.env.AGENT_RAILS_RPC ?? "https://api.devnet.solana.com";
-  const treasuryRaw = map.get("--treasury") ?? process.env.AGENT_RAILS_TREASURY;
-  const policyRaw = map.get("--policy") ?? process.env.AGENT_RAILS_POLICY;
-  const webhookUrl = map.get("--webhook-url") ?? process.env.AGENT_RAILS_ALERT_WEBHOOK_URL ?? "";
+  const rpcUrl = map.get("--rpc") ?? process.env.ASH_RPC ?? "https://api.devnet.solana.com";
+  const treasuryRaw = map.get("--treasury") ?? process.env.ASH_TREASURY;
+  const policyRaw = map.get("--policy") ?? process.env.ASH_POLICY;
+  const webhookUrl = map.get("--webhook-url") ?? process.env.ASH_ALERT_WEBHOOK_URL ?? "";
   if (!treasuryRaw || !policyRaw) {
     throw new Error(`${usage()}\n--treasury and --policy are required`);
   }
@@ -159,7 +160,7 @@ async function fetchSessions(
   treasury: Address,
 ): Promise<{ address: Address; policy: Address; spend: SpendCounter[]; live: boolean }[]> {
   const accounts = await rpc
-    .getProgramAccounts(AGENT_RAILS_PROGRAM_ADDRESS, {
+    .getProgramAccounts(ASH_PROGRAM_ADDRESS, {
       encoding: "base64",
       filters: [
         { memcmp: { offset: 0n, bytes: SESSION_DISCRIMINATOR_B58, encoding: "base58" } },
@@ -294,6 +295,7 @@ async function evaluateOnce(options: Options): Promise<number> {
 }
 
 async function main(): Promise<void> {
+  applyLegacyEnv();
   const options = parseArgs(process.argv.slice(2));
 
   if (options.once) {

@@ -28,7 +28,7 @@ import { CHANNEL_EVENT_KINDS, type ChannelKind } from "@/lib/schema";
 const KINDS: ChannelKind[] = ["webhook", "slack", "telegram", "email"];
 
 const PLACEHOLDER: Record<ChannelKind, string> = {
-  webhook: "https://example.com/agent-rails",
+  webhook: "https://example.com/ash",
   slack: "https://hooks.slack.com/services/T000/B000/XXXX",
   telegram: "123456789:AAE…#-1001234567890",
   email: "ops@example.com",

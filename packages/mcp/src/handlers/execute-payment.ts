@@ -2,15 +2,15 @@ import {
   type McpExecutePaymentInput,
   mcpExecutePaymentSchema,
   type PaymentOutcome,
-} from "@agent-rails/contract";
+} from "@ash/contract";
 import {
-  type AgentRailsError,
+  type AshError,
   buildPaymentIntent,
   executePayment,
-  isAgentRailsError,
+  isAshError,
   precheckReceipt,
   runPolicyHooks,
-} from "@agent-rails/sdk";
+} from "@ash/sdk";
 import { notifyPaymentDeniedWebhook } from "../alert-webhook.js";
 import type { ServerContext } from "../context.js";
 import { emitAgentEvent, fetchReviewDecision } from "../ingest.js";
@@ -136,8 +136,8 @@ export async function handleExecutePayment(
         reason_code: "DRY_RUN_REQUIRED",
         message:
           "Payments of this size must be checked before they are sent. " +
-          "Call agent_rails_check_payment with the same arguments first.",
-        next_step: "agent_rails_check_payment",
+          "Call ash_check_payment with the same arguments first.",
+        next_step: "ash_check_payment",
         ...describe(prepared),
       };
     }
@@ -278,7 +278,7 @@ export async function handleExecutePayment(
       ...describe(prepared),
     };
   } catch (error) {
-    if (!isAgentRailsError(error)) {
+    if (!isAshError(error)) {
       throw error;
     }
 
@@ -305,7 +305,7 @@ export async function handleExecutePayment(
         ...(error.signature ? { signature: error.signature } : {}),
         message: `The outcome of this payment is not known. ${error.message}`,
         next_step:
-          `Call agent_rails_get_payment_status with intent_id ${intentId}. ` +
+          `Call ash_get_payment_status with intent_id ${intentId}. ` +
           "Do not retry the payment: if the receipt exists, the money has already moved.",
       };
     }
@@ -322,7 +322,7 @@ function denialResponse(
   intentId: string,
   receipt: string,
 ): ExecutePaymentResponse {
-  if (!isAgentRailsError(error)) {
+  if (!isAshError(error)) {
     throw error;
   }
   notifyPaymentDeniedWebhook(context, {
@@ -364,7 +364,7 @@ function recordPayment(
   } as never);
 }
 
-function recordUnresolved(context: ServerContext, error: AgentRailsError): void {
+function recordUnresolved(context: ServerContext, error: AshError): void {
   context.sink.record({
     ts: new Date().toISOString(),
     treasury: context.bound.treasury,

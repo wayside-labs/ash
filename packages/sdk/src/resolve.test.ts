@@ -1,10 +1,10 @@
-import { fetchMaybeIntentReceipt } from "@agent-rails/client";
+import { fetchMaybeIntentReceipt } from "@ash/client";
 import type { Address } from "@solana/kit";
 import { describe, expect, it, vi } from "vitest";
 import { precheckReceipt, resolvePaymentOutcome } from "./resolve.js";
 
-vi.mock("@agent-rails/client", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@agent-rails/client")>()),
+vi.mock("@ash/client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@ash/client")>()),
   fetchMaybeIntentReceipt: vi.fn(),
 }));
 

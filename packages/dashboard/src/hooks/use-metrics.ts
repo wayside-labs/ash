@@ -189,7 +189,7 @@ export function useExportPaymentHistory() {
       const url = URL.createObjectURL(await res.blob());
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download = `agent-rails-payments-${new Date().toISOString().slice(0, 10)}.${extension}`;
+      anchor.download = `ash-payments-${new Date().toISOString().slice(0, 10)}.${extension}`;
       anchor.click();
       URL.revokeObjectURL(url);
 

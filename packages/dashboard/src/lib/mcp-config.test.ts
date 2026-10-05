@@ -3,7 +3,7 @@ import {
   compileRunnerBundle,
   compileRunnerConfig,
   compileRunnerConfigForAgent,
-  isAgentRailsMcp,
+  isAshMcp,
   runnerBundleFilename,
   runnerConfigFilename,
   skillsInScope,
@@ -68,10 +68,10 @@ describe("compileRunnerConfigForAgent", () => {
     const mcps: StoredMcp[] = [
       mcp({ name: "Shared", scope: "workflow", scopeName: workflow.name }),
       mcp({
-        name: "Agent Rails",
+        name: "ASH",
         scope: "agent",
         scopeName: builder.name,
-        command: "agent-rails-mcp",
+        command: "ash-mcp",
       }),
     ];
 
@@ -79,9 +79,7 @@ describe("compileRunnerConfigForAgent", () => {
     expect(Object.keys(scoutConfig.config.mcpServers)).toEqual(["shared"]);
 
     const builderConfig = compileRunnerConfigForAgent(builder, workflow, mcps);
-    expect(Object.keys(builderConfig.config.mcpServers).sort()).toEqual(
-      ["agent-rails", "shared"].sort(),
-    );
+    expect(Object.keys(builderConfig.config.mcpServers).sort()).toEqual(["ash", "shared"].sort());
   });
 });
 
@@ -93,7 +91,7 @@ describe("compileRunnerConfig (workflow shared)", () => {
         name: "Builder pay",
         scope: "agent",
         scopeName: builder.name,
-        command: "agent-rails-mcp",
+        command: "ash-mcp",
       }),
     ];
 
@@ -110,24 +108,24 @@ describe("runnerConfigFilename", () => {
 
 describe("ingest injection", () => {
   it.each([
-    ["agent-rails-mcp", []],
-    ["npx", ["-y", "@agent-rails/mcp"]],
-    ["node", ["/home/op/agent-rails/packages/mcp/dist/cli.js"]],
+    ["ash-mcp", []],
+    ["npx", ["-y", "@ash/mcp"]],
+    ["node", ["/home/op/ash/packages/mcp/dist/cli.js"]],
   ])("recognises %s %j as the rails server", (command, args) => {
-    expect(isAgentRailsMcp({ command, args })).toBe(true);
+    expect(isAshMcp({ command, args })).toBe(true);
   });
 
   it("gives the ingest URL and token to the rails server only", () => {
     const mcps: StoredMcp[] = [
-      mcp({ name: "Rails", scope: "global", command: "npx", args: ["-y", "@agent-rails/mcp"] }),
+      mcp({ name: "Rails", scope: "global", command: "npx", args: ["-y", "@ash/mcp"] }),
       mcp({ name: "Fetch", scope: "global", command: "uvx", args: ["mcp-server-fetch"] }),
     ];
     const { config } = compileRunnerConfig(workflow, mcps, {
       ingest: { url: "https://dash.example/api/ingest", token: "art_x" },
     });
     expect(config.mcpServers.rails?.env).toEqual({
-      AGENT_RAILS_INGEST_URL: "https://dash.example/api/ingest",
-      AGENT_RAILS_INGEST_TOKEN: "art_x",
+      ASH_INGEST_URL: "https://dash.example/api/ingest",
+      ASH_INGEST_TOKEN: "art_x",
     });
     expect(config.mcpServers.fetch?.env).toBeUndefined();
   });
@@ -145,9 +143,9 @@ describe("ingest injection", () => {
       ingest: { url: "https://dash.example/api/ingest", token: "art_x" },
     });
     expect(config.mcpServers.knowledge?.env).toEqual({
-      AGENT_RAILS_INGEST_URL: "https://dash.example/api/ingest",
-      AGENT_RAILS_INGEST_TOKEN: "art_x",
-      AGENT_RAILS_AGENT_NAME: "Builder",
+      ASH_INGEST_URL: "https://dash.example/api/ingest",
+      ASH_INGEST_TOKEN: "art_x",
+      ASH_AGENT_NAME: "Builder",
     });
   });
 });

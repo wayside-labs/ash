@@ -21,7 +21,7 @@ describe("applyTemplateToState", () => {
     expect(state.agents).toHaveLength(3);
     expect(state.mcps).toHaveLength(1);
     expect(state.mcps[0]?.scope).toBe("agent");
-    expect(state.mcps[0]?.env.AGENT_RAILS_TOOLS).toBe("full");
+    expect(state.mcps[0]?.env.ASH_TOOLS).toBe("full");
   });
 
   it("creates an empty workflow for DCA (no agents)", () => {
@@ -52,7 +52,7 @@ describe("applyTemplateToState", () => {
     });
     expect(state.agents).toHaveLength(3);
     const connector = (name: string) =>
-      state.mcps.find((m) => m.command === "agent-rails-integrations" && m.args[1] === name);
+      state.mcps.find((m) => m.command === "ash-integrations" && m.args[1] === name);
     const jupiter = connector("jupiter");
     expect(jupiter?.scope).toBe("workflow");
     expect(jupiter?.scopeName).toBe("DeFi desk");

@@ -1,11 +1,11 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "globalPassThroughEnv": [
-    "AGENT_RAILS_RPC",
-    "AGENT_RAILS_TREASURY",
-    "AGENT_RAILS_POLICY",
-    "AGENT_RAILS_ALERT_WEBHOOK_URL",
-    "AGENT_RAILS_GUARDIAN_KEYPAIR",
+    "ASH_RPC",
+    "ASH_TREASURY",
+    "ASH_POLICY",
+    "ASH_ALERT_WEBHOOK_URL",
+    "ASH_GUARDIAN_KEYPAIR",
     "CLOAK_RPC_URL"
   ],
   "tasks": {

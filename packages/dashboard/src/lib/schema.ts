@@ -1,8 +1,8 @@
-import { connectorBundleSchema } from "@agent-rails/contract/connector-bundle";
+import { connectorBundleSchema } from "@ash/contract/connector-bundle";
 import { z } from "zod";
 
 export const solanaClusterSchema = z.enum(["devnet", "testnet", "mainnet-beta"]);
-export const operationModeSchema = z.enum(["native", "agent-rails"]);
+export const operationModeSchema = z.enum(["native", "ash"]);
 export const agentStatusSchema = z.enum(["active", "paused", "expired"]);
 export const scopeSchema = z.enum(["global", "workflow", "agent"]);
 

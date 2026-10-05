@@ -1,6 +1,6 @@
 "use client";
 
-import { KNOWN_MINTS } from "@agent-rails/contract/mints";
+import { KNOWN_MINTS } from "@ash/contract/mints";
 import { Check, Copy, Inbox, Loader2, RotateCw, ShieldAlert, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -284,7 +284,7 @@ function ReportingRow({ workflowId, name }: { workflowId: string; name: string }
               <Copy className="h-3.5 w-3.5" />
             </Button>
           </div>
-          <p className="text-muted-foreground">AGENT_RAILS_INGEST_URL={tokens.data?.ingest_url}</p>
+          <p className="text-muted-foreground">ASH_INGEST_URL={tokens.data?.ingest_url}</p>
         </div>
       )}
     </div>

@@ -3,7 +3,7 @@ import {
   type AlertWebhookPayload,
   agentEventSchema,
   alertWebhookPayloadSchema,
-} from "@agent-rails/contract/alerts";
+} from "@ash/contract/alerts";
 
 export type AlertWebhookFetch = (input: string, init?: RequestInit) => Promise<Response>;
 

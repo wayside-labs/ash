@@ -3,7 +3,7 @@ import { Providers } from "./providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Agent Rails — Dashboard",
+  title: "ASH — Dashboard",
   description: "Manage AI agents with secure Solana payments",
 };
 

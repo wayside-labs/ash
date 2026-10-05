@@ -1,4 +1,4 @@
-import { MAX_NAME_LEN } from "@agent-rails/contract";
+import { MAX_NAME_LEN } from "@ash/contract";
 import { SolanaRequestError } from "@/lib/server/solana";
 
 /** Encode a session label as the program's fixed 32-byte, NUL-padded field. */

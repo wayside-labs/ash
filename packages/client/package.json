@@ -1,16 +1,16 @@
 {
-  "name": "@agent-rails/client",
+  "name": "@ash/client",
   "version": "0.1.0",
-  "description": "Codama-generated @solana/kit client for the Agent Rails Solana program.",
+  "description": "Codama-generated @solana/kit client for the ASH Solana program.",
   "license": "Apache-2.0",
-  "homepage": "https://github.com/wayside-labs/agent-rails",
+  "homepage": "https://github.com/wayside-labs/ash",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/wayside-labs/agent-rails.git",
+    "url": "git+https://github.com/wayside-labs/ash.git",
     "directory": "packages/client"
   },
   "bugs": {
-    "url": "https://github.com/wayside-labs/agent-rails/issues"
+    "url": "https://github.com/wayside-labs/ash/issues"
   },
   "keywords": [
     "solana",

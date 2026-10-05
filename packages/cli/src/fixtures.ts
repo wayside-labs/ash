@@ -6,8 +6,8 @@
  * bytes: the decoders are the generated client's responsibility, and `layout.rs` is what
  * pins the byte layout. What these serve is the CLI's own decision logic.
  */
-import type { MintCeiling, MintConfig, Treasury } from "@agent-rails/client";
-import { FundingMode } from "@agent-rails/client";
+import type { MintCeiling, MintConfig, Treasury } from "@ash/client";
+import { FundingMode } from "@ash/client";
 import { type Address, address } from "@solana/kit";
 
 export const SYSTEM_PROGRAM = address("11111111111111111111111111111111");

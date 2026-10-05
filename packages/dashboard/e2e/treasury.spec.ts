@@ -14,7 +14,7 @@ const vaultCard = (page: Page) => page.getByTestId(`vault-${ADDR.treasury}`);
  * build the transaction on the server, sign it in the wallet, confirm the
  * signature. What is asserted is the shape of the request the dashboard sends
  * and the state the user is left in — the program's own rules are tested in
- * `programs/agent_rails/tests`, not here.
+ * `programs/ash/tests`, not here.
  */
 test.describe("vault deposit and withdraw", () => {
   test("deposits SOL and reports the confirmation", async ({ page, baseURL }) => {

@@ -50,13 +50,10 @@ describe("knowledge MCP", () => {
   });
 
   it("refuses plain HTTP to anything but loopback", () => {
-    const env = { AGENT_RAILS_INGEST_TOKEN: "t" };
-    expect(() =>
-      loadKnowledgeConfig({ ...env, AGENT_RAILS_INGEST_URL: "http://dash.example" }),
-    ).toThrow();
+    const env = { ASH_INGEST_TOKEN: "t" };
+    expect(() => loadKnowledgeConfig({ ...env, ASH_INGEST_URL: "http://dash.example" })).toThrow();
     expect(
-      loadKnowledgeConfig({ ...env, AGENT_RAILS_INGEST_URL: "http://127.0.0.1:3000/api/ingest" })
-        .url,
+      loadKnowledgeConfig({ ...env, ASH_INGEST_URL: "http://127.0.0.1:3000/api/ingest" }).url,
     ).toBe("http://127.0.0.1:3000/api/ingest");
   });
 });

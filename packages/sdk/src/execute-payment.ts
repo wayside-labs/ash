@@ -7,7 +7,7 @@ import type {
   SendTransactionApi,
   SolanaRpcApi,
 } from "@solana/kit";
-import { AgentRailsError, isAgentRailsError } from "./errors.js";
+import { AshError, isAshError } from "./errors.js";
 import type { PaymentTransactionMessage } from "./payment-intent.js";
 import { findReceiptPda } from "./pdas.js";
 import { resolvePaymentOutcome } from "./resolve.js";
@@ -72,7 +72,7 @@ export async function executePayment(input: ExecutePaymentInput): Promise<Execut
 
     return { ...sendResult, simulation, outcome: "settled", receipt };
   } catch (error) {
-    if (!isAgentRailsError(error) || error.outcome !== "indeterminate") {
+    if (!isAshError(error) || error.outcome !== "indeterminate") {
       throw error;
     }
 
@@ -95,7 +95,7 @@ export async function executePayment(input: ExecutePaymentInput): Promise<Execut
     }
 
     if (resolution.outcome === "denied") {
-      throw new AgentRailsError({
+      throw new AshError({
         reasonCode: "UNKNOWN_PROGRAM_ERROR",
         message: resolution.detail,
         outcome: "denied",

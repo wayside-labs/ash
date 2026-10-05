@@ -41,7 +41,7 @@ import {
   type ResolvedInstructionAccount,
 } from "@solana/program-client-core";
 import { findSessionPda } from "../pdas/index.js";
-import { AGENT_RAILS_PROGRAM_ADDRESS } from "../programs/index.js";
+import { ASH_PROGRAM_ADDRESS } from "../programs/index.js";
 import {
   getPaymentIntentDecoder,
   getPaymentIntentEncoder,
@@ -60,7 +60,7 @@ export function getExecutePaymentDiscriminatorBytes(): ReadonlyUint8Array {
 }
 
 export type ExecutePaymentInstruction<
-  TProgram extends string = typeof AGENT_RAILS_PROGRAM_ADDRESS,
+  TProgram extends string = typeof ASH_PROGRAM_ADDRESS,
   TAccountFeePayer extends string | AccountMeta<string> = string,
   TAccountSessionKey extends string | AccountMeta<string> = string,
   TAccountTreasury extends string | AccountMeta<string> = string,
@@ -300,7 +300,7 @@ export async function getExecutePaymentInstructionAsync<
   TAccountNativeSubscriptionsProgram extends string,
   TAccountEventAuthority extends string,
   TAccountProgram extends string,
-  TProgramAddress extends Address = typeof AGENT_RAILS_PROGRAM_ADDRESS,
+  TProgramAddress extends Address = typeof ASH_PROGRAM_ADDRESS,
 >(
   input: ExecutePaymentAsyncInput<
     TAccountFeePayer,
@@ -353,7 +353,7 @@ export async function getExecutePaymentInstructionAsync<
   >
 > {
   // Program address.
-  const programAddress = config?.programAddress ?? AGENT_RAILS_PROGRAM_ADDRESS;
+  const programAddress = config?.programAddress ?? ASH_PROGRAM_ADDRESS;
 
   // Original accounts.
   const originalAccounts = {
@@ -623,7 +623,7 @@ export function getExecutePaymentInstruction<
   TAccountNativeSubscriptionsProgram extends string,
   TAccountEventAuthority extends string,
   TAccountProgram extends string,
-  TProgramAddress extends Address = typeof AGENT_RAILS_PROGRAM_ADDRESS,
+  TProgramAddress extends Address = typeof ASH_PROGRAM_ADDRESS,
 >(
   input: ExecutePaymentInput<
     TAccountFeePayer,
@@ -674,7 +674,7 @@ export function getExecutePaymentInstruction<
   TAccountProgram
 > {
   // Program address.
-  const programAddress = config?.programAddress ?? AGENT_RAILS_PROGRAM_ADDRESS;
+  const programAddress = config?.programAddress ?? ASH_PROGRAM_ADDRESS;
 
   // Original accounts.
   const originalAccounts = {
@@ -802,7 +802,7 @@ export function getExecutePaymentInstruction<
 }
 
 export type ParsedExecutePaymentInstruction<
-  TProgram extends string = typeof AGENT_RAILS_PROGRAM_ADDRESS,
+  TProgram extends string = typeof ASH_PROGRAM_ADDRESS,
   TAccountMetas extends readonly AccountMeta[] = readonly AccountMeta[],
 > = {
   programAddress: Address<TProgram>;
@@ -893,7 +893,7 @@ export function parseExecutePaymentInstruction<
   };
   const getNextOptionalAccount = () => {
     const accountMeta = getNextAccount();
-    return accountMeta.address === AGENT_RAILS_PROGRAM_ADDRESS
+    return accountMeta.address === ASH_PROGRAM_ADDRESS
       ? undefined
       : accountMeta;
   };

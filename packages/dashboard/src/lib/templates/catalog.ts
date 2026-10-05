@@ -102,11 +102,11 @@ export const BUILTIN_TEMPLATES: Record<BuiltinTemplateId, WorkflowTemplate> = {
       "Three roles: scout and research never pay; only the builder spends on allowlisted vendors.",
     howItWorks: [
       "Scout lists up to three Earn bounties. Research writes a brief for the bounty you approve.",
-      "The builder pays RPC, inference, and hosting through Agent Rails — not a hot wallet.",
+      "The builder pays RPC, inference, and hosting through ASH — not a hot wallet.",
       "You submit on Earn; the agents never widen their own limits.",
     ].join("\n\n"),
     setupSteps: [
-      "Run pnpm agent-rails init for a devnet treasury and USDC/SOL policy.",
+      "Run pnpm ash init for a devnet treasury and USDC/SOL policy.",
       "Add labelled destinations for RPC credits, inference, and hosting (dest add).",
       "Create one session per bounty for the Builder agent.",
       "Download per-agent MCP config from Agents → MCP (builder gets full rails tools).",
@@ -121,12 +121,11 @@ export const BUILTIN_TEMPLATES: Record<BuiltinTemplateId, WorkflowTemplate> = {
     name: "DCA into SOL",
     description: "Scheduled USDC slices to an allowlisted swap desk — no model timer.",
     icon: "📅",
-    summary:
-      "Cron + agent-rails pay moves a fixed amount each period; swaps happen from your desk wallet.",
+    summary: "Cron + ash pay moves a fixed amount each period; swaps happen from your desk wallet.",
     howItWorks: [
-      "A treasury holds USDC. A cron script calls agent-rails pay on a schedule.",
+      "A treasury holds USDC. A cron script calls ash pay on a schedule.",
       "Each payment uses a reference tied to the period so retries cannot double-pay.",
-      "The swap desk is an allowlisted owner you control; Agent Rails does not swap on-chain.",
+      "The swap desk is an allowlisted owner you control; ASH does not swap on-chain.",
     ].join("\n\n"),
     setupSteps: [
       "Init treasury with token limits sized for your DCA amount.",
@@ -164,8 +163,7 @@ export const BUILTIN_TEMPLATES: Record<BuiltinTemplateId, WorkflowTemplate> = {
   "builtin:solana-workstation": {
     id: "builtin:solana-workstation",
     name: "Solana agent workstation",
-    description:
-      "Orchestrator, analyst, and capped executor with Jupiter quotes and Agent Rails payments.",
+    description: "Orchestrator, analyst, and capped executor with Jupiter quotes and ASH payments.",
     icon: "🛰️",
     summary:
       "Rails governs spend; integrations MCP builds swaps that route through Raydium, Orca, and more.",
@@ -175,10 +173,10 @@ export const BUILTIN_TEMPLATES: Record<BuiltinTemplateId, WorkflowTemplate> = {
       "Swaps sign from the desk wallet after treasury funds it; retries use reference ids tied to each plan.",
     ].join("\n\n"),
     setupSteps: [
-      "pnpm agent-rails init for devnet treasury with USDC/SOL limits sized for your desk.",
+      "pnpm ash init for devnet treasury with USDC/SOL limits sized for your desk.",
       "Allowlist swap-desk and any vendor pay_to wallets (dest add).",
       "Apply this template in the dashboard, then create sessions per role (orchestrator readonly, executor full).",
-      "pnpm build && use agent-rails-integrations mcp jupiter in the exported runner config.",
+      "pnpm build && use ash-integrations mcp jupiter in the exported runner config.",
       "Run guardian-watch on the workflow treasury before leaving the executor unattended.",
     ],
     agents: WORKSTATION_AGENTS,

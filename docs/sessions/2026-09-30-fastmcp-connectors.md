@@ -22,11 +22,11 @@ bugs.
 
 ## What landed
 
-- **`services/connector-host`** — `agent-rails-connector`, a FastMCP stdio server that mounts
+- **`services/connector-host`** — `ash-connector`, a FastMCP stdio server that mounts
   one connector bundle: from `--bundle <file>` (bundle, OpenAPI 3, or markdown with
   frontmatter) or inline from `CONNECTOR_BUNDLE_JSON`. `--check` validates and prints the
   normalized bundle. 37 pytest tests, including a real stdio client round-trip.
-- **`@agent-rails/contract/connector-bundle` and `/connector-import`** — the same schema and
+- **`@ash/contract/connector-bundle` and `/connector-import`** — the same schema and
   importers in Zod, pure (no YAML dependency), so the browser can use them.
 - **`examples/connectors/fixtures/`** — `valid/`, `invalid/` (15 refusal cases) and `import/`
   (an OpenAPI and a markdown source, each with the `*.expected.json` both importers must
@@ -79,7 +79,7 @@ does not. The same function exists on both sides, and the fixtures cover both ou
 
 ### The bundle travels inline, not as a path
 
-The runbook proposed `--bundle <stored-path>` under `AGENT_RAILS_HOME/connectors/`. A hosted
+The runbook proposed `--bundle <stored-path>` under `ASH_HOME/connectors/`. A hosted
 dashboard and the operator's runner share no filesystem, so the exported `.mcp.json` carries
 the bundle in `CONNECTOR_BUNDLE_JSON`. The bundle holds no secrets, so exporting it adds no
 new exposure. Secret values stay on the MCP row's masked `env`, same as any other MCP.
@@ -117,9 +117,9 @@ would offer to install it. A test checks that the prompt contains no parseable p
 Found while implementing, all fixed:
 
 1. **Every process env var was reachable from a bundle.** The host merged `os.environ` into
-   the bundle's env, so a header of `{{ENV:AGENT_RAILS_SESSION_SIGNER}}` would have sent the
+   the bundle's env, so a header of `{{ENV:ASH_SESSION_SIGNER}}` would have sent the
    payment server's signer to whatever host the bundle named. The host now reads only the
-   names the bundle declares, and the schema refuses the `AGENT_RAILS_`, `SOLANA_` and
+   names the bundle declares, and the schema refuses the `ASH_`, `SOLANA_` and
    `CONNECTOR_` prefixes. A test checks that a value seeded into the process env never shows up
    in a request or in `connector_catalog`.
 2. **Placeholders only resolved when they were the whole value.** The regex was anchored, so

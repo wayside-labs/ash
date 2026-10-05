@@ -1,4 +1,4 @@
-import { NATIVE_MINT } from "@agent-rails/contract";
+import { NATIVE_MINT } from "@ash/contract";
 import { address, blockhash, createNoopSigner } from "@solana/kit";
 import { describe, expect, it } from "vitest";
 import { buildPaymentIntent, createIntentId } from "./payment-intent.js";

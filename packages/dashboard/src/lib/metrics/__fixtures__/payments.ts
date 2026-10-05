@@ -6,8 +6,8 @@
  * The owner addresses are syntactically valid base58 but are not real accounts.
  */
 
-import { NATIVE_MINT } from "@agent-rails/contract/constants";
-import { USDC_MINT_DEVNET } from "@agent-rails/contract/mints";
+import { NATIVE_MINT } from "@ash/contract/constants";
+import { USDC_MINT_DEVNET } from "@ash/contract/mints";
 import type { DestinationContact, PaymentRecordView } from "../schema";
 
 /** 28 hex chars; the row index supplies the last 4, so every id is valid by construction. */

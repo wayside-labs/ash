@@ -3,20 +3,20 @@
 # Reference-agent driver for Colosseum traction (P0-05).
 #
 # Makes small, real devnet payments through the same `pay` path the MCP server uses,
-# logs every attempt to AGENT_RAILS_SINK-shaped JSONL, and prints verifiable metrics.
+# logs every attempt to ASH_SINK-shaped JSONL, and prints verifiable metrics.
 #
 #   scripts/reference-agent.sh tick              # one settlement
 #   scripts/reference-agent.sh deny              # one intentional on-chain denial
 #   scripts/reference-agent.sh metrics           # audit export --verify + sink counts
 #   scripts/reference-agent.sh loop              # tick forever (cron can call tick instead)
 #
-# Configuration: ~/.agent-rails/reference-agent/reference-agent.env
+# Configuration: ~/.ash/reference-agent/reference-agent.env
 # (copy from scripts/reference-agent.env.example). Never commit keys.
 
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 
-ENV_FILE="${REFERENCE_AGENT_ENV:-${HOME}/.agent-rails/reference-agent/reference-agent.env}"
+ENV_FILE="${REFERENCE_AGENT_ENV:-${HOME}/.ash/reference-agent/reference-agent.env}"
 CLI_JS="packages/cli/dist/cli.js"
 CLI_DEFAULT="node ${CLI_JS}"
 
@@ -30,7 +30,7 @@ load_env() {
   # shellcheck disable=SC1090
   source "$ENV_FILE"
   RPC_URL=${RPC_URL:-https://api.devnet.solana.com}
-  OUT_DIR=${OUT_DIR:-${HOME}/.agent-rails/reference-agent}
+  OUT_DIR=${OUT_DIR:-${HOME}/.ash/reference-agent}
   TREASURY=${TREASURY:-}
   POLICY_NAME=${POLICY_NAME:-dashboard-demo}
   DESTINATION=${DESTINATION:-demo}

@@ -1,7 +1,7 @@
 # Branch protection snapshot — `main`
 
 **Date:** 2026-09-29  
-**Repo:** `wayside-labs/agent-rails` (private)
+**Repo:** `wayside-labs/ash` (private)
 
 ---
 
@@ -32,11 +32,11 @@
 ## How to verify
 
 ```bash
-gh api repos/wayside-labs/agent-rails/branches/main/protection \
+gh api repos/wayside-labs/ash/branches/main/protection \
   --jq '.required_pull_request_reviews'
 ```
 
-Open a PR touching `programs/agent_rails/src/lib.rs` — expect CODEOWNERS request for `@0xcf02`.
+Open a PR touching `programs/ash/src/lib.rs` — expect CODEOWNERS request for `@0xcf02`.
 
 ---
 

@@ -36,7 +36,7 @@ import {
   getAccountMetaFactory,
   type ResolvedInstructionAccount,
 } from "@solana/program-client-core";
-import { AGENT_RAILS_PROGRAM_ADDRESS } from "../programs/index.js";
+import { ASH_PROGRAM_ADDRESS } from "../programs/index.js";
 
 export const CLOSE_RECEIPT_DISCRIMINATOR: ReadonlyUint8Array = new Uint8Array([
   126, 254, 244, 203, 124, 164, 134, 89,
@@ -49,7 +49,7 @@ export function getCloseReceiptDiscriminatorBytes(): ReadonlyUint8Array {
 }
 
 export type CloseReceiptInstruction<
-  TProgram extends string = typeof AGENT_RAILS_PROGRAM_ADDRESS,
+  TProgram extends string = typeof ASH_PROGRAM_ADDRESS,
   TAccountAnyone extends string | AccountMeta<string> = string,
   TAccountReceipt extends string | AccountMeta<string> = string,
   TAccountFeePayer extends string | AccountMeta<string> = string,
@@ -128,7 +128,7 @@ export function getCloseReceiptInstruction<
   TAccountFeePayer extends string,
   TAccountEventAuthority extends string,
   TAccountProgram extends string,
-  TProgramAddress extends Address = typeof AGENT_RAILS_PROGRAM_ADDRESS,
+  TProgramAddress extends Address = typeof ASH_PROGRAM_ADDRESS,
 >(
   input: CloseReceiptInput<
     TAccountAnyone,
@@ -147,7 +147,7 @@ export function getCloseReceiptInstruction<
   TAccountProgram
 > {
   // Program address.
-  const programAddress = config?.programAddress ?? AGENT_RAILS_PROGRAM_ADDRESS;
+  const programAddress = config?.programAddress ?? ASH_PROGRAM_ADDRESS;
 
   // Original accounts.
   const originalAccounts = {
@@ -184,7 +184,7 @@ export function getCloseReceiptInstruction<
 }
 
 export type ParsedCloseReceiptInstruction<
-  TProgram extends string = typeof AGENT_RAILS_PROGRAM_ADDRESS,
+  TProgram extends string = typeof ASH_PROGRAM_ADDRESS,
   TAccountMetas extends readonly AccountMeta[] = readonly AccountMeta[],
 > = {
   programAddress: Address<TProgram>;

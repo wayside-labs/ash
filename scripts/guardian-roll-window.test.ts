@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { rollWindow } from "./guardian-roll-window.ts";
 
-/** Same cases as `roll_window` / `rollover` in `agent-rails-policy` (engine.rs, proofs.rs). */
+/** Same cases as `roll_window` / `rollover` in `ash-policy` (engine.rs, proofs.rs). */
 describe("rollWindow", () => {
   it("leaves spend unchanged while now is inside the bucket", () => {
     const start = 1_000n;

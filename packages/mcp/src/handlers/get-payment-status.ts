@@ -1,5 +1,5 @@
-import { intentIdFromHex, mcpGetPaymentStatusSchema } from "@agent-rails/contract";
-import { resolvePaymentOutcome } from "@agent-rails/sdk";
+import { intentIdFromHex, mcpGetPaymentStatusSchema } from "@ash/contract";
+import { resolvePaymentOutcome } from "@ash/sdk";
 import type { ServerContext } from "../context.js";
 import { serializeIntentReceipt } from "./serialize.js";
 

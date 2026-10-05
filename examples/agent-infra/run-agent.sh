@@ -31,8 +31,17 @@ prompt_file="$here/tasks/$task.md"
 [[ -f $prompt_file ]] || prompt_file="$task"
 [[ -f $prompt_file ]] || { echo "no task $task" >&2; exit 2; }
 
+# Env files written before the ASH rename say AGENT_RAILS_*; prefer ASH_*, fall back to the old name.
+legacy_env() {
+  local legacy new
+  for legacy in $(compgen -v AGENT_RAILS_); do
+    new="ASH_${legacy#AGENT_RAILS_}"
+    [[ -n ${!new:-} ]] || export "$new=${!legacy}"
+  done
+}
+
 # A fresh workdir per run: the transcript and the skills it saw are kept together.
-runs="${AGENT_RAILS_HOME:-$HOME/.agent-rails}/agent-runs"
+runs="${ASH_HOME:-$HOME/.ash}/agent-runs"
 work="$runs/$(date -u +%Y%m%dT%H%M%SZ)-$(basename "$prompt_file" .md)"
 mkdir -p "$work/.claude/skills"
 
@@ -45,9 +54,10 @@ if [[ -n $bundle ]]; then
 else
   [[ -f $envfile ]] || { echo "missing $envfile (copy agents.env.example)" >&2; exit 2; }
   set -a; . "$envfile"; set +a
-  : "${AGENT_RAILS_SESSION:?set AGENT_RAILS_SESSION in $envfile}"
-  : "${AGENT_RAILS_SIGNER:?set AGENT_RAILS_SIGNER in $envfile}"
-  AGENT_RAILS_SIGNER="${AGENT_RAILS_SIGNER/#\~/$HOME}"
+  legacy_env
+  : "${ASH_SESSION:?set ASH_SESSION in $envfile}"
+  : "${ASH_SIGNER:?set ASH_SIGNER in $envfile}"
+  ASH_SIGNER="${ASH_SIGNER/#\~/$HOME}"
 
   mcp_entry="$repo/packages/mcp/dist/cli.js"
   vendor_entry="$repo/packages/vendors/dist/cli.js"
@@ -63,23 +73,23 @@ const e = process.env;
 const vendor = (id, url) => ({
   command: "node",
   args: [e.VENDOR_ENTRY, "mcp", id],
-  env: { [`${id.toUpperCase()}_URL`]: url, AGENT_RAILS_SESSION: e.AGENT_RAILS_SESSION },
+  env: { [`${id.toUpperCase()}_URL`]: url, ASH_SESSION: e.ASH_SESSION },
 });
 const rails = {
-  AGENT_RAILS_RPC: e.AGENT_RAILS_RPC,
-  AGENT_RAILS_SESSION: e.AGENT_RAILS_SESSION,
-  AGENT_RAILS_SIGNER: e.AGENT_RAILS_SIGNER,
-  AGENT_RAILS_TOOLS: e.AGENT_RAILS_TOOLS ?? "full",
-  ...(e.AGENT_RAILS_FEE_PAYER ? { AGENT_RAILS_FEE_PAYER: e.AGENT_RAILS_FEE_PAYER } : {}),
+  ASH_RPC: e.ASH_RPC,
+  ASH_SESSION: e.ASH_SESSION,
+  ASH_SIGNER: e.ASH_SIGNER,
+  ASH_TOOLS: e.ASH_TOOLS ?? "full",
+  ...(e.ASH_FEE_PAYER ? { ASH_FEE_PAYER: e.ASH_FEE_PAYER } : {}),
 };
 const ingest =
-  e.AGENT_RAILS_INGEST_URL && e.AGENT_RAILS_INGEST_TOKEN
-    ? { AGENT_RAILS_INGEST_URL: e.AGENT_RAILS_INGEST_URL, AGENT_RAILS_INGEST_TOKEN: e.AGENT_RAILS_INGEST_TOKEN }
+  e.ASH_INGEST_URL && e.ASH_INGEST_TOKEN
+    ? { ASH_INGEST_URL: e.ASH_INGEST_URL, ASH_INGEST_TOKEN: e.ASH_INGEST_TOKEN }
     : null;
 if (ingest) Object.assign(rails, ingest);
 const config = {
   mcpServers: {
-    "agent-rails": { command: "node", args: [e.MCP_ENTRY], env: rails },
+    "ash": { command: "node", args: [e.MCP_ENTRY], env: rails },
     "vendor-oracle": vendor("oracle", e.ORACLE_URL),
     "vendor-notary": vendor("notary", e.NOTARY_URL),
     "vendor-compute": vendor("compute", e.COMPUTE_URL),
@@ -88,7 +98,7 @@ const config = {
           knowledge: {
             command: "node",
             args: [e.KNOWLEDGE_ENTRY],
-            env: { ...ingest, ...(e.AGENT_NAME ? { AGENT_RAILS_AGENT_NAME: e.AGENT_NAME } : {}) },
+            env: { ...ingest, ...(e.AGENT_NAME ? { ASH_AGENT_NAME: e.AGENT_NAME } : {}) },
           },
         }
       : {}),

@@ -7,7 +7,7 @@ import {
   normalizeLabel,
   resolveDestination,
 } from "./destinations.js";
-import { isAgentRailsError } from "./errors.js";
+import { isAshError } from "./errors.js";
 
 const POLICY = "11111111111111111111111111111113" as Address;
 const ACME = "11111111111111111111111111111115" as Address;
@@ -33,7 +33,7 @@ function reasonOf(fn: () => unknown): string {
   try {
     fn();
   } catch (error) {
-    if (isAgentRailsError(error)) return error.reasonCode;
+    if (isAshError(error)) return error.reasonCode;
     throw error;
   }
   return "no-error";
@@ -98,7 +98,7 @@ describe("resolveDestination", () => {
     try {
       resolveDestination({ index: index(), ref: "acme-hostlng", allowRawAddress: false });
     } catch (error) {
-      if (!isAgentRailsError(error)) throw error;
+      if (!isAshError(error)) throw error;
       expect(error.message).not.toContain("acme-hosting");
     }
   });

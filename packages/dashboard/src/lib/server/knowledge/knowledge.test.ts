@@ -3,7 +3,7 @@ import { extractDocument } from "./index";
 import { assertPublicUrl, isPrivateAddress, safeFetch, UnsafeUrlError } from "./safe-fetch";
 import { bm25, chunkText, cosine, htmlToText } from "./text";
 
-/** A one-page PDF with the text "Agent Rails refunds policy", built by hand so no fixture file is needed. */
+/** A one-page PDF with the text "ASH refunds policy", built by hand so no fixture file is needed. */
 function tinyPdf(text: string): Uint8Array {
   const stream = `BT /F1 12 Tf 72 720 Td (${text}) Tj ET`;
   const objects = [
@@ -125,9 +125,9 @@ describe("extraction", () => {
   it("reads the text out of a real PDF", async () => {
     const { text, kind } = await extractDocument({
       type: "pdf",
-      bytes: tinyPdf("Agent Rails refunds policy"),
+      bytes: tinyPdf("ASH refunds policy"),
     });
     expect(kind).toBe("pdf");
-    expect(text).toContain("Agent Rails refunds policy");
+    expect(text).toContain("ASH refunds policy");
   });
 });

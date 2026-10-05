@@ -6,7 +6,7 @@ import {
   type RunStep,
   runEventSchema,
   SYSTEM_PROGRAM_ADDRESS,
-} from "@agent-rails/contract/template-run";
+} from "@ash/contract/template-run";
 import { classifyError, describeForConsole, RunError } from "./errors.js";
 import { obtainMasterSeed } from "./keys.js";
 import type { RunPlan } from "./plan.js";

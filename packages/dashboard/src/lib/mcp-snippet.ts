@@ -15,7 +15,7 @@ export type McpSnippetInput = {
 };
 
 export function buildMcpSnippet(input: McpSnippetInput): string {
-  const name = input.serverName ?? "agent-rails";
+  const name = input.serverName ?? "ash";
   const aliases = Object.entries(input.mintAliases ?? {})
     .map(([symbol, mint]) => `${symbol}:${mint}`)
     .join(",");
@@ -26,14 +26,12 @@ export function buildMcpSnippet(input: McpSnippetInput): string {
         command: "node",
         args: [serverEntry],
         env: {
-          AGENT_RAILS_RPC: input.rpcUrl,
-          AGENT_RAILS_SESSION: input.session,
-          AGENT_RAILS_SIGNER: input.signerKeypairPath,
-          ...(input.sinkPath ? { AGENT_RAILS_SINK: input.sinkPath } : {}),
-          ...(input.alertWebhookUrl
-            ? { AGENT_RAILS_ALERT_WEBHOOK_URL: input.alertWebhookUrl }
-            : {}),
-          ...(aliases ? { AGENT_RAILS_MINT_ALIASES: aliases } : {}),
+          ASH_RPC: input.rpcUrl,
+          ASH_SESSION: input.session,
+          ASH_SIGNER: input.signerKeypairPath,
+          ...(input.sinkPath ? { ASH_SINK: input.sinkPath } : {}),
+          ...(input.alertWebhookUrl ? { ASH_ALERT_WEBHOOK_URL: input.alertWebhookUrl } : {}),
+          ...(aliases ? { ASH_MINT_ALIASES: aliases } : {}),
         },
       },
     },

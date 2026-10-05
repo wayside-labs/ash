@@ -5,9 +5,9 @@ import {
   fetchMaybeTreasury,
   type Policy,
   type Treasury,
-} from "@agent-rails/client";
-import { AUTH_MODE_DIRECT_SIGNER, NATIVE_MINT } from "@agent-rails/contract";
-import { AgentRailsError, type DestinationIndex, loadDestinationIndex } from "@agent-rails/sdk";
+} from "@ash/client";
+import { AUTH_MODE_DIRECT_SIGNER, NATIVE_MINT } from "@ash/contract";
+import { AshError, type DestinationIndex, loadDestinationIndex } from "@ash/sdk";
 import type { Address } from "@solana/kit";
 import type { McpRuntime } from "./config.js";
 import type { SessionSigners } from "./session.js";
@@ -203,7 +203,7 @@ export async function assertSessionLive(runtime: McpRuntime, bound: BoundContext
     treasury = treasuryAccount.data;
     session = sessionAccount.data;
   } catch (error) {
-    throw new AgentRailsError({
+    throw new AshError({
       reasonCode: "STATE_UNAVAILABLE",
       message:
         "Could not read on-chain session state, so liveness could not be established. " +
@@ -215,7 +215,7 @@ export async function assertSessionLive(runtime: McpRuntime, bound: BoundContext
   }
 
   if (treasury.paused) {
-    throw new AgentRailsError({
+    throw new AshError({
       reasonCode: "TREASURY_PAUSED",
       message: "The treasury is paused. Agent payments are stopped until an owner unpauses.",
       outcome: "denied",
@@ -223,7 +223,7 @@ export async function assertSessionLive(runtime: McpRuntime, bound: BoundContext
     });
   }
   if (session.revoked) {
-    throw new AgentRailsError({
+    throw new AshError({
       reasonCode: "SESSION_REVOKED",
       message: "This agent session has been revoked.",
       outcome: "denied",
@@ -231,7 +231,7 @@ export async function assertSessionLive(runtime: McpRuntime, bound: BoundContext
     });
   }
   if (BigInt(Math.floor(Date.now() / 1000)) >= session.expiresAt) {
-    throw new AgentRailsError({
+    throw new AshError({
       reasonCode: "SESSION_EXPIRED",
       message: "This agent session has expired.",
       outcome: "denied",
@@ -248,7 +248,7 @@ export function resolveMint(bound: BoundContext, ref: string): BoundMint {
 
   if (!match) {
     const known = bound.mints.map((mint) => mint.symbol ?? String(mint.mint)).join(", ");
-    throw new AgentRailsError({
+    throw new AshError({
       reasonCode: "UNKNOWN_MINT",
       message: `"${ref}" is not a mint configured on this treasury. Available: ${known || "none"}.`,
       outcome: "denied",
@@ -257,7 +257,7 @@ export function resolveMint(bound: BoundContext, ref: string): BoundMint {
   }
 
   if (!match.inPolicy) {
-    throw new AgentRailsError({
+    throw new AshError({
       reasonCode: "MINT_NOT_IN_POLICY",
       message: `The bound policy has no spending limit for ${match.symbol ?? match.mint}.`,
       outcome: "denied",

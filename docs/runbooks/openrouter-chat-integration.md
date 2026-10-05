@@ -14,7 +14,7 @@ Add a **platform-hosted** LLM path so signed-in users can chat **without** Claud
 |------|----------|------|
 | `claude-cli` | User’s Claude subscription | Local dashboard only |
 | `anthropic-api` | User’s Anthropic key (My APIs / env) | Local or hosted |
-| **`openrouter-platform`** (proposed) | Agent Rails OpenRouter account | Hosted default; optional local dev |
+| **`openrouter-platform`** (proposed) | ASH OpenRouter account | Hosted default; optional local dev |
 | `demo` | Nobody | No key / no entitlement |
 
 Future subscription billing (Stripe) gates **`openrouter-platform`**; billing is **not** in scope for the first PR — only env-gated platform key + provider wiring.
@@ -23,7 +23,7 @@ Future subscription billing (Stripe) gates **`openrouter-platform`**; billing is
 
 ## 2. OpenRouter documentation (read before coding)
 
-| Topic | URL | Use in Agent Rails |
+| Topic | URL | Use in ASH |
 |-------|-----|-------------------|
 | Quick start / OpenAI-compatible API | https://openrouter.ai/docs/quickstart | Same shape as most adapters |
 | Chat completions | https://openrouter.ai/docs/api/api-reference/chat/create-a-chat-completion | `POST /api/v1/chat/completions` |
@@ -46,7 +46,7 @@ Future subscription billing (Stripe) gates **`openrouter-platform`**; billing is
 Authorization: Bearer <OPENROUTER_API_KEY>
 Content-Type: application/json
 HTTP-Referer: https://agent-rails-virid.vercel.app
-X-OpenRouter-Title: Agent Rails Dashboard
+X-OpenRouter-Title: ASH Dashboard
 X-OpenRouter-App-Visibility: hidden
 ```
 
@@ -107,7 +107,7 @@ Use `hidden` if you do not want a public OpenRouter app page; still send `HTTP-R
 |----------|-------|-------|
 | `OPENROUTER_API_KEY` | Vercel + local `.env.local` | Server-only; never `NEXT_PUBLIC_*` |
 | `OPENROUTER_SITE_URL` | Optional | Defaults to production URL for `HTTP-Referer` |
-| `OPENROUTER_APP_TITLE` | Optional | Default `Agent Rails Dashboard` |
+| `OPENROUTER_APP_TITLE` | Optional | Default `ASH Dashboard` |
 | `OPENROUTER_DEFAULT_MODEL` | Optional | Fallback model id |
 | `OPENROUTER_ENABLED` | Optional | `true` on Vercel; off locally if unset |
 
@@ -178,7 +178,7 @@ messages: [
 
 OpenRouter accepts `role: "system"` as first message **or** separate — use one consistent approach (first message `system` is OpenAI-compatible and works on OpenRouter).
 
-**Streaming to client:** keep `content-type: text/plain; charset=utf-8` and header `x-agent-rails-mode: openrouter-platform` for UI badge.
+**Streaming to client:** keep `content-type: text/plain; charset=utf-8` and header `x-ash-mode: openrouter-platform` for UI badge.
 
 ---
 
@@ -220,7 +220,7 @@ Copy into a **new Claude Code session** after pulling latest `main`. Suggested i
 ### P2-00 — Dashboard chat: OpenRouter platform provider
 
 **Role**  
-Senior full-stack engineer on Agent Rails (`packages/dashboard`). You know Next.js 15 App Router, the chat route’s provider stack (`src/lib/server/llm/`), Vitest, Playwright stubs, and the rule that **chat never gets payment tools or MCP**.
+Senior full-stack engineer on ASH (`packages/dashboard`). You know Next.js 15 App Router, the chat route’s provider stack (`src/lib/server/llm/`), Vitest, Playwright stubs, and the rule that **chat never gets payment tools or MCP**.
 
 **Task**  
 Implement a new chat provider **`openrouter-platform`**: server-held `OPENROUTER_API_KEY`, streaming via OpenRouter’s `POST /api/v1/chat/completions`, integrated into `/api/chat` and `complete.ts` with the **same** system prompt, context snapshot, rate limits, and concurrency slots as `anthropic-api`. Gate platform usage on **hosted auth** when Supabase is configured; keep local JSON mode working with env-only key for dev.
@@ -236,16 +236,16 @@ Implement a new chat provider **`openrouter-platform`**: server-held `OPENROUTER
 - i18n en + pt-BR for provider label, badge, errors (402 payment, 429 rate).  
 - Update `.env.example`, `packages/dashboard/README.md` § Chat, stub in `e2e/fixtures.ts`.  
 - Do **not** add Stripe or Supabase billing tables in this PR.  
-- Run `pnpm format`; `pnpm --filter @agent-rails/dashboard test`; fix any broken types in `model-selection.test.ts`.
+- Run `pnpm format`; `pnpm --filter @ash/dashboard test`; fix any broken types in `model-selection.test.ts`.
 
 **Reasoning**  
-OpenRouter is an **OpenAI-compatible transport**; Agent Rails’ product value is the **treasury context + security footer**, not another Anthropic SDK. Platform key on Vercel enables “chat without API keys” for hosted users while BYO Anthropic/CLI remain for power users. Auth gating prevents anonymous credit burn. Fencing all user turns closes a multi-turn injection gap that affects every API provider, including OpenRouter. Keep the diff minimal and provider-shaped like existing code — no billing framework yet.
+OpenRouter is an **OpenAI-compatible transport**; ASH’ product value is the **treasury context + security footer**, not another Anthropic SDK. Platform key on Vercel enables “chat without API keys” for hosted users while BYO Anthropic/CLI remain for power users. Auth gating prevents anonymous credit burn. Fencing all user turns closes a multi-turn injection gap that affects every API provider, including OpenRouter. Keep the diff minimal and provider-shaped like existing code — no billing framework yet.
 
 **Stop conditions**  
-- With `OPENROUTER_API_KEY` in `.env.local` and Supabase **disabled**, local chat streams real model text; `x-agent-rails-mode: openrouter-platform`.  
+- With `OPENROUTER_API_KEY` in `.env.local` and Supabase **disabled**, local chat streams real model text; `x-ash-mode: openrouter-platform`.  
 - With key unset, behavior unchanged (CLI → Anthropic BYOK → demo).  
 - With Supabase **enabled**, unauthenticated `POST /api/chat` does **not** use platform key (401/403 or demo — pick one and document).  
-- `pnpm --filter @agent-rails/dashboard test` green; Playwright suite still passes with stubbed provider.  
+- `pnpm --filter @ash/dashboard test` green; Playwright suite still passes with stubbed provider.  
 - No new dependency with known advisory baggage without comment.  
 - README documents env vars and manual smoke (`curl` or one chat message).  
 - **No secrets** in git.

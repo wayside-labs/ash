@@ -1,10 +1,10 @@
-# Agent Rails — Análise de Geração de Receita
+# ASH — Análise de Geração de Receita
 
 > Tradução de `revenue-model-analysis.md` (2026-09-17). Em caso de divergência, o original em inglês é a versão de referência.
 
 **Data:** 2026-09-17 · regenerado contra a árvore atual; supersede a versão de 2026-09-14 deste arquivo
 **Estado do repo:** `main` @ `17c36aa` · 81 commits · 1 contribuidor · primeiro commit em 2026-09-08 · 23 instruções · 15 ADRs · CI no ar · sem auditoria, sem deploy, sem usuários
-**Insumos:** `ARCHITECTURE.md`, `docs/adr/ADR-001..015`, `docs/spec/accounts-and-instructions.md`, `.github/workflows/`, `packages/cli/`, `programs/agent_rails/tests/org_chart.rs`, `LICENSE` (Apache-2.0), código do programa. Âncoras de mercado citadas na §6; achados competitivos de `docs/research/colosseum-copilot-competitive-landscape.md`.
+**Insumos:** `ARCHITECTURE.md`, `docs/adr/ADR-001..015`, `docs/spec/accounts-and-instructions.md`, `.github/workflows/`, `packages/cli/`, `programs/ash/tests/org_chart.rs`, `LICENSE` (Apache-2.0), código do programa. Âncoras de mercado citadas na §6; achados competitivos de `docs/research/colosseum-copilot-competitive-landscape.md`.
 **Escopo:** só análise. Nenhum código alterado.
 
 ---
@@ -16,11 +16,11 @@ Três dias, 73 commits. Não é uma atualização cosmética — quatro das muda
 | Mudança | Fonte | O que desloca |
 |---|---|---|
 | **A CI existe e aplica quase toda a ADR-008** — cobertura (política ≥95%, SDK ≥85%), provas Kani, `cargo-mutants` com zero sobreviventes tolerados, E2E no Surfpool, cargo-deny, gitleaks, semgrep | ADR-015, `.github/workflows/` | §5.8. A versão anterior chamava CI verde de "a credibilidade mais barata que dá para comprar" e registrava que não havia nenhuma. Está comprada. A candidatura a grant ficou materialmente mais forte |
-| **`FundingMode::NativeAllowance`** — o dono pode manter os fundos na própria carteira sob uma delegação imposta pelo programa, em vez de pré-financiar um cofre | ADR-014 | §1 e §2. Existe agora um caminho de liquidação em que *nenhum dinheiro é escrow em lugar nenhum*, e o Agent Rails compõe com o programa da própria Solana Foundation, não só com o SPL Token |
+| **`FundingMode::NativeAllowance`** — o dono pode manter os fundos na própria carteira sob uma delegação imposta pelo programa, em vez de pré-financiar um cofre | ADR-014 | §1 e §2. Existe agora um caminho de liquidação em que *nenhum dinheiro é escrow em lugar nenhum*, e o ASH compõe com o programa da própria Solana Foundation, não só com o SPL Token |
 | **Ids de intenção derivados e `reference` obrigatória** em todo pagamento | ADR-012 | Nova §5.3. Todo pagamento agora carrega o nome que o chamador dá ao que está liquidando. Isso é um razão contábil caindo de uma decisão anti-pagamento-duplicado |
 | **O organograma já funciona hoje, sem instrução nova** — uma tesouraria pode pagar o cofre de outra, logo departamentos, orçamento por agente e cadeia de auditoria por nível são um layout de contas, não uma funcionalidade | `tests/org_chart.rs` (passando; hoje fora do versionamento) | Nova §5.3, e uma limitação declarada na §5.1 — o pause **não** cascateia |
 | **Posturas de segurança: três presets, overrides por campo, seis garantias inalcançáveis** | ADR-013 | §5.6. O ponto de extensão `PolicyHook` agora tem forma declarada, serializável e validada por Zod para receber dado |
-| **`agent-rails init` entregue** — de carteira vazia a pagamento guardado em um comando | `packages/cli/`, PR #15 | §5.10. O topo do funil é real, não planejado |
+| **`ash init` entregue** — de carteira vazia a pagamento guardado em um comando | `packages/cli/`, PR #15 | §5.10. O topo do funil é real, não planejado |
 | **A Solana lançou o programa nativo e auditado Subscriptions & Allowances** | pesquisa de cenário competitivo | §1. "Limitar quanto um delegado gasta" virou primitivo nativo, gratuito e já integrado a Squads/Swig. Deixou de ser algo pelo que alguém pague, de quem quer que seja |
 
 **Uma correção a carregar adiante.** A versão anterior recomendava registrar a decisão de não cobrar taxa de protocolo como "ADR-012". As ADRs 012 a 015 foram escritas para outras coisas nesse intervalo, e **a decisão sobre a taxa nunca foi registrada**. Ela agora é a ADR-016, continua não escrita, e a §3 continua argumentando que é a única decisão com prazo real.
@@ -31,7 +31,7 @@ Três dias, 73 commits. Não é uma atualização cosmética — quatro das muda
 
 ## 1. O enquadramento que decide tudo
 
-O enquadramento da versão anterior era: o dinheiro passa por uma PDA que o cliente possui, nós nunca o tocamos, logo não existe pedágio nessa estrada por construção. Continua verdadeiro, e a ADR-014 tornou isso *ainda mais* verdadeiro — sob `NativeAllowance` os fundos nunca entram numa conta do Agent Rails. Eles ficam na ATA do próprio dono e o programa saca contra uma delegação cujo delegatee é a Treasury PDA. Existe agora uma configuração suportada em que o Agent Rails não segura um lamport por um microssegundo.
+O enquadramento da versão anterior era: o dinheiro passa por uma PDA que o cliente possui, nós nunca o tocamos, logo não existe pedágio nessa estrada por construção. Continua verdadeiro, e a ADR-014 tornou isso *ainda mais* verdadeiro — sob `NativeAllowance` os fundos nunca entram numa conta do ASH. Eles ficam na ATA do próprio dono e o programa saca contra uma delegação cujo delegatee é a Treasury PDA. Existe agora uma configuração suportada em que o ASH não segura um lamport por um microssegundo.
 
 O que mudou por baixo do enquadramento foi o piso competitivo. A Solana lançou **Subscriptions & Allowances** — nativo, em mainnet, auditado por Cantina/Spearbit, testado em integração com Squads e Swig. Ele implementa "um delegado pode sacar até um teto, opcionalmente com prazo, revogável" e é gratuito. A ADR-014 adota a postura correta diante disso: *compor, não competir*. Mas a consequência comercial precisa ser dita sem rodeio:
 
@@ -39,7 +39,7 @@ O que mudou por baixo do enquadramento foi o piso competitivo. A Solana lançou 
 
 Então a pergunta ficou mais afiada. Não é "qual é o ativo monetizável quando o ativo é uma garantia?", e sim: **o que sobra monetizável quando o primitivo embaixo da garantia é gratuito, auditado e nativo?**
 
-A resposta é a camada que o programa nativo não tem e não dá sinal de crescer: **múltiplos limites simultâneos sob papéis separados, com uma cadeia à prova de adulteração que prova que nada foi omitido.** Um contrato de delegação limita um número. O Agent Rails é a camada de governança e contabilidade por cima — e governança e contabilidade são coisas que organizações compram, enquanto um teto de gasto é algo que elas configuram.
+A resposta é a camada que o programa nativo não tem e não dá sinal de crescer: **múltiplos limites simultâneos sob papéis separados, com uma cadeia à prova de adulteração que prova que nada foi omitido.** Um contrato de delegação limita um número. O ASH é a camada de governança e contabilidade por cima — e governança e contabilidade são coisas que organizações compram, enquanto um teto de gasto é algo que elas configuram.
 
 O que rende quatro propriedades vendáveis, não três:
 
@@ -48,7 +48,7 @@ O que rende quatro propriedades vendáveis, não três:
 | **Vigiada** | Guardian-as-a-Service — uma chave que só pausa, reagindo a anomalias | O programa *prova* que você não consegue roubar. Nenhum concorrente oferece serviço de segurança com raio de dano comprovadamente zero |
 | **Observada** | Indexer hospedado + console — ingestão, `verifyChain`, retenção, alertas | Custo marginal real, ônus operacional real, ninguém quer rodar isso |
 | **Contabilizada** | Controladoria de organização de agentes — custo por agente, por cargo, por departamento, rastreado até um id de tarefa | *Nova.* A `reference` obrigatória (ADR-012) e a árvore de tesourarias fazem isso cair do caminho de pagamento com custo zero no programa |
-| **Provada** | Atestações de conformidade derivadas da cadeia de hash de auditoria | Só o Agent Rails tem a cadeia. Vendida de orçamento de compliance, não de engenharia |
+| **Provada** | Atestações de conformidade derivadas da cadeia de hash de auditoria | Só o ASH tem a cadeia. Vendida de orçamento de compliance, não de engenharia |
 
 Tudo o mais abaixo é uma variação dessas quatro, um mecanismo de financiamento, ou uma armadilha.
 
@@ -61,7 +61,7 @@ Estas são decisões já registradas. Cada uma mata uma classe de modelo de rece
 | Decisão | Fonte | Modelos que ela mata |
 |---|---|---|
 | **Não-custodial; o cofre é uma PDA do programa; o dono sempre pode sacar, mesmo pausado** | ARCH §3, §5 | Renda de float. Spread de processamento de pagamento. Qualquer modelo "seguramos e clipamos". Além disso: **nenhuma alavanca para forçar pagamento** — você nunca pode reter os fundos de um cliente |
-| **`NativeAllowance` — os fundos podem nunca entrar numa conta do Agent Rails** *(nova)* | ADR-014 | O último resíduo de uma história de float. Também significa que uma taxa de protocolo teria de ser cobrada em dois caminhos de liquidação, e o segundo é o programa de outra pessoa |
+| **`NativeAllowance` — os fundos podem nunca entrar numa conta do ASH** *(nova)* | ADR-014 | O último resíduo de uma história de float. Também significa que uma taxa de protocolo teria de ser cobrada em dois caminhos de liquidação, e o segundo é o programa de outra pessoa |
 | **Zero dependências de programas externos — agora condicional** *(emendada)* | ADR-001, emendada pela ADR-014 | Acordos de revenue-share roteados pelo programa continuam mortos no caminho padrão. A ADR-014 é o único precedente de composição com outro programa, e exigiu um argumento de segurança estrutural (`delegatee` = Treasury PDA) para se justificar. Não é um template para parcerias |
 | **Apache-2.0 em todo o código, sem CLA** | ADR-011 §4 | Relicenciar este repo. Open-core *dentro* deste repo assim que uma contribuição externa entrar |
 | **Autoridade de upgrade → `None` na 1.0.0** | ADR-011 §2 | **Qualquer taxa on-chain acrescentada depois do congelamento.** Ver §3 — esta é a que tem prazo |
@@ -105,14 +105,14 @@ Se quiser preservar opcionalidade: a versão honesta é uma taxa na **2.x**, int
 
 A ADR-011 escolheu **Apache-2.0, DCO, sem CLA**. Você continua sendo o único contribuidor nos 81 commits, então ainda detém tudo e poderia relicenciar à vontade. **No momento em que o PR de um terceiro entrar, isso acaba** — sem CLA não há direito de relicenciar a contribuição dele, e este repo é Apache-2.0 para sempre.
 
-Portanto: **se algum dia houver uma edição comercial, ela precisa morar num repositório separado desde o dia um**, sob licença separada, importando `@agent-rails/*` como dependência. Refazer depois é impossível.
+Portanto: **se algum dia houver uma edição comercial, ela precisa morar num repositório separado desde o dia um**, sob licença separada, importando `@ash/*` como dependência. Refazer depois é impossível.
 
 ```
-agent-rails/            Apache-2.0, para sempre, sem exceção
+ash/            Apache-2.0, para sempre, sem exceção
   programa, crate de política, client, sdk, mcp, contract, cli, adapters, core do indexer
     → a coisa que as pessoas auditam, forkam e confiam
 
-agent-rails-cloud/      proprietário ou BUSL-1.1, repo separado, privado ou source-available
+ash-cloud/      proprietário ou BUSL-1.1, repo separado, privado ou source-available
   serviço de guardião, indexer hospedado + console, controladoria, exports de conformidade,
   signer gerenciado, SSO/RBAC, pacotes de política
     → a coisa pela qual as pessoas pagam
@@ -134,13 +134,13 @@ Ranqueadas por (encaixe com a arquitetura) × (defensabilidade) ÷ (esforço par
 
 **O que é.** O cliente coloca sua pubkey em um dos cinco slots de guardião. Você monitora o stream de eventos dele e chama `pause` quando algo parece errado: velocidade de gasto subindo em direção ao `short_window_max`, rajada de recusas, sessão pagando destino nunca visto, agente batendo repetidamente no `per_tx_max`, atividade fora do horário comercial declarado.
 
-**Por que é a ideia mais forte daqui.** Serviço de segurança tem um problema de confiança: para te proteger preciso de acesso, e acesso é risco. O programa já resolveu isso. Um guardião pode chamar exatamente uma instrução, não pode despausar, não pode sacar, não pode configurar, não pode tocar numa política ou numa sessão, e pode ser removido pelo dono unilateralmente sem cooperação sua. **O pior que um guardião Agent Rails totalmente comprometido faz é desligar o agente do cliente** — e isso é checável on-chain em dez segundos, não afirmado num PDF de trust center.
+**Por que é a ideia mais forte daqui.** Serviço de segurança tem um problema de confiança: para te proteger preciso de acesso, e acesso é risco. O programa já resolveu isso. Um guardião pode chamar exatamente uma instrução, não pode despausar, não pode sacar, não pode configurar, não pode tocar numa política ou numa sessão, e pode ser removido pelo dono unilateralmente sem cooperação sua. **O pior que um guardião ASH totalmente comprometido faz é desligar o agente do cliente** — e isso é checável on-chain em dez segundos, não afirmado num PDF de trust center.
 
-**O que o `NativeAllowance` muda.** Aumenta o valor. Sob `IsolatedVault` o raio de dano é o que o dono escolheu escrow; sob `NativeAllowance` a delegação é contra a **carteira operacional viva** do dono, limitada pelo teto do programa nativo e pela política do Agent Rails. O dono que escolheu eficiência de capital comprou uma superfície maior para ser vigiada, e vigiá-la é o que você vende.
+**O que o `NativeAllowance` muda.** Aumenta o valor. Sob `IsolatedVault` o raio de dano é o que o dono escolheu escrow; sob `NativeAllowance` a delegação é contra a **carteira operacional viva** do dono, limitada pelo teto do programa nativo e pela política do ASH. O dono que escolheu eficiência de capital comprou uma superfície maior para ser vigiada, e vigiá-la é o que você vende.
 
 **Uma limitação a declarar antes de vender, não depois.** O pause tem escopo de uma tesouraria. O `org_chart.rs` afirma isso deliberadamente como resultado negativo: **pausar a tesouraria pai não pausa as filhas.** Um contrato de guardião sobre uma árvore organizacional precisa, portanto, de uma chave em cada tesouraria que se espera parar, e o runbook de incidente tem de dizer isso. Pause em cascata é a única funcionalidade de hierarquia que vale a pena acrescentar (candidata a v1.1; ver `agent-orgs-and-defi-mandates.md` §2.4) e, enquanto não existir, cobertura multi-tesouraria é um item de escopo real — o que também é motivo legítimo para o plano multi-tesouraria custar mais.
 
-**Esforço.** Moderado, e reaproveita trabalho já devido: o stream de eventos, o `verifyChain` e os alertas são todos `@agent-rails/indexer`, que já está no plano da v1. O serviço é um motor de regras, uma chave quente e um pager.
+**Esforço.** Moderado, e reaproveita trabalho já devido: o stream de eventos, o `verifyChain` e os alertas são todos `@ash/indexer`, que já está no plano da v1. O serviço é um motor de regras, uma chave quente e um pager.
 
 **Riscos.** (a) Um falso positivo é outage de produção do cliente — o SLA tem de ser sobre *detecção*, nunca sobre "não vamos pausar errado"; entregue modo dry-run e faça dele o padrão. (b) Guardião afobado é vetor de DoS; imponha rate limit a si mesmo. (c) Você segura uma chave quente com capacidade real, ainda que limitada — aplique a disciplina que a documentação exige dos clientes.
 
@@ -148,11 +148,11 @@ Precificação na §6.2.
 
 ### 5.2 ★★★ Indexer hospedado + console — agora o caminho crítico
 
-**O que é.** O `@agent-rails/indexer` está especificado como `EventSource` plugável (polling, Yellowstone) → `Sink` (SQLite, Postgres) com `verifyChain`. Publique em Apache-2.0 para qualquer um auto-hospedar; venda o hospedado: ingestão gerenciada, retenção além do que o gPA responde, `list_payments` / `get_payment_status` sustentando a MCP, console read-only, alertas, export CSV/JSON.
+**O que é.** O `@ash/indexer` está especificado como `EventSource` plugável (polling, Yellowstone) → `Sink` (SQLite, Postgres) com `verifyChain`. Publique em Apache-2.0 para qualquer um auto-hospedar; venda o hospedado: ingestão gerenciada, retenção além do que o gPA responde, `list_payments` / `get_payment_status` sustentando a MCP, console read-only, alertas, export CSV/JSON.
 
 **Por que encaixa.** Custo marginal real (Yellowstone/Geyser e retenção são caros de verdade, o que torna o preço defensável em vez de rent-seeking); zero risco de custódia (lê dado público da chain); e o contrato MCP degrada honestamente sem ele — `list_payments` está documentado como degradando para "unavailable" e *ainda não está implementado* (ARCH §10), então o caminho grátis continua verdadeiro e o caminho pago é um upgrade real, não um sequestro.
 
-**Por que é o segundo em valor e o primeiro em ordem.** É mais próximo de commodity — Helius e Triton vendem indexação; a diferenciação é entender `AgentRailsEvent` e rodar `verifyChain`. Mas **nada mais neste documento sai sem ele**: a §5.1 precisa do stream de eventos, a §5.3 precisa da agregação, a §5.4 precisa da retenção. É uma construção só embaixo de três produtos, `packages/indexer` ainda não existe, e isso faz dele o item de engenharia de maior alavancagem do repositório.
+**Por que é o segundo em valor e o primeiro em ordem.** É mais próximo de commodity — Helius e Triton vendem indexação; a diferenciação é entender `AshEvent` e rodar `verifyChain`. Mas **nada mais neste documento sai sem ele**: a §5.1 precisa do stream de eventos, a §5.3 precisa da agregação, a §5.4 precisa da retenção. É uma construção só embaixo de três produtos, `packages/indexer` ainda não existe, e isso faz dele o item de engenharia de maior alavancagem do repositório.
 
 ### 5.3 ★★★ Controladoria de organização de agentes — a linha que não existia três dias atrás
 
@@ -195,7 +195,7 @@ A cadeia de uma sessão é um registro com selo temporal do que um agente teve p
 
 **O que é.** A interface `PolicyHook` do SDK é um ponto de extensão sem nada entregue dentro. Encha com *dado mantido*, que é o único tipo de software que recorre legitimamente: listas de endereços sancionados e de alto risco; feeds de drainers conhecidos; classificação de risco de mint (honeypots, freeze authority viva, extensões surpresa); pacotes de regras curados para as formas comuns — só horário comercial, orçamento por fornecedor, pagamento casado com nota.
 
-**Por que funciona melhor do que funcionava.** A ADR-013 deu forma declarada à postura: presets mais overrides por campo, serializados em `@agent-rails/contract`, validados pelo mesmo schema Zod que os documenta, parseados na construção para que um typo seja falha de inicialização. Uma assinatura agora entrega *um fragmento de postura e um feed*, dentro de um slot que existe, com teste de snapshot em volta — em vez de entregar dentro de uma interface sem nenhuma implementação.
+**Por que funciona melhor do que funcionava.** A ADR-013 deu forma declarada à postura: presets mais overrides por campo, serializados em `@ash/contract`, validados pelo mesmo schema Zod que os documenta, parseados na construção para que um typo seja falha de inicialização. Uma assinatura agora entrega *um fragmento de postura e um feed*, dentro de um slot que existe, com teste de snapshot em volta — em vez de entregar dentro de uma interface sem nenhuma implementação.
 
 **Por que sobrevive a fork.** A interface é grátis e aberta; o feed é assinatura. É o padrão ClamAV/Snyk/registry do Semgrep: o fork leva o código, não as atualizações.
 
@@ -219,7 +219,7 @@ A ADR-011 orça a auditoria profissional em **$30–80k** e nomeia grants da Sol
 | CLI `init` planejada | Entregue: carteira vazia → pagamento guardado em um comando |
 | Composição com o programa nativo da Foundation: não era história | ADR-014, verificada contra o binário real de devnet, incluindo o ataque que prova que a escolha do delegatee é estrutural |
 
-Essa última linha merece uma frase própria numa candidatura. A Foundation lançou Subscriptions & Allowances nesta janela; **o Agent Rails agora é uma camada de governança que compõe com ele e prova que a composição é segura contra o binário real deployado.** Isso é uma narrativa de grant muito melhor do que "uma alternativa a algo que a Foundation acabou de lançar".
+Essa última linha merece uma frase própria numa candidatura. A Foundation lançou Subscriptions & Allowances nesta janela; **o ASH agora é uma camada de governança que compõe com ele e prova que a composição é segura contra o binário real deployado.** Isso é uma narrativa de grant muito melhor do que "uma alternativa a algo que a Foundation acabou de lançar".
 
 **O único bloqueio barato.** Ainda não há deploy em devnet, e a ADR-015 mediu por quê: **7,10 SOL** de aluguel de programdata contra **5 SOL** na chave de CI, e o faucet público impõe rate limit. São mais ou menos 2–3 SOL, mais folga, entre o repositório e o artefato mais forte que uma candidatura pode mostrar. Resolva esta semana.
 
@@ -233,7 +233,7 @@ Retainers de integração, adaptadores customizados, revisão de desenho de pol�
 
 ### 5.10 Jogadas de distribuição que não são receita direta
 
-- **`agent-rails init` — entregue, e o topo do funil.** Cinco instruções na única ordem que funciona, mais o financiamento, a keypair de sessão em disco e o bloco `mcpServers` impresso para o `claude_desktop_config.json`. Tempo até o primeiro pagamento é o topo de todo funil aqui, e agora é mensurável em vez de aspiracional. Instrumente.
+- **`ash init` — entregue, e o topo do funil.** Cinco instruções na única ordem que funciona, mais o financiamento, a keypair de sessão em disco e o bloco `mcpServers` impresso para o `claude_desktop_config.json`. Tempo até o primeiro pagamento é o topo de todo funil aqui, e agora é mensurável em vez de aspiracional. Instrumente.
 - **O adaptador x402.** O x402 processou cerca de 75M de transações e $24M numa janela recente de 30 dias, quase tudo abaixo de $1, sob um guarda-chuva da Linux Foundation cujos membros incluem Google, Visa, AWS, Circle e Anthropic. Ser a camada de política sob esse ecossistema é distribuição, não receita — mas toda tesouraria que isso trouxer é prospect de §5.1, §5.2 e §5.3.
 - **Adaptadores de framework** (LangChain, AI SDK, OpenAI Agents) e o pacote PyPI, listados no diretório de ferramentas de cada framework. Ainda não construídos; ainda distribuição gratuita.
 
@@ -362,7 +362,7 @@ Nove dias de vida, um contribuidor, programa completo com 23 instruções, CI ve
 
 **Fase 0 — agora → v1 (sem receita, toda a alavancagem).** Mais curta do que era; as linhas de CI e CLI estão feitas.
 1. **Deploy em devnet.** ~2–3 SOL mais folga sobre os 5 SOL da chave de CI. A credibilidade mais barata que sobrou, e pré-requisito de grant.
-2. **Construir o `@agent-rails/indexer`, Apache-2.0.** Um substrato só sob §5.1, §5.2 e §5.3. O código de maior alavancagem do repositório.
+2. **Construir o `@ash/indexer`, Apache-2.0.** Um substrato só sob §5.1, §5.2 e §5.3. O código de maior alavancagem do repositório.
 3. **Escrever `GOVERNANCE.md`, `SECURITY.md`, `THREAT_MODEL.md`.** Os três são pré-requisito de grant e de auditoria; os três continuam não escritos.
 4. **Registrar a ADR-016: sem taxa de protocolo na v1** (§3), e a **separação do repositório enterprise** (§4) — antes de o repositório se tornar público.
 5. Versionar o `org_chart.rs`. É um teste passando que demonstra o organograma e hoje está fora do versionamento.

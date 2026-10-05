@@ -1,6 +1,6 @@
-# @agent-rails/mcp
+# @ash/mcp
 
-stdio MCP server exposing Agent Rails payment tools to AI agents (Cursor, Claude Desktop, etc.).
+stdio MCP server exposing ASH payment tools to AI agents (Cursor, Claude Desktop, etc.).
 
 The server binds to **one** agent session at startup and derives everything else — treasury,
 policy, mints, destinations — from the chain. None of those are tool arguments, so a prompt
@@ -12,23 +12,23 @@ on-chain state before anything is signed.
 
 | Variable | Required | Description |
 |---|---|---|
-| `AGENT_RAILS_RPC` | yes | Solana JSON-RPC URL |
-| `AGENT_RAILS_SESSION` | yes | `AgentSession` PDA this process serves |
-| `AGENT_RAILS_SIGNER` | yes\* | Path to session keypair JSON (64-byte array) |
-| `AGENT_RAILS_REMOTE_SIGNER_URL` | yes\* | Signing service holding the session key off-process |
-| `AGENT_RAILS_REMOTE_SIGNER_ADDRESS` | with URL | Public key the service signs with |
-| `AGENT_RAILS_REMOTE_SIGNER_TOKEN` | no | Sent as `Authorization` to the signing service |
-| `AGENT_RAILS_FEE_PAYER` | no | Fee-payer keypair JSON (defaults to the session key) |
-| `AGENT_RAILS_MINT_ALIASES` | no | `USDC:EPjF…,USDT:Es9v…`. `SOL` is always known |
-| `AGENT_RAILS_INTENT_TTL_SECONDS` | no | Replay window for each intent (default 90, program allows 5–3600) |
-| `AGENT_RAILS_CONFIRM_TIMEOUT_MS` | no | Confirmation wait before an outcome is treated as unknown (default 60000) |
-| `AGENT_RAILS_RESOLVE_ATTEMPTS` | no | Receipt polls when resolving an unknown outcome (default 8) |
-| `AGENT_RAILS_RESOLVE_INTERVAL_MS` | no | Delay between those polls (default 750) |
-| `AGENT_RAILS_SECURITY` | no | Guard-rail preset: `sandbox`, `balanced` (default), `strict` |
-| `AGENT_RAILS_MAX_PAYMENTS_PER_MINUTE` | no | Overrides the preset's velocity cap |
-| `AGENT_RAILS_MAX_CONCURRENT` | no | Overrides payments in flight at once |
-| `AGENT_RAILS_SINK` | no | JSONL path for the operator's payment record |
-| `AGENT_RAILS_TOOLS` | no | `full` (default) or `readonly`: registers the four reads and `check_payment`, never `execute_payment`. The process still needs a signer — `check_payment` simulates a signed transaction — so readonly narrows what the model can call, not what the host holds |
+| `ASH_RPC` | yes | Solana JSON-RPC URL |
+| `ASH_SESSION` | yes | `AgentSession` PDA this process serves |
+| `ASH_SIGNER` | yes\* | Path to session keypair JSON (64-byte array) |
+| `ASH_REMOTE_SIGNER_URL` | yes\* | Signing service holding the session key off-process |
+| `ASH_REMOTE_SIGNER_ADDRESS` | with URL | Public key the service signs with |
+| `ASH_REMOTE_SIGNER_TOKEN` | no | Sent as `Authorization` to the signing service |
+| `ASH_FEE_PAYER` | no | Fee-payer keypair JSON (defaults to the session key) |
+| `ASH_MINT_ALIASES` | no | `USDC:EPjF…,USDT:Es9v…`. `SOL` is always known |
+| `ASH_INTENT_TTL_SECONDS` | no | Replay window for each intent (default 90, program allows 5–3600) |
+| `ASH_CONFIRM_TIMEOUT_MS` | no | Confirmation wait before an outcome is treated as unknown (default 60000) |
+| `ASH_RESOLVE_ATTEMPTS` | no | Receipt polls when resolving an unknown outcome (default 8) |
+| `ASH_RESOLVE_INTERVAL_MS` | no | Delay between those polls (default 750) |
+| `ASH_SECURITY` | no | Guard-rail preset: `sandbox`, `balanced` (default), `strict` |
+| `ASH_MAX_PAYMENTS_PER_MINUTE` | no | Overrides the preset's velocity cap |
+| `ASH_MAX_CONCURRENT` | no | Overrides payments in flight at once |
+| `ASH_SINK` | no | JSONL path for the operator's payment record |
+| `ASH_TOOLS` | no | `full` (default) or `readonly`: registers the four reads and `check_payment`, never `execute_payment`. The process still needs a signer — `check_payment` simulates a signed transaction — so readonly narrows what the model can call, not what the host holds |
 
 \* Either a local keypair or a remote signer. With a remote signer the private key never
 enters the process that parses tool arguments.
@@ -42,27 +42,27 @@ server that cannot establish what it is for should not be able to pay anyone.
 
 The MCP payment handlers have a Surfpool suite (`e2e/double-spend.e2e.test.ts`) that exercises
 `execute_payment` / `get_payment_status` against a real validator with the shared harness in
-`@agent-rails/e2e` (surfnet boot, blinding proxy). It is **not** part of `pnpm test`; it runs
+`@ash/e2e` (surfnet boot, blinding proxy). It is **not** part of `pnpm test`; it runs
 on the same nightly gate as the SDK E2E package:
 
 ```bash
-cargo build-sbf --manifest-path programs/agent_rails/Cargo.toml   # once
+cargo build-sbf --manifest-path programs/ash/Cargo.toml   # once
 scripts/verify.sh e2e
 # or only the MCP leg:
-pnpm --filter @agent-rails/mcp test:e2e
+pnpm --filter @ash/mcp test:e2e
 ```
 
-Optional: point `AGENT_RAILS_E2E_RPC` (and `AGENT_RAILS_E2E_PAYER`) at an already-running
+Optional: point `ASH_E2E_RPC` (and `ASH_E2E_PAYER`) at an already-running
 surfnet to skip booting a second validator while iterating locally.
 
 ## Run locally
 
 ```bash
-pnpm --filter @agent-rails/mcp build
+pnpm --filter @ash/mcp build
 
-AGENT_RAILS_RPC=https://api.devnet.solana.com \
-AGENT_RAILS_SESSION=<AgentSession PDA> \
-AGENT_RAILS_SIGNER=~/.config/agent-rails/session-keypair.json \
+ASH_RPC=https://api.devnet.solana.com \
+ASH_SESSION=<AgentSession PDA> \
+ASH_SIGNER=~/.config/ash/session-keypair.json \
 node packages/mcp/dist/cli.js
 ```
 
@@ -71,14 +71,14 @@ node packages/mcp/dist/cli.js
 ```json
 {
   "mcpServers": {
-    "agent-rails": {
+    "ash": {
       "command": "node",
-      "args": ["/path/to/agent-rails/packages/mcp/dist/cli.js"],
+      "args": ["/path/to/ash/packages/mcp/dist/cli.js"],
       "env": {
-        "AGENT_RAILS_RPC": "https://api.devnet.solana.com",
-        "AGENT_RAILS_SESSION": "<AgentSession PDA>",
-        "AGENT_RAILS_SIGNER": "/path/to/session-keypair.json",
-        "AGENT_RAILS_SINK": "/var/log/agent-rails/payments.jsonl"
+        "ASH_RPC": "https://api.devnet.solana.com",
+        "ASH_SESSION": "<AgentSession PDA>",
+        "ASH_SIGNER": "/path/to/session-keypair.json",
+        "ASH_SINK": "/var/log/ash/payments.jsonl"
       }
     }
   }
@@ -89,13 +89,13 @@ node packages/mcp/dist/cli.js
 
 | Tool | Kind | Description |
 |---|---|---|
-| `agent_rails_get_session` | read | The bound session: expiry, revocation, seq, per-mint spend counters |
-| `agent_rails_get_policy` | read | The bound policy: limits, destination mode, memo requirement |
-| `agent_rails_list_destinations` | read | Labels this session may pay |
-| `agent_rails_get_payment_status` | read | Did an intent settle? Authoritative, via the receipt PDA |
-| `agent_rails_check_payment` | dry run | Resolve and simulate without sending |
-| `agent_rails_execute_payment` | write | Pay a labelled destination |
-| `agent_rails_request_limit_increase` | message | Ask the operator for more budget. Emits an event to the dashboard; changes nothing (ADR-022) |
+| `ash_get_session` | read | The bound session: expiry, revocation, seq, per-mint spend counters |
+| `ash_get_policy` | read | The bound policy: limits, destination mode, memo requirement |
+| `ash_list_destinations` | read | Labels this session may pay |
+| `ash_get_payment_status` | read | Did an intent settle? Authoritative, via the receipt PDA |
+| `ash_check_payment` | dry run | Resolve and simulate without sending |
+| `ash_execute_payment` | write | Pay a labelled destination |
+| `ash_request_limit_increase` | message | Ask the operator for more budget. Emits an event to the dashboard; changes nothing (ADR-022) |
 
 Nothing here loosens a constraint. `create_session`, `update_policy`, allowlist edits,
 `pause`/`unpause` and `withdraw` are absent by design and asserted absent in CI
@@ -103,7 +103,7 @@ Nothing here loosens a constraint. `create_session`, `update_policy`, allowlist 
 
 ### Reporting to the dashboard (ADR-022)
 
-With `AGENT_RAILS_INGEST_URL` (`https://<dashboard>/api/ingest`) and `AGENT_RAILS_INGEST_TOKEN`
+With `ASH_INGEST_URL` (`https://<dashboard>/api/ingest`) and `ASH_INGEST_TOKEN`
 set — the dashboard's runner export fills both — the server reports denials, review requests
 and budget requests to the operator's dashboard, which fans them out to its notification
 channels. A payment above a `human-review` band is queued there; once a person approves it on
@@ -135,7 +135,7 @@ Every response carries `outcome`, `intent_id` and `receipt` — denials included
 |---|---|---|
 | `settled` | The transfer is on-chain | Nothing |
 | `denied` | A rule refused it; nothing moved | Read `reason_code`; change something if appropriate |
-| `indeterminate` | Broadcast, unconfirmed | Call `agent_rails_get_payment_status`. **Do not retry** |
+| `indeterminate` | Broadcast, unconfirmed | Call `ash_get_payment_status`. **Do not retry** |
 
 After an indeterminate outcome the session is quiesced: further payments are refused with
 `SESSION_QUIESCED` until the receipt is observed. This is deliberate. A slow RPC node is
@@ -149,16 +149,16 @@ refuses *before* the chain is asked — so a relaxed preset does not grant permi
 moves a refusal from here to the validator, or gives it up in favour of the floor underneath.
 
 ```
-AGENT_RAILS_SECURITY=sandbox    # prototyping: raw addresses, no bands, logs returned
-AGENT_RAILS_SECURITY=balanced   # default: labels only, hooks fail closed, memo over 100
-AGENT_RAILS_SECURITY=strict     # every band escalates; over 1000 waits for a person
+ASH_SECURITY=sandbox    # prototyping: raw addresses, no bands, logs returned
+ASH_SECURITY=balanced   # default: labels only, hooks fail closed, memo over 100
+ASH_SECURITY=strict     # every band escalates; over 1000 waits for a person
 ```
 
 Anything richer than a preset is a config object, because hooks and value bands do not
 survive being flattened into environment strings:
 
 ```ts
-import { createMcpServer } from "@agent-rails/mcp";
+import { createMcpServer } from "@ash/mcp";
 
 createMcpServer({
   runtime,
@@ -205,6 +205,6 @@ producing denials nobody can explain.
 Six properties are not configurable at all, because nothing underneath would catch the
 mistake — derived intent ids, strict tool arguments, startup binding, integer amount
 conversion, server-authored expiry, and never reporting an unknown outcome as a denial.
-They are listed in `IMMUTABLE_GUARANTEES` in `@agent-rails/contract`.
+They are listed in `IMMUTABLE_GUARANTEES` in `@ash/contract`.
 
-Schemas live in `@agent-rails/contract`.
+Schemas live in `@ash/contract`.

@@ -1,9 +1,11 @@
+import { parseContacts } from "@ash/cloak";
 import type { Locale } from "@/i18n";
 import { buildSystemPrompt } from "./system-prompts";
 
 export function getSystemPrompt(locale: Locale): string {
-  if (locale === "pt-BR") return buildSystemPrompt("pt-BR");
-  return buildSystemPrompt("en");
+  const contacts = parseContacts(process.env.NEXT_PUBLIC_CLOAK_CONTACTS);
+  if (locale === "pt-BR") return buildSystemPrompt("pt-BR", contacts);
+  return buildSystemPrompt("en", contacts);
 }
 
 const DEMO_REPLIES: Record<Locale, { defi: string; vendor: string; default: string }> = {
@@ -18,7 +20,7 @@ const DEMO_REPLIES: Record<Locale, { defi: string; vendor: string; default: stri
       "Enterprise batch design: parse CSV → allowlist preflight (atomic) → auditor quarantine → owner signs → Payment Agent runs approved subset.\n\n" +
       "⚠️ **Demo mode** — no LLM connected.",
     default:
-      "I'm the Agent Rails **Chief of Staff**, but **demo mode** is active — no model available.\n\n" +
+      "I'm the ASH **Chief of Staff**, but **demo mode** is active — no model available.\n\n" +
       "{connect}",
   },
   "pt-BR": {
@@ -32,7 +34,7 @@ const DEMO_REPLIES: Record<Locale, { defi: string; vendor: string; default: stri
       "Design enterprise: parse CSV → preflight allowlist (atômico) → quarentena auditor → owner assina → Payment Agent executa subset aprovado.\n\n" +
       "⚠️ **Modo demo** — nenhum LLM conectado.",
     default:
-      "Sou o **Chief of Staff** do Agent Rails, mas o **modo demo** está ativo — nenhum modelo disponível.\n\n" +
+      "Sou o **Chief of Staff** do ASH, mas o **modo demo** está ativo — nenhum modelo disponível.\n\n" +
       "{connect}",
   },
 };

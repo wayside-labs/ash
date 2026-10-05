@@ -31,10 +31,10 @@ about capability; it is about where a plausible-looking mistake stops being reve
 
 | Zone | Why |
 |---|---|
-| `programs/agent_rails/` | Custody. A wrong account constraint is a stolen vault, and the failure is silent until it is not. |
-| `crates/agent-rails-policy/` | Every limit the product enforces is arithmetic here. `#![forbid(unsafe_code)]` and `checked_*` are load-bearing, and the Kani proofs only prove what they were written to prove. |
+| `programs/ash/` | Custody. A wrong account constraint is a stolen vault, and the failure is silent until it is not. |
+| `crates/ash-policy/` | Every limit the product enforces is arithmetic here. `#![forbid(unsafe_code)]` and `checked_*` are load-bearing, and the Kani proofs only prove what they were written to prove. |
 | `packages/client/src/generated/` | Generated from the IDL. A hand edit survives review and dies at `pnpm codegen:check`, having wasted everyone's time. |
-| `programs/agent_rails/tests/layout.rs` | The snapshot is what lets v1.1 land without migrations. Updating it to make a test pass converts a real regression into a green run. |
+| `programs/ash/tests/layout.rs` | The snapshot is what lets v1.1 land without migrations. Updating it to make a test pass converts a real regression into a green run. |
 | `packages/sdk/src/send-payment.ts` and the payment path | The indeterminate-outcome handling is the difference between a retry and a double payment. |
 | The `vault-transfer` write path in `packages/dashboard` | The only place the browser moves money. |
 
@@ -60,4 +60,4 @@ These are in `CLAUDE.md` in full. The short version:
 
 Do not open a public issue for a vulnerability. See `SECURITY.md` for disclosure and
 `THREAT_MODEL.md` for scope. Prefer GitHub private vulnerability reporting on
-`wayside-labs/agent-rails`.
+`wayside-labs/ash`.

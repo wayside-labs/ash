@@ -1,6 +1,6 @@
 "use client";
 
-import type { AgentEvent } from "@agent-rails/contract/alerts";
+import type { AgentEvent } from "@ash/contract/alerts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 /** Client mirrors of `lib/server/ops/types.ts` — the server module is not importable here. */

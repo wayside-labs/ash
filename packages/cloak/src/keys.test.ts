@@ -25,7 +25,7 @@ describe("keyDerivationMessage", () => {
 
   it("is stable: changing it would strand every earlier deposit", () => {
     expect(text(keyDerivationMessage("W")).split("\n")).toEqual([
-      "Agent Rails x Cloak: private payout keys (v1)",
+      "ASH x Cloak: private payout keys (v1)",
       "",
       "Signing derives the keys that control your private payout notes, here and on any device with this wallet.",
       "It does NOT authorize a transaction or move funds.",
@@ -33,7 +33,7 @@ describe("keyDerivationMessage", () => {
       "",
       "Wallet: W",
     ]);
-    expect(KEY_DERIVATION_DOMAIN).toBe("agent-rails/cloak-private-payout/v1");
+    expect(KEY_DERIVATION_DOMAIN).toBe("ash/cloak-private-payout/v1");
   });
 });
 

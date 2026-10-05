@@ -1,7 +1,7 @@
 "use client";
 
-import { NATIVE_MINT } from "@agent-rails/contract/constants";
-import { knownMint } from "@agent-rails/contract/mints";
+import { NATIVE_MINT } from "@ash/contract/constants";
+import { knownMint } from "@ash/contract/mints";
 import { getBase64Decoder, getBase64Encoder } from "@solana/kit";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";

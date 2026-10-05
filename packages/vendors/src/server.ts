@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type Server } from "node:http";
 import { join } from "node:path";
-import { fromBaseUnits } from "@agent-rails/contract";
+import { fromBaseUnits } from "@ash/contract";
 import { z } from "zod";
 import type { VendorConfig } from "./config.js";
 import { JsonFile, newId, nowSeconds } from "./store.js";
@@ -47,7 +47,7 @@ async function readJson(req: IncomingMessage): Promise<unknown> {
   }
 }
 
-/** The invoice as a buyer sees it: everything needed to pay it through Agent Rails. */
+/** The invoice as a buyer sees it: everything needed to pay it through ASH. */
 export function presentInvoice(invoice: Invoice) {
   return {
     invoice_id: invoice.id,
@@ -114,7 +114,7 @@ export async function createVendorServer<S>(options: VendorServerOptions<S>): Pr
     },
     flow: [
       "POST /invoices with the purchase request (optionally `session` to pin the payer)",
-      "pay it with agent_rails_execute_payment: destination_ref=destination_label, " +
+      "pay it with ash_execute_payment: destination_ref=destination_label, " +
         "amount, mint_ref, reference=invoice_id",
       "POST /invoices/{id}/redeem with {session} to receive what was bought",
     ],

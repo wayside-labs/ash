@@ -1,4 +1,4 @@
-import { AgentRailsError } from "@agent-rails/sdk";
+import { AshError } from "@ash/sdk";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { McpRuntime } from "../config.js";
 import { PaymentGovernor } from "../governor.js";
@@ -299,9 +299,9 @@ describe("handleExecutePayment", () => {
   });
 });
 
-describe("AgentRailsError", () => {
+describe("AshError", () => {
   it("requires an outcome, so no failure can be classified by omission", () => {
-    const error = new AgentRailsError({
+    const error = new AshError({
       reasonCode: "EXCEEDS_PER_TX_MAX",
       message: "Amount exceeds the per-transaction maximum",
       outcome: "denied",

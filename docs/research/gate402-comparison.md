@@ -1,8 +1,8 @@
-# Agent Rails ↔ Gate402 / Metera — Comparative Analysis
+# ASH ↔ Gate402 / Metera — Comparative Analysis
 
 **Date:** 2026-09-14
 **Subject repo:** `https://github.com/joaopco8/gate402_` (cloned to `/home/dev0xcf02/projects/solana/gate402_`, `master` @ `fa183d3`)
-**Our repo:** `agent-rails`, branch `feature/ts-sdk` @ `95ec615`
+**Our repo:** `ash`, branch `feature/ts-sdk` @ `95ec615`
 **Scope:** read-only analysis. No code was changed in either repository.
 
 ---
@@ -11,7 +11,7 @@
 
 Both projects sit in the same market — *money rails for autonomous AI agents on Solana* — and both converge on the same two interface choices: **USDC on Solana** as the settlement asset and **MCP** as the agent-facing surface. Beyond that they are near-opposites in architecture and in what they are actually trying to guarantee.
 
-| | **Agent Rails (ours)** | **Gate402 / Metera (theirs)** |
+| | **ASH (ours)** | **Gate402 / Metera (theirs)** |
 |---|---|---|
 | Core question | *"Can this agent be trusted to spend?"* | *"Can this API get paid by an agent?"* |
 | Direction of money | Treasury → agent → vendor (**outbound spend control**) | Agent → API provider (**inbound revenue collection**) |
@@ -24,19 +24,19 @@ Both projects sit in the same market — *money rails for autonomous AI agents o
 | Maturity | Program surface complete (22 ix, 150 tests), SDK/MCP in progress | Shipping product, live at gate402.dev / metera.xyz, npm packages published |
 | License | Apache-2.0 (LICENSE present) | MIT per README + 4 package.jsons — **but no LICENSE file in the repo** |
 
-**Verdict:** they are *complements, not competitors*. Gate402 is a plausible **consumer** of Agent Rails: an agent paying x402 invoices is exactly the workload that wants a policy-bounded treasury behind it. Nothing in their codebase threatens ours, and about **eight discrete pieces are worth stealing ideas from** (§9) — mostly in operational hardening, DX, and the off-chain layers we deliberately left thin.
+**Verdict:** they are *complements, not competitors*. Gate402 is a plausible **consumer** of ASH: an agent paying x402 invoices is exactly the workload that wants a policy-bounded treasury behind it. Nothing in their codebase threatens ours, and about **eight discrete pieces are worth stealing ideas from** (§9) — mostly in operational hardening, DX, and the off-chain layers we deliberately left thin.
 
 ---
 
 ## 1. What each project is
 
-### 1.1 Agent Rails
+### 1.1 ASH
 
 A guardrail and treasury framework. Owners deposit into a program-owned vault; an *operator* defines a `Policy` (per-tx / short-window / long-window / lifetime limits, destination allowlists, mint allowlists) bounded by owner-set *ceilings*; agents receive time-boxed `AgentSession`s and pay through a single `execute_payment` instruction that the program refuses unless every rule holds.
 
 The distinguishing claim, from `ARCHITECTURE.md` §1: *a fully compromised agent — leaked key, prompt injection, buggy retry loop — can lose at most what the policy allows in the current windows.* That guarantee is produced by the chain, not by a proxy. Four principals (owner / operator / guardian / session) with **loosening flowing downhill only**; a per-session SHA-256 audit hash chain; idempotency by `IntentReceipt` PDA `init`; zero external program dependencies beyond SPL Token / ATA / System.
 
-Current state: Anchor program complete (22 instructions, LiteSVM tests across `admin/budget/layout/lifecycle/operator/payments/treasury`), pure `agent-rails-policy` crate with proptests + audit vectors, Codama-generated Kit client, and a TS SDK + stdio MCP server mid-build (`get_session`, `get_policy`, `check_payment`, `execute_payment` landed).
+Current state: Anchor program complete (22 instructions, LiteSVM tests across `admin/budget/layout/lifecycle/operator/payments/treasury`), pure `ash-policy` crate with proptests + audit vectors, Codama-generated Kit client, and a TS SDK + stdio MCP server mid-build (`get_session`, `get_policy`, `check_payment`, `execute_payment` landed).
 
 ### 1.2 Gate402 / Metera
 
@@ -55,10 +55,10 @@ What is actually in there, beyond the README's three-box story:
 
 ## 2. Structure — repository layout side by side
 
-### 2.1 Agent Rails
+### 2.1 ASH
 
 ```
-agent-rails/                       pnpm@10.6.5 workspace + Cargo workspace + turbo
+ash/                       pnpm@10.6.5 workspace + Cargo workspace + turbo
 ├── Anchor.toml                    anchor 1.1.2, localnet, test = cargo test --workspace
 ├── Cargo.toml                     workspace: crates/*, programs/*
 │                                  release profile: overflow-checks, lto=fat, codegen-units=1
@@ -66,12 +66,12 @@ agent-rails/                       pnpm@10.6.5 workspace + Cargo workspace + tur
 ├── docs/
 │   ├── adr/ADR-001..011           one decision per file, the reasoning of record
 │   └── spec/accounts-and-instructions.md   byte-level account + instruction contract
-├── idl/agent_rails.json           built artifact, checked in, source for codegen
-├── programs/agent_rails/          Anchor program — 22 instructions, thin handlers
+├── idl/ash.json           built artifact, checked in, source for codegen
+├── programs/ash/          Anchor program — 22 instructions, thin handlers
 │   ├── src/{state,args,error,events,validation,constants}.rs
 │   ├── src/instructions/*.rs      one file per instruction
 │   └── tests/{admin,budget,layout,lifecycle,operator,payments,treasury}.rs  (LiteSVM)
-├── crates/agent-rails-policy/     pure no_std policy arithmetic
+├── crates/ash-policy/     pure no_std policy arithmetic
 │   ├── src/{engine,audit,types,error}.rs
 │   └── tests/{proptests,audit_vectors}.rs
 └── packages/
@@ -117,10 +117,10 @@ gate402_/                          npm workspaces (apps/*, packages/*)
 
 ### 2.3 What the layouts tell you
 
-| Dimension | Agent Rails | Gate402 |
+| Dimension | ASH | Gate402 |
 |---|---|---|
 | Organising principle | **By trust boundary** — program / pure core / generated client / SDK / agent surface | **By deployment unit** — server app, web app, published packages |
-| Where the rules live | `crates/agent-rails-policy` (one crate, ~1.5k LOC, fuzzed) | Spread across `lib/`, `services/`, `middleware/`, Prisma defaults, and Supabase RPCs |
+| Where the rules live | `crates/ash-policy` (one crate, ~1.5k LOC, fuzzed) | Spread across `lib/`, `services/`, `middleware/`, Prisma defaults, and Supabase RPCs |
 | Generated vs. hand-written | Hard line: `src/generated/` is Codama output, `codegen:check` enforces it in CI | None; all hand-written against web3.js v1 |
 | Spec artefacts | ADRs + byte-level spec + IDL, all versioned | `DESIGN.md` is a *visual* design token file, not a system spec |
 | Dead code | None | `_legacy/` (~60 files), `_disabled.page.tsx`, `minha-api/`, loose CSVs and PNGs at repo root |
@@ -135,12 +135,12 @@ The instructive contrast: **their structure optimises for shipping a product, ou
 
 ### 3.1 Layer-by-layer
 
-| Layer | Agent Rails | Gate402 / Metera |
+| Layer | ASH | Gate402 / Metera |
 |---|---|---|
-| **Agent-facing** | `@agent-rails/mcp` (stdio), 4 tools, no privilege-escalating tool exists | `packages/mcp-client`, `sdk-agent`, plus 8 hosted MCP proxies; `x402Middleware` on every route |
-| **Contract / schema** | `@agent-rails/contract` — Zod, single source for MCP tools, events, reason codes | None. Types are duplicated per package (`PaymentProof` in `mcp-server/types.ts`, again in `mcp-client/types.ts`) |
-| **Client** | `@agent-rails/client` — Codama-generated from the IDL | Hand-written `@solana/web3.js` v1 calls scattered through `lib/` |
-| **Policy / decision** | `agent-rails-policy` crate — pure, `no_std`, `forbid(unsafe_code)`, proptested | `services/spendingLimits.ts` + `lib/planPolicy.ts` + `middleware/plan.ts` + Prisma columns |
+| **Agent-facing** | `@ash/mcp` (stdio), 4 tools, no privilege-escalating tool exists | `packages/mcp-client`, `sdk-agent`, plus 8 hosted MCP proxies; `x402Middleware` on every route |
+| **Contract / schema** | `@ash/contract` — Zod, single source for MCP tools, events, reason codes | None. Types are duplicated per package (`PaymentProof` in `mcp-server/types.ts`, again in `mcp-client/types.ts`) |
+| **Client** | `@ash/client` — Codama-generated from the IDL | Hand-written `@solana/web3.js` v1 calls scattered through `lib/` |
+| **Policy / decision** | `ash-policy` crate — pure, `no_std`, `forbid(unsafe_code)`, proptested | `services/spendingLimits.ts` + `lib/planPolicy.ts` + `middleware/plan.ts` + Prisma columns |
 | **State** | PDAs: `Treasury`, `Policy`, `AllowlistEntry`, `AgentSession`, `IntentReceipt` | Postgres (26 models) + Redis (counters, caches, rate limits) + Supabase (credits via RPC) |
 | **Custody** | None. Vault is a program-owned PDA + ATAs; `sol_vault` for native SOL | Server holds keys (`SOLANA_WALLET_PRIVATE_KEY`); Privy provisions agent wallets |
 | **Settlement** | `transfer_checked` CPI to SPL Token / Token-2022, or System transfer from `sol_vault` | Agent sends USDC directly; server *verifies* the tx hash after the fact |
@@ -149,7 +149,7 @@ The instructive contrast: **their structure optimises for shipping a product, ou
 
 ### 3.2 The payment path, contrasted
 
-**Agent Rails** — one transaction, one program instruction, one CPI:
+**ASH** — one transaction, one program instruction, one CPI:
 
 ```
 agent → check_payment (simulate)      … no state change, no signature
@@ -186,7 +186,7 @@ Three structural consequences:
 
 ### 3.3 The enforcement boundary — the fundamental split
 
-Ours is the whole point of the project: **the program refuses.** A compromised Agent Rails operator key cannot raise a ceiling, cannot withdraw, cannot unpause. In Gate402, `checkSpendingLimits()` is a function in a Node process reading Redis; anyone with access to that process, that Redis, or that Postgres can raise any limit.
+Ours is the whole point of the project: **the program refuses.** A compromised ASH operator key cannot raise a ceiling, cannot withdraw, cannot unpause. In Gate402, `checkSpendingLimits()` is a function in a Node process reading Redis; anyone with access to that process, that Redis, or that Postgres can raise any limit.
 
 This is not a criticism of them — a billing SaaS legitimately *is* the trusted party for its own revenue. But it means their limit code is **reference material, never an implementation we can adopt into the enforcement path.** Anything we borrow from it lands in the SDK's soft `PolicyHook` layer (ARCHITECTURE §6, "defense in depth"), which is explicitly documented as *not the guarantee*.
 
@@ -194,7 +194,7 @@ The one exception is `lib/squads.ts`, which does exactly what our ARCHITECTURE �
 
 ### 3.4 Failure semantics
 
-| Situation | Agent Rails | Gate402 |
+| Situation | ASH | Gate402 |
 |---|---|---|
 | Redis down | N/A — no Redis in the enforcement path | `checkSpendingLimits` **silently skips** the hour/day/month checks (`if (redis)`); `slidingWindowRateLimit` returns `allowed: true`. Fails **open** |
 | Postgres down | N/A | Nothing works; the policy authority is unreachable |
@@ -208,9 +208,9 @@ Fail-open under Redis loss is the sharpest architectural difference in operation
 
 ## 4. Business rules
 
-### 4.1 Agent Rails — the rules *are* the product, and they are all on-chain
+### 4.1 ASH — the rules *are* the product, and they are all on-chain
 
-There is **no monetisation logic anywhere in the repo**. Agent Rails does not take a fee, does not meter, and has no notion of a plan, a customer, or a balance owed. Its "business rules" are the authorization rules the program enforces:
+There is **no monetisation logic anywhere in the repo**. ASH does not take a fee, does not meter, and has no notion of a plan, a customer, or a balance owed. Its "business rules" are the authorization rules the program enforces:
 
 **Roles and separation of powers** (`ARCHITECTURE.md` §3)
 
@@ -237,7 +237,7 @@ Windows are **fixed epoch buckets** — `window_start` advances by whole multipl
 
 **The ceiling partial order** — `update_policy` asserts `Policy ≤ Ceiling` per mint slot: all four caps `≤`, both window durations `≥` (a longer window at the same cap is *tighter*), `destination_mode == Any` only if `treasury.allow_any_destination`, `create_destination_ata` only if the treasury permits it.
 
-**Hard-coded bounds** (`programs/agent_rails/src/constants.rs`)
+**Hard-coded bounds** (`programs/ash/src/constants.rs`)
 
 | Constant | Value | Rule it encodes |
 |---|---|---|
@@ -305,7 +305,7 @@ Limits are cached in Redis for 5 minutes, so a tightened limit takes up to 5 min
 
 ### 4.3 Business-rule comparison
 
-| Axis | Agent Rails | Gate402 |
+| Axis | ASH | Gate402 |
 |---|---|---|
 | Who the rules protect | The **treasury owner**, from their own agent | The **platform**, from underpriced usage; and the provider, from unpaid calls |
 | Where the rules live | Program + one pure crate | `plans.ts` + `planPolicy.ts` + `spendingLimits.ts` + `agentKill.ts` + Prisma + Supabase RPC |
@@ -316,7 +316,7 @@ Limits are cached in Redis for 5 minutes, so a tightened limit takes up to 5 min
 | Rule expressible in one place? | Yes — `Policy ≤ Ceiling` is a single partial order | No — plan gate, credit debit, spending limit and kill rules are four independent systems |
 | Reconciliation risk | Nil — the chain is the ledger | Acknowledged in-code ("REVENUE DEBT") |
 
-**Where each is stronger.** Their credit engine is genuinely better thought-out than anything we have on the economic side: cost-based debit with a documented markup, a floor that prevents below-cost calls, and a single file that the pricing page reads so the marketing cannot outrun the enforcement. We have nothing comparable — and arguably need nothing, since we are a framework. But if Agent Rails ever grows a hosted indexer or relayer with a price attached, `planPolicy.ts` is the pattern to copy: *one file, cost-derived, read by every surface.*
+**Where each is stronger.** Their credit engine is genuinely better thought-out than anything we have on the economic side: cost-based debit with a documented markup, a floor that prevents below-cost calls, and a single file that the pricing page reads so the marketing cannot outrun the enforcement. We have nothing comparable — and arguably need nothing, since we are a framework. But if ASH ever grows a hosted indexer or relayer with a price attached, `planPolicy.ts` is the pattern to copy: *one file, cost-derived, read by every surface.*
 
 Our side is stronger everywhere the rule must survive a compromised operator, which is the entire point.
 
@@ -326,7 +326,7 @@ Our side is stronger everywhere the rule must survive a compromised operator, wh
 
 ### 5.1 Runtime and dependency stack
 
-| | Agent Rails | Gate402 / Metera |
+| | ASH | Gate402 / Metera |
 |---|---|---|
 | Languages | Rust (program + policy crate), TypeScript (SDK/MCP); Python planned | TypeScript everywhere; Python only for Selenium E2E |
 | Node | ≥22 | 20 |
@@ -336,33 +336,33 @@ Our side is stronger everywhere the rule must survive a compromised operator, wh
 | Lint/format | **Biome** (single tool, `biome check`) | ESLint (server only), none elsewhere |
 | Test runners | `cargo test` + **Vitest 4** | **Jest 29** + `ts-jest`; pytest/Selenium for E2E |
 | Solana stack | **`@solana/kit` v8** + Codama + Anchor 1.1.2 | **`@solana/web3.js` v1.98** + `@project-serum/anchor` 0.26 + `@sqds/multisig` 2.1.4 |
-| Schema/validation | **Zod 4** in `@agent-rails/contract` | Ad-hoc; no shared schema package |
+| Schema/validation | **Zod 4** in `@ash/contract` | Ad-hoc; no shared schema package |
 | MCP SDK | `@modelcontextprotocol/sdk` ^1.30 | `@modelcontextprotocol/sdk` ^1.29 |
 
 Two of these matter beyond taste. **Kit v8 vs. web3.js v1** means no code can be lifted verbatim in either direction. **Codama + `codegen:check`** means our client cannot silently drift from the IDL; they have no equivalent invariant, so a schema change is caught by a test or by production.
 
 ### 5.2 Stateful infrastructure
 
-| | Agent Rails | Gate402 |
+| | ASH | Gate402 |
 |---|---|---|
 | Database | **None.** Solana accounts are the database | PostgreSQL (Supabase, pooled `DATABASE_URL` + `DIRECT_URL` for migrations), 26 Prisma models |
 | Cache | None | Redis (ioredis) — counters, limit cache, rate limits, idempotency, user/API-key caches |
 | Queue | None | BullMQ (`bullmq` at the repo root and in the server) + `workers/collectWorker.ts` |
 | Auth | Keys are signers; there is no login | Supabase Auth (GitHub + email), plus API keys, plus an OAuth consent flow, plus admin auth |
-| Secrets | Keypair file paths via env (`AGENT_RAILS_SIGNER`, `AGENT_RAILS_FEE_PAYER`) | `SOLANA_WALLET_PRIVATE_KEY` (bs58 or JSON array) in env, read at call time by `getMeteraKeypair()` |
+| Secrets | Keypair file paths via env (`ASH_SIGNER`, `ASH_FEE_PAYER`) | `SOLANA_WALLET_PRIVATE_KEY` (bs58 or JSON array) in env, read at call time by `getMeteraKeypair()` |
 | Background jobs | None | `startSpotSampler`, `startProofAnchor`, `startNoiseRefresh`, `startCollectWorker` — all started inside the HTTP process |
 | Third-party services | RPC only | Stripe, Supabase, Privy, Resend, Transak, Apify, Exa, Firecrawl, Serper, Tavily, ElevenLabs, Anthropic, Helius, Chainlink, Webacy, DefiLlama, Squads |
 
-The count in that last row is the infrastructure story. Agent Rails has **one** external dependency at runtime (an RPC endpoint) by explicit design — "zero external program dependencies" on-chain, and effectively zero off-chain too. Gate402 has roughly twenty, each a key to rotate, a bill to pay, a status page to watch, and a failure mode to handle.
+The count in that last row is the infrastructure story. ASH has **one** external dependency at runtime (an RPC endpoint) by explicit design — "zero external program dependencies" on-chain, and effectively zero off-chain too. Gate402 has roughly twenty, each a key to rotate, a bill to pay, a status page to watch, and a failure mode to handle.
 
 ### 5.3 Deployment and operations
 
-| | Agent Rails | Gate402 |
+| | ASH | Gate402 |
 |---|---|---|
 | Deploy targets | Solana devnet → mainnet-beta; npm for packages | Vercel (dashboard) + Railway (API, NIXPACKS) + Docker (`apps/server/Dockerfile`, multi-stage node:20-alpine) |
 | Local dev | `anchor test` / `cargo test --workspace`; LiteSVM needs no validator | `docker-compose up` (Postgres only — Redis is assumed external), then two dev servers |
-| Config | 3 env vars for the MCP server (`AGENT_RAILS_RPC`, `AGENT_RAILS_SIGNER`, `AGENT_RAILS_FEE_PAYER`) | `.env.example` lists 4; the README documents 10; the real count across `lib/env.ts`, `planPolicy.ts` and the proxies is well past 40 |
-| Health/observability | Program events + planned `@agent-rails/indexer` + `agent-rails doctor` | `/health`, `middleware/metrics.ts`, `lib/shutdown.ts` (graceful), console logging |
+| Config | 3 env vars for the MCP server (`ASH_RPC`, `ASH_SIGNER`, `ASH_FEE_PAYER`) | `.env.example` lists 4; the README documents 10; the real count across `lib/env.ts`, `planPolicy.ts` and the proxies is well past 40 |
+| Health/observability | Program events + planned `@ash/indexer` + `ash doctor` | `/health`, `middleware/metrics.ts`, `lib/shutdown.ts` (graceful), console logging |
 | Rate limiting | None (not applicable) | `globalRateLimit` 500/min per IP and per user, sliding-window per API key, unpaid-route limiter; payment requests bypass IP limits |
 | Security middleware | N/A | `helmet`, `cors`, `lib/ssrf.ts` (proxy target guard), `publicFormGuard.ts`, PoW on the contact form (`contact/pow.ts`) |
 | Upgrade governance | Staged trust (ADR-011): maintainer multisig → Squads 3-of-5 with 72h timelock → **frozen** after audit | `git push` |
@@ -375,11 +375,11 @@ The count in that last row is the infrastructure story. Agent Rails has **one** 
 
 That second job is a genuine anti-pattern worth naming: CI is coupled to production uptime, to production data, and to a live login. A red build can mean "someone deployed" rather than "the code is wrong". The `--ignore-scripts` on install also means Prisma's `postinstall generate` is skipped, so the unit job tests against whatever client happens to be generated.
 
-**Agent Rails** has **no `.github/` directory at all.** `ARCHITECTURE.md` §11 specifies the intended gate matrix in detail — fmt, clippy `-D warnings`, cargo-deny/audit, verifiable build hash, CU regression (>10% fails), account-layout snapshot, IDL diff comment, short Trident run, tsc/Biome/vitest, coverage thresholds (policy ≥95%, SDK core ≥85%), CodeQL, semgrep, pinned Actions; nightly long-Trident, Kani, Surfpool E2E, `cargo-mutants` — and none of it exists. Measured against our own spec this is the single largest infrastructure gap in the repo, and it is larger than the gap Gate402 has against theirs.
+**ASH** has **no `.github/` directory at all.** `ARCHITECTURE.md` §11 specifies the intended gate matrix in detail — fmt, clippy `-D warnings`, cargo-deny/audit, verifiable build hash, CU regression (>10% fails), account-layout snapshot, IDL diff comment, short Trident run, tsc/Biome/vitest, coverage thresholds (policy ≥95%, SDK core ≥85%), CodeQL, semgrep, pinned Actions; nightly long-Trident, Kani, Surfpool E2E, `cargo-mutants` — and none of it exists. Measured against our own spec this is the single largest infrastructure gap in the repo, and it is larger than the gap Gate402 has against theirs.
 
 ### 5.5 Testing infrastructure
 
-| Layer | Agent Rails | Gate402 |
+| Layer | ASH | Gate402 |
 |---|---|---|
 | Pure logic | `proptest` + `cargo-fuzz` + Kani (planned, ADR-008) | — |
 | Unit | Vitest per TS package; `cargo test` per crate | ~40 Jest files, concentrated in data/verification/OFAC, **thin on the payment path** |
@@ -452,14 +452,14 @@ Everything here is **additive to layers we already planned**; none of it touches
 *Theirs:* `.github/workflows/e2e.yml`. *Gap:* we have zero CI despite ARCHITECTURE §11 specifying a full gate matrix (§5.4).
 *Action:* don't copy theirs — it's thin and pins CI to a live production URL. Use it as the prompt to land a minimal `ci.yml` now: `cargo fmt --check`, `cargo clippy -D warnings`, `cargo test --workspace`, `pnpm lint`, `pnpm build`, `pnpm test`, `pnpm codegen:check`. That last one already exists in our root `package.json` and is exactly the kind of gate that rots without CI.
 
-**9.2 `create-agent-rails` scaffolder.**
+**9.2 `create-ash` scaffolder.**
 *Theirs:* `packages/create-gate402-mcp/` — a `prompts`-driven generator that writes a runnable MCP server, `package.json`, `tsconfig`, and a Claude Desktop config block.
-*Why:* our v1 onboarding is "run the CLI, then hand-edit `claude_desktop_config.json` with three env vars". A `npx create-agent-rails` that scaffolds a session keypair path, RPC and a paste-ready config block is half a day of work and removes the most error-prone step in our DX.
+*Why:* our v1 onboarding is "run the CLI, then hand-edit `claude_desktop_config.json` with three env vars". A `npx create-ash` that scaffolds a session keypair path, RPC and a paste-ready config block is half a day of work and removes the most error-prone step in our DX.
 *Maps to:* `packages/cli`'s `init` command — possibly just a subcommand rather than a new package.
 
 **9.3 Ship a Claude Desktop config example + MCP README.**
 *Theirs:* `apps/mcp-demo/claude-desktop-config.json` + two package READMEs.
-*Why:* trivially cheap, and `packages/mcp/README.md` currently carries no copy-pasteable block for `AGENT_RAILS_RPC` / `AGENT_RAILS_SIGNER` / `AGENT_RAILS_FEE_PAYER`.
+*Why:* trivially cheap, and `packages/mcp/README.md` currently carries no copy-pasteable block for `ASH_RPC` / `ASH_SIGNER` / `ASH_FEE_PAYER`.
 
 **9.4 Four-state results for soft policy hooks.**
 *Theirs:* `ofacMatcher.ts`'s `match / possible_match / no_match / unavailable`.
@@ -471,7 +471,7 @@ Everything here is **additive to layers we already planned**; none of it touches
 **9.5 The `executability` / staleness concept for `check_payment`.**
 *Theirs:* `lib/executability.ts` — publish the slot a simulation ran at, plus a per-type freshness budget, plus `executable: true | false | null`.
 *Why:* `check_payment` returns `{ allowed, reasons[], remaining_after, intent_id }` and says nothing about how stale that answer is. Agents *will* cache a check and execute a minute later. Adding `simulated_at_slot` (+ an optional staleness verdict) makes check-then-execute honest.
-*Maps to:* `@agent-rails/contract`'s `mcp-tools.ts` response schema. Cheap now, breaking later.
+*Maps to:* `@ash/contract`'s `mcp-tools.ts` response schema. Cheap now, breaking later.
 
 **9.6 Sliding-window rate limiting at the MCP/SDK boundary.**
 *Theirs:* `lib/rateLimit.ts` — Redis sorted-set sliding window, "no burst at window boundary", with an explicit no-Redis fallback.
@@ -480,12 +480,12 @@ Everything here is **additive to layers we already planned**; none of it touches
 
 **9.7 Destination screening as a shipped `PolicyHook`.**
 *Theirs:* `lib/ofacIndex.ts` + `ofacMatcher.ts` + `scripts/ofac-index.ts` — SDN indexing, tokenised fuzzy matching, weak-alias down-weighting, a versioned matcher (`MATCHER_VERSION`), explicit thresholds.
-*Why:* any enterprise evaluating Agent Rails will ask "can the agent pay a sanctioned address?" On-chain we answer with `destination_mode: Allowlist`; for `Any` mode there is no answer. A reference screening hook — even a thin one over a maintained address list rather than their full name-matching engine — turns a hard question into a documented one.
+*Why:* any enterprise evaluating ASH will ask "can the agent pay a sanctioned address?" On-chain we answer with `destination_mode: Allowlist`; for `Any` mode there is no answer. A reference screening hook — even a thin one over a maintained address list rather than their full name-matching engine — turns a hard question into a documented one.
 *Scope note:* they screen *names* (KYC-style); we'd screen *addresses*. The reusable part is the four-state contract and the versioned-matcher discipline, not the algorithm.
 
 **9.8 An x402 bridge — the strategic one.**
 *Theirs:* `packages/sdk-agent/src/agent.ts` (parse 402 → pay → retry), `packages/mcp-client/src/payment.ts` (base64 `X-Payment` proof), `packages/mcp-server/src/middleware.ts` (the 402 response shape).
-*Why:* an `@agent-rails/adapters/x402` that intercepts HTTP 402, routes the payment through `execute_payment` instead of a raw transfer, and returns the proof header would make Agent Rails the **policy layer under the entire x402 ecosystem** — Gate402 included. It turns a potential competitor into a downstream consumer.
+*Why:* an `@ash/adapters/x402` that intercepts HTTP 402, routes the payment through `execute_payment` instead of a raw transfer, and returns the proof header would make ASH the **policy layer under the entire x402 ecosystem** — Gate402 included. It turns a potential competitor into a downstream consumer.
 *Effort:* small. The 402 payload is ~30 lines (`{ version, accepts: [{ scheme, network, amount, token, payTo }] }`); the rest is our existing `executePayment`.
 *Fit:* `packages/adapters/*`, alongside langchain / ai-sdk / openai-agents. Arguably v1.1, but the highest-leverage idea in this report.
 
@@ -497,13 +497,13 @@ Everything here is **additive to layers we already planned**; none of it touches
 
 **9.11 Cost-derived pricing in one file.** `lib/planPolicy.ts` (§4.2b). Irrelevant to v1 — we sell nothing. Directly relevant the day a hosted indexer or relayer gets a price.
 
-**9.12 Operational scaffolding.** Their `apps/server/scripts/` (~40 one-shot devnet/e2e/probe scripts) is a reminder of how much throwaway tooling a live system needs. Our `agent-rails doctor` / `audit` commands should absorb the durable subset of that instinct rather than accumulating loose scripts.
+**9.12 Operational scaffolding.** Their `apps/server/scripts/` (~40 one-shot devnet/e2e/probe scripts) is a reminder of how much throwaway tooling a live system needs. Our `ash doctor` / `audit` commands should absorb the durable subset of that instinct rather than accumulating loose scripts.
 
 ---
 
 ## 10. What we should explicitly *not* take
 
-- **The off-chain limit engine.** Redis counters as the enforcement boundary is the exact architecture Agent Rails exists to replace. Adopting it anywhere near the payment path would undermine the project's only differentiated claim — and it fails open when the cache is down (§3.4).
+- **The off-chain limit engine.** Redis counters as the enforcement boundary is the exact architecture ASH exists to replace. Adopting it anywhere near the payment path would undermine the project's only differentiated claim — and it fails open when the cache is down (§3.4).
 - **Custodial wallets / server-held keys.** `getMeteraKeypair()`, `privy.ts`, `/agent/:key/pay-mcp`. Non-custodial is a stated design invariant, not a preference.
 - **The dashboard / SaaS layer.** ARCHITECTURE §1 lists "a hosted service or a web dashboard" as a v1 non-goal. Their `_legacy/` directory is the cautionary tale.
 - **`@solana/web3.js` v1 / `@project-serum/anchor` 0.26 code.** We are Kit v8 + Codama. Port logic, never files.
@@ -528,7 +528,7 @@ The README badge and four `package.json` files declare **MIT**, but **there is n
 Ordered by value-per-hour, all compatible with the current `feature/ts-sdk` work:
 
 1. **Land a minimal `.github/workflows/ci.yml`** (§9.1). Biggest gap against our own spec; blocks nothing; prevents `codegen:check` drift.
-2. **Add `simulated_at_slot` to the `check_payment` response schema** (§9.5) while `@agent-rails/contract` is still unfrozen. Cheap now, breaking later.
+2. **Add `simulated_at_slot` to the `check_payment` response schema** (§9.5) while `@ash/contract` is still unfrozen. Cheap now, breaking later.
 3. **Audit `runPolicyHooks` for fail-open behaviour** and introduce a distinguishable `unavailable` outcome (§9.4).
 4. **Write the MCP README + Claude Desktop config example** (§9.3). An hour's work, disproportionate DX payoff.
 5. **Prototype the x402 adapter** (§9.8) as a spike — even a 100-line proof that `execute_payment` can settle an x402 invoice is a strong story for the README and for positioning against exactly this repo.

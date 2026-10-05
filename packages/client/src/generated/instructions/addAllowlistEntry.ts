@@ -43,7 +43,7 @@ import {
   type ResolvedInstructionAccount,
 } from "@solana/program-client-core";
 import { findEntryPda } from "../pdas/index.js";
-import { AGENT_RAILS_PROGRAM_ADDRESS } from "../programs/index.js";
+import { ASH_PROGRAM_ADDRESS } from "../programs/index.js";
 
 export const ADD_ALLOWLIST_ENTRY_DISCRIMINATOR: ReadonlyUint8Array =
   new Uint8Array([59, 108, 25, 164, 197, 177, 166, 249]);
@@ -55,7 +55,7 @@ export function getAddAllowlistEntryDiscriminatorBytes(): ReadonlyUint8Array {
 }
 
 export type AddAllowlistEntryInstruction<
-  TProgram extends string = typeof AGENT_RAILS_PROGRAM_ADDRESS,
+  TProgram extends string = typeof ASH_PROGRAM_ADDRESS,
   TAccountOperator extends string | AccountMeta<string> = string,
   TAccountTreasury extends string | AccountMeta<string> = string,
   TAccountPolicy extends string | AccountMeta<string> = string,
@@ -168,7 +168,7 @@ export async function getAddAllowlistEntryInstructionAsync<
   TAccountSystemProgram extends string,
   TAccountEventAuthority extends string,
   TAccountProgram extends string,
-  TProgramAddress extends Address = typeof AGENT_RAILS_PROGRAM_ADDRESS,
+  TProgramAddress extends Address = typeof ASH_PROGRAM_ADDRESS,
 >(
   input: AddAllowlistEntryAsyncInput<
     TAccountOperator,
@@ -193,7 +193,7 @@ export async function getAddAllowlistEntryInstructionAsync<
   >
 > {
   // Program address.
-  const programAddress = config?.programAddress ?? AGENT_RAILS_PROGRAM_ADDRESS;
+  const programAddress = config?.programAddress ?? ASH_PROGRAM_ADDRESS;
 
   // Original accounts.
   const originalAccounts = {
@@ -290,7 +290,7 @@ export function getAddAllowlistEntryInstruction<
   TAccountSystemProgram extends string,
   TAccountEventAuthority extends string,
   TAccountProgram extends string,
-  TProgramAddress extends Address = typeof AGENT_RAILS_PROGRAM_ADDRESS,
+  TProgramAddress extends Address = typeof ASH_PROGRAM_ADDRESS,
 >(
   input: AddAllowlistEntryInput<
     TAccountOperator,
@@ -313,7 +313,7 @@ export function getAddAllowlistEntryInstruction<
   TAccountProgram
 > {
   // Program address.
-  const programAddress = config?.programAddress ?? AGENT_RAILS_PROGRAM_ADDRESS;
+  const programAddress = config?.programAddress ?? ASH_PROGRAM_ADDRESS;
 
   // Original accounts.
   const originalAccounts = {
@@ -367,7 +367,7 @@ export function getAddAllowlistEntryInstruction<
 }
 
 export type ParsedAddAllowlistEntryInstruction<
-  TProgram extends string = typeof AGENT_RAILS_PROGRAM_ADDRESS,
+  TProgram extends string = typeof ASH_PROGRAM_ADDRESS,
   TAccountMetas extends readonly AccountMeta[] = readonly AccountMeta[],
 > = {
   programAddress: Address<TProgram>;

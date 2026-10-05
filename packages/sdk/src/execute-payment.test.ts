@@ -1,6 +1,6 @@
 import type { Address } from "@solana/kit";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { AgentRailsError } from "./errors.js";
+import { AshError } from "./errors.js";
 import { executePayment } from "./execute-payment.js";
 import { resolvePaymentOutcome } from "./resolve.js";
 import { sendPayment } from "./send-payment.js";
@@ -30,7 +30,7 @@ function input() {
 }
 
 function indeterminate(signature?: string) {
-  return new AgentRailsError({
+  return new AshError({
     reasonCode: "UNRESOLVED_OUTCOME",
     message: "confirmation timed out",
     outcome: "indeterminate",
@@ -64,7 +64,7 @@ describe("executePayment", () => {
   // Only an indeterminate outcome is ambiguous. Everything else already knows whether
   // funds moved, and re-deriving it would risk turning a clean denial into a maybe.
   it("propagates a denial without trying to resolve it", async () => {
-    const denial = new AgentRailsError({
+    const denial = new AshError({
       reasonCode: "EXCEEDS_PER_TX_MAX",
       message: "over the per-tx max",
       outcome: "denied",
@@ -74,7 +74,7 @@ describe("executePayment", () => {
     expect(resolvePaymentOutcome).not.toHaveBeenCalled();
   });
 
-  it("propagates a non-AgentRails failure untouched", async () => {
+  it("propagates a non-Ash failure untouched", async () => {
     const boom = new TypeError("rpc exploded");
     vi.mocked(sendPayment).mockRejectedValue(boom);
     await expect(executePayment(input())).rejects.toBe(boom);
@@ -119,8 +119,8 @@ describe("executePayment", () => {
       detail: "Transaction failed on-chain: {}",
     } as never);
 
-    const error = (await executePayment(input()).catch((e: unknown) => e)) as AgentRailsError;
-    expect(error).toBeInstanceOf(AgentRailsError);
+    const error = (await executePayment(input()).catch((e: unknown) => e)) as AshError;
+    expect(error).toBeInstanceOf(AshError);
     // A revert creates no receipt, so this intent id is free to be reused — which is only
     // safe to say because resolution saw the failure, not because the send timed out.
     expect(error.outcome).toBe("denied");
@@ -138,7 +138,7 @@ describe("executePayment", () => {
       intentId: "07".repeat(16),
     } as never);
 
-    const error = (await executePayment(input()).catch((e: unknown) => e)) as AgentRailsError;
+    const error = (await executePayment(input()).catch((e: unknown) => e)) as AshError;
     expect(error.outcome).toBe("indeterminate");
     expect(error.intentId).toBe("07".repeat(16));
     expect(error.receipt).toBe("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");

@@ -1,5 +1,5 @@
 {
-  "name": "@agent-rails/dashboard",
+  "name": "@ash/dashboard",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -15,10 +15,10 @@
     "skills:sync": "node scripts/sync-builtin-skills.mjs && biome format --write src/lib/server/builtin-skills.ts"
   },
   "dependencies": {
-    "@agent-rails/cli": "workspace:*",
-    "@agent-rails/cloak": "workspace:*",
-    "@agent-rails/contract": "workspace:*",
-    "@agent-rails/sdk": "workspace:*",
+    "@ash/cli": "workspace:*",
+    "@ash/cloak": "workspace:*",
+    "@ash/contract": "workspace:*",
+    "@ash/sdk": "workspace:*",
     "@anthropic-ai/sdk": "^0.127.0",
     "@fontsource/inter": "^5.3.0",
     "@fontsource/jetbrains-mono": "^5.3.0",

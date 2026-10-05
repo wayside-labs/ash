@@ -72,7 +72,7 @@ export default function SettingsPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "agent-rails-dashboard.json";
+    a.download = "ash-dashboard.json";
     a.click();
     URL.revokeObjectURL(url);
     toast(t("common.configExported"));

@@ -1,3 +1,3 @@
-export type { AgentRailsToolsBackend } from "./handlers.js";
-export { AGENT_RAILS_TOOL_METADATA } from "./metadata.js";
-export { createAgentRailsTools } from "./tools.js";
+export type { AshToolsBackend } from "./handlers.js";
+export { ASH_TOOL_METADATA } from "./metadata.js";
+export { createAshTools } from "./tools.js";

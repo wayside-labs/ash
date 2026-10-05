@@ -1,9 +1,9 @@
 ---
-"@agent-rails/contract": patch
-"@agent-rails/client": patch
-"@agent-rails/sdk": patch
-"@agent-rails/mcp": patch
-"@agent-rails/cli": patch
+"@ash/contract": patch
+"@ash/client": patch
+"@ash/sdk": patch
+"@ash/mcp": patch
+"@ash/cli": patch
 ---
 
 First versioned release. The packages carry a licence, a repository, and `0.1.0` instead of

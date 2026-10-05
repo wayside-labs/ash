@@ -1,15 +1,15 @@
 {
-  "name": "@agent-rails/integrations",
+  "name": "@ash/integrations",
   "version": "0.1.0",
   "private": true,
-  "description": "stdio MCP connectors for Solana dApps — quotes and transaction building that compose with Agent Rails payments.",
+  "description": "stdio MCP connectors for Solana dApps — quotes and transaction building that compose with ASH payments.",
   "license": "Apache-2.0",
   "engines": {
     "node": ">=22.12"
   },
   "type": "module",
   "bin": {
-    "agent-rails-integrations": "./dist/cli.js"
+    "ash-integrations": "./dist/cli.js"
   },
   "scripts": {
     "build": "tsdown",
@@ -18,7 +18,7 @@
     "check:sodax": "tsdown && node scripts/sodax-builders-diff.mjs"
   },
   "dependencies": {
-    "@agent-rails/contract": "workspace:*",
+    "@ash/contract": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.30.0",
     "@sodax/sdk": "2.1.0",
     "zod": "^4.0.0"

@@ -1,7 +1,7 @@
 /**
  * The Metrics page's data contracts (docs/product/metrics-page.md §F).
  *
- * These live in the dashboard rather than in `@agent-rails/contract` on purpose:
+ * These live in the dashboard rather than in `@ash/contract` on purpose:
  * contract is the compatibility anchor every surface pins, and `MetricsSummary`
  * is a hosted-dashboard view shape with no counterpart on the CLI, the MCP
  * server or any adapter. Putting it upstream would let a UI change gate MCP
@@ -10,7 +10,7 @@
  * `PaymentRecord` is the one exception, and it is already there.
  */
 
-import { paymentRecordSchema } from "@agent-rails/contract/events";
+import { paymentRecordSchema } from "@ash/contract/events";
 import { z } from "zod";
 import { solanaClusterSchema } from "@/lib/schema";
 
@@ -60,7 +60,7 @@ export const metricsScopeSchema = z.object({
 });
 export type MetricsScope = z.infer<typeof metricsScopeSchema>;
 
-/** One amount, carried the way every other Agent Rails surface carries one. */
+/** One amount, carried the way every other ASH surface carries one. */
 export const metricAmountSchema = z.object({
   raw: baseUnitsSchema,
   mint: addressSchema,

@@ -14,7 +14,7 @@ import {
 } from "./audit.js";
 
 /**
- * The same constants `crates/agent-rails-policy/tests/audit_vectors.rs` uses, so the two
+ * The same constants `crates/ash-policy/tests/audit_vectors.rs` uses, so the two
  * implementations are pinned to one wire format rather than to each other's behaviour.
  * A byte array becomes an address here because that crate works in raw keys and this one
  * works in base58 — the encoding is the only difference between the two suites.
@@ -39,28 +39,28 @@ const link = (over: Partial<AuditLink> = {}): AuditLink => ({
 
 describe("preimage layout", () => {
   it("matches the lengths the program hashes", () => {
-    expect(DOMAIN_AUDIT.length).toBe(20);
-    expect(GENESIS_PREIMAGE_LEN).toBe(52);
-    expect(AUDIT_PREIMAGE_LEN).toBe(156);
+    expect(DOMAIN_AUDIT.length).toBe(12);
+    expect(GENESIS_PREIMAGE_LEN).toBe(44);
+    expect(AUDIT_PREIMAGE_LEN).toBe(148);
   });
 
   it("places every field where the Rust vectors say it is", () => {
     const prev = genesisAuditHead(SESSION);
     const preimage = auditPreimage(prev, link());
 
-    expect(preimage.subarray(0, 20)).toEqual(DOMAIN_AUDIT);
-    expect(preimage.subarray(20, 52)).toEqual(prev);
-    expect(preimage.subarray(52, 60)).toEqual(new Uint8Array([1, 0, 0, 0, 0, 0, 0, 0]));
-    expect(preimage.subarray(60, 76)).toEqual(INTENT_ID);
-    expect(preimage.subarray(76, 108)).toEqual(new Uint8Array(32).fill(3));
-    expect(preimage.subarray(108, 140)).toEqual(new Uint8Array(32).fill(9));
-    expect(preimage.subarray(148, 156)).toEqual(new Uint8Array([42, 0, 0, 0, 0, 0, 0, 0]));
+    expect(preimage.subarray(0, 12)).toEqual(DOMAIN_AUDIT);
+    expect(preimage.subarray(12, 44)).toEqual(prev);
+    expect(preimage.subarray(44, 52)).toEqual(new Uint8Array([1, 0, 0, 0, 0, 0, 0, 0]));
+    expect(preimage.subarray(52, 68)).toEqual(INTENT_ID);
+    expect(preimage.subarray(68, 100)).toEqual(new Uint8Array(32).fill(3));
+    expect(preimage.subarray(100, 132)).toEqual(new Uint8Array(32).fill(9));
+    expect(preimage.subarray(140, 148)).toEqual(new Uint8Array([42, 0, 0, 0, 0, 0, 0, 0]));
   });
 
   it("puts the session in the genesis preimage", () => {
     const preimage = genesisPreimage(SESSION);
-    expect(preimage.subarray(0, 20)).toEqual(DOMAIN_AUDIT);
-    expect(preimage.subarray(20, 52)).toEqual(new Uint8Array(32).fill(7));
+    expect(preimage.subarray(0, 12)).toEqual(DOMAIN_AUDIT);
+    expect(preimage.subarray(12, 44)).toEqual(new Uint8Array(32).fill(7));
   });
 });
 
@@ -72,14 +72,14 @@ describe("preimage layout", () => {
 describe("pinned digests", () => {
   it("agrees with the policy crate on the genesis head", () => {
     expect(auditHeadToHex(genesisAuditHead(SESSION))).toBe(
-      "d8790fb17ba65a49ca67334e1db9e59e8f968b169c60d484c6545ada311abebe",
+      "7a4ed8d8a19905354e9acd29e1ec655116c461592dbe033b14f45cd95bc41738",
     );
   });
 
   it("agrees with the policy crate on the first link", () => {
     const head = nextAuditHead(genesisAuditHead(SESSION), link());
     expect(auditHeadToHex(head)).toBe(
-      "d2e5d4062e81892ac36fddc6072b3a5856756412ed3b74163564fc2d73bebfc0",
+      "6626e677809c46289ef5bc8c0634e18a57b98adff307a5fd04bc4afc1a7e5b5b",
     );
   });
 });

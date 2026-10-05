@@ -9,7 +9,7 @@
  * One line, for the same reason as the sign-in statement in `use-auth.ts`: some wallets
  * refuse to display a multi-line message.
  */
-const PREFIX = "Link this wallet to Agent Rails account ";
+const PREFIX = "Link this wallet to ASH account ";
 const ISSUED = ". Issued ";
 const SUFFIX = ". This moves no funds.";
 

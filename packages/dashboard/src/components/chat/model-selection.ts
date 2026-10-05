@@ -2,7 +2,7 @@ import type { MessageKey } from "@/i18n";
 
 /**
  * The hint under a failed turn, keyed on the provider the user selected rather than on the
- * `x-agent-rails-mode` of an earlier reply. A request that dies before any headers — a 502
+ * `x-ash-mode` of an earlier reply. A request that dies before any headers — a 502
  * from the tunnel while the service restarts — never sets a mode, and a fallback of "check
  * your API key" would blame the one thing that was not wrong.
  */

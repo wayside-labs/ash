@@ -1,5 +1,5 @@
 {
-  "name": "@agent-rails/knowledge-mcp",
+  "name": "@ash/knowledge-mcp",
   "version": "0.1.0",
   "private": true,
   "description": "stdio MCP server: read-only search over the operator dashboard's knowledge base.",
@@ -9,7 +9,7 @@
   },
   "type": "module",
   "bin": {
-    "agent-rails-knowledge-mcp": "./dist/cli.js"
+    "ash-knowledge-mcp": "./dist/cli.js"
   },
   "scripts": {
     "build": "tsdown",
@@ -17,6 +17,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@ash/contract": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.30.0",
     "zod": "^4.0.0"
   },

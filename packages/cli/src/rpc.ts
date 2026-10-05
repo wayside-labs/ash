@@ -1,4 +1,4 @@
-import { stringifyRpcError } from "@agent-rails/sdk";
+import { stringifyRpcError } from "@ash/sdk";
 import {
   AccountRole,
   type Address,
@@ -113,7 +113,7 @@ export async function getBalance(rpc: Rpc, account: Address): Promise<bigint> {
  * This check exists because the failure it prevents is genuinely unreadable: with no
  * program at the address, `create_treasury` comes back as `ProgramAccountNotFound`, which
  * reads like a bug in the CLI rather than "you pointed this at a cluster that has no
- * Agent Rails on it". It is the single most likely first-run failure, since the program id
+ * ASH on it". It is the single most likely first-run failure, since the program id
  * is declared in the source long before it is deployed to any given cluster.
  */
 export async function assertProgramDeployed(
@@ -126,11 +126,11 @@ export async function assertProgramDeployed(
     .send();
 
   if (value == null) {
-    throw new CliError(`Agent Rails (${programAddress}) is not deployed at ${rpcUrl}`, {
+    throw new CliError(`ASH (${programAddress}) is not deployed at ${rpcUrl}`, {
       hint:
         "Point --rpc at a cluster where the program is deployed, or run a local surfnet:\n" +
         "  surfpool start -n devnet --no-studio\n" +
-        "  agent-rails init --rpc http://127.0.0.1:8899",
+        "  ash init --rpc http://127.0.0.1:8899",
     });
   }
   if (!value.executable) {

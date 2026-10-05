@@ -2,16 +2,16 @@
  * The `tx/*` builders are thin, and the risk in a thin builder is wiring: the wrong
  * instruction for the branch, the wrong PDA, or rent sent to the wrong account. These
  * assert the wiring against the generated client rather than restating the source —
- * `identifyAgentRailsInstruction` decodes the data the builder actually produced.
+ * `identifyAshInstruction` decodes the data the builder actually produced.
  */
 import {
-  AgentRailsInstruction,
+  AshInstruction,
   findEntryPda,
   findSolVaultPda,
   getCreateSessionInstructionDataDecoder,
-  identifyAgentRailsInstruction,
-} from "@agent-rails/client";
-import { AUTH_MODE_DIRECT_SIGNER, NATIVE_MINT } from "@agent-rails/contract";
+  identifyAshInstruction,
+} from "@ash/client";
+import { AUTH_MODE_DIRECT_SIGNER, NATIVE_MINT } from "@ash/contract";
 import {
   AccountRole,
   type Address,
@@ -99,9 +99,7 @@ describe("allowlist builders", () => {
     const [expected] = await findEntryPda({ policy, destinationOwner });
     expect(entry).toBe(expected);
     expect(accountFor(instruction, entry)).toBeDefined();
-    expect(identifyAgentRailsInstruction(instruction)).toBe(
-      AgentRailsInstruction.AddAllowlistEntry,
-    );
+    expect(identifyAshInstruction(instruction)).toBe(AshInstruction.AddAllowlistEntry);
   });
 
   it("requires the operator to sign, not the owner", async () => {
@@ -125,9 +123,7 @@ describe("allowlist builders", () => {
       policy,
       destinationOwner,
     });
-    expect(identifyAgentRailsInstruction(instruction)).toBe(
-      AgentRailsInstruction.RemoveAllowlistEntry,
-    );
+    expect(identifyAshInstruction(instruction)).toBe(AshInstruction.RemoveAllowlistEntry);
     const rent = accountFor(instruction, operator.address);
     expect(rent).toBeDefined();
     expect(accountFor(instruction, treasury)?.role).not.toBe(AccountRole.WRITABLE_SIGNER);
@@ -163,7 +159,7 @@ describe("buildSetCeilingInstruction", () => {
       allowAnyDestination: false,
       allowCreateDestinationAta: false,
     });
-    expect(identifyAgentRailsInstruction(instruction)).toBe(AgentRailsInstruction.SetCeiling);
+    expect(identifyAshInstruction(instruction)).toBe(AshInstruction.SetCeiling);
     expect(isSigner(accountFor(instruction, owner.address)?.role ?? -1)).toBe(true);
   });
 
@@ -185,13 +181,13 @@ describe("pause controls", () => {
   // cannot restart it, so the kill switch stays one-way for the role that isn't the owner.
   it("lets a guardian sign the pause", async () => {
     const instruction = await buildPauseInstruction(guardian, treasury);
-    expect(identifyAgentRailsInstruction(instruction)).toBe(AgentRailsInstruction.Pause);
+    expect(identifyAshInstruction(instruction)).toBe(AshInstruction.Pause);
     expect(isSigner(accountFor(instruction, guardian.address)?.role ?? -1)).toBe(true);
   });
 
   it("builds a distinct unpause instruction", async () => {
     const instruction = await buildUnpauseInstruction(owner, treasury);
-    expect(identifyAgentRailsInstruction(instruction)).toBe(AgentRailsInstruction.Unpause);
+    expect(identifyAshInstruction(instruction)).toBe(AshInstruction.Unpause);
     expect(isSigner(accountFor(instruction, owner.address)?.role ?? -1)).toBe(true);
   });
 });
@@ -224,7 +220,7 @@ describe("buildPolicyWriteInstruction", () => {
       args,
       exists: false,
     });
-    expect(identifyAgentRailsInstruction(instruction)).toBe(AgentRailsInstruction.CreatePolicy);
+    expect(identifyAshInstruction(instruction)).toBe(AshInstruction.CreatePolicy);
   });
 
   it("updates when the policy already exists", async () => {
@@ -236,7 +232,7 @@ describe("buildPolicyWriteInstruction", () => {
       args,
       exists: true,
     });
-    expect(identifyAgentRailsInstruction(instruction)).toBe(AgentRailsInstruction.UpdatePolicy);
+    expect(identifyAshInstruction(instruction)).toBe(AshInstruction.UpdatePolicy);
   });
 
   it("is signed by the operator on both branches", async () => {
@@ -266,7 +262,7 @@ describe("session builders", () => {
       label: "agent",
       expiresAt: 1_800_000_000n,
     });
-    expect(identifyAgentRailsInstruction(instruction)).toBe(AgentRailsInstruction.CreateSession);
+    expect(identifyAshInstruction(instruction)).toBe(AshInstruction.CreateSession);
 
     const data = getCreateSessionInstructionDataDecoder().decode(instruction.data);
     expect(data.authMode).toBe(AUTH_MODE_DIRECT_SIGNER);
@@ -287,7 +283,7 @@ describe("session builders", () => {
       policy,
       session,
     });
-    expect(identifyAgentRailsInstruction(instruction)).toBe(AgentRailsInstruction.RevokeSession);
+    expect(identifyAshInstruction(instruction)).toBe(AshInstruction.RevokeSession);
     expect(isSigner(accountFor(instruction, owner.address)?.role ?? -1)).toBe(true);
   });
 
@@ -299,7 +295,7 @@ describe("session builders", () => {
       session,
       rentDestination: owner.address,
     });
-    expect(identifyAgentRailsInstruction(instruction)).toBe(AgentRailsInstruction.CloseSession);
+    expect(identifyAshInstruction(instruction)).toBe(AshInstruction.CloseSession);
     expect(accountFor(instruction, owner.address)).toBeDefined();
   });
 });
@@ -327,7 +323,7 @@ describe("buildWithdrawInstruction", () => {
       amount: 1_000n,
       destination: destinationOwner,
     });
-    expect(identifyAgentRailsInstruction(instruction)).toBe(AgentRailsInstruction.Withdraw);
+    expect(identifyAshInstruction(instruction)).toBe(AshInstruction.Withdraw);
     expect(accountFor(instruction, destinationOwner)).toBeDefined();
     expect(isSigner(accountFor(instruction, owner.address)?.role ?? -1)).toBe(true);
   });

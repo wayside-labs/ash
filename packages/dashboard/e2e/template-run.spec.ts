@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { proofPackSchema, ZEC_MINT } from "@agent-rails/contract/template-run";
+import { proofPackSchema, ZEC_MINT } from "@ash/contract/template-run";
 import type { Page } from "@playwright/test";
 import { ADDR, expect, stubChain, stubChat, stubWallet, t, test } from "./fixtures";
 
@@ -16,7 +16,7 @@ const SOL_PAYEE = ADDR.agentSession;
 const ZEC_PAYEE = ADDR.treasury;
 
 const proposal = {
-  apiVersion: "agent-rails.template-run/v1",
+  apiVersion: "ash.template-run/v1",
   template: "builtin:cloak-private-payout",
   payees: [
     { label: "Vendor A", address: SOL_PAYEE, deliver: "SOL", amountSol: "0.02" },
@@ -90,7 +90,7 @@ test.describe("private payout card", () => {
     );
     await expect(card.getByTestId("template-run-funder")).toContainText(ADDR.wallet);
     // The raw block is not shown: it is the card.
-    await expect(page.getByText("agent-rails.template-run/v1")).toHaveCount(0);
+    await expect(page.getByText("ash.template-run/v1")).toHaveCount(0);
 
     const vendor = page.getByTestId("template-run-payee-0");
     await expect(vendor).toContainText("Vendor A");
@@ -221,11 +221,11 @@ test.describe("private payout card", () => {
     const stored = await page.evaluate(() =>
       Object.fromEntries(
         Object.keys(localStorage)
-          .filter((key) => key.startsWith("agent-rails.cloak"))
+          .filter((key) => key.startsWith("ash.cloak"))
           .map((key) => [key, localStorage.getItem(key)]),
       ),
     );
-    expect(Object.keys(stored)).toEqual([`agent-rails.cloak.fingerprint:${ADDR.wallet}`]);
+    expect(Object.keys(stored)).toEqual([`ash.cloak.fingerprint:${ADDR.wallet}`]);
     expect(Object.values(stored)[0]).toMatch(/^[0-9a-f]{16}$/);
   });
 

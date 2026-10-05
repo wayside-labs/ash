@@ -25,18 +25,18 @@ Nightly workflows (`e2e`, `kani`, `mutants`, `ui`) stay **out** of required chec
 
 ## Apply with GitHub CLI
 
-From a machine with `gh auth login` and admin on `wayside-labs/agent-rails`:
+From a machine with `gh auth login` and admin on `wayside-labs/ash`:
 
 ```bash
 # Inspect current rules (404 = none configured)
-gh api repos/wayside-labs/agent-rails/branches/main/protection
+gh api repos/wayside-labs/ash/branches/main/protection
 
 # Example: PR required, 2 reviews, code owners, strict status checks.
 # Replace context names with what GitHub lists under Settings → Branches → Required checks
 # after at least one successful CI run on a PR (often "rust", "typescript", "supply-chain").
 gh api \
   --method PUT \
-  repos/wayside-labs/agent-rails/branches/main/protection \
+  repos/wayside-labs/ash/branches/main/protection \
   -f required_status_checks='{"strict":true,"contexts":["rust","typescript","supply-chain"]}' \
   -f enforce_admins=true \
   -f required_pull_request_reviews='{"required_approving_review_count":2,"dismiss_stale_reviews":true,"require_code_owner_reviews":true}' \

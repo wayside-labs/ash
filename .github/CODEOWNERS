@@ -2,7 +2,7 @@
 # Target: two approving reviews on pull requests touching these paths (branch protection).
 
 /programs/                          @0xcf02
-/crates/agent-rails-policy/           @0xcf02
+/crates/ash-policy/           @0xcf02
 /idl/                                 @0xcf02
 /docs/spec/                           @0xcf02
 

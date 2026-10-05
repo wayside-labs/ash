@@ -1,4 +1,4 @@
-import type { PaymentRecord } from "@agent-rails/contract/events";
+import type { PaymentRecord } from "@ash/contract/events";
 import type { PaymentRecordView } from "./schema";
 
 export function mergeHistoryRecords(records: PaymentRecordView[]): PaymentRecordView[] {

@@ -1,7 +1,7 @@
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { fetchMaybeAgentSession, findSessionPda } from "@agent-rails/client";
-import { MAX_SESSION_TTL_SECONDS, MIN_WINDOW_SECONDS } from "@agent-rails/contract";
+import { fetchMaybeAgentSession, findSessionPda } from "@ash/client";
+import { MAX_SESSION_TTL_SECONDS, MIN_WINDOW_SECONDS } from "@ash/contract";
 import type { Address, KeyPairSigner } from "@solana/kit";
 import { readTreasurySnapshot } from "../chain/read.js";
 import type { GlobalCliOptions } from "../cli-options.js";
@@ -91,11 +91,11 @@ export async function runSessionCreate(options: SessionCreateOptions, ui: Ui): P
     if (!result.sent && !options.dryRun) return 130;
   }
 
-  const { AGENT_RAILS_PROGRAM_ADDRESS } = await import("@agent-rails/client");
+  const { ASH_PROGRAM_ADDRESS } = await import("@ash/client");
   const base = ctx.manifest ?? {
     version: 1 as const,
     rpcUrl: ctx.rpcUrl,
-    programId: AGENT_RAILS_PROGRAM_ADDRESS,
+    programId: ASH_PROGRAM_ADDRESS,
     treasury: ctx.treasury,
     solVault: snapshot.solVault,
     policy: ctx.policy,
@@ -243,7 +243,7 @@ export async function runSessionClose(options: SessionCloseOptions, ui: Ui): Pro
   const closable = account.data.revoked || Number(account.data.expiresAt) <= now;
   if (!closable) {
     throw new CliError("Session must be revoked or expired before close", {
-      hint: "agent-rails session revoke --session <pda>",
+      hint: "ash session revoke --session <pda>",
     });
   }
 

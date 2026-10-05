@@ -5,7 +5,7 @@
 // disagreement means the connector — or the @sodax/sdk it wraps — drifted from what SODAX serves
 // today. Run it before bumping @sodax/*, and whenever sodax tools start refusing tokens or chains.
 //
-//   pnpm --filter @agent-rails/integrations check:sodax
+//   pnpm --filter @ash/integrations check:sodax
 //
 // Read and unsigned-build tools only: nothing is signed or broadcast. Needs network access; not
 // part of `pnpm test`. Exits non-zero when any check fails.

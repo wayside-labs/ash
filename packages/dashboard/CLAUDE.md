@@ -23,7 +23,7 @@ lifecycle (wave 1), and the treasury bootstrap (wave 2A).
 - **Secrets leave the server masked or not at all.** `maskState` is applied on every read
   *and* on the echo of a create. Two Playwright tests watch the wire for the raw value.
 - Two storage backends behind one switch: Supabase when the public env vars are set,
-  `~/.agent-rails/dashboard.json` otherwise. The JSON branch cannot work on serverless — see
+  `~/.ash/dashboard.json` otherwise. The JSON branch cannot work on serverless — see
   `docs/runbooks/deploy-vercel.md`.
 
 ### Wave 1 scope (ADR-021)
@@ -34,7 +34,7 @@ lifecycle (wave 1), and the treasury bootstrap (wave 2A).
 
 ### Wave 2A scope (ADR-021 amendment)
 
-- `POST /api/solana/bootstrap/{plan,build-step}` run `@agent-rails/cli/bootstrap`'s own
+- `POST /api/solana/bootstrap/{plan,build-step}` run `@ash/cli/bootstrap`'s own
   `buildStages` — never re-implement a stage here; change it in `packages/cli` so `init`
   changes with it. `build-step` returns the next stage the chain lacks, so the client loop
   is resumable by construction.
@@ -62,19 +62,19 @@ lifecycle (wave 1), and the treasury bootstrap (wave 2A).
 Two layers, both offline:
 
 ```bash
-pnpm --filter @agent-rails/dashboard test        # vitest: route handlers, guards, pure helpers
+pnpm --filter @ash/dashboard test        # vitest: route handlers, guards, pure helpers
 scripts/verify.sh ui                             # playwright: the browser against a real Next server
 ```
 
 `scripts/verify.sh ui` builds the workspace dependencies, then `next build && next start` on
-port 3210. For iteration, `PW_DEV=1 pnpm --filter @agent-rails/dashboard test:e2e` swaps in
+port 3210. For iteration, `PW_DEV=1 pnpm --filter @ash/dashboard test:e2e` swaps in
 the dev server; leaving one running on 3210 is reused rather than restarted.
 
 ### What the UI suite may and may not touch
 
 - **No cluster.** `e2e/fixtures.ts` fulfils every `/api/solana/*` call inside the browser.
   A test that needs a validator belongs in `packages/e2e`, on surfpool.
-- **Not your store.** `AGENT_RAILS_HOME` points at `packages/dashboard/.playwright/home`, and
+- **Not your store.** `ASH_HOME` points at `packages/dashboard/.playwright/home`, and
   the `freshStore` fixture resets it before each test. Never remove that redirect: the suite
   deletes state, and the default path is the operator's own workflows and API keys.
 - **No Supabase.** The config blanks the public env vars so `store.ts` takes the JSON branch

@@ -3,13 +3,13 @@ import type {
   McpExecutePaymentInput,
   McpGetPaymentStatusInput,
   McpRequestLimitIncreaseInput,
-} from "@agent-rails/contract";
+} from "@ash/contract";
 
 /**
- * In-process backend for Agent Rails tools. Wire these to `@agent-rails/mcp` handlers,
+ * In-process backend for ASH tools. Wire these to `@ash/mcp` handlers,
  * a test double, or your own RPC orchestration — the adapter only maps to Vercel AI SDK.
  */
-export type AgentRailsToolsBackend = {
+export type AshToolsBackend = {
   getSession: () => Promise<unknown>;
   getPolicy: () => Promise<unknown>;
   listDestinations: () => Promise<unknown>;

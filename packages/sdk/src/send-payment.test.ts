@@ -1,4 +1,4 @@
-import { AGENT_RAILS_PROGRAM_ADDRESS } from "@agent-rails/client";
+import { ASH_PROGRAM_ADDRESS } from "@ash/client";
 import {
   appendTransactionMessageInstruction,
   blockhash,
@@ -27,7 +27,7 @@ async function mockTransactionMessage() {
     (message) =>
       appendTransactionMessageInstruction(
         {
-          programAddress: AGENT_RAILS_PROGRAM_ADDRESS,
+          programAddress: ASH_PROGRAM_ADDRESS,
           accounts: [],
           data: new Uint8Array(16),
         },

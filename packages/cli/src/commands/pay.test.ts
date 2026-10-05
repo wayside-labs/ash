@@ -6,7 +6,7 @@
  * policy may well allow. The rest of the handler is RPC orchestration and belongs on
  * litesvm (ADR-008 layer 4), which `packages/cli` has not reached yet.
  */
-import { NATIVE_MINT } from "@agent-rails/contract";
+import { NATIVE_MINT } from "@ash/contract";
 import { address } from "@solana/kit";
 import { describe, expect, it } from "vitest";
 import type { MintCeilingView } from "../chain/read.js";

@@ -1,6 +1,6 @@
 # Governance
 
-How Agent Rails is maintained, released, and upgraded. Normative decisions live in **`docs/adr/`** (immutable once accepted). This file describes process; ADRs describe decisions.
+How ASH is maintained, released, and upgraded. Normative decisions live in **`docs/adr/`** (immutable once accepted). This file describes process; ADRs describe decisions.
 
 ---
 
@@ -10,7 +10,7 @@ How Agent Rails is maintained, released, and upgraded. Normative decisions live 
 |---|---|
 | **Maintainers** | Merge policy, cut releases, hold or custody upgrade authority per trust phase, respond to security reports |
 | **Contributors** | Propose changes via pull request; DCO sign-off (Apache-2.0, ADR-011) |
-| **Users** | Verify on-chain trust state (`agent-rails doctor`, program hash); choose trust phase before depositing |
+| **Users** | Verify on-chain trust state (`ash doctor`, program hash); choose trust phase before depositing |
 
 There is no on-chain DAO for this repository (ADR-011 option D rejected).
 
@@ -29,8 +29,8 @@ There is no on-chain DAO for this repository (ADR-011 option D rejected).
 
 `CODEOWNERS` requires maintainer review for:
 
-- `programs/agent_rails/` — custody and account constraints  
-- `crates/agent-rails-policy/` — limit arithmetic and audit hash  
+- `programs/ash/` — custody and account constraints  
+- `crates/ash-policy/` — limit arithmetic and audit hash  
 - `idl/` and `docs/spec/` — client and indexer compatibility  
 
 **ADR-011 target:** two approving reviews for program and policy changes. Enable via GitHub branch protection on `main` (required reviewers + `CODEOWNERS`). Procedure: `docs/runbooks/github-branch-protection.md`. Snapshot: `audits/internal/branch-protection-2026-09-29.md`.
@@ -44,7 +44,7 @@ Agent-assisted contributions: see `CONTRIBUTING.md` no-go zones. High-risk paths
 | Artifact | Versioning |
 |---|---|
 | On-chain program | `PROGRAM_VERSION` / account `version` field; one program id per major line (ADR-011) |
-| TypeScript packages | Independent semver via Changesets; `@agent-rails/contract` is the compatibility anchor |
+| TypeScript packages | Independent semver via Changesets; `@ash/contract` is the compatibility anchor |
 | Dashboard | Versioned in repo; excluded from npm publish (`changeset` ignore) |
 
 **Release workflow:** `.github/workflows/release.yml` runs the TypeScript gate; npm publish waits on trust phase and `NPM_TOKEN` (see ADR-011 implementation notes).

@@ -36,7 +36,7 @@ export function addGlobalOptions(command: Command): Command {
     .addOption(
       new Option("--wallet <path>", "Operator or owner keypair").default(DEFAULT_WALLET_PATH),
     )
-    .addOption(new Option("--out <dir>", "Manifest and key directory").default(".agent-rails"))
+    .addOption(new Option("--out <dir>", "Manifest and key directory").default(".ash"))
     .addOption(new Option("--treasury <address>", "Treasury PDA (default: manifest)"))
     .addOption(new Option("--policy <address>", "Policy PDA (default: manifest)"))
     .addOption(

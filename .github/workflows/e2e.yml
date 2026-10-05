@@ -63,7 +63,7 @@ jobs:
       - run: echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
 
       # The suite deploys this onto the surfnet on every run; it is the artifact under test.
-      - run: cargo build-sbf --manifest-path programs/agent_rails/Cargo.toml
+      - run: cargo build-sbf --manifest-path programs/ash/Cargo.toml
 
       # Pinned by version and checksum, for the reason every action here is pinned by SHA,
       # and downloaded rather than piped into a shell. The first version of this step was

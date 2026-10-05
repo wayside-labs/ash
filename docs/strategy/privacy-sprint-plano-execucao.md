@@ -35,7 +35,7 @@ você (chat) ── "pague 0,02 SOL ao fornecedor X e 0,02 SOL em ZEC à Y" ─�
   categoria "ZEC na Solana" — e é a ideia nº 02 da própria página do desafio.
 - **O modelo só propõe.** Não assina, não vê chave nem nota, não executa. É o mesmo padrão do
   cartão de conector que já existe (`connector-card.tsx`), não um laço de tools.
-- **Fora do cofre, fora do programa.** Nada muda em `programs/agent_rails`, nada entra em
+- **Fora do cofre, fora do programa.** Nada muda em `programs/ash`, nada entra em
   `packages/mcp` e o agente continua com sete tools. É um fluxo de "mesa" (ADR-025).
 - **Fundos próprios, valores pequenos.** ~0,16 SOL passam por duas carteiras descartáveis suas
   e quase tudo volta para carteiras suas. O custo real são as taxas de saída: ~US$ 2 por
@@ -56,7 +56,7 @@ Escada de corte (se o tempo apertar, corta de baixo para cima):
 | Regra da página | Como cumprimos | Quem |
 |---|---|---|
 | **Elegibilidade:** participa do Hackathon da Colosseum **e** é do the/Garage; uma submissão por time | Confirmar a participação no the/Garage. Se não for, a trilha não vale e paramos aqui | você |
-| **Código:** repo no GitHub, público ou com acesso para os jurados; indicar branch/PR/intervalo feito no sprint | PR `feat/cloak-private-payout` → `main`; intervalo `55d707c..HEAD` (55d707c = `main` hoje). **Não consegui verificar a visibilidade do repo:** o `gh` desta máquina (conta `0xcf07`) não resolve `wayside-labs/agent-rails`, o que sugere privado ou conta sem acesso. Torne público ou dê acesso aos jurados | você |
+| **Código:** repo no GitHub, público ou com acesso para os jurados; indicar branch/PR/intervalo feito no sprint | PR `feat/cloak-private-payout` → `main`; intervalo `55d707c..HEAD` (55d707c = `main` hoje). **Não consegui verificar a visibilidade do repo:** o `gh` desta máquina (conta `0xcf07`) não resolve `wayside-labs/ash`, o que sugere privado ou conta sem acesso. Torne público ou dê acesso aos jurados | você |
 | **Prova:** assinatura na mainnet (Cloak); transação Zcash; ou app publicado | ≥3 assinaturas de mainnet no pacote de prova (shield, saque SOL, swap ZEC), com links e verificador. L3 acrescenta um txid Zcash | execução |
 | **Vídeo ≤ 2 min** | Roteiro na §13; você grava | você |
 | **Texto de privacidade ≤ 300 palavras** (o que fica escondido, de quem, o que se ganha) | Rascunho na §13: **293 palavras**, com o que **não** fica escondido | eu |
@@ -136,9 +136,9 @@ fechado): na VPS isso impede que a flag vire porta de entrada para fundos de ter
 (60/min). O navegador chama RPC, relay e Jupiter direto (todos com CORS aberto, exceto o RPC
 público — daí o pré-requisito do RPC dedicado).
 
-**D8 — Pacote novo `@agent-rails/cloak` com portas injetadas** (SDK, carteira, relógio,
+**D8 — Pacote novo `@ash/cloak` com portas injetadas** (SDK, carteira, relógio,
 emissão de eventos), dependências pesadas isoladas, `dist` + `transpilePackages`. Os schemas
-ficam em `@agent-rails/contract/template-run` (**subpath**: a raiz importa `node:crypto` e só
+ficam em `@ash/contract/template-run` (**subpath**: a raiz importa `node:crypto` e só
 o `next build` pega).
 
 **D9 — MCP `mcp cloak` keyless só no L3.** Planejar/cotar/verificar, sem chave (padrão ADR-025).
@@ -178,7 +178,7 @@ Exemplo da demo: 0,02 SOL em SOL e 0,02 SOL em ZEC, os dois para uma carteira no
 
 ```json
 {
-  "apiVersion": "agent-rails.template-run/v1",
+  "apiVersion": "ash.template-run/v1",
   "template": "builtin:cloak-private-payout",
   "payees": [
     { "label": "Fornecedor A", "address": "<endereço Solana>", "deliver": "SOL", "amountSol": "0.02" },
@@ -220,7 +220,7 @@ exige ≥ 9 blocos válidos antes de gravar o vídeo. Se falhar, ajusta o prompt
 | Caminho | Para quê |
 |---|---|
 | `packages/contract/src/template-run.ts` (+ export e entrada do tsdown) | schemas, fence, `extractTemplateRunProposals`, eventos, pacote de prova |
-| `packages/cloak/` (`@agent-rails/cloak`, privado) | plano e taxas, política, derivação de chaves, runner com retomada, relatório/CSV, adaptador do SDK (import dinâmico), adaptador Node, `smoke`, `verify` |
+| `packages/cloak/` (`@ash/cloak`, privado) | plano e taxas, política, derivação de chaves, runner com retomada, relatório/CSV, adaptador do SDK (import dinâmico), adaptador Node, `smoke`, `verify` |
 | `packages/dashboard/src/components/chat/template-run-card.tsx` | cartão de aprovação |
 | `packages/dashboard/src/hooks/use-template-run.ts` | liga cartão, carteira e runner |
 | `packages/dashboard/src/lib/templates/runners/cloak-private-payout.ts` | registro: id → schema → plano → execução (consulta com `Object.hasOwn`) |
@@ -272,7 +272,7 @@ exige ≥ 9 blocos válidos antes de gravar o vídeo. Se falhar, ajusta o prompt
 
 - **Contract:** schema e fence, incluindo adversariais (cerca dentro de cerca, JSON gigante,
   base58 inválido, duplicata, pagador = pagamento, valores fora do teto).
-- **`@agent-rails/cloak`:** taxas com paridade contra `calculateFeeBigint`; política; runner com
+- **`@ash/cloak`:** taxas com paridade contra `calculateFeeBigint`; política; runner com
   SDK falso e **falha injetada depois de cada passo** (retomada sem reenviar saque); derivação
   determinística; relatório sem segredo.
 - **Dashboard (vitest):** cartão, prompt (sem exemplo parseável; seção presente nas duas
@@ -360,7 +360,7 @@ de privacidade em português.
 
 ### Texto de privacidade (294 palavras)
 
-**O que fica escondido.** Hoje, quando um agente de IA paga fornecedores ou contribuidores com dinheiro da empresa, cada pagamento fica público na Solana: quem recebeu, quanto e quando. Com o template *Private payout desk* do Agent Rails, o operador pede no chat "pague 0,02 SOL ao fornecedor A e 0,02 SOL em ZEC ao contribuidor B". O dinheiro entra no pool da Cloak e sai para endereços novos. Quem olha a cadeia vê um depósito e saques de um pool compartilhado, mas não qual virou qual. O swap privado entrega ZEC (mint verificado) a um endereço sem vínculo direto com a carteira que financiou.
+**O que fica escondido.** Hoje, quando um agente de IA paga fornecedores ou contribuidores com dinheiro da empresa, cada pagamento fica público na Solana: quem recebeu, quanto e quando. Com o template *Private payout desk* do ASH, o operador pede no chat "pague 0,02 SOL ao fornecedor A e 0,02 SOL em ZEC ao contribuidor B". O dinheiro entra no pool da Cloak e sai para endereços novos. Quem olha a cadeia vê um depósito e saques de um pool compartilhado, mas não qual virou qual. O swap privado entrega ZEC (mint verificado) a um endereço sem vínculo direto com a carteira que financiou.
 
 **De quem.** De observadores da cadeia: concorrentes e analistas on-chain que hoje mapeiam fornecedores e folha de pagamento a partir de um único endereço. Não esconde valores nem horários nas bordas; com pouco movimento no pool, depósito e saques podem ser casados por valor e horário. Não esconde nada da Cloak: o relay autentica a carteira e recebe a viewing key, que para estas notas reconstrói as chaves delas; por isso os tetos. O ZEC entregue é um token comum até ser blindado numa carteira Zcash. Não prometemos invisibilidade contra um adversário determinado.
 

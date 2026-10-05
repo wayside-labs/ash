@@ -1,9 +1,9 @@
 import {
-  AGENT_RAILS_PROGRAM_ADDRESS,
+  ASH_PROGRAM_ADDRESS,
   fetchMaybeTreasury,
   findPolicyPda,
   findSolVaultPda,
-} from "@agent-rails/client";
+} from "@ash/client";
 import { type Address, address, type KeyPairSigner } from "@solana/kit";
 import type { GlobalCliOptions } from "./cli-options.js";
 import { CliError } from "./errors.js";
@@ -32,7 +32,7 @@ export async function loadContext(
   const outDir = expandPath(options.out);
   const rpcUrl = options.rpc;
   const rpc = connect(rpcUrl);
-  await assertProgramDeployed(rpc, AGENT_RAILS_PROGRAM_ADDRESS, rpcUrl);
+  await assertProgramDeployed(rpc, ASH_PROGRAM_ADDRESS, rpcUrl);
   const wallet = await loadWallet(options.wallet);
 
   const manifestFile = manifestPath(outDir, rpcUrl);
@@ -40,7 +40,7 @@ export async function loadContext(
   if (requireManifest && !manifest && !options.treasury) {
     throw new CliError("No treasury found for this cluster", {
       hint:
-        `Run \`agent-rails init --rpc ${rpcUrl}\` first, or pass --treasury <address>. ` +
+        `Run \`ash init --rpc ${rpcUrl}\` first, or pass --treasury <address>. ` +
         `Manifest path: ${manifestFile}`,
     });
   }

@@ -1,4 +1,4 @@
-import { connectorBundleSchema } from "@agent-rails/contract/connector-bundle";
+import { connectorBundleSchema } from "@ash/contract/connector-bundle";
 import type {
   DashboardState,
   Profile,

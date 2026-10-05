@@ -1,18 +1,18 @@
 {
   "mcpServers": {
-    "agent-rails": {
+    "ash": {
       "command": "npx",
-      "args": ["-y", "@agent-rails/mcp"],
+      "args": ["-y", "@ash/mcp"],
       "env": {
-        "AGENT_RAILS_RPC": "https://api.devnet.solana.com",
-        "AGENT_RAILS_SESSION": "<session PDA from `session create --label rebal-<proposal-id>`>",
-        "AGENT_RAILS_SIGNER": "~/.agent-rails/yield/rebal-<proposal-id>-session-keypair.json",
-        "AGENT_RAILS_FEE_PAYER": "~/.agent-rails/yield/fee-payer-keypair.json",
-        "AGENT_RAILS_MINT_ALIASES": "USDC:<MOCK_USDC_MINT>",
-        "AGENT_RAILS_SECURITY": "strict",
-        "AGENT_RAILS_MAX_PAYMENTS_PER_MINUTE": "2",
-        "AGENT_RAILS_SINK": "~/.agent-rails/yield/payments.jsonl",
-        "AGENT_RAILS_ALERT_WEBHOOK_URL": "<optional: https webhook for payment_denied>"
+        "ASH_RPC": "https://api.devnet.solana.com",
+        "ASH_SESSION": "<session PDA from `session create --label rebal-<proposal-id>`>",
+        "ASH_SIGNER": "~/.ash/yield/rebal-<proposal-id>-session-keypair.json",
+        "ASH_FEE_PAYER": "~/.ash/yield/fee-payer-keypair.json",
+        "ASH_MINT_ALIASES": "USDC:<MOCK_USDC_MINT>",
+        "ASH_SECURITY": "strict",
+        "ASH_MAX_PAYMENTS_PER_MINUTE": "2",
+        "ASH_SINK": "~/.ash/yield/payments.jsonl",
+        "ASH_ALERT_WEBHOOK_URL": "<optional: https webhook for payment_denied>"
       }
     }
   }

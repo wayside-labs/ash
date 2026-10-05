@@ -26,7 +26,7 @@ export type IntegrationStatus = "live" | "planned" | "catalog-only";
 export type SolanaDappIntegration = {
   kind: IntegrationKind;
   status: IntegrationStatus;
-  /** One line for operators: how Agent Rails composes with this protocol today. */
+  /** One line for operators: how ASH composes with this protocol today. */
   hint: string;
 };
 
@@ -65,7 +65,7 @@ export const SOLANA_DAPPS: readonly SolanaDapp[] = [
     integration: {
       kind: "mcp-jupiter",
       status: "live",
-      hint: "Quote and build swap transactions via @agent-rails/integrations; fund moves through execute_payment to a desk wallet or native allowance.",
+      hint: "Quote and build swap transactions via @ash/integrations; fund moves through execute_payment to a desk wallet or native allowance.",
     },
   },
   {
@@ -77,7 +77,7 @@ export const SOLANA_DAPPS: readonly SolanaDapp[] = [
     integration: {
       kind: "mcp-sodax",
       status: "live",
-      hint: "Cross-network swaps, bridge, money market and leverage-yield vaults via @agent-rails/integrations (mcp sodax): unsigned intents for a desk wallet, recipients limited to the operator's SODAX_ALLOWED_DESTINATIONS. Mainnet only.",
+      hint: "Cross-network swaps, bridge, money market and leverage-yield vaults via @ash/integrations (mcp sodax): unsigned intents for a desk wallet, recipients limited to the operator's SODAX_ALLOWED_DESTINATIONS. Mainnet only.",
     },
   },
   {
@@ -125,7 +125,7 @@ export const SOLANA_DAPPS: readonly SolanaDapp[] = [
     integration: {
       kind: "delegation",
       status: "planned",
-      hint: "Delegated accounts: protocol holds custody; Agent Rails governs allocation into the mandate wallet.",
+      hint: "Delegated accounts: protocol holds custody; ASH governs allocation into the mandate wallet.",
     },
   },
 ] as const;

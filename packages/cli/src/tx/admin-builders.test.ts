@@ -4,12 +4,12 @@
  * instruction or a rent destination pointed at the wrong account fails here.
  */
 import {
-  AgentRailsInstruction,
+  AshInstruction,
   findSolVaultPda,
   getSetRolesInstructionDataDecoder,
-  identifyAgentRailsInstruction,
-} from "@agent-rails/client";
-import { NATIVE_MINT } from "@agent-rails/contract";
+  identifyAshInstruction,
+} from "@ash/client";
+import { NATIVE_MINT } from "@ash/contract";
 import {
   AccountRole,
   type Address,
@@ -60,7 +60,7 @@ describe("guardians", () => {
       treasury,
       guardian: other,
     });
-    expect(identifyAgentRailsInstruction(instruction)).toBe(AgentRailsInstruction.AddGuardian);
+    expect(identifyAshInstruction(instruction)).toBe(AshInstruction.AddGuardian);
     const signers = instruction.accounts?.filter(
       (account) =>
         account.role === AccountRole.READONLY_SIGNER ||
@@ -71,7 +71,7 @@ describe("guardians", () => {
 
   it("builds remove_guardian for the same address", async () => {
     const instruction = await buildRemoveGuardianInstruction({ owner, treasury, guardian: other });
-    expect(identifyAgentRailsInstruction(instruction)).toBe(AgentRailsInstruction.RemoveGuardian);
+    expect(identifyAshInstruction(instruction)).toBe(AshInstruction.RemoveGuardian);
   });
 });
 
@@ -106,7 +106,7 @@ describe("remove_mint", () => {
       mint: address(NATIVE_MINT),
       solVault,
     });
-    expect(identifyAgentRailsInstruction(instruction)).toBe(AgentRailsInstruction.RemoveMint);
+    expect(identifyAshInstruction(instruction)).toBe(AshInstruction.RemoveMint);
     expect(instruction.accounts?.map((account) => account.address)).toContain(solVault);
   });
 
@@ -131,7 +131,7 @@ describe("remove_mint", () => {
 describe("close", () => {
   it("refunds policy rent to the signer by default", async () => {
     const instruction = await buildClosePolicyInstruction({ operator, treasury, policy });
-    expect(identifyAgentRailsInstruction(instruction)).toBe(AgentRailsInstruction.ClosePolicy);
+    expect(identifyAshInstruction(instruction)).toBe(AshInstruction.ClosePolicy);
     expect(instruction.accounts?.map((account) => account.address)).toContain(operator.address);
   });
 
@@ -147,7 +147,7 @@ describe("close", () => {
 
   it("builds close_treasury with the sol vault", async () => {
     const instruction = await buildCloseTreasuryInstruction({ owner, treasury, solVault });
-    expect(identifyAgentRailsInstruction(instruction)).toBe(AgentRailsInstruction.CloseTreasury);
+    expect(identifyAshInstruction(instruction)).toBe(AshInstruction.CloseTreasury);
     expect(instruction.accounts?.map((account) => account.address)).toContain(solVault);
   });
 
@@ -159,7 +159,7 @@ describe("close", () => {
       receipt: policy,
       feePayer: other,
     });
-    expect(identifyAgentRailsInstruction(instruction)).toBe(AgentRailsInstruction.CloseReceipt);
+    expect(identifyAshInstruction(instruction)).toBe(AshInstruction.CloseReceipt);
     const accounts = instruction.accounts?.map((account) => account.address) ?? [];
     expect(accounts).toContain(other);
     const signers = instruction.accounts?.filter(

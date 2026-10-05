@@ -1,10 +1,10 @@
 import {
-  AGENT_RAILS_PROGRAM_ADDRESS,
+  ASH_PROGRAM_ADDRESS,
   getCloseSessionInstruction,
   getCreateSessionInstruction,
   getRevokeSessionInstruction,
-} from "@agent-rails/client";
-import { AUTH_MODE_DIRECT_SIGNER } from "@agent-rails/contract";
+} from "@ash/client";
+import { AUTH_MODE_DIRECT_SIGNER } from "@ash/contract";
 import type { Address, TransactionSigner } from "@solana/kit";
 import { findEventAuthority } from "../bootstrap.js";
 import { encodeFixedName } from "../names.js";
@@ -25,7 +25,7 @@ export async function buildCreateSessionInstruction(input: {
     policy: input.policy,
     session: input.session,
     eventAuthority,
-    program: AGENT_RAILS_PROGRAM_ADDRESS,
+    program: ASH_PROGRAM_ADDRESS,
     sessionKey: input.sessionKey,
     label: encodeFixedName(input.label, "--label"),
     expiresAt: input.expiresAt,
@@ -46,7 +46,7 @@ export async function buildRevokeSessionInstruction(input: {
     policy: input.policy,
     session: input.session,
     eventAuthority,
-    program: AGENT_RAILS_PROGRAM_ADDRESS,
+    program: ASH_PROGRAM_ADDRESS,
   });
 }
 
@@ -65,6 +65,6 @@ export async function buildCloseSessionInstruction(input: {
     session: input.session,
     rentDestination: input.rentDestination,
     eventAuthority,
-    program: AGENT_RAILS_PROGRAM_ADDRESS,
+    program: ASH_PROGRAM_ADDRESS,
   });
 }

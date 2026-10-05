@@ -4,8 +4,8 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from agent_rails_connector.declarative import ConnectorBundle, resolve_env, resolve_placeholders
-from agent_rails_connector.loaders import UnsupportedFormat, import_text, load_path
+from ash_connector.declarative import ConnectorBundle, resolve_env, resolve_placeholders
+from ash_connector.loaders import UnsupportedFormat, import_text, load_path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 CONNECTORS = REPO_ROOT / "examples" / "connectors"
@@ -70,6 +70,6 @@ def test_placeholders_resolve_inside_strings() -> None:
 def test_env_is_limited_to_declared_names() -> None:
     bundle = load_path(CONNECTORS / "sample-weather.yaml")
     env = resolve_env(
-        bundle, {"WEATHER_API_KEY": "k", "AGENT_RAILS_SIGNER": "secret", "HOME": "/root"}
+        bundle, {"WEATHER_API_KEY": "k", "ASH_SIGNER": "secret", "HOME": "/root"}
     )
     assert env == {"WEATHER_API_KEY": "k"}

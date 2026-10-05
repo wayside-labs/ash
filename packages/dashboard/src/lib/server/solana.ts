@@ -2,12 +2,12 @@ import {
   AUTH_MODE_DIRECT_SIGNER,
   MAX_SESSION_TTL_SECONDS,
   MIN_WINDOW_SECONDS,
-} from "@agent-rails/contract";
-import { NATIVE_MINT } from "@agent-rails/contract/constants";
-import { knownMintSymbol } from "@agent-rails/contract/mints";
+} from "@ash/contract";
+import { NATIVE_MINT } from "@ash/contract/constants";
+import { knownMintSymbol } from "@ash/contract/mints";
 import {
-  AGENT_RAILS_PROGRAM_ADDRESS,
   AGENT_SESSION_DISCRIMINATOR,
+  ASH_PROGRAM_ADDRESS,
   ASSOCIATED_TOKEN_PROGRAM_ADDRESS,
   decodeAgentSession,
   decodePolicy,
@@ -24,7 +24,7 @@ import {
   getWithdrawInstructionAsync,
   loadDestinationIndex,
   POLICY_DISCRIMINATOR,
-} from "@agent-rails/sdk";
+} from "@ash/sdk";
 import {
   AccountRole,
   type Address,
@@ -203,7 +203,7 @@ const TREASURY_FIELD_OFFSET = 10n;
  */
 export async function fetchTreasury(rpc: Rpc, treasuryPk: Address) {
   const info = await rpc.getAccountInfo(treasuryPk, { encoding: "base64" }).send();
-  if (!info.value || info.value.owner !== AGENT_RAILS_PROGRAM_ADDRESS) return null;
+  if (!info.value || info.value.owner !== ASH_PROGRAM_ADDRESS) return null;
   return decodeTreasury({
     address: treasuryPk,
     data: new Uint8Array(base64.encode(info.value.data[0])),
@@ -277,7 +277,7 @@ const SESSION_DISCRIMINATOR_B58 = base58.decode(AGENT_SESSION_DISCRIMINATOR) as 
 
 async function programAccounts(rpc: Rpc, discriminator: Base58EncodedBytes, treasury: Address) {
   return rpc
-    .getProgramAccounts(AGENT_RAILS_PROGRAM_ADDRESS, {
+    .getProgramAccounts(ASH_PROGRAM_ADDRESS, {
       encoding: "base64",
       filters: [
         { memcmp: { offset: 0n, bytes: discriminator, encoding: "base58" } },
@@ -922,7 +922,7 @@ async function buildSolWithdrawInstruction(
     mint: address(NATIVE_MINT),
     destination: walletPk,
     eventAuthority,
-    program: AGENT_RAILS_PROGRAM_ADDRESS,
+    program: ASH_PROGRAM_ADDRESS,
     amount,
   });
 }
@@ -1030,7 +1030,7 @@ async function buildTokenDeposit(
   // A deposit into a mint the treasury never added is money the agent path
   // cannot spend: `execute_payment` asserts the `MintConfig`, so the funds
   // would sit there reachable only by `withdraw`. The owner adds the mint with
-  // `agent-rails init --mint <mint>` first.
+  // `ash init --mint <mint>` first.
   if (!meta.configured) throw new SolanaRequestError("api.error.mintNotConfigured");
   // ADR-014: under a native allowance the payment path pulls from the owner's
   // own wallet, so the vault ATA is not the account that funds anything.
@@ -1110,7 +1110,7 @@ async function buildTokenWithdraw(
       destination: walletAta,
       tokenProgram: meta.tokenProgram,
       eventAuthority,
-      program: AGENT_RAILS_PROGRAM_ADDRESS,
+      program: ASH_PROGRAM_ADDRESS,
       amount: input.amount,
     }),
   );
@@ -1275,7 +1275,7 @@ export async function buildCreateSession(
     session,
     sessionKey: sessionKeyPk,
     eventAuthority,
-    program: AGENT_RAILS_PROGRAM_ADDRESS,
+    program: ASH_PROGRAM_ADDRESS,
     label: encodeFixedName(req.label),
     expiresAt,
     authMode: AUTH_MODE_DIRECT_SIGNER,

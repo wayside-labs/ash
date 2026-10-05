@@ -1,13 +1,13 @@
-import { deriveIntentId } from "@agent-rails/contract";
-import { type BlindingProxy, startBlindingProxy } from "@agent-rails/e2e/harness/blinding-proxy";
-import { type Surfnet, startSurfnet, surfnetIsRunning } from "@agent-rails/e2e/harness/surfnet";
+import { deriveIntentId } from "@ash/contract";
+import { type BlindingProxy, startBlindingProxy } from "@ash/e2e/harness/blinding-proxy";
+import { type Surfnet, startSurfnet, surfnetIsRunning } from "@ash/e2e/harness/surfnet";
 import {
   buildPaymentIntent,
   executePayment,
   findReceiptPda,
-  isAgentRailsError,
+  isAshError,
   resolveSecurity,
-} from "@agent-rails/sdk";
+} from "@ash/sdk";
 import { createSolanaRpc } from "@solana/kit";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { bindSession } from "../src/bound-context.js";
@@ -99,7 +99,7 @@ function createContext(overrides: Partial<McpServerConfig> = {}): ServerContext 
 let boundContext: Awaited<ReturnType<typeof bindSession>>;
 
 beforeAll(async () => {
-  const existing = process.env.AGENT_RAILS_E2E_RPC;
+  const existing = process.env.ASH_E2E_RPC;
 
   if (existing && (await surfnetIsRunning(existing))) {
     directRpcUrl = existing;
@@ -108,9 +108,9 @@ beforeAll(async () => {
     directRpcUrl = surfnet.rpcUrl;
   }
 
-  const payerKeypairPath = surfnet?.payerKeypairPath ?? process.env.AGENT_RAILS_E2E_PAYER ?? "";
+  const payerKeypairPath = surfnet?.payerKeypairPath ?? process.env.ASH_E2E_PAYER ?? "";
   if (!payerKeypairPath) {
-    throw new Error("AGENT_RAILS_E2E_PAYER is required when reusing an external surfnet");
+    throw new Error("ASH_E2E_PAYER is required when reusing an external surfnet");
   }
 
   fixture = await createFixture({ rpcUrl: directRpcUrl, payerKeypairPath });
@@ -299,7 +299,7 @@ describe("payments against a live surfnet", () => {
 
     // Same payment, same derived id, same receipt PDA. The program has to refuse it.
     await expect(pay()).rejects.toSatisfy(
-      (error: unknown) => isAgentRailsError(error) && error.outcome !== "settled",
+      (error: unknown) => isAshError(error) && error.outcome !== "settled",
     );
 
     const after = await lamportsOf(directRpcUrl, fixture.solVault);

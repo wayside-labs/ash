@@ -1,5 +1,5 @@
 {
-  "apiVersion": "agent-rails.connector/v1",
+  "apiVersion": "ash.connector/v1",
   "name": "credits-quote",
   "description": "Quote API credits before paying for them.",
   "baseUrl": "https://api.vendor.example",

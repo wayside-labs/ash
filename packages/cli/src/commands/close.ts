@@ -1,4 +1,4 @@
-import { fetchMaybeIntentReceipt } from "@agent-rails/client";
+import { fetchMaybeIntentReceipt } from "@ash/client";
 import { readTreasurySnapshot } from "../chain/read.js";
 import type { GlobalCliOptions } from "../cli-options.js";
 import { loadContext } from "../context.js";
@@ -85,7 +85,7 @@ export async function runCloseTreasury(options: CloseTreasuryOptions, ui: Ui): P
   }
   if (snapshot.treasuryAccount.policyCount > 0) {
     throw new CliError(`${snapshot.treasuryAccount.policyCount} policy account(s) still exist`, {
-      hint: "agent-rails close policy",
+      hint: "ash close policy",
     });
   }
 

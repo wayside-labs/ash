@@ -8,7 +8,7 @@
  * receipt guarantee reachable:
  *
  *   1. the response carries `intent_id` even when the outcome is not a success, so the
- *      caller can resolve it with `agent_rails_get_payment_status`;
+ *      caller can resolve it with `ash_get_payment_status`;
  *   2. an unresolved send is not reported as a denial, because a denial invites a retry;
  *   3. a retry of the same payment derives the same receipt PDA, so the program refuses it.
  *
@@ -132,7 +132,7 @@ describe("execute_payment under an unconfirmed send", () => {
 
     // A denial is safe to retry; an unknown outcome is not. They must not share a shape.
     expect(result.outcome).toBe("indeterminate");
-    expect(result.next_step).toContain("agent_rails_get_payment_status");
+    expect(result.next_step).toContain("ash_get_payment_status");
   });
 
   it("refuses to pay again until the outcome is resolved", async () => {

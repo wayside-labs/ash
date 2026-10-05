@@ -1,4 +1,4 @@
-import { NATIVE_MINT } from "@agent-rails/contract/constants";
+import { NATIVE_MINT } from "@ash/contract/constants";
 import { z } from "zod";
 import { addressSchema, solanaClusterSchema } from "@/lib/schema";
 import { serverT } from "@/lib/server/i18n";

@@ -9,16 +9,16 @@
 # SVM, so `cargo test --workspace` takes 93s against this crate's 1s, and one mutant costs
 # what the entire policy run costs. Mutation testing is affordable exactly where the code is
 # pure, which is the same property ADR-008 split the crate out for.
-examine_globs = ["crates/agent-rails-policy/src/**/*.rs"]
+examine_globs = ["crates/ash-policy/src/**/*.rs"]
 
 # `proofs.rs` is `cfg(kani)`, so `cargo test` never compiles it. Mutating it produces
 # mutants no test run can possibly kill — 51 of them, 29% of the total, all reported as
 # survivors. Excluding it is the difference between a gate and a permanent red.
-exclude_globs = ["crates/agent-rails-policy/src/proofs.rs"]
+exclude_globs = ["crates/ash-policy/src/proofs.rs"]
 
 # Run only this package's tests per mutant, rather than the workspace. Without it each of
 # the 127 mutants pays for the SVM integration suite.
-test_package = ["agent-rails-policy"]
+test_package = ["ash-policy"]
 
 # The suite finishes in under a second, so cargo-mutants' auto-derived timeout would be its
 # own floor. Pinning it high is deliberate: the timeout exists to catch a mutant that made

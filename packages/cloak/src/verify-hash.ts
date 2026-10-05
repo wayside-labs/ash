@@ -47,7 +47,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 export const MEMO_PROGRAM_ADDRESS = "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr";
 
 /** What the memo starts with; the SHA-256 in lowercase hex follows. */
-export const MEMO_PREFIX = "agent-rails/privacy-text/v1 sha256=";
+export const MEMO_PREFIX = "ash/privacy-text/v1 sha256=";
 
 /** The Privacy Sprint's limit for the text. */
 export const WORD_LIMIT = 300;

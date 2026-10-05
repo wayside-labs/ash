@@ -1,4 +1,4 @@
-# Agent Rails — Estratégia de Produto (documento vivo)
+# ASH — Estratégia de Produto (documento vivo)
 
 **Data:** 2026-09-17 · **Status:** vivo, revisado a cada decisão · **Escopo:** os dois braços do projeto e o modelo de negócio dos dois
 **Substitui, nas conclusões que dependiam de licença:** `docs/research/revenue-model-analysis.md` §3, §4, §6 · `docs/strategy/crypto-worlds-fair-playbook.md` §1 (decisões 1–3), §6.4, §7.10, §12
@@ -23,8 +23,8 @@ O que este documento faz: separa o que continua verdade independentemente de qua
 | Programa | 23 instruções, completo, LiteSVM cobrindo todas, incluindo `enable_native_allowance` (ADR-014) |
 | Crate de política | `no_std`, `forbid(unsafe_code)`, proptest + fuzz + provas Kani, 99,2% de cobertura, zero sobreviventes no cargo-mutants |
 | TypeScript | `contract`, `client` (Codama), `sdk`, `mcp`, `cli`, `e2e` — verdes |
-| CLI | `agent-rails init` mergeado: tesouraria, sessão e config MCP em um comando |
-| Demo de organograma | `programs/agent_rails/tests/org_chart.rs` — passando, ainda não commitado |
+| CLI | `ash init` mergeado: tesouraria, sessão e config MCP em um comando |
+| Demo de organograma | `programs/ash/tests/org_chart.rs` — passando, ainda não commitado |
 | Governança | 15 ADRs · Apache-2.0 · sem CLA · sem contribuição externa ainda |
 | **Não temos** | **auditoria · mainnet · indexer · um único usuário pagante** |
 
@@ -170,7 +170,7 @@ Três regras, a primeira inegociável:
 2. **A composição correta já funciona hoje:** o cofre do mandato é mais um filho no organograma — uma `AllowlistEntry` com a PDA do mandato como `destination_owner`, e `execute_payment` financia a operação. Consequência: **um comprometimento total do programa de mandato fica limitado pela política de Rails que o financia.** Blast radius bounded entre os próprios braços, de graça.
 3. **Postura de confiança separada e anunciada.** Program id próprio, ADRs próprias, auditoria própria, README próprio dizendo em negrito que ele não herda a postura de Rails.
 
-O contrato do braço 2 é pacote próprio que importa os primitivos comuns do `@agent-rails/contract` — não se enfia esquema de mandato na âncora de compatibilidade de um programa congelado.
+O contrato do braço 2 é pacote próprio que importa os primitivos comuns do `@ash/contract` — não se enfia esquema de mandato na âncora de compatibilidade de um programa congelado.
 
 ---
 
@@ -185,9 +185,9 @@ Na primeira análise eu listei objeções ao produto B2C low-code. Com as alavan
 **A forma que eu construiria, e que atende o que você quer:** o low-code não é um produto separado, é a **superfície de entrada do braço 2** — um manifesto declarativo que materializa estrutura e mandatos em poucos comandos.
 
 ```
-npx agent-rails init                  # existe
-npx agent-rails org apply org.yaml    # materializa a árvore de tesourarias
-npx agent-rails mandate apply m.yaml  # abre mandato, envelope, allowlist de programa
+npx ash init                  # existe
+npx ash org apply org.yaml    # materializa a árvore de tesourarias
+npx ash mandate apply m.yaml  # abre mandato, envelope, allowlist de programa
 ```
 
 Terraform para organização de agentes: reconcilia estado on-chain com arquivo, presets nomeados, saída versionável em git — que é o formato que o comprador enterprise adora porque é revisável em PR. Isso ataca o critério de UX que é o mais fraco do projeto, transforma a fricção de "três níveis é três vezes mais contas" em vantagem, e **não muda nada da garantia**. O varejo puro, se vier, vem depois disso e com marca própria.

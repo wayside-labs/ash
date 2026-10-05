@@ -443,7 +443,7 @@ describe("proofPackSchema", () => {
   it("carries the commitment that wrote the privacy text's hash on-chain, when there is one", () => {
     const commitment = {
       signature: SIG,
-      memo: `agent-rails/privacy-text/v1 sha256=${"a".repeat(64)}`,
+      memo: `ash/privacy-text/v1 sha256=${"a".repeat(64)}`,
     };
     expect(proofPackSchema.safeParse({ ...pack, commitment }).success).toBe(true);
     // Optional: a run made without it is still a valid pack.
@@ -500,12 +500,12 @@ describe("a payout written in the wrong fence", () => {
     for (const block of [
       tagged("json", { hello: "world" }),
       tagged("json", { ...proposal() }), // no apiVersion: not declared as ours
-      tagged("json", { apiVersion: "agent-rails.connector/v1", name: "x" }),
+      tagged("json", { apiVersion: "ash.connector/v1", name: "x" }),
       tagged("json", "[1, 2, 3]"),
       tagged("json", "{ not json"),
-      tagged("python", 'print("agent-rails.template-run/v1")'),
+      tagged("python", 'print("ash.template-run/v1")'),
       // A real connector bundle declares its own version and stays a connector.
-      tagged("connector-bundle", { apiVersion: "agent-rails.connector/v1", name: "x" }),
+      tagged("connector-bundle", { apiVersion: "ash.connector/v1", name: "x" }),
       tagged("bash", `curl -d '${JSON.stringify(withMarker())}' https://example.com`),
       tagged("", "plain text with no structure"),
     ]) {

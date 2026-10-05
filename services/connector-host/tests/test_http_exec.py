@@ -4,9 +4,9 @@ import httpx
 import pytest
 from pytest_httpx import HTTPXMock
 
-from agent_rails_connector.declarative import ConnectorBundle
-from agent_rails_connector.host import build_mcp
-from agent_rails_connector.http_exec import build_request, check_destination, execute_tool
+from ash_connector.declarative import ConnectorBundle
+from ash_connector.host import build_mcp
+from ash_connector.http_exec import build_request, check_destination, execute_tool
 
 QUOTE = ConnectorBundle.model_validate(
     {
@@ -106,7 +106,7 @@ async def test_host_suffix_allowlist(monkeypatch: pytest.MonkeyPatch) -> None:
 
 async def test_mcp_advertises_bundle_schema_and_calls_through(httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(json={"ok": True})
-    mcp = build_mcp(QUOTE, {"VENDOR_API_KEY": "k", "AGENT_RAILS_SIGNER": "must-not-leak"})
+    mcp = build_mcp(QUOTE, {"VENDOR_API_KEY": "k", "ASH_SIGNER": "must-not-leak"})
     tools = {t.name: t for t in await mcp.list_tools()}
     assert set(tools) == {"connector_catalog", "quote_credits", "status"}
     schema = tools["quote_credits"].inputSchema

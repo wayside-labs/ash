@@ -1,7 +1,7 @@
-import { AGENT_RAILS_PROGRAM_ADDRESS, fetchMaybeIntentReceipt } from "@agent-rails/client";
-import { deriveIntentId, intentIdToHex } from "@agent-rails/contract";
-import { RECEIPT_STATUS_EXECUTED } from "@agent-rails/contract/constants";
-import { findReceiptPda } from "@agent-rails/sdk";
+import { ASH_PROGRAM_ADDRESS, fetchMaybeIntentReceipt } from "@ash/client";
+import { deriveIntentId, intentIdToHex } from "@ash/contract";
+import { RECEIPT_STATUS_EXECUTED } from "@ash/contract/constants";
+import { findReceiptPda } from "@ash/sdk";
 import { type Address, address, createSolanaRpc } from "@solana/kit";
 
 export type PaymentClaim = {
@@ -104,12 +104,12 @@ export async function verifyPayment(
   }
   // fetchMaybe* decodes any account at the address; only the program can have written a
   // real one, and a PDA of this program cannot be owned by anyone else — checked anyway.
-  if (account.programAddress !== AGENT_RAILS_PROGRAM_ADDRESS) {
+  if (account.programAddress !== ASH_PROGRAM_ADDRESS) {
     return {
       ok: false,
       code: "RECEIPT_FOREIGN_OWNER",
       receipt,
-      message: "receipt account is not owned by the Agent Rails program",
+      message: "receipt account is not owned by the ASH program",
     };
   }
   const data = account.data;

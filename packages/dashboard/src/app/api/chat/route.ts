@@ -118,7 +118,7 @@ export async function POST(req: Request) {
 
   if (provider === "demo") {
     return new Response(getDemoReply(locale, last, { hosted: isSupabaseConfigured() }), {
-      headers: { "content-type": "text/plain; charset=utf-8", "x-agent-rails-mode": "demo" },
+      headers: { "content-type": "text/plain; charset=utf-8", "x-ash-mode": "demo" },
     });
   }
 
@@ -182,7 +182,7 @@ export async function POST(req: Request) {
         `\n\n⚠️ ${error instanceof Error ? error.message : t("llm.error.claudeCliFailed", locale)}`,
       slot.release,
     );
-    response.headers.set("x-agent-rails-mode", "claude-cli");
+    response.headers.set("x-ash-mode", "claude-cli");
     return response;
   }
 
@@ -287,14 +287,14 @@ export async function POST(req: Request) {
       },
       slot.release,
     );
-    response.headers.set("x-agent-rails-mode", "openrouter-platform");
+    response.headers.set("x-ash-mode", "openrouter-platform");
     return response;
   }
 
   const apiKey = await anthropicApiKey();
   if (!apiKey) {
     return new Response(getDemoReply(locale, last, { hosted: isSupabaseConfigured() }), {
-      headers: { "content-type": "text/plain; charset=utf-8", "x-agent-rails-mode": "demo" },
+      headers: { "content-type": "text/plain; charset=utf-8", "x-ash-mode": "demo" },
     });
   }
 
@@ -315,6 +315,6 @@ export async function POST(req: Request) {
     },
     slot.release,
   );
-  response.headers.set("x-agent-rails-mode", "anthropic-api");
+  response.headers.set("x-ash-mode", "anthropic-api");
   return response;
 }

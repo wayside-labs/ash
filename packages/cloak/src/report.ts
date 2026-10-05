@@ -4,7 +4,7 @@ import {
   type ProofPack,
   proofPackSchema,
   type RunEvent,
-} from "@agent-rails/contract/template-run";
+} from "@ash/contract/template-run";
 import type { RunPlan } from "./plan.js";
 
 /** What an earlier attempt already finished: signatures only, safe to keep in local storage. */

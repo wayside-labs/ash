@@ -36,15 +36,15 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 mode=${1:-compare}
 cluster=${2:-devnet}
 
-PROGRAM_ID=$(sed -n 's/^declare_id!("\(.*\)");/\1/p' programs/agent_rails/src/lib.rs)
-SO_PATH=target/deploy/agent_rails.so
+PROGRAM_ID=$(sed -n 's/^declare_id!("\(.*\)");/\1/p' programs/ash/src/lib.rs)
+SO_PATH=target/deploy/ash.so
 
 die() {
   printf '\033[31m%s\033[0m\n' "$1" >&2
   exit 1
 }
 
-[[ -n $PROGRAM_ID ]] || die "could not read declare_id! from programs/agent_rails/src/lib.rs"
+[[ -n $PROGRAM_ID ]] || die "could not read declare_id! from programs/ash/src/lib.rs"
 
 # Hash a file with its trailing zero padding removed, so a dumped account and a freshly
 # built artifact are comparable. node rather than a shell pipeline: `$(...)` eats NUL bytes
@@ -63,7 +63,7 @@ trimmed_hash() {
 build_hash() {
   command -v cargo-build-sbf >/dev/null 2>&1 ||
     die "cargo-build-sbf is not on PATH — install the Agave toolchain (see .github/workflows/idl.yml for the pinned version)"
-  cargo build-sbf --manifest-path programs/agent_rails/Cargo.toml >&2 ||
+  cargo build-sbf --manifest-path programs/ash/Cargo.toml >&2 ||
     die "cargo build-sbf failed"
   [[ -f $SO_PATH ]] || die "$SO_PATH was not produced"
   trimmed_hash "$SO_PATH"
@@ -72,7 +72,7 @@ build_hash() {
 onchain_hash() {
   command -v solana >/dev/null 2>&1 || die "solana is not on PATH"
   local dump
-  dump=$(mktemp -t agent-rails-onchain.XXXXXX.so) || die "could not create a temp file"
+  dump=$(mktemp -t ash-onchain.XXXXXX.so) || die "could not create a temp file"
   # shellcheck disable=SC2064
   trap "rm -f '$dump'" RETURN
   solana program dump "$PROGRAM_ID" "$dump" --url "$cluster" >&2 ||
@@ -104,8 +104,8 @@ JSON
 case $mode in
 build)
   hash=$(build_hash) || exit 1
-  build_info "$hash" | tee target/deploy/agent_rails.build-info.json
-  printf '%s  agent_rails.so\n' "$hash" > target/deploy/agent_rails.so.sha256
+  build_info "$hash" | tee target/deploy/ash.build-info.json
+  printf '%s  ash.so\n' "$hash" > target/deploy/ash.so.sha256
   ;;
 onchain)
   hash=$(onchain_hash) || exit 1

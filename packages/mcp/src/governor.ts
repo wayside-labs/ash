@@ -1,4 +1,4 @@
-import { AgentRailsError } from "@agent-rails/sdk";
+import { AshError } from "@ash/sdk";
 import type { Address } from "@solana/kit";
 
 /**
@@ -62,11 +62,11 @@ export class PaymentGovernor {
    */
   acquire(): GovernorRelease {
     if (this.quiesceState) {
-      throw new AgentRailsError({
+      throw new AshError({
         reasonCode: "SESSION_QUIESCED",
         message:
           `Payment ${this.quiesceState.intentId} has an unresolved outcome. This session ` +
-          "will not pay again until it is settled. Call agent_rails_get_payment_status " +
+          "will not pay again until it is settled. Call ash_get_payment_status " +
           `with intent_id ${this.quiesceState.intentId}.`,
         outcome: "denied",
         source: "governor",
@@ -76,7 +76,7 @@ export class PaymentGovernor {
     }
 
     if (this.inFlight >= this.maxConcurrent) {
-      throw new AgentRailsError({
+      throw new AshError({
         reasonCode: "SESSION_BUSY",
         message:
           `${this.inFlight} payment(s) already in flight and this session allows ` +
@@ -89,7 +89,7 @@ export class PaymentGovernor {
     const cutoff = this.now() - 60_000;
     this.timestamps = this.timestamps.filter((at) => at > cutoff);
     if (this.timestamps.length >= this.maxPaymentsPerMinute) {
-      throw new AgentRailsError({
+      throw new AshError({
         reasonCode: "RATE_LIMITED",
         message:
           `This session may attempt ${this.maxPaymentsPerMinute} payments per minute. ` +

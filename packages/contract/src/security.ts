@@ -3,7 +3,7 @@ import { z } from "zod";
 /**
  * Configurable guard-rails.
  *
- * Agent Rails has two kinds of control and they must never be confused. The program is the
+ * ASH has two kinds of control and they must never be confused. The program is the
  * floor: pause, session liveness, mint configuration, the ceiling, the destination
  * allowlist, per-transaction and window and lifetime limits, and the `IntentReceipt`. None
  * of that is reachable from here, and nothing in this file can make the chain accept a

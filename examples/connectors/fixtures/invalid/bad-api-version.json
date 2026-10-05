@@ -1,5 +1,5 @@
 {
-  "apiVersion": "agent-rails.connector/v9",
+  "apiVersion": "ash.connector/v9",
   "name": "bad",
   "tools": [{ "name": "q", "url": "https://x.example" }]
 }

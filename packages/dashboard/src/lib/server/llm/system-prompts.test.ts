@@ -1,5 +1,5 @@
-import { extractConnectorProposals } from "@agent-rails/contract/connector-bundle";
-import { extractTemplateRunProposals } from "@agent-rails/contract/template-run";
+import { extractConnectorProposals } from "@ash/contract/connector-bundle";
+import { extractTemplateRunProposals } from "@ash/contract/template-run";
 import { describe, expect, it } from "vitest";
 import { buildSystemPrompt } from "./system-prompts";
 
@@ -13,7 +13,7 @@ describe("buildSystemPrompt — connector builder", () => {
       expect(footer).toBeGreaterThan(section);
       // Recency: the footer still closes the prompt and restates the connector refusals.
       expect(prompt.slice(footer)).toMatch(/connector-bundle/);
-      expect(prompt.slice(footer)).toMatch(/AGENT_RAILS_/);
+      expect(prompt.slice(footer)).toMatch(/ASH_/);
     });
   }
 
@@ -40,7 +40,7 @@ describe("buildSystemPrompt — template runs", () => {
       const prompt = buildSystemPrompt(locale);
       expect(prompt).toMatch(/mainnet/i);
       expect(prompt).toContain("builtin:cloak-private-payout");
-      expect(prompt).toContain("agent-rails.template-run/v1");
+      expect(prompt).toContain("ash.template-run/v1");
     });
   }
 
@@ -71,7 +71,7 @@ describe("buildSystemPrompt — template runs", () => {
   );
 
   it("states the label alphabet the schema enforces, and nothing the schema would refuse", async () => {
-    const { cloakPayoutProposalSchema } = await import("@agent-rails/contract/template-run");
+    const { cloakPayoutProposalSchema } = await import("@ash/contract/template-run");
     const probe = (label: string) =>
       cloakPayoutProposalSchema.safeParse({
         template: "builtin:cloak-private-payout",
@@ -100,7 +100,7 @@ describe("buildSystemPrompt — template runs", () => {
   });
 
   it("keeps the caps it states equal to the contract's", async () => {
-    const { CLOAK_PAYOUT_LIMITS } = await import("@agent-rails/contract/template-run");
+    const { CLOAK_PAYOUT_LIMITS } = await import("@ash/contract/template-run");
     const prompt = buildSystemPrompt("en");
     expect(CLOAK_PAYOUT_LIMITS.minPayeeLamports).toBe(10_000_000n);
     expect(CLOAK_PAYOUT_LIMITS.maxPayeeLamports).toBe(50_000_000n);

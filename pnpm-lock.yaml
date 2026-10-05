@@ -35,7 +35,7 @@ importers:
 
   packages/adapters/vercel-ai:
     dependencies:
-      '@agent-rails/contract':
+      '@ash/contract':
         specifier: workspace:*
         version: link:../../contract
       ai:
@@ -60,13 +60,13 @@ importers:
 
   packages/cli:
     dependencies:
-      '@agent-rails/client':
+      '@ash/client':
         specifier: workspace:*
         version: link:../client
-      '@agent-rails/contract':
+      '@ash/contract':
         specifier: workspace:*
         version: link:../contract
-      '@agent-rails/sdk':
+      '@ash/sdk':
         specifier: workspace:*
         version: link:../sdk
       '@solana/kit':
@@ -119,7 +119,7 @@ importers:
 
   packages/cloak:
     dependencies:
-      '@agent-rails/contract':
+      '@ash/contract':
         specifier: workspace:*
         version: link:../contract
       '@cloak.dev/sdk':
@@ -166,21 +166,21 @@ importers:
 
   packages/dashboard:
     dependencies:
-      '@agent-rails/cli':
-        specifier: workspace:*
-        version: link:../cli
-      '@agent-rails/cloak':
-        specifier: workspace:*
-        version: link:../cloak
-      '@agent-rails/contract':
-        specifier: workspace:*
-        version: link:../contract
-      '@agent-rails/sdk':
-        specifier: workspace:*
-        version: link:../sdk
       '@anthropic-ai/sdk':
         specifier: ^0.127.0
         version: 0.127.0(zod@4.5.4)
+      '@ash/cli':
+        specifier: workspace:*
+        version: link:../cli
+      '@ash/cloak':
+        specifier: workspace:*
+        version: link:../cloak
+      '@ash/contract':
+        specifier: workspace:*
+        version: link:../contract
+      '@ash/sdk':
+        specifier: workspace:*
+        version: link:../sdk
       '@fontsource/inter':
         specifier: ^5.3.0
         version: 5.3.0
@@ -317,13 +317,13 @@ importers:
 
   packages/e2e:
     dependencies:
-      '@agent-rails/client':
+      '@ash/client':
         specifier: workspace:*
         version: link:../client
-      '@agent-rails/contract':
+      '@ash/contract':
         specifier: workspace:*
         version: link:../contract
-      '@agent-rails/sdk':
+      '@ash/sdk':
         specifier: workspace:*
         version: link:../sdk
       '@solana/kit':
@@ -342,7 +342,7 @@ importers:
 
   packages/integrations:
     dependencies:
-      '@agent-rails/contract':
+      '@ash/contract':
         specifier: workspace:*
         version: link:../contract
       '@modelcontextprotocol/sdk':
@@ -367,6 +367,9 @@ importers:
 
   packages/knowledge-mcp:
     dependencies:
+      '@ash/contract':
+        specifier: workspace:*
+        version: link:../contract
       '@modelcontextprotocol/sdk':
         specifier: ^1.30.0
         version: 1.30.0(zod@4.5.4)
@@ -386,13 +389,13 @@ importers:
 
   packages/mcp:
     dependencies:
-      '@agent-rails/client':
+      '@ash/client':
         specifier: workspace:*
         version: link:../client
-      '@agent-rails/contract':
+      '@ash/contract':
         specifier: workspace:*
         version: link:../contract
-      '@agent-rails/sdk':
+      '@ash/sdk':
         specifier: workspace:*
         version: link:../sdk
       '@modelcontextprotocol/sdk':
@@ -405,7 +408,7 @@ importers:
         specifier: ^4.0.0
         version: 4.5.4
     devDependencies:
-      '@agent-rails/e2e':
+      '@ash/e2e':
         specifier: workspace:*
         version: link:../e2e
       '@types/node':
@@ -420,10 +423,10 @@ importers:
 
   packages/sdk:
     dependencies:
-      '@agent-rails/client':
+      '@ash/client':
         specifier: workspace:*
         version: link:../client
-      '@agent-rails/contract':
+      '@ash/contract':
         specifier: workspace:*
         version: link:../contract
       '@solana/kit':
@@ -442,13 +445,13 @@ importers:
 
   packages/vendors:
     dependencies:
-      '@agent-rails/client':
+      '@ash/client':
         specifier: workspace:*
         version: link:../client
-      '@agent-rails/contract':
+      '@ash/contract':
         specifier: workspace:*
         version: link:../contract
-      '@agent-rails/sdk':
+      '@ash/sdk':
         specifier: workspace:*
         version: link:../sdk
       '@modelcontextprotocol/sdk':

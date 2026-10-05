@@ -19,7 +19,7 @@
 export const MEMO_PROGRAM_ADDRESS = "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr";
 
 /** What the memo starts with; the SHA-256 in lowercase hex follows. */
-export const COMMITMENT_MEMO_PREFIX = "agent-rails/privacy-text/v1 sha256=";
+export const COMMITMENT_MEMO_PREFIX = "ash/privacy-text/v1 sha256=";
 
 /**
  * SHA-256 of the canonical text of `examples/templates/cloak-private-payout/PRIVACY.md` (Portuguese,

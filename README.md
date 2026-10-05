@@ -1,8 +1,8 @@
-# Agent Rails
+# ASH
 
 **The on-chain spend control plane for AI agents** — capped, auditable, retry-safe.
 
-Agent Rails is a guardrail and treasury framework that lets autonomous AI agents make on-chain
+ASH is a guardrail and treasury framework that lets autonomous AI agents make on-chain
 Solana payments without ever holding unbounded funds. Operators deposit into a program-owned
 vault, set per-transaction and windowed limits, destination and mint allowlists, and issue
 time-boxed sessions; agents pay through a single `execute_payment` instruction the program
@@ -25,7 +25,7 @@ Every claim below is one you can check on-chain, which is the point of writing t
 | `2.x` | new program id | mainnet | Migration is opt-in, with `migrate_treasury` tooling; the `1.0.0` program keeps running. |
 
 ```
-$ agent-rails doctor --rpc https://api.devnet.solana.com
+$ ash doctor --rpc https://api.devnet.solana.com
 ✔ Upgrade authority   <the key currently set on the deployed program>
 ```
 
@@ -61,9 +61,9 @@ workflow runs on every merge with publishing switched off — deliberately, unti
 phase above is worth a package that cannot be unpublished. Until then:
 
 ```bash
-git clone https://github.com/wayside-labs/agent-rails && cd agent-rails
+git clone https://github.com/wayside-labs/ash && cd ash
 pnpm install && pnpm build
-pnpm agent-rails init --rpc https://api.devnet.solana.com
+pnpm ash init --rpc https://api.devnet.solana.com
 ```
 
 ### Devnet demo
@@ -106,8 +106,8 @@ scripts/reference-agent.sh metrics   # audit export --verify + sink counts
 ```
 
 Deck target (update before recording): **2,100 payments settled, 31 denied by policy, 0
-double-spends** — refresh with `agent-rails audit export --verify` and the sink JSONL at
-`~/.agent-rails/reference-agent/payments.jsonl`.
+double-spends** — refresh with `ash audit export --verify` and the sink JSONL at
+`~/.ash/reference-agent/payments.jsonl`.
 
 Full setup: [`docs/runbooks/reference-agent.md`](docs/runbooks/reference-agent.md).
 
@@ -133,9 +133,9 @@ paused.
 ## Layout
 
 ```
-programs/agent_rails/       Anchor program — account validation, PDA custody, CPI only
-crates/agent-rails-policy/  pure policy arithmetic and audit hash chain, no Solana deps
-idl/agent_rails.json        checked-in IDL, the source of truth for TypeScript codegen
+programs/ash/       Anchor program — account validation, PDA custody, CPI only
+crates/ash-policy/  pure policy arithmetic and audit hash chain, no Solana deps
+idl/ash.json        checked-in IDL, the source of truth for TypeScript codegen
 packages/contract/          Zod schemas, reason codes, event types
 packages/client/            Codama-generated @solana/kit client
 packages/sdk/               PaymentIntent builder, preflight, signing, error mapping
@@ -143,9 +143,9 @@ packages/mcp/               stdio MCP server exposing the agent-facing payment t
 packages/adapters/vercel-ai/  Vercel AI SDK tools for AGENT_TOOL_NAMES (see package README)
 ```
 
-For Cursor or Claude Desktop, use the stdio MCP server (`examples/agent-rails-mcp.cursor.json`).
-For Vercel AI SDK apps (`generateText`, agents), use `@agent-rails/adapter-vercel-ai` — schemas
-from `@agent-rails/contract`, handlers wired to your MCP logic or SDK.
+For Cursor or Claude Desktop, use the stdio MCP server (`examples/ash-mcp.cursor.json`).
+For Vercel AI SDK apps (`generateText`, agents), use `@ash/adapter-vercel-ai` — schemas
+from `@ash/contract`, handlers wired to your MCP logic or SDK.
 
 The split is the design: the program stays thin, and all policy arithmetic lives in a crate
 with no Solana dependency, `#![forbid(unsafe_code)]`, `checked_*` arithmetic throughout, and
@@ -185,7 +185,7 @@ CI runs all of the above plus `cargo deny`, gitleaks and semgrep on every pull r
 | `docs/adr/` | Decisions, immutable once recorded; `README.md` there is the index |
 | `docs/runbooks/reference-agent.md` | In-house devnet agent — MCP, cron, metrics until 12/10 |
 | `docs/runbooks/dashboard-smoke.md` | Ten-step manual smoke before demo recording |
-| `docs/runbooks/alert-webhooks.md` | Denial + headroom webhooks (`AGENT_RAILS_ALERT_WEBHOOK_URL`, `pnpm alert-watch`) |
+| `docs/runbooks/alert-webhooks.md` | Denial + headroom webhooks (`ASH_ALERT_WEBHOOK_URL`, `pnpm alert-watch`) |
 | `examples/templates/README.md` | Starter templates — Earn bounty hunter, DCA, capped yield rebalance — and which role gets the rails MCP |
 | `docs/strategy/colosseum-pre-hackathon-declaration.md` | Copy for the Colosseum pre-existing work field |
 
@@ -196,7 +196,7 @@ Several directories carry their own `CLAUDE.md` with rules scoped to that subtre
 | Open source (this repo) | Commercial (hosted control plane) |
 |---|---|
 | Anchor program, policy crate, IDL | Multi-tenant dashboard, auth, billing |
-| `@agent-rails/sdk`, `@agent-rails/mcp`, CLI | Alert routing, guardian-as-a-service ops |
+| `@ash/sdk`, `@ash/mcp`, CLI | Alert routing, guardian-as-a-service ops |
 | Vercel AI adapter, contract schemas | SLA-backed RPC and support |
 
 Protocol fees are **zero bps** by design (ADR in `docs/adr/`). Revenue is per governed

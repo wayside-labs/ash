@@ -22,12 +22,7 @@ const nextConfig: NextConfig = {
     return [{ source: "/(.*)", headers: securityHeaders }];
   },
   // Workspace packages ship TypeScript sources, not prebuilt browser bundles.
-  transpilePackages: [
-    "@agent-rails/sdk",
-    "@agent-rails/client",
-    "@agent-rails/contract",
-    "@agent-rails/cloak",
-  ],
+  transpilePackages: ["@ash/sdk", "@ash/client", "@ash/contract", "@ash/cloak"],
   // A stray package-lock.json above the repo makes Next infer the wrong root
   // and trace the wrong files; pin it to the monorepo.
   outputFileTracingRoot: resolve(here, "../.."),

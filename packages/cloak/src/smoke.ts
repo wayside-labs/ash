@@ -10,7 +10,7 @@ import {
   isTransactionSignature,
   mainnetExplorerTxUrl,
   type RunEvent,
-} from "@agent-rails/contract/template-run";
+} from "@ash/contract/template-run";
 import { createCloakSdkPort } from "./adapter.js";
 import { COMMITMENT_MEMO } from "./commitment.js";
 import { classifyError, describeForConsole, RunError } from "./errors.js";
@@ -31,7 +31,7 @@ import { recoverFunds, runPrivatePayout } from "./runner.js";
  * would be asked to sign.
  */
 
-const USAGE = `agent-rails-cloak-smoke — a private payout on Solana mainnet, from a keypair file
+const USAGE = `ash-cloak-smoke — a private payout on Solana mainnet, from a keypair file
 
   --keypair <file>        Solana CLI keypair (JSON array of 64 bytes). Required.
   --payee-sol <address>   Receives SOL through the Cloak pool.
@@ -330,6 +330,8 @@ export async function runSmoke(args: SmokeArgs, io: SmokeIo = defaultIo): Promis
       funder: wallet.address,
       mainnetEnabled: true,
       allowedWallets: [wallet.address],
+      // The smoke run pays the addresses it was given, so they are its own contacts.
+      contacts: new Map(proposal.payees.map((payee) => [payee.label, payee.address])),
     });
     if (!policy.ok) {
       say(`Refused: ${policy.message}`);

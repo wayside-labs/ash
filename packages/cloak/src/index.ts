@@ -31,6 +31,7 @@ export {
   checkRunPolicy,
   type PolicyResult,
   parseAllowedWallets,
+  parseContacts,
   type RunPolicyContext,
 } from "./policy.js";
 export type {

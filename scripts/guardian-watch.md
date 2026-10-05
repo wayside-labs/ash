@@ -1,8 +1,8 @@
 # Guardian watch (`scripts/guardian-watch.ts`)
 
-Minimal **Guardian-as-a-Service** watcher for Agent Rails treasuries on devnet/mainnet.
+Minimal **Guardian-as-a-Service** watcher for ASH treasuries on devnet/mainnet.
 
-The owner opts in by adding your pubkey with `agent-rails guardian add`. The guardian key may
+The owner opts in by adding your pubkey with `ash guardian add`. The guardian key may
 call **`pause` only** — not unpause, withdraw, or policy edits. Revoke anytime with
 `guardian rm`. While paused, agents cannot pay; **owner `withdraw` still works** (program
 invariant, ADR-002).
@@ -24,7 +24,7 @@ solana-keygen new -o guardian-keypair.json --no-bip39-passphrase
 As **owner**:
 
 ```bash
-pnpm agent-rails guardian add "$(solana address -k guardian-keypair.json)" \
+pnpm ash guardian add "$(solana address -k guardian-keypair.json)" \
   --wallet <owner> --out <manifest-dir> --yes
 ```
 
@@ -58,20 +58,20 @@ Dry-run (log breaches, do not send `pause`):
 pnpm guardian-watch ... --once --dry-run
 ```
 
-Environment aliases: `AGENT_RAILS_RPC`, `AGENT_RAILS_TREASURY`, `AGENT_RAILS_POLICY`,
-`AGENT_RAILS_GUARDIAN_KEYPAIR`.
+Environment aliases: `ASH_RPC`, `ASH_TREASURY`, `ASH_POLICY`,
+`ASH_GUARDIAN_KEYPAIR`.
 
 Exit codes: `0` = no action, `2` = pause sent (`--once`), `1` = error.
 
 ## Devnet proof checklist
 
-1. Bootstrap a treasury (`pnpm agent-rails init` or `scripts/demo.sh`).
+1. Bootstrap a treasury (`pnpm ash init` or `scripts/demo.sh`).
 2. Add the guardian key (above).
 3. Pay enough to exceed 80% of the **short window** limit (or lower `--threshold-bps` for a
    smaller test, e.g. `100` = 1%).
 4. Run `pnpm guardian-watch ... --once` — expect `pause confirmed: <sig>`.
-5. Confirm agents cannot pay (`agent-rails pay` → paused).
-6. As owner, `pnpm agent-rails withdraw --amount 0.001 --yes` — must succeed while paused.
-7. `pnpm agent-rails unpause` (owner only), then `guardian rm` when done.
+5. Confirm agents cannot pay (`ash pay` → paused).
+6. As owner, `pnpm ash withdraw --amount 0.001 --yes` — must succeed while paused.
+7. `pnpm ash unpause` (owner only), then `guardian rm` when done.
 
 Full narrative and troubleshooting: [`docs/runbooks/guardian-watch.md`](../docs/runbooks/guardian-watch.md).

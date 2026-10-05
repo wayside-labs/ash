@@ -1,4 +1,4 @@
-import { createRemoteSigner } from "@agent-rails/sdk";
+import { createRemoteSigner } from "@ash/sdk";
 import { type Address, createKeyPairSignerFromBytes, type TransactionSigner } from "@solana/kit";
 import type { McpRuntime } from "./config.js";
 import { readKeypairBytes } from "./config.js";

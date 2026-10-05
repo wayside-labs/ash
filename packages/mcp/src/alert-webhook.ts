@@ -1,11 +1,11 @@
-import type { DecisionSource } from "@agent-rails/contract";
-import { buildPaymentDeniedAlert, type PaymentDeniedAlert } from "@agent-rails/contract/alerts";
-import { postAlertWebhook } from "@agent-rails/sdk";
+import type { DecisionSource } from "@ash/contract";
+import { buildPaymentDeniedAlert, type PaymentDeniedAlert } from "@ash/contract/alerts";
+import { postAlertWebhook } from "@ash/sdk";
 import type { ServerContext } from "./context.js";
 import { emitAgentEvent } from "./ingest.js";
 
 /**
- * Fire-and-forget denial alert: to `AGENT_RAILS_ALERT_WEBHOOK_URL` when configured, and to
+ * Fire-and-forget denial alert: to `ASH_ALERT_WEBHOOK_URL` when configured, and to
  * the dashboard's ingest API when that is — independently, so either can be down.
  */
 export function notifyPaymentDeniedWebhook(

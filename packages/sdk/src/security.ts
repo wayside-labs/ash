@@ -6,18 +6,18 @@ import {
   type SecurityPresetName,
   securityPostureSchema,
   toBaseUnits,
-} from "@agent-rails/contract";
+} from "@ash/contract";
 import type { PolicyHook } from "./policy-hooks.js";
 
 /**
  * Turning a declared posture into something the payment path can ask questions of.
  *
- * The posture in `@agent-rails/contract` is data: serializable, loggable, snapshot-testable.
+ * The posture in `@ash/contract` is data: serializable, loggable, snapshot-testable.
  * This adds the parts that cannot be serialized — the hooks themselves — and precomputes the
  * value bands so the hot path does no string parsing.
  */
 
-export type AgentRailsSecurityConfig = {
+export type AshSecurityConfig = {
   /** Starting point. Defaults to `balanced`. */
   preset?: SecurityPresetName;
   /** Overrides applied on top of the preset, one field at a time. */
@@ -64,7 +64,7 @@ function mergePosture(
  * it, so a typo in a preset override fails at startup rather than silently leaving a guard
  * at its default.
  */
-export function resolveSecurity(config: AgentRailsSecurityConfig = {}): ResolvedSecurity {
+export function resolveSecurity(config: AshSecurityConfig = {}): ResolvedSecurity {
   const preset = config.preset ?? DEFAULT_SECURITY_PRESET;
   const base = SECURITY_PRESETS[preset];
   if (!base) {

@@ -14,12 +14,12 @@ import {
   signTransactionMessageWithSigners,
 } from "@solana/kit";
 import {
-  agentRailsErrorFromCode,
+  ashErrorFromCode,
   customCodeFromTransactionError,
   stringifyRpcError,
-  toAgentRailsError,
+  toAshError,
 } from "./error-mapping.js";
-import { AgentRailsError } from "./errors.js";
+import { AshError } from "./errors.js";
 import type { PaymentTransactionMessage } from "./payment-intent.js";
 
 const DEFAULT_CONFIRM_TIMEOUT_MS = 60_000;
@@ -68,8 +68,8 @@ function isCommitmentReached(
  * "probably" is not a basis for paying someone a second time. The caller resolves it
  * against the `IntentReceipt`, which is the only authoritative answer.
  */
-function indeterminate(message: string, signature: Signature, cause?: unknown): AgentRailsError {
-  return new AgentRailsError({
+function indeterminate(message: string, signature: Signature, cause?: unknown): AshError {
+  return new AshError({
     reasonCode: "UNRESOLVED_OUTCOME",
     message,
     outcome: "indeterminate",
@@ -114,9 +114,9 @@ async function waitForSignatureConfirmation(
         // replaced a precise denial with a serialisation complaint.
         const code = customCodeFromTransactionError(status.err);
         if (code !== undefined) {
-          throw agentRailsErrorFromCode(code, status.err).withContext({ signature });
+          throw ashErrorFromCode(code, status.err).withContext({ signature });
         }
-        throw new AgentRailsError({
+        throw new AshError({
           reasonCode: "UNKNOWN_PROGRAM_ERROR",
           message: `Transaction failed on-chain: ${stringifyRpcError(status.err)}`,
           outcome: "denied",
@@ -166,7 +166,7 @@ export async function sendPayment(input: SendPaymentInput): Promise<SendPaymentR
     if (
       isSolanaError(error, SOLANA_ERROR__JSON_RPC__SERVER_ERROR_SEND_TRANSACTION_PREFLIGHT_FAILURE)
     ) {
-      throw toAgentRailsError(error).withContext({ signature });
+      throw toAshError(error).withContext({ signature });
     }
     throw indeterminate(
       error instanceof Error
@@ -184,7 +184,7 @@ export async function sendPayment(input: SendPaymentInput): Promise<SendPaymentR
       lastValidBlockHeight: input.lastValidBlockHeight,
     });
   } catch (error) {
-    if (error instanceof AgentRailsError) {
+    if (error instanceof AshError) {
       throw error;
     }
     if (isSolanaError(error, SOLANA_ERROR__BLOCK_HEIGHT_EXCEEDED)) {

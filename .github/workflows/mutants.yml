@@ -1,6 +1,6 @@
 name: Mutants
 
-# Mutation testing of crates/agent-rails-policy (ADR-008 nightly, ADR-015).
+# Mutation testing of crates/ash-policy (ADR-008 nightly, ADR-015).
 #
 # Coverage says a line ran. Mutation testing says an assertion depended on it, which is a
 # different claim and the one that matters: this crate measured 99.2% line coverage while

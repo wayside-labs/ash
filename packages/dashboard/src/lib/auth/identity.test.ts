@@ -139,7 +139,7 @@ describe("resolveIdentity — the shape GoTrue actually returns", () => {
         chain: "solana",
         domain: "agent-rails-virid.vercel.app",
         network: "",
-        statement: "Sign in to Agent Rails.",
+        statement: "Sign in to ASH.",
       },
       email_verified: false,
       phone_verified: false,

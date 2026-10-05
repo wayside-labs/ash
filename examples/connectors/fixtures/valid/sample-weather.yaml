@@ -1,4 +1,4 @@
-apiVersion: agent-rails.connector/v1
+apiVersion: ash.connector/v1
 name: sample-weather
 description: Read-only weather connector for workstation demos. Replace api.example.com with a real vendor.
 env:

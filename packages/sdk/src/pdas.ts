@@ -1,12 +1,12 @@
 import {
-  AGENT_RAILS_PROGRAM_ADDRESS,
+  ASH_PROGRAM_ADDRESS,
   findEntryPda,
   findPolicyPda,
   findSessionPda,
   findSolVaultPda,
   findTreasuryPda,
-} from "@agent-rails/client";
-import { SEED_RECEIPT } from "@agent-rails/contract";
+} from "@ash/client";
+import { SEED_RECEIPT } from "@ash/contract";
 import type { Address } from "@solana/kit";
 import { getAddressEncoder, getBytesEncoder, getProgramDerivedAddress } from "@solana/kit";
 
@@ -39,14 +39,14 @@ export async function findReceiptPda(input: ReceiptPdaInput) {
     throw new RangeError("intentId must be exactly 16 bytes");
   }
   return getProgramDerivedAddress({
-    programAddress: AGENT_RAILS_PROGRAM_ADDRESS,
+    programAddress: ASH_PROGRAM_ADDRESS,
     seeds: [SEED_RECEIPT, addressEncoder.encode(input.session), input.intentId],
   });
 }
 
 /** Anchor `emit_cpi!` event authority PDA. */
 export async function findEventAuthorityPda(config: { programAddress?: Address } = {}) {
-  const programAddress = config.programAddress ?? AGENT_RAILS_PROGRAM_ADDRESS;
+  const programAddress = config.programAddress ?? ASH_PROGRAM_ADDRESS;
   return getProgramDerivedAddress({
     programAddress,
     seeds: [bytesEncoder.encode(new TextEncoder().encode("__event_authority"))],

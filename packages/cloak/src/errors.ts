@@ -1,4 +1,4 @@
-import { isTransactionSignature, type RunErrorCode } from "@agent-rails/contract/template-run";
+import { isTransactionSignature, type RunErrorCode } from "@ash/contract/template-run";
 
 /** A run stopped for a reason the card can name. `cause` keeps the upstream error out of events. */
 export class RunError extends Error {

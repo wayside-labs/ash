@@ -1,20 +1,20 @@
-import { fetchMaybeAgentSession } from "@agent-rails/client";
+import { fetchMaybeAgentSession } from "@ash/client";
 import {
   AmountConversionError,
   deriveIntentId,
   intentIdToHex,
   SDK_REASON_CODES,
   toBaseUnits,
-} from "@agent-rails/contract";
-import { NATIVE_MINT } from "@agent-rails/contract/constants";
+} from "@ash/contract";
+import { NATIVE_MINT } from "@ash/contract/constants";
 import {
   buildPaymentIntent,
   executePayment,
-  isAgentRailsError,
+  isAshError,
   loadDestinationIndex,
   precheckReceipt,
   resolveDestination,
-} from "@agent-rails/sdk";
+} from "@ash/sdk";
 import { type Address, address } from "@solana/kit";
 import { type MintCeilingView, readTreasurySnapshot } from "../chain/read.js";
 import type { GlobalCliOptions } from "../cli-options.js";
@@ -109,7 +109,7 @@ function resolveSession(ctx: ResolvedContext, override: string | undefined): Add
   const recorded = ctx.manifest?.session;
   if (!recorded) {
     throw new CliError("No session recorded for this cluster", {
-      hint: "Pass --session <pda> --session-keypair <path>, or run `agent-rails init` first.",
+      hint: "Pass --session <pda> --session-keypair <path>, or run `ash init` first.",
     });
   }
   return address(recorded);
@@ -121,7 +121,7 @@ export async function runPay(options: PayOptions, ui: Ui): Promise<number> {
 
   if (snapshot.treasuryAccount.paused) {
     throw new CliError("This treasury is paused", {
-      hint: "Agents cannot pay while paused. `agent-rails unpause` is owner-only.",
+      hint: "Agents cannot pay while paused. `ash unpause` is owner-only.",
     });
   }
 
@@ -132,7 +132,7 @@ export async function runPay(options: PayOptions, ui: Ui): Promise<number> {
   if (!sessionAccount.exists) throw new CliError(`No session account at ${session}`);
   if (sessionAccount.data.revoked) {
     throw new CliError(`Session ${session} is revoked`, {
-      hint: "Create a new one: agent-rails session create --label <name>",
+      hint: "Create a new one: ash session create --label <name>",
     });
   }
   const now = Math.floor(Date.now() / 1000);
@@ -303,7 +303,7 @@ export async function runPay(options: PayOptions, ui: Ui): Promise<number> {
     }
     return 0;
   } catch (error) {
-    if (!isAgentRailsError(error)) throw error;
+    if (!isAshError(error)) throw error;
     ui.fail(error.message);
 
     // An indeterminate outcome is not a failure to retry. The transfer may already exist,
@@ -312,7 +312,7 @@ export async function runPay(options: PayOptions, ui: Ui): Promise<number> {
     if (indeterminate) {
       ui.info(
         ui.dim(
-          `Look it up before retrying: agent-rails audit export --session ${session} | grep ${intentIdHex}`,
+          `Look it up before retrying: ash audit export --session ${session} | grep ${intentIdHex}`,
         ),
       );
     }

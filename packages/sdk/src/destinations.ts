@@ -1,10 +1,10 @@
 import {
-  AGENT_RAILS_PROGRAM_ADDRESS,
   ALLOWLIST_ENTRY_DISCRIMINATOR,
+  ASH_PROGRAM_ADDRESS,
   getAllowlistEntryDecoder,
-} from "@agent-rails/client";
+} from "@ash/client";
 import { type Address, getBase58Decoder, getBase64Encoder } from "@solana/kit";
-import { AgentRailsError } from "./errors.js";
+import { AshError } from "./errors.js";
 
 /**
  * Label to pubkey resolution against the on-chain allowlist (blueprint II-1).
@@ -96,7 +96,7 @@ export async function loadDestinationIndex(
   const discriminator = getBase58Decoder().decode(ALLOWLIST_ENTRY_DISCRIMINATOR);
 
   const accounts = await input.rpc
-    .getProgramAccounts(AGENT_RAILS_PROGRAM_ADDRESS as Address, {
+    .getProgramAccounts(ASH_PROGRAM_ADDRESS as Address, {
       encoding: "base64",
       filters: [
         { memcmp: { offset: 0n, bytes: discriminator, encoding: "base58" } },
@@ -180,7 +180,7 @@ export function resolveDestination(input: ResolveDestinationInput): ResolvedDest
   const matches = input.index.entries.filter((entry) => entry.normalizedLabel === normalized);
 
   if (matches.length > 1) {
-    throw new AgentRailsError({
+    throw new AshError({
       reasonCode: "AMBIGUOUS_DESTINATION",
       message:
         `Destination "${input.ref}" matches ${matches.length} allowlist entries ` +
@@ -202,7 +202,7 @@ export function resolveDestination(input: ResolveDestinationInput): ResolvedDest
 
   if (BASE58_ADDRESS.test(input.ref)) {
     if (!input.allowRawAddress) {
-      throw new AgentRailsError({
+      throw new AshError({
         reasonCode: "LITERAL_NOT_PERMITTED",
         message:
           "This policy pays registered destinations only. Use a destination label; " +
@@ -216,7 +216,7 @@ export function resolveDestination(input: ResolveDestinationInput): ResolvedDest
 
   // Deliberately no suggestion in the message: naming the near miss hands an attacker the
   // correct label, and hands a confused agent a value it did not have.
-  throw new AgentRailsError({
+  throw new AshError({
     reasonCode: "UNKNOWN_DESTINATION",
     message: `No allowlisted destination is registered under "${input.ref}".`,
     outcome: "denied",

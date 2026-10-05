@@ -1,4 +1,4 @@
-import { toBaseUnits } from "@agent-rails/contract";
+import { toBaseUnits } from "@ash/contract";
 import { CliError } from "./errors.js";
 
 export const LAMPORTS_PER_SOL = 1_000_000_000n;

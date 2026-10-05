@@ -17,12 +17,8 @@ import {
   recoverFunds,
   runPrivatePayout,
   type SdkPort,
-} from "@agent-rails/cloak";
-import type {
-  CloakPayoutProposal,
-  RunErrorCode,
-  RunEvent,
-} from "@agent-rails/contract/template-run";
+} from "@ash/cloak";
+import type { CloakPayoutProposal, RunErrorCode, RunEvent } from "@ash/contract/template-run";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type CloakRunConfig, cloakRunConfig } from "@/lib/templates/runners/cloak-config";
 import { withWalletRunLock } from "@/lib/templates/runners/cloak-lock";
@@ -78,7 +74,7 @@ async function openSdk(config: CloakRunConfig, wallet: WalletHandle): Promise<Sd
   if (config.fakeSdk) {
     // Test-only branch: one stand-in per page, so a recovery sees the pool a failed run left, and
     // a spec can inject failures before the page loads. Never reached unless the build set the flag.
-    const { createFakeSdk } = await import("@agent-rails/cloak/testing");
+    const { createFakeSdk } = await import("@ash/cloak/testing");
     const page = globalThis as unknown as {
       __CLOAK_FAKE_OPTIONS__?: Parameters<typeof createFakeSdk>[0];
       __CLOAK_FAKE_SDK__?: SdkPort;
@@ -86,7 +82,7 @@ async function openSdk(config: CloakRunConfig, wallet: WalletHandle): Promise<Sd
     page.__CLOAK_FAKE_SDK__ ??= createFakeSdk(page.__CLOAK_FAKE_OPTIONS__);
     return page.__CLOAK_FAKE_SDK__;
   }
-  const { createCloakSdkPort } = await import("@agent-rails/cloak/adapter");
+  const { createCloakSdkPort } = await import("@ash/cloak/adapter");
   return createCloakSdkPort({ rpcUrl: config.rpcUrl, auth: { kind: "wallet", wallet } });
 }
 
@@ -143,6 +139,7 @@ export function useCloakRun(proposalInput: CloakPayoutProposal): CloakRunView {
         funder: walletAddress,
         mainnetEnabled: config.mainnetEnabled,
         allowedWallets: config.allowedWallets,
+        contacts: config.contacts,
       }),
     [proposal, walletAddress, config],
   );

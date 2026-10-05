@@ -1,4 +1,4 @@
-import type { ResolvedSecurity } from "@agent-rails/sdk";
+import type { ResolvedSecurity } from "@ash/sdk";
 import type { BoundContext } from "./bound-context.js";
 import type { McpRuntime } from "./config.js";
 import type { DryRunLedger } from "./dry-runs.js";

@@ -1,5 +1,5 @@
-import { AGENT_RAILS_PROGRAM_ADDRESS, fetchMaybeIntentReceipt } from "@agent-rails/client";
-import { NATIVE_MINT } from "@agent-rails/contract";
+import { ASH_PROGRAM_ADDRESS, fetchMaybeIntentReceipt } from "@ash/client";
+import { NATIVE_MINT } from "@ash/contract";
 import { address, lamports } from "@solana/kit";
 import { describe, expect, it, vi } from "vitest";
 import type { ServerContext } from "../context.js";
@@ -7,8 +7,8 @@ import { PaymentGovernor } from "../governor.js";
 import { testBoundContext, testConfig } from "../testing.js";
 import { handleGetPaymentStatus } from "./get-payment-status.js";
 
-vi.mock("@agent-rails/client", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@agent-rails/client")>();
+vi.mock("@ash/client", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@ash/client")>();
   return {
     ...actual,
     fetchMaybeIntentReceipt: vi.fn(),
@@ -36,7 +36,7 @@ describe("handleGetPaymentStatus", () => {
       address: RECEIPT_PDA,
       executable: false,
       lamports: lamports(0n),
-      programAddress: AGENT_RAILS_PROGRAM_ADDRESS,
+      programAddress: ASH_PROGRAM_ADDRESS,
       space: 0n,
       data: {
         discriminator: new Uint8Array(8),
@@ -87,7 +87,7 @@ describe("handleGetPaymentStatus", () => {
       address: RECEIPT_PDA,
       executable: false,
       lamports: lamports(0n),
-      programAddress: AGENT_RAILS_PROGRAM_ADDRESS,
+      programAddress: ASH_PROGRAM_ADDRESS,
       space: 0n,
       data: {
         discriminator: new Uint8Array(8),

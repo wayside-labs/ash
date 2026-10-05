@@ -1,5 +1,5 @@
-import type { MintLimitInputArgs, PolicyInputArgs } from "@agent-rails/client";
-import { NATIVE_MINT } from "@agent-rails/contract";
+import type { MintLimitInputArgs, PolicyInputArgs } from "@ash/client";
+import { NATIVE_MINT } from "@ash/contract";
 import { type Address, address } from "@solana/kit";
 import { describe, expect, it } from "vitest";
 import { makeCeiling, makeMintConfig, makeTreasury } from "../fixtures.js";

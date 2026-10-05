@@ -15,7 +15,7 @@ when spend crosses a configurable fraction of the policy window limit.
 
 | Actor | Can | Cannot |
 |---|---|---|
-| Guardian key (Agent Rails or customer bot) | `pause` | unpause, withdraw, policy, sessions |
+| Guardian key (ASH or customer bot) | `pause` | unpause, withdraw, policy, sessions |
 | Owner | withdraw **while paused**, unpause, `remove_guardian` | — |
 | Agent session | pay within policy | pause or withdraw |
 
@@ -31,7 +31,7 @@ or removes the guardian — verifiable on-chain.
 | Key | Role | Storage |
 |---|---|---|
 | Owner | cold / primary wallet | customer |
-| Guardian | hot monitoring key | Agent Rails **only if** customer opts in |
+| Guardian | hot monitoring key | ASH **only if** customer opts in |
 
 ```bash
 solana-keygen new -o guardian-keypair.json --no-bip39-passphrase
@@ -42,7 +42,7 @@ Never commit `*keypair*.json`.
 ### 2.2 Opt-in on-chain
 
 ```bash
-pnpm agent-rails guardian add "$(solana address -k guardian-keypair.json)" \
+pnpm ash guardian add "$(solana address -k guardian-keypair.json)" \
   --wallet <owner-keypair> \
   --out <manifest-dir> \
   --treasury <treasury> \
@@ -53,7 +53,7 @@ pnpm agent-rails guardian add "$(solana address -k guardian-keypair.json)" \
 Revoke:
 
 ```bash
-pnpm agent-rails guardian rm --address <guardian-pubkey> --wallet <owner> ...
+pnpm ash guardian rm --address <guardian-pubkey> --wallet <owner> ...
 ```
 
 ### 2.3 Policy windows vs owner ceiling
@@ -64,7 +64,7 @@ pnpm agent-rails guardian rm --address <guardian-pubkey> --wallet <owner> ...
 | **Operator policy** (`Policy.mint_limits`) | Operator | `short_window_max`, `short_window_seconds`, `long_window_*` |
 
 Spend counters live on each **`AgentSession`**. The watcher rolls them the same way as
-`agent-rails-policy` (`roll_window` in `crates/agent-rails-policy/src/engine.rs`). By default
+`ash-policy` (`roll_window` in `crates/ash-policy/src/engine.rs`). By default
 it watches the **short** policy window (`--window short`). CLI `init` sets
 `shortWindowSeconds: 3600` (1 hour) and aligns policy `short_window_max` with the operator’s
 `--daily` SOL cap — that is a **policy limit**, not a separate CLI flag the watcher accepts.
@@ -109,11 +109,11 @@ handles repeat `pause`).
 
 ## 4. Devnet validation (stop conditions)
 
-Use a throwaway treasury (`scripts/demo.sh`, `agent-rails init`, or
+Use a throwaway treasury (`scripts/demo.sh`, `ash init`, or
 `scripts/guardian-watch-devnet-proof.sh --wallet <keypair>` for an automated §4 run).
 
 1. **Register guardian** (§2.2).
-2. **Spend toward the limit** — e.g. several `agent-rails pay` calls until the session’s
+2. **Spend toward the limit** — e.g. several `ash pay` calls until the session’s
    rolled short-window spend exceeds 80% of that mint’s policy `short_window_max` (often the
    same amount you passed as `--daily` at `init`), or use `--threshold-bps 100` for a low bar.
 3. **Run watcher** with `--once` (no `--dry-run`). Expect stderr: `pause confirmed: <sig>`.
@@ -121,7 +121,7 @@ Use a throwaway treasury (`scripts/demo.sh`, `agent-rails init`, or
 5. **Owner withdraw** — must succeed:
 
    ```bash
-   pnpm agent-rails withdraw --amount 0.001 --to <owner-pubkey> --wallet <owner> --out <dir> --yes
+   pnpm ash withdraw --amount 0.001 --to <owner-pubkey> --wallet <owner> --out <dir> --yes
    ```
 
 6. **Recovery** — `unpause` (owner), optional `guardian rm`.
@@ -163,7 +163,7 @@ The workflow runs `scripts/guardian-watch-devnet-proof.sh` with the repository s
 
 ```bash
 # After balance ≥ 0.05 SOL on the CI pubkey:
-gh workflow run guardian-watch-devnet.yml --repo wayside-labs/agent-rails
+gh workflow run guardian-watch-devnet.yml --repo wayside-labs/ash
 ```
 
 Balance check (no secret needed):

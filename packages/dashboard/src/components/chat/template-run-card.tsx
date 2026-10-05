@@ -1,12 +1,12 @@
 "use client";
 
-import { formatZec } from "@agent-rails/cloak";
+import { formatZec } from "@ash/cloak";
 import {
   type CloakPayoutProposal,
   formatLamportsAsSol,
   mainnetExplorerTxUrl,
   type TemplateRunProposal,
-} from "@agent-rails/contract/template-run";
+} from "@ash/contract/template-run";
 import {
   AlertTriangle,
   Check,
@@ -360,7 +360,7 @@ function PayoutCard({ proposal }: { proposal: CloakPayoutProposal }) {
           <div className="flex flex-wrap gap-2">
             {proofUrl && (
               <Button asChild size="sm" variant="outline">
-                <a href={proofUrl} download={`agent-rails-cloak-proof-${run.plan.runId}.json`}>
+                <a href={proofUrl} download={`ash-cloak-proof-${run.plan.runId}.json`}>
                   <Download className="h-3.5 w-3.5" />
                   {t("chat.templateRun.downloadProof")}
                 </a>
@@ -368,7 +368,7 @@ function PayoutCard({ proposal }: { proposal: CloakPayoutProposal }) {
             )}
             {csvUrl && (
               <Button asChild size="sm" variant="outline">
-                <a href={csvUrl} download={`agent-rails-cloak-${run.plan.runId}.csv`}>
+                <a href={csvUrl} download={`ash-cloak-${run.plan.runId}.csv`}>
                   <Download className="h-3.5 w-3.5" />
                   {t("chat.templateRun.downloadCsv")}
                 </a>

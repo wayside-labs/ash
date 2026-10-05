@@ -1,5 +1,5 @@
 // Re-export the generated client for convenience.
-export * from "@agent-rails/client";
+export * from "@ash/client";
 export {
   type PostAlertWebhookResult,
   postAgentEvent,
@@ -31,16 +31,16 @@ export {
   resolveDestination,
 } from "./destinations.js";
 export {
-  agentRailsErrorFromCode,
+  ashErrorFromCode,
   customCodeFromTransactionError,
   reasonCodeFromProgramError,
   stringifyRpcError,
-  toAgentRailsError,
+  toAshError,
 } from "./error-mapping.js";
 export {
-  AgentRailsError,
-  type AgentRailsErrorOptions,
-  isAgentRailsError,
+  AshError,
+  type AshErrorOptions,
+  isAshError,
   isIndeterminate,
 } from "./errors.js";
 export {
@@ -74,10 +74,10 @@ export {
   TOKEN_PROGRAM_ADDRESS,
 } from "./pdas.js";
 export {
-  type AgentRailsPlugin,
-  type AgentRailsPluginConfig,
-  type AgentRailsSigner,
-  agentRails,
+  type AshPlugin,
+  type AshPluginConfig,
+  type AshSigner,
+  ash,
 } from "./plugin.js";
 export {
   type HookVerdict,
@@ -101,7 +101,7 @@ export {
   resolvePaymentOutcome,
 } from "./resolve.js";
 export {
-  type AgentRailsSecurityConfig,
+  type AshSecurityConfig,
   type ChainFacts,
   type MintView,
   type ResolvedSecurity,

@@ -16,7 +16,7 @@ import { type BillingScope, ledgerFor } from "./ledger";
  * `openrouter-platform` provider. A user's own Anthropic key or Claude
  * subscription is theirs to spend, and demo costs nothing, so neither is metered.
  *
- * This is a separate meter from anything on-chain. Agent Rails treasuries,
+ * This is a separate meter from anything on-chain. ASH treasuries,
  * policies and sessions govern what *agents* pay vendors, in the vault, under
  * the program's rules; this ledger is what the *dashboard* charges for its own
  * assistant, off-chain, and the program never sees it. A deposit rail may later

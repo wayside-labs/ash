@@ -4,7 +4,7 @@
 (`next build && next start`), not `next dev`. Use this before recording the Colosseum demo
 and once per release candidate.
 
-**Environment:** local JSON store (`~/.agent-rails/dashboard.json`) or the hosted Vercel
+**Environment:** local JSON store (`~/.ash/dashboard.json`) or the hosted Vercel
 deploy with Supabase configured. Chain calls need a devnet RPC; wallet connect needs a
 browser extension or the dashboard’s dev wallet flow.
 
@@ -18,11 +18,11 @@ renders” with stubs. This runbook is the manual pass with a real wallet and op
 ```bash
 cd <repo root>
 pnpm install && pnpm build
-pnpm --filter @agent-rails/dashboard build
-pnpm --filter @agent-rails/dashboard start   # http://127.0.0.1:3000
+pnpm --filter @ash/dashboard build
+pnpm --filter @ash/dashboard start   # http://127.0.0.1:3000
 ```
 
-Point `AGENT_RAILS_RPC` / dashboard settings at `https://api.devnet.solana.com` if you exercise
+Point `ASH_RPC` / dashboard settings at `https://api.devnet.solana.com` if you exercise
 on-chain reads. For a read-only pass, stubs are not required — pages should still mount.
 
 ---
@@ -50,7 +50,7 @@ Record **PASS / FAIL** and the date in the submission notes.
 
 | Date | Operator | Build (git sha) | Result | Notes |
 |------|----------|-----------------|--------|-------|
-| 2026-09-26 | release engineer | local @ HIG-01 | PASS (automated) | `pnpm --filter @agent-rails/dashboard build` offline OK; `VERIFY_STRICT=1 scripts/verify.sh ui` exercises production `next build && next start` and `e2e/smoke.spec.ts` (sidebar routes). Sign this row again after a human walkthrough before recording. |
+| 2026-09-26 | release engineer | local @ HIG-01 | PASS (automated) | `pnpm --filter @ash/dashboard build` offline OK; `VERIFY_STRICT=1 scripts/verify.sh ui` exercises production `next build && next start` and `e2e/smoke.spec.ts` (sidebar routes). Sign this row again after a human walkthrough before recording. |
 
 ---
 

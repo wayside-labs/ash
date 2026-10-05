@@ -31,8 +31,8 @@
     "createdAfterApproval": true
   },
   "mcp": {
-    "AGENT_RAILS_SECURITY": "strict",
-    "AGENT_RAILS_MAX_PAYMENTS_PER_MINUTE": "2"
+    "ASH_SECURITY": "strict",
+    "ASH_MAX_PAYMENTS_PER_MINUTE": "2"
   },
   "guardian": { "window": "short", "thresholdBps": 5000 },
   "scout": { "venues": ["kamino-lend", "save"], "symbols": ["USDC"], "minTvlUsd": 1000000 },

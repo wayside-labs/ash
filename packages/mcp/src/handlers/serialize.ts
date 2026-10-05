@@ -1,10 +1,4 @@
-import type {
-  AgentSession,
-  IntentReceipt,
-  MintLimit,
-  Policy,
-  SpendCounter,
-} from "@agent-rails/client";
+import type { AgentSession, IntentReceipt, MintLimit, Policy, SpendCounter } from "@ash/client";
 import type { ReadonlyUint8Array } from "@solana/kit";
 
 export function bytesToHex(bytes: ReadonlyUint8Array): string {

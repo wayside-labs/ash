@@ -1,4 +1,4 @@
-import { MAX_NAME_LEN } from "@agent-rails/contract";
+import { MAX_NAME_LEN } from "@ash/contract";
 import type { ReadonlyUint8Array } from "@solana/kit";
 import { CliError } from "./errors.js";
 

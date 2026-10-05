@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import { ashHome } from "@ash/contract/legacy-env";
 import { hashToken, newIngestToken, reviewExpiry, reviewKey, shouldOpenReview } from "./logic";
 import {
   EVENTS_PAGE,
@@ -18,7 +19,7 @@ type OpsFile = { tokens: IngestToken[]; events: StoredEvent[]; reviews: Review[]
 
 /** Next to `dashboard.json`, same home the CLI uses. Mode 0600: it holds bearer tokens. */
 export function opsPath(): string {
-  const home = process.env.AGENT_RAILS_HOME ?? join(homedir(), ".agent-rails");
+  const home = ashHome();
   return join(home, "dashboard-ops.json");
 }
 

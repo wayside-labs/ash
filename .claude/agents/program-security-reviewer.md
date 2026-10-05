@@ -1,6 +1,6 @@
 ---
 name: program-security-reviewer
-description: Use to review a diff touching programs/agent_rails or crates/agent-rails-policy against the invariants the ADRs settled — privilege direction, idempotency, pause semantics, account validation, arithmetic, and layout stability. Reports findings; does not edit.
+description: Use to review a diff touching programs/ash or crates/ash-policy against the invariants the ADRs settled — privilege direction, idempotency, pause semantics, account validation, arithmetic, and layout stability. Reports findings; does not edit.
 tools: Bash, Read, Glob, Grep
 model: inherit
 ---
@@ -45,9 +45,9 @@ breaking change for every Codama client and indexer. `tests/layout.rs` and
 padding must be preserved so v1.1 lands without migrations.
 
 **8. Test obligations.** A new rule in `engine.rs` needs a property in
-`crates/agent-rails-policy/tests/proptests.rs`; a change under `audit.rs` needs a vector in
+`crates/ash-policy/tests/proptests.rs`; a change under `audit.rs` needs a vector in
 `audit_vectors.rs`. A new instruction needs adversarial cases in
-`programs/agent_rails/tests/`, not only a happy path.
+`programs/ash/tests/`, not only a happy path.
 
 ## How to report
 

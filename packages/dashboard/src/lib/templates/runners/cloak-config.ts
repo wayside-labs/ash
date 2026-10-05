@@ -1,4 +1,4 @@
-import { parseAllowedWallets } from "@agent-rails/cloak";
+import { parseAllowedWallets, parseContacts } from "@ash/cloak";
 
 /**
  * A browser-friendly mainnet RPC. The Solana public endpoint answers 403 to a browser origin, so
@@ -12,6 +12,8 @@ export type CloakRunConfig = {
   rpcUrl: string;
   /** Wallets allowed to run it. Empty allows nobody. */
   allowedWallets: string[];
+  /** The operator's contacts, label to address. Empty allows no payee. */
+  contacts: Map<string, string>;
   /** The UI suite only: a stand-in for Cloak, never set on a real install. */
   fakeSdk: boolean;
 };
@@ -27,6 +29,7 @@ export function cloakRunConfig(): CloakRunConfig {
     mainnetEnabled: process.env.NEXT_PUBLIC_CLOAK_MAINNET === "1",
     rpcUrl: rpc ? rpc : DEFAULT_CLOAK_RPC_URL,
     allowedWallets: parseAllowedWallets(process.env.NEXT_PUBLIC_CLOAK_ALLOWED_WALLETS),
+    contacts: parseContacts(process.env.NEXT_PUBLIC_CLOAK_CONTACTS),
     fakeSdk: process.env.NEXT_PUBLIC_CLOAK_FAKE_SDK === "1",
   };
 }

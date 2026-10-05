@@ -1,4 +1,4 @@
-import { AGENT_RAILS_ERROR__PAUSED, AGENT_RAILS_PROGRAM_ADDRESS } from "@agent-rails/client";
+import { ASH_ERROR__PAUSED, ASH_PROGRAM_ADDRESS } from "@ash/client";
 import {
   address,
   appendTransactionMessageInstruction,
@@ -10,8 +10,8 @@ import {
   setTransactionMessageLifetimeUsingBlockhash,
 } from "@solana/kit";
 import { describe, expect, it } from "vitest";
-import { agentRailsErrorFromCode } from "./error-mapping.js";
-import { isAgentRailsError } from "./errors.js";
+import { ashErrorFromCode } from "./error-mapping.js";
+import { isAshError } from "./errors.js";
 import { simulatePayment } from "./simulate.js";
 
 const FEE_PAYER = address("11111111111111111111111111111116");
@@ -32,7 +32,7 @@ function mockTransactionMessage() {
     (message) =>
       appendTransactionMessageInstruction(
         {
-          programAddress: AGENT_RAILS_PROGRAM_ADDRESS,
+          programAddress: ASH_PROGRAM_ADDRESS,
           accounts: [],
           data: new Uint8Array(16),
         },
@@ -42,9 +42,9 @@ function mockTransactionMessage() {
 }
 
 describe("simulatePayment", () => {
-  it("maps Anchor custom errors to AgentRailsError reason codes", () => {
-    const error = agentRailsErrorFromCode(AGENT_RAILS_ERROR__PAUSED);
-    expect(isAgentRailsError(error)).toBe(true);
+  it("maps Anchor custom errors to AshError reason codes", () => {
+    const error = ashErrorFromCode(ASH_ERROR__PAUSED);
+    expect(isAshError(error)).toBe(true);
     expect(error.reasonCode).toBe("TREASURY_PAUSED");
     expect(error.message).toContain("paused");
   });
@@ -84,7 +84,7 @@ describe("simulatePayment", () => {
       simulateTransaction: () => ({
         send: async () => ({
           value: {
-            err: { InstructionError: [0n, { Custom: BigInt(AGENT_RAILS_ERROR__PAUSED) }] },
+            err: { InstructionError: [0n, { Custom: BigInt(ASH_ERROR__PAUSED) }] },
             logs: [],
           },
         }),
@@ -114,12 +114,12 @@ describe("simulatePayment", () => {
     });
   });
 
-  it("throws AgentRailsError when simulation returns a custom program error", async () => {
+  it("throws AshError when simulation returns a custom program error", async () => {
     const rpc = {
       simulateTransaction: () => ({
         send: async () => ({
           value: {
-            err: { InstructionError: [0, { Custom: AGENT_RAILS_ERROR__PAUSED }] },
+            err: { InstructionError: [0, { Custom: ASH_ERROR__PAUSED }] },
             logs: [],
           },
         }),

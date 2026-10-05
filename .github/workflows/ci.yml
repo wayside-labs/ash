@@ -48,9 +48,9 @@ jobs:
       - run: echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
 
       # Both programs, because tests/common/mod.rs loads test_pda_relay.so next to
-      # agent_rails.so. A missing .so fails at test runtime, not at build time, which is
+      # ash.so. A missing .so fails at test runtime, not at build time, which is
       # why this gap survived until the tests ran on a runner with an empty target/.
-      - run: cargo build-sbf --manifest-path programs/agent_rails/Cargo.toml
+      - run: cargo build-sbf --manifest-path programs/ash/Cargo.toml
       - run: cargo build-sbf --manifest-path programs/test_pda_relay/Cargo.toml
 
       # Fetches a prebuilt cargo-llvm-cov rather than compiling it, which is the whole
@@ -82,7 +82,7 @@ jobs:
       # Production build of the dashboard on every PR. Fonts ship via @fontsource in the
       # lockfile so this does not reach Google at compile time; the step still catches
       # Next/webpack regressions that vitest cannot see.
-      - run: pnpm turbo run build --filter @agent-rails/dashboard
+      - run: pnpm turbo run build --filter @ash/dashboard
       # lint, typecheck, test, codegen:check and pnpm audit. codegen:check is the
       # enforcement behind "never hand-edit packages/client/src/generated": it
       # regenerates from the committed IDL and fails on any difference, which no

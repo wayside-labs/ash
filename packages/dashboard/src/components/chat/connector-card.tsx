@@ -4,7 +4,7 @@ import {
   CONNECTOR_FENCE,
   type ConnectorProposal,
   connectorSecretEnv,
-} from "@agent-rails/contract/connector-bundle";
+} from "@ash/contract/connector-bundle";
 import { AlertTriangle, Cable, Check, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";

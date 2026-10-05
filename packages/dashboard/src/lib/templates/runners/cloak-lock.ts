@@ -16,7 +16,7 @@ export async function withWalletRunLock<T>(
   wallet: string,
   work: () => Promise<T>,
 ): Promise<LockResult<T>> {
-  const name = `agent-rails.cloak.run:${wallet}`;
+  const name = `ash.cloak.run:${wallet}`;
   if (held.has(name)) return { held: false };
   held.add(name);
   try {

@@ -1,9 +1,9 @@
-import { buildRunPlan } from "@agent-rails/cloak";
+import { buildRunPlan } from "@ash/cloak";
 import {
   CLOAK_PRIVATE_PAYOUT_TEMPLATE_ID,
   cloakPayoutProposalSchema,
   type RunEvent,
-} from "@agent-rails/contract/template-run";
+} from "@ash/contract/template-run";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cloakRunConfig, DEFAULT_CLOAK_RPC_URL } from "./cloak-config";
 import { withWalletRunLock } from "./cloak-lock";
@@ -48,11 +48,13 @@ describe("cloakRunConfig", () => {
     vi.stubEnv("NEXT_PUBLIC_CLOAK_MAINNET", "");
     vi.stubEnv("NEXT_PUBLIC_CLOAK_RPC_URL", "");
     vi.stubEnv("NEXT_PUBLIC_CLOAK_ALLOWED_WALLETS", "");
+    vi.stubEnv("NEXT_PUBLIC_CLOAK_CONTACTS", "");
     vi.stubEnv("NEXT_PUBLIC_CLOAK_FAKE_SDK", "");
     expect(cloakRunConfig()).toEqual({
       mainnetEnabled: false,
       rpcUrl: DEFAULT_CLOAK_RPC_URL,
       allowedWallets: [],
+      contacts: new Map(),
       fakeSdk: false,
     });
   });
@@ -72,6 +74,14 @@ describe("cloakRunConfig", () => {
     const config = cloakRunConfig();
     expect(config.rpcUrl).toBe("https://rpc.example/key");
     expect(config.allowedWallets).toEqual([FUNDER, addr(5)]);
+  });
+
+  it("reads the contact list, dropping an entry that is not a valid contact", () => {
+    vi.stubEnv(
+      "NEXT_PUBLIC_CLOAK_CONTACTS",
+      JSON.stringify({ "Supplier A": addr(6), "Contributor B": "not-an-address" }),
+    );
+    expect(cloakRunConfig().contacts).toEqual(new Map([["Supplier A", addr(6)]]));
   });
 });
 
@@ -113,7 +123,7 @@ describe("run storage", () => {
   it("does not leave a payee's address readable in the key", () => {
     const key = runStorageKey(FUNDER, proposal);
     for (const payee of proposal.payees) expect(key).not.toContain(payee.address.slice(0, 8));
-    expect(key.startsWith(`agent-rails.cloak.run:${FUNDER}:`)).toBe(true);
+    expect(key.startsWith(`ash.cloak.run:${FUNDER}:`)).toBe(true);
   });
 
   it("round-trips a log of signatures and forgets it on request", () => {
@@ -175,7 +185,7 @@ describe("run storage", () => {
     writeFingerprint(FUNDER, "0123456789abcdef");
     expect(readFingerprint(FUNDER)).toBe("0123456789abcdef");
     expect(readFingerprint(addr(901))).toBeUndefined();
-    files.set(`agent-rails.cloak.fingerprint:${FUNDER}`, "NOT-HEX");
+    files.set(`ash.cloak.fingerprint:${FUNDER}`, "NOT-HEX");
     expect(readFingerprint(FUNDER)).toBeUndefined();
   });
 
@@ -411,7 +421,7 @@ describe("withWalletRunLock", () => {
 
   it("refuses a run another tab already holds the lock for", async () => {
     const locks = fakeLocks();
-    locks.taken.add(`agent-rails.cloak.run:${FUNDER}`);
+    locks.taken.add(`ash.cloak.run:${FUNDER}`);
     vi.stubGlobal("navigator", { locks });
     const work = vi.fn(async () => "never");
     await expect(withWalletRunLock(FUNDER, work)).resolves.toEqual({ held: false });

@@ -1,8 +1,8 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/agent-rails-policy",
-    "programs/agent_rails",
+    "crates/ash-policy",
+    "programs/ash",
     "programs/test_pda_relay",
 ]
 
@@ -23,7 +23,7 @@ anchor-spl = { version = "=1.1.2", default-features = false, features = [
 ] }
 # `version` alongside `path` is what a publish would require, and is what keeps the
 # dependency from reading as a wildcard.
-agent-rails-policy = { path = "crates/agent-rails-policy", version = "0.1.0", default-features = false }
+ash-policy = { path = "crates/ash-policy", version = "0.1.0", default-features = false }
 
 # `overflow-checks` is mandatory: the policy crate uses `checked_*` everywhere, but the
 # Anchor layer must also trap rather than wrap on any arithmetic we missed.

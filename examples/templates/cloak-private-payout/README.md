@@ -7,12 +7,12 @@ wallet; your browser shields the funds into Cloak's pool and pays each payee out
 > **MAINNET. REAL FUNDS. NOT A VAULT PAYMENT.** This is the one template that runs on Solana
 > mainnet, from *your own wallet*, with money you can lose. It is off by default, limited to wallets
 > you list, capped at 0.10 SOL a run, and its policy is **soft**: it binds the model, not you. Use
-> a throwaway wallet. Nothing here goes through the Agent Rails program, so no treasury ceiling,
+> a throwaway wallet. Nothing here goes through the ASH program, so no treasury ceiling,
 > policy, session or audit chain applies. Read [ADR-027](../../../docs/adr/ADR-027-private-payouts-through-cloak-in-the-operators-browser.md)
 > and [the product doc](../../../docs/product/cloak-private-payout.md) before the first run.
 
 Unlike the other templates, this one is not docs and config alone. It adds a package
-(`packages/cloak`) and a contract module (`@agent-rails/contract/template-run`), and it is
+(`packages/cloak`) and a contract module (`@ash/contract/template-run`), and it is
 triggered from the dashboard chat. It adds no program instruction and no MCP tool: the agent
 surface stays at seven tools.
 
@@ -43,7 +43,7 @@ stay public, Cloak's relay sees you, and the policy is soft.
 
 ```
  chat model          proposes           you             approve            your browser
- (text only)  ─▶  template-run block ─▶  payout card ─▶  wallet prompts ─▶  @agent-rails/cloak
+ (text only)  ─▶  template-run block ─▶  payout card ─▶  wallet prompts ─▶  @ash/cloak
  no key, no tool     JSON, validated    full addresses     one per step       derives keys in memory
                                         fees, MAINNET      you sign each      stores nothing secret
                                                                                    │
@@ -58,7 +58,7 @@ stay public, Cloak's relay sees you, and the policy is soft.
 | Planner | [`agents/payout-planner.md`](agents/payout-planner.md): the chat model | No | No. It proposes. |
 | Operator | You | Your wallet app does | You approve the card, then every wallet prompt |
 | Desk | **Your own mainnet wallet** (next section) | Yes, in your wallet app | Signs the shield and authenticates each relayed request |
-| Runner | `@agent-rails/cloak`, in your browser | Derives keys in memory, zeroes them, stores none | Only after you approve |
+| Runner | `@ash/cloak`, in your browser | Derives keys in memory, zeroes them, stores none | Only after you approve |
 | Cloak relay | `https://api.cloak.ag` | Receives your viewing key | Submits the withdrawals and swaps |
 
 ## The desk is your own wallet
@@ -97,7 +97,7 @@ how much one run can move, not what a wallet that has been connected to a site c
 5. **A dry run from a terminal first.** It is the default and signs nothing:
 
    ```bash
-   pnpm --filter @agent-rails/cloak build
+   pnpm --filter @ash/cloak build
    node packages/cloak/dist/smoke.js --keypair <FUNDER_KEYPAIR.json> \
      --payee-sol <SOL_PAYEE> --payee-zec <ZEC_PAYEE>
    ```
@@ -158,7 +158,7 @@ edited after the commitment, the two would differ.
 memo is exactly:
 
 ```
-agent-rails/privacy-text/v1 sha256=331f0b7a354c8f18dfbbc71d25d5d3f99d23c74797fde752446a23e0c0313148
+ash/privacy-text/v1 sha256=331f0b7a354c8f18dfbbc71d25d5d3f99d23c74797fde752446a23e0c0313148
 ```
 
 **Where it comes from.** The runner sends it right after the Cloak deposit, as a standalone

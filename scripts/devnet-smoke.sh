@@ -5,8 +5,8 @@
 #
 #   scripts/devnet-smoke.sh --wallet <keypair> [--out <dir>] [--rpc <url>]
 #
-# Everything below runs through the same surfaces a user has — `agent-rails init` and
-# `agent-rails pay` — rather than a bespoke script that could pass while the product is
+# Everything below runs through the same surfaces a user has — `ash init` and
+# `ash pay` — rather than a bespoke script that could pass while the product is
 # broken. It prints a Markdown report on stdout with the signatures, so a release page can
 # carry links a reader can open.
 #
@@ -65,7 +65,7 @@ die() {
 [[ -f packages/cli/dist/cli.js ]] || die "the CLI is not built — run pnpm build"
 
 if [[ -z $OUT ]]; then
-  OUT=$(mktemp -d -t agent-rails-smoke.XXXXXX) || die "could not create a work directory"
+  OUT=$(mktemp -d -t ash-smoke.XXXXXX) || die "could not create a work directory"
 fi
 mkdir -p "$OUT"
 
@@ -232,7 +232,7 @@ per-transaction ceiling was refused by the program.
 
 The treasury above is left in place: closing it needs a withdrawal and three more
 transactions, and the rent is worth less than the failure surface. Reclaim it with
-`agent-rails withdraw --all` followed by `agent-rails close policy` and `close treasury`.
+`ash withdraw --all` followed by `ash close policy` and `close treasury`.
 REPORT
 
 printf '\n\033[32m✓ devnet smoke passed\033[0m\n' >&2

@@ -1,4 +1,4 @@
-import type { AgentEvent } from "@agent-rails/contract/alerts";
+import type { AgentEvent } from "@ash/contract/alerts";
 import type { Settings, StoredIntegration } from "@/lib/schema";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -35,13 +35,13 @@ export function describeEvent(event: AgentEvent, workflowName?: string): string 
   const where = workflowName ? ` [${workflowName}]` : "";
   switch (event.kind) {
     case "payment_denied":
-      return `Agent Rails${where}: payment denied — ${event.denial.reason_code} (session ${event.denial.session}, intent ${event.denial.intent}).`;
+      return `ASH${where}: payment denied — ${event.denial.reason_code} (session ${event.denial.session}, intent ${event.denial.intent}).`;
     case "headroom_low":
-      return `Agent Rails${where}: ${event.headroom.window} window at ${(event.headroom.headroom_bps / 100).toFixed(1)}% headroom (spent ${event.headroom.spent} of ${event.headroom.limit}, mint ${event.headroom.mint}).`;
+      return `ASH${where}: ${event.headroom.window} window at ${(event.headroom.headroom_bps / 100).toFixed(1)}% headroom (spent ${event.headroom.spent} of ${event.headroom.limit}, mint ${event.headroom.mint}).`;
     case "payment_review_required":
-      return `Agent Rails${where}: payment waiting for approval — ${event.review.amount} base units of ${event.review.mint} to ${event.review.destination_label ?? event.review.destination}, reference ${event.review.reference}. Decide in the dashboard's Reviews page.`;
+      return `ASH${where}: payment waiting for approval — ${event.review.amount} base units of ${event.review.mint} to ${event.review.destination_label ?? event.review.destination}, reference ${event.review.reference}. Decide in the dashboard's Reviews page.`;
     case "limit_increase_requested":
-      return `Agent Rails${where}: agent asks for more budget${event.request.requested_amount ? ` (${event.request.requested_amount})` : ""} — "${event.request.reason}". Nothing changes unless you raise a limit.`;
+      return `ASH${where}: agent asks for more budget${event.request.requested_amount ? ` (${event.request.requested_amount})` : ""} — "${event.request.reason}". Nothing changes unless you raise a limit.`;
   }
 }
 

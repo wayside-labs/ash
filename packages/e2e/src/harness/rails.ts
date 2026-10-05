@@ -4,7 +4,7 @@ import {
   getCreatePolicyInstruction,
   getCreateSessionInstruction,
   getCreateTreasuryInstruction,
-} from "@agent-rails/client";
+} from "@ash/client";
 import {
   AccountRole,
   type Address,

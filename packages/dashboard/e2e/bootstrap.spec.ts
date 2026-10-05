@@ -41,7 +41,7 @@ test.describe("treasury bootstrap wizard", () => {
     await page.goto("/treasury");
     const card = page.getByTestId(`workflow-${workflow.id}`);
     // The CLI hint is gone: the empty card offers the wizard instead.
-    await expect(card.getByText("agent-rails init")).toHaveCount(0);
+    await expect(card.getByText("ash init")).toHaveCount(0);
     const dialog = page.getByRole("dialog");
     await clickUntil(
       card.getByRole("button", { name: t("treasury.bootstrap.cta") }),

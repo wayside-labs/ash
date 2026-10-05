@@ -1,4 +1,4 @@
-# @agent-rails/e2e
+# @ash/e2e
 
 Layer 5 of the ADR-008 pyramid. The only tests in this repository where the TypeScript
 client talks to a validator.
@@ -37,19 +37,19 @@ report `denied` and the first test catches that. A green run here has been seen 
 
 ## Running it
 
-`scripts/verify.sh e2e`. Needs `surfpool` on PATH and `target/deploy/agent_rails.so` built
+`scripts/verify.sh e2e`. Needs `surfpool` on PATH and `target/deploy/ash.so` built
 (`cargo build-sbf`); the group skips loudly without either rather than passing. It is
 deliberately **not** part of `verify.sh all` — it boots a validator per file and deploys a
 700 KB program, and ADR-008 scopes layer 5 to nightly.
 
-The gate runs this package first, then `pnpm --filter @agent-rails/mcp test:e2e`, which
+The gate runs this package first, then `pnpm --filter @ash/mcp test:e2e`, which
 imports `exports` from here (`harness/surfnet`, `harness/blinding-proxy`) so the MCP handler
 suite does not carry a second copy of the harness.
 
 The harness installs the program by writing the loader's accounts through Surfpool's
 `surfnet_setAccount` cheatcode, not by running a deploy command. That is not a shortcut, it
 is the only thing that works: `solana program deploy` deploys at whatever address its keypair
-file names, and `target/deploy/agent_rails-keypair.json` is gitignored, because `.gitignore`
+file names, and `target/deploy/ash-keypair.json` is gitignored, because `.gitignore`
 refuses to carry raw secret keys. On a developer's machine that file happens to hold the key
 behind `declare_id!`; on a fresh checkout `cargo build-sbf` mints a new one, the program
 lands at a random address, and every instruction fails its own declared-id check. CI did

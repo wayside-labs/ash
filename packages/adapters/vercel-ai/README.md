@@ -1,21 +1,21 @@
-# @agent-rails/adapter-vercel-ai
+# @ash/adapter-vercel-ai
 
-Thin Vercel AI SDK adapter for the agent-facing Agent Rails tools (`AGENT_TOOL_NAMES`).
-Schemas and names come from `@agent-rails/contract`; you supply in-process handlers (delegate to
-`@agent-rails/mcp` handlers, call `@agent-rails/sdk` directly, or use mocks for tests).
+Thin Vercel AI SDK adapter for the agent-facing ASH tools (`AGENT_TOOL_NAMES`).
+Schemas and names come from `@ash/contract`; you supply in-process handlers (delegate to
+`@ash/mcp` handlers, call `@ash/sdk` directly, or use mocks for tests).
 
 ## Setup
 
 ```bash
-pnpm add @agent-rails/adapter-vercel-ai ai @agent-rails/contract
+pnpm add @ash/adapter-vercel-ai ai @ash/contract
 ```
 
 ```ts
-import { createAgentRailsTools } from "@agent-rails/adapter-vercel-ai";
+import { createAshTools } from "@ash/adapter-vercel-ai";
 import { generateText } from "ai";
 import { openai } from "@ai-sdk/openai";
 
-const tools = createAgentRailsTools({
+const tools = createAshTools({
   getSession: async () => ({ /* ... */ }),
   getPolicy: async () => ({ /* ... */ }),
   listDestinations: async () => ({ destinations: [] }),
@@ -38,28 +38,28 @@ For Cursor/Claude Desktop, prefer the stdio MCP server (no adapter needed):
 ```json
 {
   "mcpServers": {
-    "agent-rails": {
+    "ash": {
       "command": "npx",
-      "args": ["-y", "@agent-rails/mcp"],
+      "args": ["-y", "@ash/mcp"],
       "env": {
-        "AGENT_RAILS_RPC": "https://api.devnet.solana.com",
-        "AGENT_RAILS_SESSION": "<session-pda>",
-        "AGENT_RAILS_SIGNER": "~/.agent-rails/session.json"
+        "ASH_RPC": "https://api.devnet.solana.com",
+        "ASH_SESSION": "<session-pda>",
+        "ASH_SIGNER": "~/.ash/session.json"
       }
     }
   }
 }
 ```
 
-Run `npx agent-rails init` once to create the treasury, policy, session, and this config.
+Run `npx ash init` once to create the treasury, policy, session, and this config.
 
 ## Mock example
 
 From the repo root (build first):
 
 ```bash
-pnpm --filter @agent-rails/adapter-vercel-ai build
+pnpm --filter @ash/adapter-vercel-ai build
 node --experimental-strip-types packages/adapters/vercel-ai/examples/mock-run.ts
 ```
 
-Copy `examples/agent-rails-mcp.cursor.json` into Cursor MCP settings for the stdio server path.
+Copy `examples/ash-mcp.cursor.json` into Cursor MCP settings for the stdio server path.

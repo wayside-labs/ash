@@ -15,8 +15,8 @@
  *  - A missing input produces `unavailable`, never zero. A zero is a claim.
  */
 
-import { NATIVE_MINT } from "@agent-rails/contract/constants";
-import { knownMint } from "@agent-rails/contract/mints";
+import { NATIVE_MINT } from "@ash/contract/constants";
+import { knownMint } from "@ash/contract/mints";
 import type { SolanaCluster } from "@/lib/schema";
 import type { SolPrice } from "@/lib/server/price";
 import type { SessionView, TreasuryView, VaultBalance } from "@/lib/server/solana";

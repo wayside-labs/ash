@@ -1,6 +1,7 @@
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { ashHome } from "@ash/contract/legacy-env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import type { OpsScope } from "../ops";
@@ -17,7 +18,7 @@ export type StoredChunk = { docId: string; idx: number; text: string; embedding:
 export const MAX_CHUNKS_PER_SCOPE = 5_000;
 
 function chunkDir(): string {
-  return join(process.env.AGENT_RAILS_HOME ?? join(homedir(), ".agent-rails"), "knowledge");
+  return join(ashHome(), "knowledge");
 }
 
 const chunkFile = (docId: string) => join(chunkDir(), `${docId.replace(/[^\w-]/g, "_")}.json`);

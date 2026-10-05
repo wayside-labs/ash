@@ -67,16 +67,16 @@ const paymentRequestShape = {
     .describe("Business reference this payment settles, e.g. an invoice number"),
 } as const;
 
-/** MCP tool input for `agent_rails_execute_payment`. */
+/** MCP tool input for `ash_execute_payment`. */
 export const mcpExecutePaymentSchema = z.strictObject(paymentRequestShape);
 export type McpExecutePaymentInput = z.infer<typeof mcpExecutePaymentSchema>;
 
-/** MCP tool input for `agent_rails_check_payment` (dry run; no state change). */
+/** MCP tool input for `ash_check_payment` (dry run; no state change). */
 export const mcpCheckPaymentSchema = z.strictObject(paymentRequestShape);
 export type McpCheckPaymentInput = z.infer<typeof mcpCheckPaymentSchema>;
 
 /**
- * MCP tool input for `agent_rails_get_payment_status`.
+ * MCP tool input for `ash_get_payment_status`.
  *
  * The session is not a parameter: this server serves exactly one, and letting a caller name
  * another is how a read tool becomes a scanner.
@@ -86,20 +86,20 @@ export const mcpGetPaymentStatusSchema = z.strictObject({
 });
 export type McpGetPaymentStatusInput = z.infer<typeof mcpGetPaymentStatusSchema>;
 
-/** MCP tool input for `agent_rails_get_session`. Reads the bound session. */
+/** MCP tool input for `ash_get_session`. Reads the bound session. */
 export const mcpGetSessionSchema = z.strictObject({});
 export type McpGetSessionInput = z.infer<typeof mcpGetSessionSchema>;
 
-/** MCP tool input for `agent_rails_get_policy`. Reads the bound policy. */
+/** MCP tool input for `ash_get_policy`. Reads the bound policy. */
 export const mcpGetPolicySchema = z.strictObject({});
 export type McpGetPolicyInput = z.infer<typeof mcpGetPolicySchema>;
 
-/** MCP tool input for `agent_rails_list_destinations`. */
+/** MCP tool input for `ash_list_destinations`. */
 export const mcpListDestinationsSchema = z.strictObject({});
 export type McpListDestinationsInput = z.infer<typeof mcpListDestinationsSchema>;
 
 /**
- * MCP tool input for `agent_rails_request_limit_increase` (ADR-007's `request_*` pattern).
+ * MCP tool input for `ash_request_limit_increase` (ADR-007's `request_*` pattern).
  *
  * It grants nothing and changes nothing: the server forwards the request to the operator's
  * dashboard as an event, and a person decides — through the CLI or the dashboard — whether
@@ -126,13 +126,13 @@ export type McpRequestLimitIncreaseInput = z.infer<typeof mcpRequestLimitIncreas
  * nothing (ADR-007).
  */
 export const AGENT_TOOL_NAMES = [
-  "agent_rails_get_session",
-  "agent_rails_get_policy",
-  "agent_rails_list_destinations",
-  "agent_rails_get_payment_status",
-  "agent_rails_check_payment",
-  "agent_rails_execute_payment",
-  "agent_rails_request_limit_increase",
+  "ash_get_session",
+  "ash_get_policy",
+  "ash_list_destinations",
+  "ash_get_payment_status",
+  "ash_check_payment",
+  "ash_execute_payment",
+  "ash_request_limit_increase",
 ] as const;
 
 export type AgentToolName = (typeof AGENT_TOOL_NAMES)[number];

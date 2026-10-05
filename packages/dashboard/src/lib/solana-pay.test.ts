@@ -33,7 +33,7 @@ describe("transferRequestUrl", () => {
       amountMicros: 25_000_000,
       mint: MINT,
       reference: PAYER,
-      label: "Agent Rails",
+      label: "ASH",
       message: "Assistant credit",
     });
     expect(url.startsWith(`solana:${RECIPIENT}?`)).toBe(true);

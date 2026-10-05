@@ -3,19 +3,19 @@ import { join } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { agentRailsHome, type VendorId } from "./config.js";
+import { ashHome, type VendorId } from "./config.js";
 import { JsonFile } from "./store.js";
 
 /**
  * One stdio MCP server per vendor: the shape a real vendor would ship.
  *
  * It holds no key and cannot pay. Buying is three calls across two servers — this one
- * issues the invoice, `agent-rails-mcp` pays it under the policy, this one redeems — so
+ * issues the invoice, `ash-mcp` pays it under the policy, this one redeems — so
  * the spend decision always passes through the rails and never through a vendor's code.
  * That split is the thing under test, and a vendor MCP that could pay on its own would
  * hide exactly the failures the platform exists to catch.
  *
- * The session is process identity, as in `agent-rails-mcp`: read from AGENT_RAILS_SESSION,
+ * The session is process identity, as in `ash-mcp`: read from ASH_SESSION,
  * never a tool argument, so the model cannot redeem as someone else.
  */
 
@@ -56,7 +56,7 @@ function result(http: Http, hint?: string) {
 }
 
 const PAY_HINT =
-  "Pay this invoice with agent_rails_execute_payment using payment.destination_label as " +
+  "Pay this invoice with ash_execute_payment using payment.destination_label as " +
   "destination_ref, payment.amount as amount, payment.mint_ref as mint_ref and " +
   "payment.reference as reference — exactly, or the vendor cannot match it. Then call the " +
   "redeem tool with invoice_id.";
@@ -64,7 +64,7 @@ const PAY_HINT =
 const REDEEM_402_HINT =
   "Not paid yet (see payment_error). If execute_payment returned settled, wait a few " +
   "seconds and redeem again; if it was indeterminate, resolve it with " +
-  "agent_rails_get_payment_status first. Never pay the same invoice with a different reference.";
+  "ash_get_payment_status first. Never pay the same invoice with a different reference.";
 
 const REDEEM_503_HINT =
   "Paid, but the vendor cannot deliver right now. Do not pay again: redeem the same " +
@@ -79,8 +79,8 @@ export async function startVendorMcp(vendor: VendorId, env: NodeJS.ProcessEnv = 
   const prefix = vendor.toUpperCase();
   const url = env[`${prefix}_URL`] ?? env.VENDOR_URL;
   if (!url) throw new Error(`${prefix}_URL (or VENDOR_URL) is required`);
-  const session = env.AGENT_RAILS_SESSION;
-  if (!session) throw new Error("AGENT_RAILS_SESSION (the paying AgentSession PDA) is required");
+  const session = env.ASH_SESSION;
+  if (!session) throw new Error("ASH_SESSION (the paying AgentSession PDA) is required");
 
   const call = client(url);
   const server = new McpServer(
@@ -88,8 +88,8 @@ export async function startVendorMcp(vendor: VendorId, env: NodeJS.ProcessEnv = 
     {
       instructions:
         `Buys from the ${vendor} vendor. Every purchase is: request (invoice) → ` +
-        "agent_rails_execute_payment (on the agent-rails server) → redeem. This server " +
-        "cannot pay; check the catalog first, and dry-run with agent_rails_check_payment " +
+        "ash_execute_payment (on the ash server) → redeem. This server " +
+        "cannot pay; check the catalog first, and dry-run with ash_check_payment " +
         "when unsure the policy allows the amount.",
     },
   );
@@ -116,7 +116,7 @@ export async function startVendorMcp(vendor: VendorId, env: NodeJS.ProcessEnv = 
   if (vendor === "compute") {
     // Credits outlive one agent run, so the account token is kept on disk per session.
     computeAccount = await JsonFile.open(
-      join(agentRailsHome(env), "vendors", `compute-account-${session.slice(0, 8)}.json`),
+      join(ashHome(env), "vendors", `compute-account-${session.slice(0, 8)}.json`),
       () => ({ account_id: null, token: null }),
     );
   }
@@ -125,7 +125,7 @@ export async function startVendorMcp(vendor: VendorId, env: NodeJS.ProcessEnv = 
     `${vendor}_redeem`,
     {
       description:
-        "After paying an invoice through agent_rails_execute_payment, collect what it bought. " +
+        "After paying an invoice through ash_execute_payment, collect what it bought. " +
         "Safe to repeat: a redeemed invoice returns the same delivery again.",
       inputSchema: z.strictObject({
         invoice_id: invoiceIdSchema,

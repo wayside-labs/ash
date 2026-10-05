@@ -1,10 +1,7 @@
 "use client";
 
-import { extractConnectorProposals } from "@agent-rails/contract/connector-bundle";
-import {
-  extractTemplateRunProposals,
-  withoutTemplateRunBlocks,
-} from "@agent-rails/contract/template-run";
+import { extractConnectorProposals } from "@ash/contract/connector-bundle";
+import { extractTemplateRunProposals, withoutTemplateRunBlocks } from "@ash/contract/template-run";
 import { useQueryClient } from "@tanstack/react-query";
 import { Bot, Loader2, Send, Square } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -130,7 +127,7 @@ export function ChatPanel({ className }: { className?: string }) {
         throw new Error(detail.error ?? t("chat.error.httpStatus", { status: res.status }));
       }
 
-      setMode(res.headers.get("x-agent-rails-mode"));
+      setMode(res.headers.get("x-ash-mode"));
 
       const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
       let buffer = "";

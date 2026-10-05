@@ -14,7 +14,7 @@ import type { ZipEntry } from "@/lib/zip";
  */
 export const CONNECTOR_BUNDLE_ENV = "CONNECTOR_BUNDLE_JSON";
 /** The console script `uv tool install ./services/connector-host` puts on PATH. */
-export const CONNECTOR_HOST_COMMAND = "agent-rails-connector";
+export const CONNECTOR_HOST_COMMAND = "ash-connector";
 
 export interface McpServerConfig {
   command: string;
@@ -57,19 +57,19 @@ export function mcpServerKey(name: string): string {
 }
 
 /**
- * The rails server is launched several ways: the `agent-rails-mcp` bin, `npx @agent-rails/mcp`,
+ * The rails server is launched several ways: the `ash-mcp` bin, `npx @ash/mcp`,
  * or `node` pointed at a checkout's `packages/mcp` build (what `mcp-snippet.ts` writes).
  * Matching on `command` alone missed the last two, and their denials never reached the webhook.
  */
-const AGENT_RAILS_MCP_LAUNCH = /agent-rails-mcp|@agent-rails\/mcp|packages[\\/]mcp[\\/]/;
+const ASH_MCP_LAUNCH = /ash-mcp|@ash\/mcp|packages[\\/]mcp[\\/]/;
 
-export function isAgentRailsMcp(mcp: Pick<StoredMcp, "command" | "args">): boolean {
-  return [mcp.command, ...mcp.args].some((part) => AGENT_RAILS_MCP_LAUNCH.test(part));
+export function isAshMcp(mcp: Pick<StoredMcp, "command" | "args">): boolean {
+  return [mcp.command, ...mcp.args].some((part) => ASH_MCP_LAUNCH.test(part));
 }
 
 /** The knowledge MCP (`packages/knowledge-mcp`) also talks to this dashboard with the token. */
 const KNOWLEDGE_MCP_LAUNCH =
-  /agent-rails-knowledge-mcp|@agent-rails\/knowledge-mcp|packages[\\/]knowledge-mcp[\\/]/;
+  /ash-knowledge-mcp|@ash\/knowledge-mcp|packages[\\/]knowledge-mcp[\\/]/;
 
 export function isKnowledgeMcp(mcp: Pick<StoredMcp, "command" | "args">): boolean {
   return [mcp.command, ...mcp.args].some((part) => KNOWLEDGE_MCP_LAUNCH.test(part));
@@ -103,16 +103,16 @@ function compileMcpServers(mcps: StoredMcp[], options?: RunnerOptions): Compiled
     ) as Record<string, string>;
 
     // Only our two servers talk to the dashboard; no third-party MCP ever sees the token.
-    if (options?.ingest && (isAgentRailsMcp(mcp) || isKnowledgeMcp(mcp))) {
-      env.AGENT_RAILS_INGEST_URL = options.ingest.url;
-      env.AGENT_RAILS_INGEST_TOKEN = options.ingest.token;
+    if (options?.ingest && (isAshMcp(mcp) || isKnowledgeMcp(mcp))) {
+      env.ASH_INGEST_URL = options.ingest.url;
+      env.ASH_INGEST_TOKEN = options.ingest.token;
     }
-    if (options?.agentName && isKnowledgeMcp(mcp)) env.AGENT_RAILS_AGENT_NAME = options.agentName;
+    if (options?.agentName && isKnowledgeMcp(mcp)) env.ASH_AGENT_NAME = options.agentName;
     if (mcp.connector) {
       // The host reads only the names its bundle declares, and the bundle schema refuses
       // these prefixes; dropping them here keeps a hand-edited row from shipping them at all.
       for (const key of Object.keys(env)) {
-        if (/^(AGENT_RAILS_|SOLANA_|CONNECTOR_)/.test(key)) delete env[key];
+        if (/^(ASH_|SOLANA_|CONNECTOR_)/.test(key)) delete env[key];
       }
       env[CONNECTOR_BUNDLE_ENV] = JSON.stringify(mcp.connector);
     }
@@ -212,7 +212,7 @@ export function compileRunnerBundle(
   entries.push({
     path: "README.txt",
     data:
-      "Agent Rails runner bundle.\n\n" +
+      "ASH runner bundle.\n\n" +
       "  unzip <this file> -d agent && cd agent\n" +
       '  claude -p "<task>" --mcp-config .mcp.json --strict-mcp-config --setting-sources project\n\n' +
       ".mcp.json holds whole environment values (RPC URLs, key paths): keep this file private.\n",

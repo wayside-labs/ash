@@ -156,7 +156,7 @@ export default function MetricsPage() {
           description={t("metrics.emptyDescription")}
         >
           <code className="mt-4 block rounded bg-muted px-2 py-1 text-[11px] text-foreground">
-            pnpm agent-rails init --rpc &lt;url&gt;
+            pnpm ash init --rpc &lt;url&gt;
           </code>
         </EmptyState>
       ) : (

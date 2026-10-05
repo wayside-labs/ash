@@ -1,5 +1,5 @@
-import type { RunPlan } from "@agent-rails/cloak";
-import type { RunEvent, RunStep } from "@agent-rails/contract/template-run";
+import type { RunPlan } from "@ash/cloak";
+import type { RunEvent, RunStep } from "@ash/contract/template-run";
 
 export type TimelineStatus = "pending" | "started" | "done" | "failed" | "skipped";
 

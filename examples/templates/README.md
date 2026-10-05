@@ -1,18 +1,18 @@
 # Agent templates
 
-Five starter setups. Four show a real product using Agent Rails as its **spend authority**:
+Five starter setups. Four show a real product using ASH as its **spend authority**:
 the layer that decides whether money may move, not the layer that decides what to buy. Each of
 those is docs, config snippets, and at most a thin shell script, and none of them adds a
 program instruction, an MCP tool, or a package. The fifth, `cloak-private-payout/`, is the
 exception: it pays from the operator's own wallet, outside the vault. It adds a package
-(`packages/cloak`) and a contract module (`@agent-rails/contract/template-run`), runs on mainnet
+(`packages/cloak`) and a contract module (`@ash/contract/template-run`), runs on mainnet
 only, and is triggered from the dashboard chat. It still adds no program instruction and no MCP
 tool.
 
 | Template | What the agent does | Where the payment moment is | Who runs it |
 |---|---|---|---|
 | [`earn-bounty-hunter/`](earn-bounty-hunter/) | Scouts Superteam Earn, researches, builds | Builder pays capped vendors (RPC, inference, hosting) per bounty | Three agent roles, one of them holds the rails MCP |
-| [`dca-sol/`](dca-sol/) | Nothing — no model in the loop | Cron moves a fixed USDC slice to an allowlisted swap desk each period | `cron` + `agent-rails pay` |
+| [`dca-sol/`](dca-sol/) | Nothing — no model in the loop | Cron moves a fixed USDC slice to an allowlisted swap desk each period | `cron` + `ash pay` |
 | [`defi-yield-rebalance/`](defi-yield-rebalance/) | Reads rates, proposes a capped rebalance | Executor moves USDC to an allowlisted per-venue desk wallet | Script scout, planner agent, executor agent, guardian |
 | [`solana-workstation/`](solana-workstation/) | Orchestrate Solana tasks, Jupiter quotes | Executor pays desks/vendors; desk signs swaps | Orchestrator, analyst, executor |
 | [`cloak-private-payout/`](cloak-private-payout/) | Drafts a payout list in the chat; holds no key | The operator's own wallet shields into Cloak's pool and pays each payee from it, in SOL or ZEC (**mainnet**, no vault) | Chat model drafts, the operator approves a card and each wallet prompt, a browser runner executes |
@@ -28,7 +28,7 @@ which is what the trust phases are about; its README says what applies to it ins
 ```
              OPERATOR SURFACES (privileged — ADR-021)              AGENT SURFACE (ADR-007)
   ┌──────────────────────────────────────────────────┐   ┌──────────────────────────────────┐
-  │ pnpm agent-rails …        dashboard (/treasury,  │   │ agent-rails-mcp: seven tools     │
+  │ pnpm ash …        dashboard (/treasury,  │   │ ash-mcp: seven tools     │
   │  init · ceiling set        /limits, /workflows)  │   │  get_session   get_policy        │
   │  policy set · dest add                           │   │  list_destinations               │
   │  session create · pause   scripts/guardian-watch │   │  get_payment_status              │
@@ -39,7 +39,7 @@ which is what the trust phases are about; its README says what applies to it ins
                      │ allowlist, sessions                                │ session key only
                      ▼                                                    ▼
             ┌──────────────────────────────────────────────────────────────────────┐
-            │ agent_rails program: Treasury ─ Policy ─ AgentSession ─ IntentReceipt │
+            │ ash program: Treasury ─ Policy ─ AgentSession ─ IntentReceipt │
             │ refuses any payment that breaks a ceiling, window, allowlist, expiry │
             └──────────────────────────────────────────────────────────────────────┘
                                            │ transfer from the vault
@@ -56,8 +56,8 @@ in [its README](cloak-private-payout/README.md) and ADR-027.
 
 The four vault-backed templates keep to the same three rules:
 
-1. **Only the role that pays gets `agent-rails-mcp` with `AGENT_RAILS_TOOLS=full`.** Scouts and
-   planners use fetch/search MCPs, or `AGENT_RAILS_TOOLS=readonly` on the rails MCP (check/list
+1. **Only the role that pays gets `ash-mcp` with `ASH_TOOLS=full`.** Scouts and
+   planners use fetch/search MCPs, or `ASH_TOOLS=readonly` on the rails MCP (check/list
    only). Download runner config **per agent** from the dashboard agent settings MCP tab, not
    the workflow row (shared export omits agent-scoped servers).
 2. **Every privileged step is a command a person runs.** Ceilings, policy, allowlist entries
@@ -69,7 +69,7 @@ The four vault-backed templates keep to the same three rules:
    *thing being paid for* — a bounty slug, a DCA period, a rebalance proposal id — turns a
    duplicate run into a refused duplicate instead of a second transfer.
 
-## What Agent Rails does not do in these templates
+## What ASH does not do in these templates
 
 - **It does not swap and it does not deposit into protocols.** `execute_payment` is a
   transfer from the vault to the token account of an allowlisted destination owner. Paying a
@@ -77,7 +77,7 @@ The four vault-backed templates keep to the same three rules:
   DCA and yield templates therefore pay a *desk wallet* the operator controls; the swap or the
   deposit happens from that wallet, as a separate, human-signed or separately-keyed step.
 - **It does not choose.** Which bounty, which venue, how much this week: that is the model's or
-  the schedule's job. Agent Rails bounds the worst case of a bad choice.
+  the schedule's job. ASH bounds the worst case of a bad choice.
 - **It does not run the agents.** The dashboard exports a runner config
   (`/api/export/runner-config`); Cursor, Claude Desktop or your own process runs it.
 
@@ -88,17 +88,17 @@ throwaway wallet and three public environment variables, in its README.
 
 | Step | Surface | Command / page |
 |---|---|---|
-| 1. Treasury + first policy | CLI | `pnpm agent-rails init …` (flags per template) |
-| 2. Allowlist destinations | CLI or dashboard | `pnpm agent-rails dest add --label … --owner …` |
-| 3. Tighten limits | CLI or dashboard `/limits` | `pnpm agent-rails policy set …` (read the token-units note below) |
-| 4. Session for the paying role | CLI or dashboard `/workflows` | `pnpm agent-rails session create --label … --session-ttl …` |
+| 1. Treasury + first policy | CLI | `pnpm ash init …` (flags per template) |
+| 2. Allowlist destinations | CLI or dashboard | `pnpm ash dest add --label … --owner …` |
+| 3. Tighten limits | CLI or dashboard `/limits` | `pnpm ash policy set …` (read the token-units note below) |
+| 4. Session for the paying role | CLI or dashboard `/workflows` | `pnpm ash session create --label … --session-ttl …` |
 | 5. Runner config | template `mcp/*.cursor.json`, or dashboard export | paste the session PDA and key path |
 | 6. Kill switch | `scripts/guardian-watch.ts` | [`docs/runbooks/guardian-watch.md`](../../docs/runbooks/guardian-watch.md) |
-| 7. Alerts | `AGENT_RAILS_ALERT_WEBHOOK_URL`, `pnpm alert-watch` | [`docs/runbooks/alert-webhooks.md`](../../docs/runbooks/alert-webhooks.md) |
+| 7. Alerts | `ASH_ALERT_WEBHOOK_URL`, `pnpm alert-watch` | [`docs/runbooks/alert-webhooks.md`](../../docs/runbooks/alert-webhooks.md) |
 
 **Token units.** `init --token-per-tx / --token-daily / --token-lifetime`, `policy set`, and
 `ceiling set` all parse amounts in **human units for the mint** (`--per-tx 5` on USDC is 5
-USDC). Confirm with `pnpm agent-rails policy show` before signing.
+USDC). Confirm with `pnpm ash policy show` before signing.
 
 **Dashboard export.** The workflow row downloads **shared** MCPs (global + workflow scope).
 Per-role rails MCPs: agent settings → MCP tab → **Download .mcp.json**, or the template's

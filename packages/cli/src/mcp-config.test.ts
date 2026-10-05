@@ -18,35 +18,35 @@ describe("buildMcpConfig", () => {
    */
   it("emits exactly the environment variables the MCP server reads", () => {
     const config = buildMcpConfig(input);
-    expect(Object.keys(config.mcpServers["agent-rails"]?.env ?? {}).sort()).toEqual([
-      "AGENT_RAILS_FEE_PAYER",
-      "AGENT_RAILS_RPC",
-      "AGENT_RAILS_SESSION",
-      "AGENT_RAILS_SIGNER",
-      "AGENT_RAILS_SINK",
+    expect(Object.keys(config.mcpServers["ash"]?.env ?? {}).sort()).toEqual([
+      "ASH_FEE_PAYER",
+      "ASH_RPC",
+      "ASH_SESSION",
+      "ASH_SIGNER",
+      "ASH_SINK",
     ]);
   });
 
   it("binds the server to the session PDA, never to the session key", () => {
-    const env = buildMcpConfig(input).mcpServers["agent-rails"]?.env;
-    expect(env?.AGENT_RAILS_SESSION).toBe(input.session);
-    expect(env?.AGENT_RAILS_SIGNER).toBe(input.signerKeypairPath);
+    const env = buildMcpConfig(input).mcpServers["ash"]?.env;
+    expect(env?.ASH_SESSION).toBe(input.session);
+    expect(env?.ASH_SIGNER).toBe(input.signerKeypairPath);
   });
 
   it("keeps the fee payer separate from the session key", () => {
-    const env = buildMcpConfig(input).mcpServers["agent-rails"]?.env;
-    expect(env?.AGENT_RAILS_FEE_PAYER).not.toBe(env?.AGENT_RAILS_SIGNER);
+    const env = buildMcpConfig(input).mcpServers["ash"]?.env;
+    expect(env?.ASH_FEE_PAYER).not.toBe(env?.ASH_SIGNER);
   });
 
   it("names the server entry as an argument to node, not as the command", () => {
-    const entry = buildMcpConfig(input).mcpServers["agent-rails"];
+    const entry = buildMcpConfig(input).mcpServers["ash"];
     expect(entry?.command).toBe("node");
     expect(entry?.args).toEqual([input.serverEntry]);
   });
 
   it("allows a custom server name for a second treasury", () => {
-    const config = buildMcpConfig({ ...input, serverName: "agent-rails-ops" });
-    expect(Object.keys(config.mcpServers)).toEqual(["agent-rails-ops"]);
+    const config = buildMcpConfig({ ...input, serverName: "ash-ops" });
+    expect(Object.keys(config.mcpServers)).toEqual(["ash-ops"]);
   });
 
   it("renders valid, pasteable JSON", () => {
@@ -68,20 +68,20 @@ describe("buildMcpConfig with an SPL mint", () => {
    * what makes `mint_ref: "USDC"` a usable tool argument.
    */
   it("declares the mint alias in the SYMBOL:address form the server parses", () => {
-    const env = buildMcpConfig(withToken).mcpServers["agent-rails"]?.env;
-    expect(env?.AGENT_RAILS_MINT_ALIASES).toBe("USDC:4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU");
+    const env = buildMcpConfig(withToken).mcpServers["ash"]?.env;
+    expect(env?.ASH_MINT_ALIASES).toBe("USDC:4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU");
   });
 
   it("omits the variable entirely for a SOL-only treasury", () => {
-    const env = buildMcpConfig(input).mcpServers["agent-rails"]?.env;
-    expect(env).not.toHaveProperty("AGENT_RAILS_MINT_ALIASES");
+    const env = buildMcpConfig(input).mcpServers["ash"]?.env;
+    expect(env).not.toHaveProperty("ASH_MINT_ALIASES");
   });
 
   it("joins several aliases with commas", () => {
     const env = buildMcpConfig({
       ...input,
       mintAliases: { USDC: "mintA", MOCK: "mintB" },
-    }).mcpServers["agent-rails"]?.env;
-    expect(env?.AGENT_RAILS_MINT_ALIASES).toBe("USDC:mintA,MOCK:mintB");
+    }).mcpServers["ash"]?.env;
+    expect(env?.ASH_MINT_ALIASES).toBe("USDC:mintA,MOCK:mintB");
   });
 });

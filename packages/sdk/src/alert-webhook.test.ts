@@ -1,4 +1,4 @@
-import { buildHeadroomLowAlert, buildPaymentDeniedAlert } from "@agent-rails/contract/alerts";
+import { buildHeadroomLowAlert, buildPaymentDeniedAlert } from "@ash/contract/alerts";
 import { describe, expect, it, vi } from "vitest";
 import { type AlertWebhookFetch, postAgentEvent, postAlertWebhook } from "./alert-webhook.js";
 

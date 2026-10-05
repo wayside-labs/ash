@@ -28,7 +28,7 @@ const add = (body: unknown) =>
 
 beforeEach(async () => {
   const home = await mkdtemp(join(tmpdir(), "kb-test-"));
-  vi.stubEnv("AGENT_RAILS_HOME", home);
+  vi.stubEnv("ASH_HOME", home);
   vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "");
   vi.stubEnv("VOYAGE_API_KEY", "");
   resetLimits();

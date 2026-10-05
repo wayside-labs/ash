@@ -4,7 +4,7 @@ import pc from "picocolors";
  * Terminal output for a command that spends real time and real lamports.
  *
  * Two rules shape this file. Everything human goes to stderr, so `--json` on stdout stays
- * a clean pipe (`agent-rails init --json | jq`). And every animation degrades to plain
+ * a clean pipe (`ash init --json | jq`). And every animation degrades to plain
  * lines when stderr is not a TTY, because the same command runs in CI logs and in a
  * hackathon terminal, and a log full of spinner escape codes is worse than no spinner.
  */

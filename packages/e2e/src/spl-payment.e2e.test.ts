@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
-import { getExecutePaymentInstructionAsync } from "@agent-rails/client";
-import { deriveIntentId } from "@agent-rails/contract";
+import { getExecutePaymentInstructionAsync } from "@ash/client";
+import { deriveIntentId } from "@ash/contract";
 import { address, createKeyPairSignerFromBytes, createSolanaRpc } from "@solana/kit";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {

@@ -7,7 +7,7 @@ import { defineConfig, devices } from "@playwright/test";
  * Two guarantees this file exists to make, because a UI suite that gets either
  * wrong is worse than no suite at all:
  *
- *  - **It never touches `~/.agent-rails/dashboard.json`.** `AGENT_RAILS_HOME`
+ *  - **It never touches `~/.ash/dashboard.json`.** `ASH_HOME`
  *    repoints the JSON store, so a run cannot delete the operator's real
  *    workflows — or read their API keys — on its way to a green tick.
  *  - **It never reaches a cluster.** Blanking the Supabase vars forces
@@ -58,7 +58,7 @@ export default defineConfig({
     stdout: "pipe",
     stderr: "pipe",
     env: {
-      AGENT_RAILS_HOME: new URL("./.playwright/home", import.meta.url).pathname,
+      ASH_HOME: new URL("./.playwright/home", import.meta.url).pathname,
       // Its own build directory: `next build` empties `.next`, which a dev server beside it
       // (`pnpm dashboard`) is still writing to. Declared in tsconfig.json's `include` too, or
       // Next would rewrite that file on every build.

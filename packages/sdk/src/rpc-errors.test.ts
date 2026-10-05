@@ -1,10 +1,7 @@
-import {
-  AGENT_RAILS_ERROR__EXCEEDS_PER_TX_MAX,
-  AGENT_RAILS_ERROR__PAUSED,
-} from "@agent-rails/client";
+import { ASH_ERROR__EXCEEDS_PER_TX_MAX, ASH_ERROR__PAUSED } from "@ash/client";
 import { describe, expect, it } from "vitest";
 import {
-  agentRailsErrorFromCode,
+  ashErrorFromCode,
   customCodeFromTransactionError,
   stringifyRpcError,
 } from "./error-mapping.js";
@@ -30,19 +27,19 @@ describe("customCodeFromTransactionError", () => {
 
   it("maps a real program denial to its reason code rather than UNKNOWN_PROGRAM_ERROR", () => {
     const code = customCodeFromTransactionError({
-      InstructionError: [0n, { Custom: BigInt(AGENT_RAILS_ERROR__EXCEEDS_PER_TX_MAX) }],
+      InstructionError: [0n, { Custom: BigInt(ASH_ERROR__EXCEEDS_PER_TX_MAX) }],
     });
     expect(code).toBeDefined();
-    const error = agentRailsErrorFromCode(code as number);
+    const error = ashErrorFromCode(code as number);
     expect(error.reasonCode).toBe("EXCEEDS_PER_TX_MAX");
     expect(error.reasonCode).not.toBe("UNKNOWN_PROGRAM_ERROR");
   });
 
   it("maps a paused treasury through the bigint path", () => {
     const code = customCodeFromTransactionError({
-      InstructionError: [0n, { Custom: BigInt(AGENT_RAILS_ERROR__PAUSED) }],
+      InstructionError: [0n, { Custom: BigInt(ASH_ERROR__PAUSED) }],
     });
-    expect(agentRailsErrorFromCode(code as number).reasonCode).toBe("TREASURY_PAUSED");
+    expect(ashErrorFromCode(code as number).reasonCode).toBe("TREASURY_PAUSED");
   });
 
   it.each([

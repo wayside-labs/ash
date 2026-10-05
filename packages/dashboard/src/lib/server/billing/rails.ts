@@ -302,7 +302,7 @@ function toView(intent: IntentRecord): DepositIntentView {
     amountMicros: intent.amountMicros,
     mint,
     reference: intent.reference,
-    label: "Agent Rails",
+    label: "ASH",
     message: "Assistant credit",
   });
   return { ...rest, url };

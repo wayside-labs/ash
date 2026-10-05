@@ -1,9 +1,5 @@
-import { describeSecurity } from "@agent-rails/contract";
-import {
-  type AgentRailsSecurityConfig,
-  resolveSecurity,
-  securityCoherenceWarnings,
-} from "@agent-rails/sdk";
+import { describeSecurity } from "@ash/contract";
+import { type AshSecurityConfig, resolveSecurity, securityCoherenceWarnings } from "@ash/sdk";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { type BoundContext, bindSession } from "./bound-context.js";
@@ -15,7 +11,7 @@ import { loadSessionSigners, type SessionSigners } from "./session.js";
 import { createPaymentSink } from "./sink.js";
 import { registerTools } from "./tools/index.js";
 
-export const MCP_SERVER_NAME = "agent-rails";
+export const MCP_SERVER_NAME = "ash";
 export const MCP_SERVER_VERSION = "0.0.0";
 
 export type CreateMcpServerOptions = {
@@ -26,7 +22,7 @@ export type CreateMcpServerOptions = {
    * Guard-rail posture. Hooks can only arrive this way; presets and the simpler dials can
    * also come from the environment.
    */
-  security?: AgentRailsSecurityConfig;
+  security?: AshSecurityConfig;
 };
 
 /**
@@ -38,19 +34,19 @@ export type CreateMcpServerOptions = {
  * so even though the governor enforces it anyway.
  */
 const INSTRUCTIONS = [
-  "Agent Rails pays from a treasury you do not control, under a policy you cannot change.",
+  "ASH pays from a treasury you do not control, under a policy you cannot change.",
   "",
-  "Destinations are labels, not addresses: call agent_rails_list_destinations and pass a",
+  "Destinations are labels, not addresses: call ash_list_destinations and pass a",
   'label as destination_ref. Amounts are human units, e.g. "12.50". Every payment needs a',
   "reference naming what it settles (an invoice number, a task id); the same reference",
   "always means the same payment, so a retry cannot pay twice.",
   "",
-  "Use agent_rails_check_payment first: it resolves and simulates the payment without",
+  "Use ash_check_payment first: it resolves and simulates the payment without",
   "sending anything.",
   "",
   "Every result carries an outcome. settled means the money moved. denied means it did not,",
   "and the reason_code says why. indeterminate means nobody knows yet: call",
-  "agent_rails_get_payment_status with the intent_id. Never re-issue a payment after an",
+  "ash_get_payment_status with the intent_id. Never re-issue a payment after an",
   "indeterminate result.",
 ].join("\n");
 
@@ -92,7 +88,7 @@ export function createMcpServer(options: CreateMcpServerOptions): McpServer {
  */
 export async function startStdioServer(
   env: NodeJS.ProcessEnv = process.env,
-  security?: AgentRailsSecurityConfig,
+  security?: AshSecurityConfig,
 ): Promise<void> {
   const config = loadConfigFromEnv(env);
   const runtime = createRuntime(config);
@@ -108,9 +104,9 @@ export async function startStdioServer(
     posture: { ...config.securityOverrides, ...security?.posture },
     ...(security?.hooks ? { hooks: security.hooks } : {}),
   });
-  console.error(`[agent-rails-mcp] security preset: ${resolved.preset}`);
+  console.error(`[ash-mcp] security preset: ${resolved.preset}`);
   for (const line of describeSecurity(resolved.posture)) {
-    console.error(`[agent-rails-mcp]   ${line}`);
+    console.error(`[ash-mcp]   ${line}`);
   }
   for (const warning of securityCoherenceWarnings(resolved, {
     destinationMode: bound.destinationMode,
@@ -118,7 +114,7 @@ export async function startStdioServer(
     allowAnyDestination: bound.destinationMode === 0,
     registeredDestinations: bound.destinations.entries.length,
   })) {
-    console.error(`[agent-rails-mcp] warning: ${warning}`);
+    console.error(`[ash-mcp] warning: ${warning}`);
   }
 
   const transport = new StdioServerTransport();

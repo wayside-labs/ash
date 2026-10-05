@@ -22,7 +22,7 @@ const HEADERS = {
 
 const state = dashboardStateSchema.parse({
   workflows: [{ id: "wf", name: "Earn", createdAt: "2026-01-01T00:00:00Z" }],
-  mcps: [{ id: "rails", name: "agent-rails", scope: "workflow", scopeName: "Earn" }],
+  mcps: [{ id: "rails", name: "ash", scope: "workflow", scopeName: "Earn" }],
 });
 
 const call = (prompt: string) =>

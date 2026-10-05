@@ -1,4 +1,4 @@
-import { ZEC_MINT } from "@agent-rails/contract/template-run";
+import { ZEC_MINT } from "@ash/contract/template-run";
 import * as realSdk from "@cloak.dev/sdk";
 import {
   type Blockhash,
