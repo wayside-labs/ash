@@ -1,6 +1,7 @@
 ---
-// The one place slides are drawn. /pitch and /investor both render this component from the same
-// content file, which is what keeps the investor funnel an exact copy of the official pitch.
+// The one place the site's own slides are drawn: the investor funnel and the flow frame of the
+// pitch decks both render this component from the same content file. /pitch itself is the deck in
+// public/pitch-deck/ (DeckFrame.astro), so the funnel is no longer a copy of the open pitch.
 import { getPitch } from "../../content/pitch";
 import type { Lang } from "../../content/copy";
 import FlowMap from "../showcase/FlowMap.astro";
