@@ -72,6 +72,15 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Datas em A
 - `aria-label` do menu do cabeçalho traduzido nas páginas em português ("Seções").
 
 ### Alterado
+- **`/pitch` e `/pt/pitch` passam a ser o deck de 11 telas** (2026-10-05, no ar). O deck é um
+  arquivo pronto por idioma em `public/pitch-deck/{en,pt}.html`; `DeckFrame.astro` o emoldura em
+  tela cheia, no idioma da página, e o endereço continua em `ash.app.br`. `#2-pt` e `#2-en`
+  escolhem o deck qualquer que seja a página. A moldura esconde a trilha de miniaturas do deck (o
+  mesmo sinal que ele usa em tela cheia) e entrega a ele as setas do teclado, para funcionarem
+  sem clicar antes. A tela 6 do deck emoldura `/pitch-deck/flow/{pt,en}/`, que desenha a tela de
+  fluxo do `Deck.astro` (`only="flow"`), então ela não se afasta do site. As 18 telas do
+  `Deck.astro` continuam no `/investidor`: **o pitch aberto e o funil deixaram de mostrar as
+  mesmas telas.** O e2e do pitch foi reescrito para isso.
 - Política de privacidade com controlador (Lucas, pessoa física), encarregado e `lgpd@ash.app.br`.
   **No ar desde 2026-10-02.**
 - **Design v2 — identidade própria do site** (2026-10-02, no ar): verde `#3dff6e` sobre `#070908`,
@@ -104,6 +113,10 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/). Datas em A
   lógica (`lib/ceiling-scene.ts`) continua: é a cena da boas-vindas do `/investidor`.
 
 ### Documentação
+- Sessão de 05/10 (`docs/sessions/2026-10-05-deck-de-11-telas-no-pitch.md`): a troca do pitch, o
+  que a moldura faz, o que ficou de fora (o funil) e o passo a passo de instalar, buildar e
+  publicar a partir da pasta `site/` de outro repositório. `CODEMAP` com as rotas e o fluxo dos
+  dois pitches; aviso novo no topo do `ROADMAP`; regra do pitch reescrita no `CLAUDE.md`.
 - Sessão de 02/10 (`docs/sessions/2026-10-02-design-v2-copy-e-studio-no-ar.md`): linha do tempo,
   decisões do Lucas, a tabela "antes × agora" da copy com a origem de cada troca, e o passo a
   passo de publicar o site à mão, publicar o painel e conferi-lo no navegador. `ROADMAP` §0

@@ -9,8 +9,10 @@ Mapa em `docs/CODEMAP.md`; o que falta em `docs/ROADMAP.md`; porquê em `docs/se
 - Arquivo com mais de ~200 linhas está fazendo duas coisas: dividir.
 - Copy do site só muda em `copy.en.ts` e `copy.pt.ts` **juntos**; o pitch só em `pitch.en.ts` e
   `pitch.pt.ts` **juntos**. `pnpm test` cobra a paridade, proíbe preço, "non-custodial" e `TODO`.
-- **O pitch mora num arquivo só.** `/pitch` e `/investidor` desenham o mesmo `Deck.astro`; nunca
-  copie uma tela para uma página. O e2e confere que as rotas mostram as mesmas telas.
+- **São dois pitches desde 05/10.** `/pitch` e `/pt/pitch` mostram o deck de 11 telas em
+  `public/pitch-deck/{en,pt}.html` (moldura em `DeckFrame.astro`); a tela 6 dele puxa a tela de
+  fluxo do `Deck.astro`. `/investidor` ainda desenha as 18 telas do `Deck.astro` — o funil não foi
+  migrado. Nunca copie uma tela para uma página.
 - **Copy vende o "sim", não a perda** (skill `writing-ash-marketing-copy`). Risco é motivo.
 - **Número só com fonte original conferida.** Dois números herdados já estavam errados (x402,
   "Visa ~US$ 7 bi"). Pesquisa de referência: `agenttokenfy/.aios/research/2026-09-30-mercado-e-concorrentes-pitch.md`.
