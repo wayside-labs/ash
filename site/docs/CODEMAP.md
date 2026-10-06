@@ -10,8 +10,9 @@ Regras de trabalho em `CLAUDE.md`; deploy em `docs/DEPLOY.md`; próximos passos 
 | Rota | Página | O que é |
 |---|---|---|
 | `/` · `/pt/` | `pages/index.astro` · `pages/pt/index.astro` | Home: topo com o mascote, veja funcionando (cartões e botão de simular), por que agora, dor, pilares 01–03, para quem, objeção, fechamento com o mascote |
-| `/pitch/` · `/pt/pitch/` | `pages/pitch.astro` · `pages/pt/pitch.astro` | Pitch oficial, 18 telas, aberto (`noindex`, fora do sitemap) |
-| `/investor/` · `/pt/investidor/` | `pages/investor.astro` · `pages/pt/investidor.astro` | Funil: popup → boas-vindas → **o mesmo deck** → fechamento (`noindex`) |
+| `/pitch/` · `/pt/pitch/` | `pages/pitch.astro` · `pages/pt/pitch.astro` | Pitch aberto: o deck de 11 telas de `public/pitch-deck/{en,pt}.html` numa moldura de tela cheia, no idioma da página; `#2-pt` e `#2-en` escolhem o deck (`noindex`, fora do sitemap) |
+| `/pitch-deck/flow/pt/` · `/pitch-deck/flow/en/` | `pages/pitch-deck/flow/[lang].astro` | A tela de fluxo do `Deck.astro` sozinha, sem controles: é o que a tela 6 do deck emoldura (`noindex`, fora do sitemap) |
+| `/investor/` · `/pt/investidor/` | `pages/investor.astro` · `pages/pt/investidor.astro` | Funil: popup → boas-vindas → **as 18 telas do `Deck.astro`** → fechamento (`noindex`) |
 | `/privacy/` · `/pt/privacidade/` | `pages/privacy.astro` · `pages/pt/privacidade.astro` | Política, inclusive do formulário |
 | qualquer endereço inexistente | `pages/404.astro` | Uma página para os dois idiomas (`noindex`, fora do sitemap); a Cloudflare Pages serve o `404.html` |
 | `POST /api/lead` | `functions/api/lead.ts` | Grava o lead (desligado até existir `TURNSTILE_SECRET`) |
@@ -43,7 +44,8 @@ src/
 ├── components/     seções da home (Hero, Momentum, Pain, Showcase, Pay, Roles, Proof, Audiences,
 │   │               Objection, Closing, Header, Footer, Section, Button)
 │   ├── showcase/   FlowMap (mapa do dinheiro, painel v1) · AgentCards (cartões, painel v2)
-│   ├── pitch/      Deck (desenha as telas) · Top · Gate (popup) · Welcome · Outro · Investor (orquestra o funil)
+│   ├── pitch/      Deck (desenha as 18 telas do funil e a tela de fluxo) · DeckFrame (moldura do deck de 11 telas no /pitch)
+│   │               Top · Gate (popup) · Welcome · Outro · Investor (orquestra o funil)
 │   └── blog/       PostCard · Cover (capa enviada ou desenhada com os tokens) · PostMeta · PostBody
 │       │           (corpo e tipografia) · PostToc · TagList · RelatedPosts · Pagination · ShareLinks
 │       │           · AuthorCard · CtaCard · SearchBox
@@ -98,9 +100,17 @@ docs/               DEPLOY · design-system · CODEMAP · ROADMAP · plans/ · s
 
 ## Fluxos
 
-**Uma fonte, duas rotas (pitch).** `content/pitch.{en,pt}.ts` → `components/pitch/Deck.astro` →
-desenhado em `/pitch` e dentro de `/investor`. Mudar o pitch = mudar só o conteúdo; o e2e
-`investor funnel › shows exactly the slides of the official pitch` quebra se as rotas divergirem.
+**Dois pitches, desde 2026-10-05.** O `/pitch` é o deck de 11 telas: um arquivo pronto por idioma
+em `public/pitch-deck/{en,pt}.html`, que `components/pitch/DeckFrame.astro` emoldura. Mudar esse
+pitch = trocar os dois arquivos. A moldura faz três coisas que o arquivo sozinho não faz: escolhe
+o deck pelo idioma da página (ou por `#2-pt` / `#2-en`), manda ao deck o sinal de "apresentando"
+para ele esconder a trilha de miniaturas, e repassa as setas do teclado para funcionarem sem
+clique. A tela 6 do deck emoldura `/pitch-deck/flow/{pt,en}/`, que desenha a tela de fluxo do
+`Deck.astro`; é o único ponto em que os dois pitches se tocam.
+
+O `/investor` continua com as 18 telas: `content/pitch.{en,pt}.ts` → `components/pitch/Deck.astro`.
+Mudar esse pitch = mudar só o conteúdo. **As duas rotas não mostram mais as mesmas telas**; o e2e
+confere cada uma por si (`pitch deck › …` e `investor funnel › carries the site's eighteen slides`).
 
 **Funil do investidor.**
 ```

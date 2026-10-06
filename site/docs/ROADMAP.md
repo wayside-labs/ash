@@ -7,6 +7,11 @@ copy nova no ar**). Histórico no `CHANGELOG.md`; o porquê das decisões em `do
 > **A produção está à frente do `main`.** `ash.app.br` é publicado à mão a partir do branch
 > `feat/design-v2`, que carrega o M1c (PR #1, ainda não mergeado). Publicar a partir do `main`
 > antes desse merge devolve o site à versão antiga.
+>
+> **Desde 2026-10-05 o `/pitch` é o deck de 11 telas** e a publicação saiu da cópia do site em
+> `site/` do repositório `wayside-labs/ash`. Publicar a partir de uma árvore sem essa mudança
+> devolve o pitch de 18 telas. Passo a passo e armadilhas:
+> `docs/sessions/2026-10-05-deck-de-11-telas-no-pitch.md`.
 
 ## 0. Por onde começar (estado em 02/10, manhã)
 

@@ -2,27 +2,53 @@ import { test, expect, type Page } from "@playwright/test";
 
 const slideTexts = (page: Page) => page.locator("[data-slide] .line").allTextContents();
 
+// /pitch is the deck in public/pitch-deck/, framed. The deck is a self-contained file with its own
+// markup, so these tests read only what the frame promises: which deck, how many slides, which one
+// is showing.
+const deckOf = (page: Page) => page.frameLocator("[data-deck-iframe]");
+const showing = (page: Page) => deckOf(page).locator("section[data-deck-active]");
+// The deck keeps a second copy of a slide while it draws the thumbnails, so count the numbers.
+const slideCount = (page: Page) =>
+  deckOf(page).locator("section[data-deck-slide]").evaluateAll((all) => new Set(all.map((s) => s.getAttribute("data-deck-slide"))).size);
+
 test.describe("pitch deck", () => {
-  test("moves by keyboard, jumps by hash and stops at the ends", async ({ page }) => {
+  for (const [path, file, first] of [["/pitch/", "en", /Cover$/], ["/pt/pitch/", "pt", /Capa$/]] as const) {
+    test(`${path} shows the eleven slides of its language's deck`, async ({ page }) => {
+      await page.goto(path);
+      await expect(page.locator("[data-deck-iframe]")).toHaveAttribute("src", `/pitch-deck/${file}.html`);
+      await expect(showing(page)).toHaveAttribute("data-screen-label", first, { timeout: 20_000 });
+      await expect.poll(() => slideCount(page)).toBe(11);
+      // The frame tells the deck it is presenting, so the rail of thumbnails stays out of the page.
+      await expect(deckOf(page).locator("deck-stage .rail")).toBeHidden();
+    });
+  }
+
+  test("the arrows move the deck without a click first, and it stops at the ends", async ({ page }) => {
     await page.goto("/pitch/");
-    const count = page.locator("[data-count]");
-    await expect(count).toHaveText("1 / 18");
+    await expect(showing(page)).toHaveAttribute("data-screen-label", /^01 /, { timeout: 20_000 });
     await page.keyboard.press("ArrowRight");
-    await expect(count).toHaveText("2 / 18");
-    await expect(page).toHaveURL(/#2$/);
+    await expect(showing(page)).toHaveAttribute("data-screen-label", /^02 /);
     await page.keyboard.press("End");
-    await expect(count).toHaveText("18 / 18");
+    await expect(showing(page)).toHaveAttribute("data-screen-label", /^11 /);
     await page.keyboard.press("ArrowRight");
-    await expect(count).toHaveText("18 / 18");
-    await page.goto("/pitch/#4");
-    await expect(page.locator("[data-slide].is-active .line")).toHaveText("Unleash your agents on Solana. Full autonomy, on your terms.");
+    await expect(showing(page)).toHaveAttribute("data-screen-label", /^11 /);
   });
 
-  test("notes toggle with N", async ({ page }) => {
-    await page.goto("/pt/pitch/");
-    await expect(page.locator("[data-slide].is-active [data-notes]")).toBeHidden();
-    await page.keyboard.press("n");
-    await expect(page.locator("[data-slide].is-active [data-notes]")).toBeVisible();
+  test("#2-pt and #2-en pick the deck whatever the page's language", async ({ page }) => {
+    await page.goto("/pitch/#2-pt");
+    await expect(page.locator("[data-deck-iframe]")).toHaveAttribute("src", "/pitch-deck/pt.html");
+    await page.goto("/pt/pitch/#2-en");
+    await expect(page.locator("[data-deck-iframe]")).toHaveAttribute("src", "/pitch-deck/en.html");
+  });
+
+  test("slide 6 is the site's own flow slide, alone and without the deck controls", async ({ page }) => {
+    for (const lang of ["en", "pt"]) {
+      await page.goto(`/pitch-deck/flow/${lang}/`);
+      await expect(page.locator("[data-slide]")).toHaveCount(1);
+      await expect(page.locator("[data-slide]")).toHaveAttribute("data-id", "flow");
+      await expect(page.locator("[data-prev]")).toBeHidden();
+      await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", "noindex, nofollow");
+    }
   });
 
   for (const path of ["/pitch/", "/pt/pitch/", "/investor/", "/pt/investidor/"]) {
@@ -42,13 +68,11 @@ test.describe("pitch deck", () => {
 });
 
 test.describe("investor funnel", () => {
-  test("shows exactly the slides of the official pitch, in both languages", async ({ page }) => {
-    for (const [pitch, investor] of [["/pitch/", "/investor/"], ["/pt/pitch/", "/pt/investidor/"]] as const) {
-      await page.goto(pitch);
-      const official = await slideTexts(page);
+  // The funnel still draws the site's own eighteen slides; /pitch moved to the framed deck.
+  test("carries the site's eighteen slides in both languages", async ({ page }) => {
+    for (const investor of ["/investor/", "/pt/investidor/"]) {
       await page.goto(investor);
-      expect(await slideTexts(page)).toEqual(official);
-      expect(official).toHaveLength(18);
+      expect(await slideTexts(page)).toHaveLength(18);
     }
   });
 
@@ -119,11 +143,18 @@ test.describe("investor funnel", () => {
     await expect(page.locator("[data-count]")).toHaveText("1 / 18");
   });
 
-  test("the open /pitch just stays on the last slide", async ({ page }) => {
-    await page.goto("/pitch/#18");
+  test("inside the funnel the deck moves by keyboard and toggles its notes with N", async ({ page }) => {
+    await page.route("**/api/lead", (route) => route.fulfill({ status: 200, contentType: "application/json", body: '{"ok":true}' }));
+    await fillPt(page);
+    await page.getByRole("button", { name: "Ver o pitch" }).click();
+    const count = page.locator("[data-count]");
+    await expect(count).toHaveText("1 / 18");
     await page.keyboard.press("ArrowRight");
-    await expect(page.locator("[data-count]")).toHaveText("18 / 18");
-    await expect(page.locator("[data-deck]")).toBeVisible();
+    await expect(count).toHaveText("2 / 18");
+    await expect(page).toHaveURL(/#2$/);
+    await expect(page.locator("[data-slide].is-active [data-notes]")).toBeHidden();
+    await page.keyboard.press("n");
+    await expect(page.locator("[data-slide].is-active [data-notes]")).toBeVisible();
   });
 
   // Regression, 30/09: with collection switched off (503 unavailable) the form trapped the
